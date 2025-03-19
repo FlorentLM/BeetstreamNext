@@ -50,32 +50,28 @@ def get_album_list(version):
     sort_by = request.values.get('type') or 'alphabeticalByName'
     size = int(request.values.get('size') or 10)
     offset = int(request.values.get('offset') or 0)
-    fromYear = int(request.values.get('fromYear') or 0)
-    toYear = int(request.values.get('toYear') or 3000)
+    from_year = int(request.values.get('fromYear') or 0)
+    to_year = int(request.values.get('toYear') or 3000)
     genre = request.values.get('genre')
 
     albums = list(g.lib.albums())
 
     if sort_by == 'newest':
-        albums.sort(key=lambda album: int(dict(album)['added']), reverse=True)
+        albums.sort(key=lambda a: int(a['added']), reverse=True)
     elif sort_by == 'alphabeticalByName':
-        albums.sort(key=lambda album: strip_accents(dict(album)['album']).upper())
+        albums.sort(key=lambda a: strip_accents(a['album']).upper())
     elif sort_by == 'alphabeticalByArtist':
-        albums.sort(key=lambda album: strip_accents(dict(album)['albumartist']).upper())
+        albums.sort(key=lambda a: strip_accents(a['albumartist']).upper())
     elif sort_by == 'alphabeticalByArtist':
-        albums.sort(key=lambda album: strip_accents(dict(album)['albumartist']).upper())
+        albums.sort(key=lambda a: strip_accents(a['albumartist']).upper())
     elif sort_by == 'recent':
-        albums.sort(key=lambda album: dict(album)['year'], reverse=True)
+        albums.sort(key=lambda a: a['year'], reverse=True)
     elif sort_by == 'byGenre':
-        albums = list(filter(lambda album: dict(album)['genre'].lower() == genre.lower(), albums))
+        # albums = list(filter(lambda a: genre.lower() in a['genre'].lower(), albums))
+        albums = list(filter(lambda a: genre.lower().strip() in map(str.strip, a['genre'].lower().split(',')), albums))
     elif sort_by == 'byYear':
-        # TODO use month and day data to sort
-        if fromYear <= toYear:
-            albums = list(filter(lambda album: dict(album)['year'] >= fromYear and dict(album)['year'] <= toYear, albums))
-            albums.sort(key=lambda album: int(dict(album)['year']))
-        else:
-            albums = list(filter(lambda album: dict(album)['year'] >= toYear and dict(album)['year'] <= fromYear, albums))
-            albums.sort(key=lambda album: int(dict(album)['year']), reverse=True)
+        albums = list(filter(lambda a: min(from_year, to_year) <= a['year'] <= max(from_year, to_year), albums))
+        albums.sort(key=lambda a: (a['year'], a['month'], a['day']), reverse=(from_year > to_year))
     elif sort_by == 'random':
         shuffle(albums)
 
@@ -116,42 +112,39 @@ def get_album_list(version):
 def genres():
     res_format = request.values.get('f') or 'xml'
     with g.lib.transaction() as tx:
-        mixed_genres = list(tx.query("""
+        mixed_genres = list(tx.query(
+            """
             SELECT genre, COUNT(*) AS n_song, "" AS n_album FROM items GROUP BY genre
             UNION ALL
             SELECT genre, "" AS n_song, COUNT(*) AS n_album FROM albums GROUP BY genre
-        """))
+            """))
 
-    genres = {}
-    for genre in mixed_genres:
-        key = genre[0]
-        if (not key in genres.keys()):
-            genres[key] = (genre[1], 0)
-        if (genre[2]):
-            genres[key] = (genres[key][0], genre[2])
+    g_dict = {}
+    for row in mixed_genres:
+        genre_field, n_song, n_album = row
+        for key in [g.strip() for g in genre_field.split(',')]:
+            if key not in g_dict:
+                g_dict[key] = [0, 0]
+            if n_song:  # Update song count if present
+                g_dict[key][0] += int(n_song)
+            if n_album: # Update album count if present
+                g_dict[key][1] += int(n_album)
 
-    genres = [(k, v[0], v[1]) for k, v in genres.items()]
-    # genres.sort(key=lambda genre: strip_accents(genre[0]).upper())
-    genres.sort(key=lambda genre: genre[1])
-    genres.reverse()
-    genres = filter(lambda genre: genre[0] != u"", genres)
+    # And convert to list of tuples (only non-empty genres)
+    g_list = [(k, *v) for k, v in g_dict.items() if k]
+    # g_list.sort(key=lambda g: strip_accents(g[0]).upper())
+    g_list.sort(key=lambda g: g[1], reverse=True)
 
-    if (is_json(res_format)):
-        def map_genre(genre):
-            return {
-                "value": genre[0],
-                "songCount": genre[1],
-                "albumCount": genre[2]
-            }
-
-        return jsonpify(request, wrap_res("genres", {
-            "genre": list(map(map_genre, genres))
-        }))
+    if is_json(res_format):
+        return jsonpify(request, wrap_res(
+            key="genres",
+            json={ "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list] }
+        ))
     else:
         root = get_xml_root()
         genres_xml = ET.SubElement(root, 'genres')
 
-        for genre in genres:
+        for genre in g_list:
             genre_xml = ET.SubElement(genres_xml, 'genre')
             genre_xml.text = genre[0]
             genre_xml.set("songCount", str(genre[1]))

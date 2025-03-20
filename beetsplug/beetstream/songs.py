@@ -20,8 +20,7 @@ def get_song():
     song_id = r.get('id')
     payload = song_payload(song_id)
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getSongsByGenre', methods=["GET", "POST"])
 @app.route('/rest/getSongsByGenre.view', methods=["GET", "POST"])
@@ -44,8 +43,7 @@ def songs_by_genre():
             "song": list(map(map_song, songs))
         }
     }
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 
 @app.route('/rest/getRandomSongs', methods=["GET", "POST"])
@@ -69,8 +67,7 @@ def random_songs():
             "song": list(map(map_song, songs))
         }
     }
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 
 @app.route('/rest/stream', methods=["GET", "POST"])
@@ -113,8 +110,7 @@ def top_songs():
     payload = {
         'topSongs': {}
     }
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 
 @app.route('/rest/getStarred', methods=["GET", "POST"])
@@ -129,8 +125,7 @@ def starred_songs():
             'song': []
         }
     }
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getStarred2', methods=["GET", "POST"])
 @app.route('/rest/getStarred2.view', methods=["GET", "POST"])
@@ -144,5 +139,4 @@ def starred2_songs():
             'song': []
         }
     }
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))

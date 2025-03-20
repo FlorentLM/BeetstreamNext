@@ -1,6 +1,7 @@
 from beetsplug.beetstream import ALBUM_ID_PREFIX, ARTIST_ID_PREFIX, SONG_ID_PREFIX
 import unicodedata
 from datetime import datetime
+from typing import Union
 import flask
 import json
 import base64
@@ -52,7 +53,7 @@ def dict_to_xml(tag, d):
         elem.text = str(d)
     return elem
 
-def subsonic_response(d: dict, format: str):
+def subsonic_response(d: dict = {}, format: str = 'xml'):
     """ Wrap any json-like dict with the subsonic response elements
      and output the appropriate 'format' (json or xml) """
 

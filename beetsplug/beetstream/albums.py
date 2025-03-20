@@ -27,8 +27,7 @@ def get_album():
     album_id = r.get('id')
     payload = album_payload(album_id)
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
@@ -57,8 +56,7 @@ def get_album_info(ver=None):
     }
     }
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
@@ -129,13 +127,13 @@ def get_album_list(ver=None):
         }
     }
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def genres():
+    r = flask.request.values
 
     with flask.g.lib.transaction() as tx:
         mixed_genres = list(tx.query(
@@ -165,8 +163,7 @@ def genres():
             "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list]
         }
     }
-    res_format = flask.request.values.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 
 @app.route('/rest/getMusicDirectory', methods=["GET", "POST"])
@@ -194,5 +191,4 @@ def musicDirectory():
     else:
         return flask.abort(404)
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))

@@ -56,8 +56,7 @@ def get_artists(version: str):
         }
     }
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
@@ -67,8 +66,7 @@ def get_artist():
     artist_id = r.get('id')
     payload = artist_payload(artist_id)
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
@@ -90,5 +88,4 @@ def artistInfo2():
         }
     }
 
-    res_format = r.get('f') or 'xml'
-    return subsonic_response(payload, res_format)
+    return subsonic_response(payload, r.get('f', 'xml'))

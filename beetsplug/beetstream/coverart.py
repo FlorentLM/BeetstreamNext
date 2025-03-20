@@ -8,6 +8,17 @@ import os
 import subprocess
 import tempfile
 
+
+@app.route('/albumart/<int:album_id>')
+def album_art(album_id):
+    album = flask.g.lib.get_album(album_id)
+    art_path = album.get('artpath', b'').decode('utf-8')
+    if art_path and os.path.exists(art_path):
+        return flask.send_file(art_path, mimetype=path_to_content_type(art_path))
+    else:
+        flask.abort(404)
+
+
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def cover_art_file():

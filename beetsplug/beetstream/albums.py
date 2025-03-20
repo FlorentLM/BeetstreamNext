@@ -30,6 +30,36 @@ def get_album():
     res_format = r.get('f') or 'xml'
     return subsonic_response(payload, res_format)
 
+@app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
+@app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
+def album_info():
+    return get_album_info()
+
+@app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
+@app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
+def album_info_2():
+    return get_album_info(ver=2)
+
+def get_album_info(ver=None):
+    r = flask.request.values
+
+    album_id = int(album_subid_to_beetid(r.get('id')))
+    album = flask.g.lib.get_album(album_id)
+
+    image_url = flask.url_for('album_art', album_id=album_id, _external=True)
+
+    tag = f"albumInfo{ver if ver else ''}"
+    payload = {
+        tag: {
+        'notes': album.get('comments', ''),
+        'musicBrainzId': album.get('mb_albumid', ''),
+        'largeImageUrl': image_url
+    }
+    }
+
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)
+
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
 def album_list():

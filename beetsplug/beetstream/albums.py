@@ -52,10 +52,9 @@ def get_album_list(ver=None):
         conditions.append("year BETWEEN ? AND ?")
         params.extend([min(from_year, to_year), max(from_year, to_year)])
 
-    # For genre filtering (if requested), use a simple LIKE clause
     if sort_by == 'byGenre' and genre_filter:
         conditions.append("lower(genre) LIKE ?")
-        params.append("%" + genre_filter.lower().strip() + "%")
+        params.append(f"%{genre_filter.lower().strip()}%")
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -71,10 +70,8 @@ def get_album_list(ver=None):
         query += " ORDER BY year DESC"
     elif sort_by == 'byYear':
         # Order by year, then by month and day
-        if from_year <= to_year:
-            query += " ORDER BY year ASC, month ASC, day ASC"
-        else:
-            query += " ORDER BY year DESC, month DESC, day DESC"
+        sort_dir = 'ASC' if from_year <= to_year else 'DESC'
+        query += f" ORDER BY year {sort_dir}, month {sort_dir}, day {sort_dir}"
     elif sort_by == 'random':
         query += " ORDER BY RANDOM()"
 

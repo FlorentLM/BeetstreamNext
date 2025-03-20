@@ -1,6 +1,8 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import flask
+import re
+from typing import List
 from beetsplug.beetstream.artists import artist_payload
 from beetsplug.beetstream.songs import song_payload
 
@@ -72,11 +74,11 @@ def get_album_list(ver=None):
 
     r = flask.request.values
 
-    sort_by = r.get('type') or 'alphabeticalByName'
-    size = int(r.get('size') or 10)
-    offset = int(r.get('offset') or 0)
-    from_year = int(r.get('fromYear') or 0)
-    to_year = int(r.get('toYear') or 3000)
+    sort_by = r.get('type', 'alphabeticalByName')
+    size = int(r.get('size', 10))
+    offset = int(r.get('offset', 0))
+    from_year = int(r.get('fromYear', 0))
+    to_year = int(r.get('toYear', 3000))
     genre_filter = r.get('genre')
 
     # Start building the base query
@@ -130,6 +132,10 @@ def get_album_list(ver=None):
     return subsonic_response(payload, r.get('f', 'xml'))
 
 
+def genre_string_cleaner(genre: str) -> List[str]:
+    delimiters = '|'.join([';', ',', '/', '\|'])
+
+
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def genres():
@@ -143,10 +149,15 @@ def genres():
             SELECT genre, "" AS n_song, COUNT(*) AS n_album FROM albums GROUP BY genre
             """))
 
+    delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
+
     g_dict = {}
     for row in mixed_genres:
         genre_field, n_song, n_album = row
-        for key in [g.strip() for g in genre_field.split(',')]:
+        for key in [g.strip().title()
+                            .replace('Post ', 'Post-')
+                            .replace('Prog ', 'Prog-')
+                            .replace('.', ' ') for g in re.split(delimiters, genre_field)]:
             if key not in g_dict:
                 g_dict[key] = [0, 0]
             if n_song:  # Update song count if present

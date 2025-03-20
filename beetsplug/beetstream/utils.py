@@ -31,6 +31,52 @@ def timestamp_to_iso(timestamp):
 def is_json(res_format):
     return res_format == 'json' or res_format == 'jsonp'
 
+
+def dict_to_xml(tag, d):
+    """ Recursively converts a json-like dict to an XML tree """
+    elem = ET.Element(tag)
+    if isinstance(d, dict):
+        for key, val in d.items():
+            if isinstance(val, (dict, list)):
+                child = dict_to_xml(key, val)
+                elem.append(child)
+            else:
+                child = ET.Element(key)
+                child.text = str(val)
+                elem.append(child)
+    elif isinstance(d, list):
+        for item in d:
+            child = dict_to_xml(tag, item)
+            elem.append(child)
+    else:
+        elem.text = str(d)
+    return elem
+
+def subsonic_response(d: dict, format: str):
+    """ Wrap any json-like dict with the subsonic response elements
+     and output the appropriate 'format' (json or xml) """
+
+    STATUS = 'ok'
+    VERSION = '1.16.1'
+
+    if format == 'json' or format == 'jsonp':
+        wrapped = {
+            "subsonic-response": {
+                "status": STATUS,
+                "version": VERSION,
+                **d
+            }
+        }
+        return jsonpify(flask.request, wrapped)
+
+    else:
+        root = dict_to_xml("subsonic-response", d)
+        root.set("xmlns", "http://subsonic.org/restapi")
+        root.set("status", STATUS)
+        root.set("version", VERSION)
+
+        return flask.Response(xml_to_string(root), mimetype="text/xml")
+
 def wrap_res(key, json):
     return {
         "subsonic-response": {

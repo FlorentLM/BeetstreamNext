@@ -62,9 +62,12 @@ def subsonic_response(d: dict = {}, format: str = 'xml'):
 
     if format == 'json' or format == 'jsonp':
         wrapped = {
-            "subsonic-response": {
-                "status": STATUS,
-                "version": VERSION,
+            'subsonic-response': {
+                'status': STATUS,
+                'version': VERSION,
+                'type': 'Beetstream',
+                'serverVersion': '1.4.5',
+                'openSubsonic': True,
                 **d
             }
         }
@@ -75,6 +78,9 @@ def subsonic_response(d: dict = {}, format: str = 'xml'):
         root.set("xmlns", "http://subsonic.org/restapi")
         root.set("status", STATUS)
         root.set("version", VERSION)
+        root.set("type", 'Beetstream')
+        root.set("serverVersion", '1.4.5')
+        root.set("openSubsonic", 'true')
 
         return flask.Response(xml_to_string(root), mimetype="text/xml")
 
@@ -283,12 +289,12 @@ def map_playlist_xml(xml, playlist):
     xml.set('created', timestamp_to_iso(playlist.modified))
 
 def artist_name_to_id(name):
-    base64_name = base64.b64encode(name.encode('utf-8')).decode('utf-8')
+    base64_name = base64.urlsafe_b64encode(name.encode('utf-8')).decode('utf-8')
     return f"{ARTIST_ID_PREFIX}{base64_name}"
 
 def artist_id_to_name(id):
     base64_id = id[len(ARTIST_ID_PREFIX):]
-    return base64.b64decode(base64_id.encode('utf-8')).decode('utf-8')
+    return base64.urlsafe_b64decode(base64_id.encode('utf-8')).decode('utf-8')
 
 def album_beetid_to_subid(id):
     return f"{ALBUM_ID_PREFIX}{id}"

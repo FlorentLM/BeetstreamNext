@@ -1,117 +1,107 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import flask
-from flask import g, request, Response
-import xml.etree.cElementTree as ET
-from PIL import Image
-import io
-from random import shuffle
 
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def get_album():
-    res_format = request.values.get('f') or 'xml'
-    id = int(album_subid_to_beetid(request.values.get('id')))
+    r = flask.request.values
 
-    album = g.lib.get_album(id)
+    id = int(album_subid_to_beetid(r.get('id')))
+
+    album = flask.g.lib.get_album(id)
     songs = sorted(album.items(), key=lambda song: song.track)
 
-    if (is_json(res_format)):
-        res = wrap_res("album", {
+    payload = {
+        "album": {
             **map_album(album),
-            **{ "song": list(map(map_song, songs)) }
-        })
-        return jsonpify(request, res)
-    else:
-        root = get_xml_root()
-        albumXml = ET.SubElement(root, 'album')
-        map_album_xml(albumXml, album)
-
-        for song in songs:
-            s = ET.SubElement(albumXml, 'song')
-            map_song_xml(s, song)
-
-        return Response(xml_to_string(root), mimetype='text/xml')
+            **{"song": list(map(map_song, songs))}
+        }
+    }
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)
 
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
 def album_list():
-    return get_album_list(1)
-
+    return get_album_list()
 
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
 def album_list_2():
-    return get_album_list(2)
+    return get_album_list(ver=2)
 
-def get_album_list(version):
-    res_format = request.values.get('f') or 'xml'
-    # TODO type == 'starred' and type == 'frequent'
-    sort_by = request.values.get('type') or 'alphabeticalByName'
-    size = int(request.values.get('size') or 10)
-    offset = int(request.values.get('offset') or 0)
-    from_year = int(request.values.get('fromYear') or 0)
-    to_year = int(request.values.get('toYear') or 3000)
-    genre = request.values.get('genre')
+def get_album_list(ver=None):
 
-    albums = list(g.lib.albums())
+    r = flask.request.values
 
+    sort_by = r.get('type') or 'alphabeticalByName'
+    size = int(r.get('size') or 10)
+    offset = int(r.get('offset') or 0)
+    from_year = int(r.get('fromYear') or 0)
+    to_year = int(r.get('toYear') or 3000)
+    genre_filter = r.get('genre')
+
+    # Start building the base query
+    query = "SELECT * FROM albums"
+    conditions = []
+    params = []
+
+    # Apply filtering conditions:
+    if sort_by == 'byYear':
+        conditions.append("year BETWEEN ? AND ?")
+        params.extend([min(from_year, to_year), max(from_year, to_year)])
+
+    # For genre filtering (if requested), use a simple LIKE clause
+    if sort_by == 'byGenre' and genre_filter:
+        conditions.append("lower(genre) LIKE ?")
+        params.append("%" + genre_filter.lower().strip() + "%")
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    # ordering based on sort_by parameter
     if sort_by == 'newest':
-        albums.sort(key=lambda a: int(a['added']), reverse=True)
+        query += " ORDER BY added DESC"
     elif sort_by == 'alphabeticalByName':
-        albums.sort(key=lambda a: strip_accents(a['album']).upper())
+        query += " ORDER BY album COLLATE NOCASE"
     elif sort_by == 'alphabeticalByArtist':
-        albums.sort(key=lambda a: strip_accents(a['albumartist']).upper())
-    elif sort_by == 'alphabeticalByArtist':
-        albums.sort(key=lambda a: strip_accents(a['albumartist']).upper())
+        query += " ORDER BY albumartist COLLATE NOCASE"
     elif sort_by == 'recent':
-        albums.sort(key=lambda a: a['year'], reverse=True)
-    elif sort_by == 'byGenre':
-        # albums = list(filter(lambda a: genre.lower() in a['genre'].lower(), albums))
-        albums = list(filter(lambda a: genre.lower().strip() in map(str.strip, a['genre'].lower().split(',')), albums))
+        query += " ORDER BY year DESC"
     elif sort_by == 'byYear':
-        albums = list(filter(lambda a: min(from_year, to_year) <= a['year'] <= max(from_year, to_year), albums))
-        albums.sort(key=lambda a: (a['year'], a['month'], a['day']), reverse=(from_year > to_year))
+        # Order by year, then by month and day
+        if from_year <= to_year:
+            query += " ORDER BY year ASC, month ASC, day ASC"
+        else:
+            query += " ORDER BY year DESC, month DESC, day DESC"
     elif sort_by == 'random':
-        shuffle(albums)
+        query += " ORDER BY RANDOM()"
 
-    albums = handleSizeAndOffset(albums, size, offset)
+    # Add LIMIT and OFFSET for pagination
+    query += " LIMIT ? OFFSET ?"
+    params.extend([size, offset])
 
-    if version == 1:
-        if (is_json(res_format)):
-            return jsonpify(request, wrap_res("albumList", {
-                "album": list(map(map_album_list, albums))
-            }))
-        else:
-            root = get_xml_root()
-            album_list_xml = ET.SubElement(root, 'albumList')
+    # Execute the query within a transaction
+    with flask.g.lib.transaction() as tx:
+        albums = list(tx.query(query, params))
 
-            for album in albums:
-                a = ET.SubElement(album_list_xml, 'album')
-                map_album_list_xml(a, album)
+    tag = f"albumList{ver if ver else ''}"
+    payload = {
+        tag: {
+            "album": list(map(map_album, albums))
+        }
+    }
 
-            return Response(xml_to_string(root), mimetype='text/xml')
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)
 
-    elif version == 2:
-        if (is_json(res_format)):
-            return jsonpify(request, wrap_res("albumList2", {
-                "album": list(map(map_album, albums))
-            }))
-        else:
-            root = get_xml_root()
-            album_list_xml = ET.SubElement(root, 'albumList2')
-
-            for album in albums:
-                a = ET.SubElement(album_list_xml, 'album')
-                map_album_xml(a, album)
-
-            return Response(xml_to_string(root), mimetype='text/xml')
 
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def genres():
-    res_format = request.values.get('f') or 'xml'
-    with g.lib.transaction() as tx:
+
+    with flask.g.lib.transaction() as tx:
         mixed_genres = list(tx.query(
             """
             SELECT genre, COUNT(*) AS n_song, "" AS n_album FROM items GROUP BY genre
@@ -132,89 +122,67 @@ def genres():
 
     # And convert to list of tuples (only non-empty genres)
     g_list = [(k, *v) for k, v in g_dict.items() if k]
-    # g_list.sort(key=lambda g: strip_accents(g[0]).upper())
     g_list.sort(key=lambda g: g[1], reverse=True)
 
-    if is_json(res_format):
-        return jsonpify(request, wrap_res(
-            key="genres",
-            json={ "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list] }
-        ))
-    else:
-        root = get_xml_root()
-        genres_xml = ET.SubElement(root, 'genres')
+    payload = {
+        "genres": {
+            "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list]
+        }
+    }
+    res_format = flask.request.values.get('f') or 'xml'
+    return subsonic_response(payload, res_format)
 
-        for genre in g_list:
-            genre_xml = ET.SubElement(genres_xml, 'genre')
-            genre_xml.text = genre[0]
-            genre_xml.set("songCount", str(genre[1]))
-            genre_xml.set("albumCount", str(genre[2]))
-
-        return Response(xml_to_string(root), mimetype='text/xml')
 
 @app.route('/rest/getMusicDirectory', methods=["GET", "POST"])
 @app.route('/rest/getMusicDirectory.view', methods=["GET", "POST"])
 def musicDirectory():
     # Works pretty much like a file system
-    # Usually Artist first, than Album, than Songs
-    res_format = request.values.get('f') or 'xml'
-    id = request.values.get('id')
+    # Usually Artist first, then Album, then Songs
+    r = flask.request.values
 
-    if id.startswith(ARTIST_ID_PREFIX):
-        artist_id = id
+    req_id = r.get('id')
+
+    if req_id.startswith(ARTIST_ID_PREFIX):
+        # Artist
+        artist_id = req_id
         artist_name = artist_id_to_name(artist_id)
-        albums = g.lib.albums(artist_name.replace("'", "\\'"))
-        albums = filter(lambda album: album.albumartist == artist_name, albums)
+        albums = flask.g.lib.albums(artist_name.replace("'", "\\'"))
+        albums = filter(lambda a: a.albumartist == artist_name, albums)
 
-        if (is_json(res_format)):
-            return jsonpify(request, wrap_res("directory", {
+        payload = {
+            "directory": {
                 "id": artist_id,
                 "name": artist_name,
                 "child": list(map(map_album, albums))
-            }))
-        else:
-            root = get_xml_root()
-            artist_xml = ET.SubElement(root, 'directory')
-            artist_xml.set("id", artist_id)
-            artist_xml.set("name", artist_name)
+            }
+        }
 
-            for album in albums:
-                a = ET.SubElement(artist_xml, 'child')
-                map_album_xml(a, album)
-
-            return Response(xml_to_string(root), mimetype='text/xml')
-    elif id.startswith(ALBUM_ID_PREFIX):
+    elif req_id.startswith(ALBUM_ID_PREFIX):
         # Album
-        id = int(album_subid_to_beetid(id))
-        album = g.lib.get_album(id)
-        songs = sorted(album.items(), key=lambda song: song.track)
+        album_id = int(album_subid_to_beetid(req_id))
+        album = flask.g.lib.get_album(album_id)
+        songs = sorted(album.items(), key=lambda s: s.track)
 
-        if (is_json(res_format)):
-            res = wrap_res("directory", {
+        payload = {
+            "directory": {
                 **map_album(album),
                 **{ "child": list(map(map_song, songs)) }
-            })
-            return jsonpify(request, res)
-        else:
-            root = get_xml_root()
-            albumXml = ET.SubElement(root, 'directory')
-            map_album_xml(albumXml, album)
+            }
+        }
 
-            for song in songs:
-                s = ET.SubElement(albumXml, 'child')
-                map_song_xml(s, song)
-
-            return Response(xml_to_string(root), mimetype='text/xml')
-    elif id.startswith(SONG_ID_PREFIX):
+    elif req_id.startswith(SONG_ID_PREFIX):
         # Song
-        id = int(song_subid_to_beetid(id))
-        song = g.lib.get_item(id)
+        song_id = int(song_subid_to_beetid(req_id))
+        song = flask.g.lib.get_item(song_id)
 
-        if (is_json(res_format)):
-            return jsonpify(request, wrap_res("directory", map_song(song)))
-        else:
-            root = get_xml_root()
-            s = ET.SubElement(root, 'directory')
-            map_song_xml(s, song)
+        payload = {
+            "directory": {
+                **map_song(song)
+            }
+        }
 
-            return Response(xml_to_string(root), mimetype='text/xml')
+    else:
+        return flask.abort(404)
+
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)

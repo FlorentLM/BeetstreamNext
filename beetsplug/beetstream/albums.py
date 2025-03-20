@@ -1,16 +1,14 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import flask
+from beetsplug.beetstream.artists import artist_payload
+from beetsplug.beetstream.songs import song_payload
 
-@app.route('/rest/getAlbum', methods=["GET", "POST"])
-@app.route('/rest/getAlbum.view', methods=["GET", "POST"])
-def get_album():
-    r = flask.request.values
 
-    id = int(album_subid_to_beetid(r.get('id')))
-
-    album = flask.g.lib.get_album(id)
-    songs = sorted(album.items(), key=lambda song: song.track)
+def album_payload(album_id: str) -> dict:
+    album_id = int(album_subid_to_beetid(album_id))
+    album = flask.g.lib.get_album(album_id)
+    songs = sorted(album.items(), key=lambda s: s.track)
 
     payload = {
         "album": {
@@ -18,6 +16,17 @@ def get_album():
             **{"song": list(map(map_song, songs))}
         }
     }
+    return payload
+
+
+@app.route('/rest/getAlbum', methods=["GET", "POST"])
+@app.route('/rest/getAlbum.view', methods=["GET", "POST"])
+def get_album():
+    r = flask.request.values
+
+    album_id = r.get('id')
+    payload = album_payload(album_id)
+
     res_format = r.get('f') or 'xml'
     return subsonic_response(payload, res_format)
 
@@ -140,43 +149,17 @@ def musicDirectory():
     req_id = r.get('id')
 
     if req_id.startswith(ARTIST_ID_PREFIX):
-        # Artist
-        artist_id = req_id
-        artist_name = artist_id_to_name(artist_id)
-        albums = flask.g.lib.albums(artist_name.replace("'", "\\'"))
-        albums = filter(lambda a: a.albumartist == artist_name, albums)
-
-        payload = {
-            "directory": {
-                "id": artist_id,
-                "name": artist_name,
-                "child": list(map(map_album, albums))
-            }
-        }
+        payload = artist_payload(req_id)
+        payload['directory'] = payload.pop('artist')
 
     elif req_id.startswith(ALBUM_ID_PREFIX):
-        # Album
-        album_id = int(album_subid_to_beetid(req_id))
-        album = flask.g.lib.get_album(album_id)
-        songs = sorted(album.items(), key=lambda s: s.track)
-
-        payload = {
-            "directory": {
-                **map_album(album),
-                **{ "child": list(map(map_song, songs)) }
-            }
-        }
+        payload = album_payload(req_id)
+        payload['directory'] = payload.pop('album')
+        payload['directory']['child'] = payload['directory'].pop('song')
 
     elif req_id.startswith(SONG_ID_PREFIX):
-        # Song
-        song_id = int(song_subid_to_beetid(req_id))
-        song = flask.g.lib.get_item(song_id)
-
-        payload = {
-            "directory": {
-                **map_song(song)
-            }
-        }
+        payload = song_payload(req_id)
+        payload['directory'] = payload.pop('song')
 
     else:
         return flask.abort(404)

@@ -1,8 +1,25 @@
 import time
+from collections import defaultdict
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
-from flask import g, request, Response
-import xml.etree.cElementTree as ET
+import flask
+
+
+def artist_payload(artist_id: str) -> dict:
+
+    artist_name = artist_id_to_name(artist_id).replace("'", "\\'")
+
+    albums = flask.g.lib.albums(artist_name)
+    albums = filter(lambda a: a.albumartist == artist_name, albums)
+
+    payload = {
+        "artist": {
+            "id": artist_id,
+            "name": artist_name,
+            "child": list(map(map_album, albums))
+        }
+    }
+    return payload
 
 @app.route('/rest/getArtists', methods=["GET", "POST"])
 @app.route('/rest/getArtists.view', methods=["GET", "POST"])
@@ -14,114 +31,64 @@ def all_artists():
 def indexes():
     return get_artists("indexes")
 
-def get_artists(version):
-    res_format = request.values.get('f') or 'xml'
-    with g.lib.transaction() as tx:
+def get_artists(version: str):
+    r = flask.request.values
+
+    with flask.g.lib.transaction() as tx:
         rows = tx.query("SELECT DISTINCT albumartist FROM albums")
-    all_artists = [row[0] for row in rows]
+
+    all_artists = [r[0] for r in rows if r[0]]
     all_artists.sort(key=lambda name: strip_accents(name).upper())
-    all_artists = filter(lambda name: len(name) > 0, all_artists)
 
-    indicies_dict = {}
+    alphanum_dict = defaultdict(list)
+    for artist in all_artists:
+        ind = strip_accents(artist[0]).upper()
+        alphanum_dict[ind].append(artist)
 
-    for name in all_artists:
-        index = strip_accents(name[0]).upper()
-        if index not in indicies_dict:
-            indicies_dict[index] = []
-        indicies_dict[index].append(name)
-
-    if (is_json(res_format)):
-        indicies = []
-        for index, artist_names in indicies_dict.items():
-            indicies.append({
-                "name": index,
-                "artist": list(map(map_artist, artist_names))
-            })
-
-        return jsonpify(request, wrap_res(version, {
+    payload = {
+        version: {
             "ignoredArticles": "",
             "lastModified": int(time.time() * 1000),
-            "index": indicies
-        }))
-    else:
-        root = get_xml_root()
-        indexes_xml = ET.SubElement(root, version)
-        indexes_xml.set('ignoredArticles', "")
+            "index": [
+                {"name": char, "artist": list(map(map_artist, artists))}
+                for char, artists in sorted(alphanum_dict.items())
+            ]
+        }
+    }
 
-        indicies = []
-        for index, artist_names in indicies_dict.items():
-            indicies.append({
-                "name": index,
-                "artist": artist_names
-            })
-
-        for index in indicies:
-            index_xml = ET.SubElement(indexes_xml, 'index')
-            index_xml.set('name', index["name"])
-
-            for a in index["artist"]:
-                artist = ET.SubElement(index_xml, 'artist')
-                map_artist_xml(artist, a)
-
-        return Response(xml_to_string(root), mimetype='text/xml')
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)
 
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
-def artist():
-    res_format = request.values.get('f') or 'xml'
-    artist_id = request.values.get('id')
-    artist_name = artist_id_to_name(artist_id)
-    albums = g.lib.albums(artist_name.replace("'", "\\'"))
-    albums = filter(lambda album: album.albumartist == artist_name, albums)
+def get_artist():
+    r = flask.request.values
 
-    if (is_json(res_format)):
-        return jsonpify(request, wrap_res("artist", {
-            "id": artist_id,
-            "name": artist_name,
-            "album": list(map(map_album, albums))
-        }))
-    else:
-        root = get_xml_root()
-        artist_xml = ET.SubElement(root, 'artist')
-        artist_xml.set("id", artist_id)
-        artist_xml.set("name", artist_name)
+    artist_id = r.get('id')
+    payload = artist_payload(artist_id)
 
-        for album in albums:
-            a = ET.SubElement(artist_xml, 'album')
-            map_album_xml(a, album)
-
-        return Response(xml_to_string(root), mimetype='text/xml')
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)
 
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
 def artistInfo2():
-    res_format = request.values.get('f') or 'xml'
-    artist_name = artist_id_to_name(request.values.get('id'))
+    # TODO
 
-    if (is_json(res_format)):
-        return jsonpify(request, wrap_res("artistInfo2", {
+    r = flask.request.values
+
+    artist_name = artist_id_to_name(r.get('id'))
+
+    payload = {
+        "artistInfo2": {
             "biography": f"wow. much artist. very {artist_name}",
             "musicBrainzId": "",
             "lastFmUrl": "",
             "smallImageUrl": "",
             "mediumImageUrl": "",
             "largeImageUrl": ""
-        }))
-    else:
-        root = get_xml_root()
-        artist_xml = ET.SubElement(root, 'artistInfo2')
+        }
+    }
 
-        biography = ET.SubElement(artist_xml, "biography")
-        biography.text = f"wow. much artist very {artist_name}."
-        musicBrainzId = ET.SubElement(artist_xml, "musicBrainzId")
-        musicBrainzId.text = ""
-        lastFmUrl = ET.SubElement(artist_xml, "lastFmUrl")
-        lastFmUrl.text = ""
-        smallImageUrl = ET.SubElement(artist_xml, "smallImageUrl")
-        smallImageUrl.text = ""
-        mediumImageUrl = ET.SubElement(artist_xml, "mediumImageUrl")
-        mediumImageUrl.text = ""
-        largeImageUrl = ET.SubElement(artist_xml, "largeImageUrl")
-        largeImageUrl.text = ""
-
-        return Response(xml_to_string(root), mimetype='text/xml')
+    res_format = r.get('f') or 'xml'
+    return subsonic_response(payload, res_format)

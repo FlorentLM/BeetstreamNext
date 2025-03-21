@@ -1,7 +1,6 @@
-import xml.etree.cElementTree as ET
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
-from flask import g, request, Response
+import flask
 from .playlistprovider import PlaylistProvider
 
 _playlist_provider = PlaylistProvider('')
@@ -10,43 +9,38 @@ _playlist_provider = PlaylistProvider('')
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
 def playlists():
-    res_format = request.values.get('f') or 'xml'
+    r = flask.request.values
+
     playlists = playlist_provider().playlists()
-    if (is_json(res_format)):
-        return jsonpify(request, wrap_res('playlists', {
+
+    payload = {
+        'playlists': {
             'playlist': [map_playlist(p) for p in playlists]
-        }))
-    else:
-        root = get_xml_root()
-        playlists_el = ET.SubElement(root, 'playlists')
-        for p in playlists:
-            playlist_el = ET.SubElement(playlists_el, 'playlist')
-            map_playlist_xml(playlist_el, p)
-        return Response(xml_to_string(root), mimetype='text/xml')
+        }
+    }
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
 def playlist():
-    res_format = request.values.get('f') or 'xml'
-    id = request.values.get('id')
-    playlist = playlist_provider().playlist(id)
-    items = playlist.items()
-    if (is_json(res_format)):
-        p = map_playlist(playlist)
-        p['entry'] = [_song(item.attrs['id']) for item in items]
-        return jsonpify(request, wrap_res('playlist', p))
-    else:
-        root = get_xml_root()
-        playlist_xml = ET.SubElement(root, 'playlist')
-        map_playlist_xml(playlist_xml, playlist)
-        for item in items:
-            song = g.lib.get_item(item.attrs['id'])
-            entry = ET.SubElement(playlist_xml, 'entry')
-            map_song_xml(entry, song)
-        return Response(xml_to_string(root), mimetype='text/xml')
+    r = flask.request.values
 
-def _song(id):
-    return map_song(g.lib.get_item(int(id)))
+    playlist_id = r.get('id')
+    playlist = playlist_provider().playlist(playlist_id)
+    items = playlist.items()
+
+    payload = {
+        'playlist': {
+            'entry': [
+                map_song(
+                    flask.g.lib.get_item(int(item.attrs['id']))
+                )
+                for item in items
+            ]
+        }
+    }
+    return subsonic_response(payload, r.get('f', 'xml'))
+
 
 def playlist_provider():
     if 'playlist_dir' in app.config:

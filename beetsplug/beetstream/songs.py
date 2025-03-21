@@ -78,8 +78,8 @@ def stream_song():
     maxBitrate = int(r.get('maxBitRate') or 0)
     format = r.get('format')
 
-    id = int(song_subid_to_beetid(r.get('id')))
-    item = flask.g.lib.get_item(id)
+    song_id = int(song_subid_to_beetid(r.get('id')))
+    item = flask.g.lib.get_item(song_id)
 
     itemPath = item.path.decode('utf-8')
 
@@ -93,8 +93,8 @@ def stream_song():
 def download_song():
     r = flask.request.values
 
-    id = int(song_subid_to_beetid(r.get('id')))
-    item = flask.g.lib.get_item(id)
+    song_id = int(song_subid_to_beetid(r.get('id')))
+    item = flask.g.lib.get_item(song_id)
 
     return stream.direct(item.path.decode('utf-8'))
 

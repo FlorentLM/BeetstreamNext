@@ -132,10 +132,6 @@ def get_album_list(ver=None):
     return subsonic_response(payload, r.get('f', 'xml'))
 
 
-def genre_string_cleaner(genre: str) -> List[str]:
-    delimiters = '|'.join([';', ',', '/', '\|'])
-
-
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def genres():

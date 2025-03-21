@@ -28,7 +28,6 @@ def get_album():
 
     album_id = r.get('id')
     payload = album_payload(album_id)
-
     return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
@@ -44,10 +43,11 @@ def album_info_2():
 def get_album_info(ver=None):
     r = flask.request.values
 
-    album_id = int(album_subid_to_beetid(r.get('id')))
+    req_id = r.get('id')
+    album_id = int(album_subid_to_beetid(req_id))
     album = flask.g.lib.get_album(album_id)
 
-    image_url = flask.url_for('album_art', album_id=album_id, _external=True)
+    image_url = flask.url_for('cover_art_file', id=album_id, _external=True)
 
     tag = f"albumInfo{ver if ver else ''}"
     payload = {
@@ -55,7 +55,7 @@ def get_album_info(ver=None):
         'notes': album.get('comments', ''),
         'musicBrainzId': album.get('mb_albumid', ''),
         'largeImageUrl': image_url
-    }
+        }
     }
 
     return subsonic_response(payload, r.get('f', 'xml'))

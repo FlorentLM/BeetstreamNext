@@ -288,25 +288,25 @@ def map_playlist_xml(xml, playlist):
     xml.set('comment', playlist.artists)
     xml.set('created', timestamp_to_iso(playlist.modified))
 
-def artist_name_to_id(name):
-    base64_name = base64.urlsafe_b64encode(name.encode('utf-8')).decode('utf-8')
+def artist_name_to_id(artist_name: str):
+    base64_name = base64.urlsafe_b64encode(artist_name.encode('utf-8')).decode('utf-8')
     return f"{ARTIST_ID_PREFIX}{base64_name}"
 
-def artist_id_to_name(id):
-    base64_id = id[len(ARTIST_ID_PREFIX):]
+def artist_id_to_name(artist_id: str):
+    base64_id = artist_id[len(ARTIST_ID_PREFIX):]
     return base64.urlsafe_b64decode(base64_id.encode('utf-8')).decode('utf-8')
 
-def album_beetid_to_subid(id):
-    return f"{ALBUM_ID_PREFIX}{id}"
+def album_beetid_to_subid(album_id: str):
+    return ALBUM_ID_PREFIX + album_id
 
-def album_subid_to_beetid(id):
-    return id[len(ALBUM_ID_PREFIX):]
+def album_subid_to_beetid(album_id: str):
+    return album_id[len(ALBUM_ID_PREFIX):]
 
-def song_beetid_to_subid(id):
-    return f"{SONG_ID_PREFIX}{id}"
+def song_beetid_to_subid(song_id: str):
+    return SONG_ID_PREFIX + song_id
 
-def song_subid_to_beetid(id):
-    return id[len(SONG_ID_PREFIX):]
+def song_subid_to_beetid(song_id: str):
+    return song_id[len(SONG_ID_PREFIX):]
 
 def path_to_content_type(path):
     result = mimetypes.guess_type(path)[0]

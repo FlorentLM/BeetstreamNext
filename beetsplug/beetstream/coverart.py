@@ -1,73 +1,76 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
-from flask import g, request
 from io import BytesIO
 from PIL import Image
 import flask
 import os
 import subprocess
-import tempfile
 
 
-@app.route('/albumart/<int:album_id>')
-def album_art(album_id):
-    album = flask.g.lib.get_album(album_id)
-    art_path = album.get('artpath', b'').decode('utf-8')
-    if art_path and os.path.exists(art_path):
-        return flask.send_file(art_path, mimetype=path_to_content_type(art_path))
-    else:
-        flask.abort(404)
+# TODO - Use python ffmpeg module if available (like in stream.py)
+
+def extract_cover(path) -> BytesIO:
+    command = [
+        'ffmpeg',
+        '-i', path,
+        '-vframes', '1',      # extract only one frame
+        '-f', 'image2pipe',   # output format is image2pipe
+        '-c:v', 'mjpeg',
+        '-q:v', '2',          # jpg quality (lower is better)
+        'pipe:1'
+    ]
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    img_bytes, _ = proc.communicate()
+    return BytesIO(img_bytes)
+
+
+def resize_image(data: BytesIO, size: int) -> BytesIO:
+
+    img = Image.open(data)
+    img.thumbnail((size, size))
+
+    buf = BytesIO()
+    img.save(buf, format='JPEG')
+
+    return buf
 
 
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
-def cover_art_file():
-    id = request.values.get('id')
-    size = request.values.get('size')
-    album = None
+def get_cover_art():
+    r = flask.request.values
 
-    if id[:len(ALBUM_ID_PREFIX)] == ALBUM_ID_PREFIX:
-        album_id = int(album_subid_to_beetid(id) or -1)
-        album = g.lib.get_album(album_id)
-    else:
-        item_id = int(song_subid_to_beetid(id) or -1)
-        item = g.lib.get_item(item_id)
+    req_id = r.get('id')
+    size = r.get('size', None)
 
-        if item is not None:
-            if item.album_id is not None:
-                album = g.lib.get_album(item.album_id)
-            if not album or not album.artpath:
-                tmp_file = tempfile.NamedTemporaryFile(prefix='beetstream-cover-', suffix='.png')
-                tmp_file_name = tmp_file.name
-                try:
-                    tmp_file.close()
-                    subprocess.run(['ffmpeg', '-i', item.path, '-an', '-c:v',
-                        'copy', tmp_file_name,
-                        '-hide_banner', '-loglevel', 'error',])
+    if req_id.startswith(ALBUM_ID_PREFIX):
 
-                    return _send_image(tmp_file_name, size)
-                finally:
-                    os.remove(tmp_file_name)
+        album_id = int(album_subid_to_beetid(req_id))
+        album = flask.g.lib.get_album(album_id)
 
-    if album and album.artpath:
-        image_path = album.artpath.decode('utf-8')
+        art_path = album.get('artpath', b'').decode('utf-8')
 
-        if size is not None and int(size) > 0:
-            return _send_image(image_path, size)
+        if os.path.isfile(art_path):
+            if size:
+                cover = resize_image(art_path, int(size))
+                return flask.send_file(cover, mimetype='image/jpg')
+            return flask.send_file(art_path, mimetype=path_to_content_type(art_path))
 
-        return flask.send_file(image_path)
-    else:
-        return flask.abort(404)
+        # TODO - Query from coverartarchive.org if no local file found
 
-def _send_image(path_or_bytesio, size):
-    converted = BytesIO()
-    img = Image.open(path_or_bytesio)
+    elif req_id.startswith(SONG_ID_PREFIX):
+        item_id = int(song_subid_to_beetid(req_id))
+        item = flask.g.lib.get_item(item_id)
 
-    if size is not None and int(size) > 0:
-        size = int(size)
-        img = img.resize((size, size))
+        # TODO - try to get the album's cover first, then extract only if needed
+        cover = extract_cover(item.path)
+        if size:
+            cover = resize_image(cover, int(size))
 
-    img.convert('RGB').save(converted, 'PNG')
-    converted.seek(0)
+        return flask.send_file(cover, mimetype='image/jpg')
 
-    return flask.send_file(converted, mimetype='image/png')
+
+    # TODO - Get artist image if req_id is 'ar-'
+
+    # Fallback: return an empty 'ok' response
+    return subsonic_response({}, r.get('f', 'xml'))

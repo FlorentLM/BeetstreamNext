@@ -21,9 +21,9 @@ import flask
 from flask import g
 from flask_cors import CORS
 
-ARTIST_ID_PREFIX = "1"
-ALBUM_ID_PREFIX = "2"
-SONG_ID_PREFIX = "3"
+ARTIST_ID_PREFIX = "ar-"
+ALBUM_ID_PREFIX = "al-"
+SONG_ID_PREFIX = "sg-"
 
 # Flask setup.
 app = flask.Flask(__name__)

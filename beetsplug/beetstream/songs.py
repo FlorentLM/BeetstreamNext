@@ -48,7 +48,7 @@ def songs_by_genre():
 
 @app.route('/rest/getRandomSongs', methods=["GET", "POST"])
 @app.route('/rest/getRandomSongs.view', methods=["GET", "POST"])
-def random_songs():
+def get_random_songs():
     r = flask.request.values
 
     size = int(r.get('size') or 10)
@@ -102,7 +102,7 @@ def download_song():
 # TODO link with Last.fm or ListenBrainz
 @app.route('/rest/getTopSongs', methods=["GET", "POST"])
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
-def top_songs():
+def get_top_songs():
     # TODO
 
     r = flask.request.values
@@ -115,27 +115,23 @@ def top_songs():
 
 @app.route('/rest/getStarred', methods=["GET", "POST"])
 @app.route('/rest/getStarred.view', methods=["GET", "POST"])
-def starred_songs():
-    # TODO
-
-    r = flask.request.values
-
-    payload = {
-        'starred': {
-            'song': []
-        }
-    }
-    return subsonic_response(payload, r.get('f', 'xml'))
+def get_starred_songs():
+    return _starred_songs()
 
 @app.route('/rest/getStarred2', methods=["GET", "POST"])
 @app.route('/rest/getStarred2.view', methods=["GET", "POST"])
-def starred2_songs():
+def get_starred2_songs():
+    return _starred_songs(ver=2)
+
+
+def _starred_songs(ver=None):
     # TODO
 
     r = flask.request.values
 
+    tag = f'starred{ver if ver else ''}'
     payload = {
-        'starred2': {
+        tag: {
             'song': []
         }
     }

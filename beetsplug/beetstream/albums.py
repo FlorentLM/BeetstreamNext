@@ -33,15 +33,15 @@ def get_album():
 
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
-def album_info():
-    return get_album_info()
+def get_album_info():
+    return _album_info()
 
 @app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
-def album_info_2():
-    return get_album_info(ver=2)
+def get_album_info_2():
+    return _album_info(ver=2)
 
-def get_album_info(ver=None):
+def _album_info(ver=None):
     r = flask.request.values
 
     req_id = r.get('id')

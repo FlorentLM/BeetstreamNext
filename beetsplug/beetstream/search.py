@@ -6,14 +6,14 @@ import xml.etree.cElementTree as ET
 @app.route('/rest/search2', methods=["GET", "POST"])
 @app.route('/rest/search2.view', methods=["GET", "POST"])
 def search2():
-    return search(2)
+    return search(ver=2)
 
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
 def search3():
-    return search(3)
+    return search(ver=3)
 
-def search(version):
+def search(ver=None):
     res_format = request.values.get('f') or 'xml'
     query = request.values.get('query') or ""
     artistCount = int(request.values.get('artistCount') or 20)

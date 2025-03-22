@@ -23,15 +23,15 @@ def artist_payload(artist_id: str) -> dict:
 
 @app.route('/rest/getArtists', methods=["GET", "POST"])
 @app.route('/rest/getArtists.view', methods=["GET", "POST"])
-def all_artists():
-    return get_artists("artists")
+def get_artists():
+    return _artists("artists")
 
 @app.route('/rest/getIndexes', methods=["GET", "POST"])
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
-def indexes():
-    return get_artists("indexes")
+def get_indexes():
+    return _artists("indexes")
 
-def get_artists(version: str):
+def _artists(version: str):
     r = flask.request.values
 
     with flask.g.lib.transaction() as tx:

@@ -55,7 +55,6 @@ def _artists(version: str):
             ]
         }
     }
-
     return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getArtist', methods=["GET", "POST"])

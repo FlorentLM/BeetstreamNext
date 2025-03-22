@@ -75,12 +75,8 @@ class BeetstreamPlugin(BeetsPlugin):
                 self.config['port'] = int(args.pop(0))
 
             app.config['lib'] = lib
-
-            # Normalizes json output
-            # app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-
-            # app.config['INCLUDE_PATHS'] = self.config['include_paths']
-
+            app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+            app.config['INCLUDE_PATHS'] = self.config['include_paths']
             app.config['never_transcode'] = self.config['never_transcode'].get(False)
 
             playlist_directories = [self.config['playlist_dir'].get(None),                  # Beetstream's own

@@ -1,58 +1,64 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
-from flask import g, request, Response
-import xml.etree.cElementTree as ET
+
 
 @app.route('/rest/search2', methods=["GET", "POST"])
 @app.route('/rest/search2.view', methods=["GET", "POST"])
 def search2():
-    return search(ver=2)
+    return _search(ver=2)
 
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
 def search3():
-    return search(ver=3)
+    return _search(ver=3)
 
-def search(ver=None):
-    res_format = request.values.get('f') or 'xml'
-    query = request.values.get('query') or ""
-    artistCount = int(request.values.get('artistCount') or 20)
-    artistOffset = int(request.values.get('artistOffset') or 0)
-    albumCount = int(request.values.get('albumCount') or 20)
-    albumOffset = int(request.values.get('albumOffset') or 0)
-    songCount = int(request.values.get('songCount') or 20)
-    songOffset = int(request.values.get('songOffset') or 0)
 
-    songs = handleSizeAndOffset(list(g.lib.items("title:{}".format(query.replace("'", "\\'")))), songCount, songOffset)
-    albums = handleSizeAndOffset(list(g.lib.albums("album:{}".format(query.replace("'", "\\'")))), albumCount, albumOffset)
+def _search(ver=None):
+    r = flask.request.values
 
-    with g.lib.transaction() as tx:
-        rows = tx.query("SELECT DISTINCT albumartist FROM albums")
-    artists = [row[0] for row in rows]
-    artists = list(filter(lambda artist: strip_accents(query).lower() in strip_accents(artist).lower(), artists))
-    artists.sort(key=lambda name: strip_accents(name).upper())
-    artists = handleSizeAndOffset(artists, artistCount, artistOffset)
+    song_count = int(r.get('songCount', 20))
+    song_offset = int(r.get('songOffset', 0))
+    album_count = int(r.get('albumCount', 20))
+    album_offset = int(r.get('albumOffset', 0))
+    artist_count = int(r.get('artistCount', 20))
+    artist_offset = int(r.get('artistOffset', 0))
 
-    if (is_json(res_format)):
-        return jsonpify(request, wrap_res("searchResult{}".format(version), {
-            "artist": list(map(map_artist, artists)),
-            "album": list(map(map_album, albums)),
-            "song": list(map(map_song, songs))
-        }))
+    query = r.get('query') or ''
+
+    if not query:
+        if ver == 2:
+            # search2 does not support empty queries: return an empty response
+            return subsonic_response({}, r.get('f', 'xml'), failed=True)
+
+        # search3 "must support an empty query and return all the data"
+        # https://opensubsonic.netlify.app/docs/endpoints/search3/
+        pattern = "%"
     else:
-        root = get_xml_root()
-        search_result = ET.SubElement(root, 'searchResult{}'.format(version))
+        pattern = f"%{query.lower()}%"
 
-        for artist in artists:
-            a = ET.SubElement(search_result, 'artist')
-            map_artist_xml(a, artist)
+    with flask.g.lib.transaction() as tx:
+        songs = list(tx.query(
+            "SELECT * FROM items WHERE lower(title) LIKE ? ORDER BY title LIMIT ? OFFSET ?",
+            (pattern, song_count, song_offset)
+        ))
+        albums = list(tx.query(
+            "SELECT * FROM albums WHERE lower(album) LIKE ? ORDER BY album LIMIT ? OFFSET ?",
+            (pattern, album_count, album_offset)
+        ))
+        artist_rows = list(tx.query(
+            "SELECT DISTINCT albumartist FROM albums WHERE lower(albumartist) LIKE ? ORDER BY albumartist LIMIT ? OFFSET ?",
+            (pattern, artist_count, artist_offset)
+        ))
 
-        for album in albums:
-            a = ET.SubElement(search_result, 'album')
-            map_album_xml(a, album)
+    artists = [row[0] for row in artist_rows if row[0]]
+    artists.sort(key=lambda name: strip_accents(name).upper())
 
-        for song in songs:
-            s = ET.SubElement(search_result, 'song')
-            map_song_xml(s, song)
-
-        return Response(xml_to_string(root), mimetype='text/xml')
+    tag = f'searchResult{ver if ver else ""}'
+    payload = {
+        tag: {
+            'artist': list(map(map_artist, artists)),
+            'album': list(map(map_album, albums)),
+            'song': list(map(map_song, songs))
+        }
+    }
+    return subsonic_response(payload, r.get('f', 'xml'))

@@ -2,8 +2,6 @@
 
 To be implemented:
 - `getArtistInfo`
-- `getAlbumInfo`
-- `getAlbumInfo2`
 - `getSimilarSongs`
 - `getSimilarSongs2`
 - `search`

@@ -75,4 +75,4 @@ def get_cover_art():
     # TODO - Get artist image if req_id is 'ar-'
 
     # Fallback: return an empty 'ok' response
-    return subsonic_response({}, r.get('f', 'xml'))
+    return subsonic_response({}, r.get('f', 'xml'), failed=True)

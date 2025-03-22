@@ -83,6 +83,7 @@ def stream_song():
 
     item_path = item.get('path', b'').decode('utf-8')
     if not item_path:
+        flask.abort(404)
 
     if app.config['never_transcode'] or format == 'raw' or maxBitrate <= 0 or item.bitrate <= maxBitrate * 1000:
         return stream.direct(item_path)

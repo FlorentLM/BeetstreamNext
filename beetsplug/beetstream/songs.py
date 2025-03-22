@@ -81,12 +81,13 @@ def stream_song():
     song_id = int(song_subid_to_beetid(r.get('id')))
     item = flask.g.lib.get_item(song_id)
 
-    itemPath = item.path.decode('utf-8')
+    item_path = item.get('path', b'').decode('utf-8')
+    if not item_path:
 
     if app.config['never_transcode'] or format == 'raw' or maxBitrate <= 0 or item.bitrate <= maxBitrate * 1000:
-        return stream.direct(itemPath)
+        return stream.direct(item_path)
     else:
-        return stream.try_to_transcode(itemPath, maxBitrate)
+        return stream.try_transcode(item_path, maxBitrate)
 
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])

@@ -1,24 +1,15 @@
-from beetsplug.beetstream.utils import path_to_mimetype
+from beetsplug.beetstream.utils import *
+import subprocess
 import flask
-import shutil
-import importlib
 
-ffmpeg_bin = shutil.which("ffmpeg") is not None
-ffmpeg_python = importlib.util.find_spec("ffmpeg") is not None
-
-if ffmpeg_python:
-    import ffmpeg
-elif ffmpeg_bin:
-    import subprocess
-
-have_ffmpeg = ffmpeg_python or ffmpeg_bin
+have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
 
 
 def direct(filePath):
     return flask.send_file(filePath, mimetype=path_to_mimetype(filePath))
 
 def transcode(filePath, maxBitrate):
-    if ffmpeg_python:
+    if FFMPEG_PYTHON:
         output_stream = (
             ffmpeg
             .input(filePath)
@@ -26,7 +17,7 @@ def transcode(filePath, maxBitrate):
             .output('pipe:', format="mp3", audio_bitrate=maxBitrate * 1000)
             .run_async(pipe_stdout=True, quiet=True)
         )
-    elif ffmpeg_bin:
+    elif FFMPEG_BIN:
         command = [
             "ffmpeg",
             "-i", filePath,
@@ -40,7 +31,7 @@ def transcode(filePath, maxBitrate):
 
     return flask.Response(output_stream.stdout, mimetype='audio/mpeg')
 
-def try_to_transcode(filePath, maxBitrate):
+def try_transcode(filePath, maxBitrate):
     if have_ffmpeg:
         return transcode(filePath, maxBitrate)
     else:

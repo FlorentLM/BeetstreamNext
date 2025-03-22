@@ -23,10 +23,6 @@ from flask import g
 from flask_cors import CORS
 from pathlib import Path
 
-ART_ID_PREF = "ar-"
-ALB_ID_PREF = "al-"
-SNG_ID_PREF = "sg-"
-
 # Flask setup
 app = flask.Flask(__name__)
 

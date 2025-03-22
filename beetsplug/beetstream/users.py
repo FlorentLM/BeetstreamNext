@@ -2,10 +2,13 @@ from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import flask
 
+
 @app.route('/rest/getUser', methods=["GET", "POST"])
 @app.route('/rest/getUser.view', methods=["GET", "POST"])
 def get_user():
     r = flask.request.values
+
+    # TODO - Proper user management
 
     payload = {
         'user': {

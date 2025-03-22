@@ -1,26 +1,19 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
-from io import BytesIO
-from PIL import Image
-import flask
 import os
 from typing import Union
 import requests
-import shutil
-import importlib
+from io import BytesIO
+from PIL import Image
+import flask
 
-ffmpeg_bin = shutil.which("ffmpeg") is not None
-ffmpeg_python = importlib.util.find_spec("ffmpeg") is not None
 
-if ffmpeg_python:
-    import ffmpeg
-elif ffmpeg_bin:
-    import subprocess
+have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
 
 
 def extract_cover(path) -> Union[BytesIO, None]:
 
-    if ffmpeg_python:
+    if FFMPEG_PYTHON:
         img_bytes, _ = (
             ffmpeg
             .input(path)
@@ -29,7 +22,7 @@ def extract_cover(path) -> Union[BytesIO, None]:
             .run(capture_stdout=True, capture_stderr=False, quiet=True)
         )
 
-    elif ffmpeg_bin:
+    elif FFMPEG_BIN:
         command = [
             'ffmpeg',
             '-i', path,
@@ -108,14 +101,16 @@ def get_cover_art():
                 return response
 
         # Fallback: try to extract cover from the song file
-        cover = extract_cover(item.path)
-        if cover is not None:
-            if size:
-                cover = resize_image(cover, size)
-            return flask.send_file(cover, mimetype='image/jpeg')
+        if have_ffmpeg:
+            cover = extract_cover(item.path)
+            if cover is not None:
+                if size:
+                    cover = resize_image(cover, size)
+                return flask.send_file(cover, mimetype='image/jpeg')
 
     # artist requests
     elif req_id.startswith(ART_ID_PREF):
+        # TODO
         pass
 
     # Fallback: return empty XML document on error

@@ -1,11 +1,9 @@
-from beetsplug.beetstream.utils import genres_splitter, creation_date
+from beetsplug.beetstream.utils import PLY_ID_PREF, genres_splitter, creation_date
 from beetsplug.beetstream import app
 import flask
 from typing import Union, List
 from pathlib import Path
 from itertools import chain
-
-PL_ID_PREF = 'plid-'
 
 
 def parse_m3u(filepath):
@@ -80,7 +78,7 @@ def parse_m3u(filepath):
 
 class Playlist:
     def __init__(self, path):
-        self.id = f'{PL_ID_PREF}{path.parent.stem.lower()}-{path.name}'
+        self.id = f'{PLY_ID_PREF}{path.parent.stem.lower()}-{path.name}'
         self.name = path.stem
         self.ctime = creation_date(path)
         self.mtime = path.stat().st_mtime
@@ -125,7 +123,7 @@ class PlaylistProvider:
         """ Load playlist data from a file, or from cache if it exists """
 
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f'{PL_ID_PREF}{'-'.join(filepath.parts[-2:]).lower()}'
+        playlist_id = f'{PLY_ID_PREF}{'-'.join(filepath.parts[-2:]).lower()}'
 
         # Get potential cached version
         playlist = self._playlists.get(playlist_id)

@@ -1,7 +1,7 @@
-import time
-from collections import defaultdict
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
+import time
+from collections import defaultdict
 import flask
 
 

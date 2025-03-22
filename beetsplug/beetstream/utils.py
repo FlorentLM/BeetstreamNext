@@ -1,9 +1,5 @@
-from beetsplug.beetstream import ALB_ID_PREF, ART_ID_PREF, SNG_ID_PREF
 import unicodedata
 from datetime import datetime
-from typing import Union
-import beets
-import subprocess
 import platform
 import flask
 import json
@@ -12,11 +8,22 @@ import mimetypes
 import os
 import re
 import posixpath
-import xml.etree.cElementTree as ET
 from math import ceil
+import xml.etree.cElementTree as ET
 from xml.dom import minidom
+import shutil
+import importlib
+
 
 API_VERSION = '1.16.1'
+BEETSTREAM_VERSION = '1.4.5'
+
+# Prefixes for Beetstream's internal IDs
+ART_ID_PREF = 'ar-'
+ALB_ID_PREF = 'al-'
+SNG_ID_PREF = 'sg-'
+PLY_ID_PREF = 'pl-'
+
 
 DEFAULT_MIME_TYPE = 'application/octet-stream'
 EXTENSION_TO_MIME_TYPE_FALLBACK = {
@@ -29,70 +36,41 @@ EXTENSION_TO_MIME_TYPE_FALLBACK = {
     '.opus' : 'audio/opus',
 }
 
-def strip_accents(s):
-    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+FFMPEG_BIN = shutil.which("ffmpeg") is not None
+FFMPEG_PYTHON = importlib.util.find_spec("ffmpeg") is not None
 
-def timestamp_to_iso(timestamp):
-    return datetime.fromtimestamp(int(timestamp)).isoformat()
+if FFMPEG_PYTHON:
+    import ffmpeg
+elif FFMPEG_BIN:
+    import subprocess
 
-def dict_to_xml(tag: str, data):
-    """ Recursively converts a json-like dict to an XML tree """
-    elem = ET.Element(tag)
-    if isinstance(data, dict):
-        for key, val in data.items():
-            if isinstance(val, (dict, list)):
-                child = dict_to_xml(key, val)
-                elem.append(child)
-            else:
-                child = ET.Element(key)
-                child.text = str(val)
-                elem.append(child)
-    elif isinstance(data, list):
-        for item in data:
-            child = dict_to_xml(tag, item)
-            elem.append(child)
-    else:
-        elem.text = str(data)
-    return elem
 
-def jsonpify(format: str, data: dict):
-    if format == 'jsonp':
-        callback = flask.request.values.get("callback")
-        return f"{callback}({json.dumps(data)});"
-    else:
-        return flask.jsonify(data)
+# === Beetstream internal IDs makers/readers ===
+# These IDs are sent to the client once (when it accesses endpoints such as getArtists or getAlbumList
+# and the client will then use these to access a specific item via endpoints that need an ID
 
-def subsonic_response(data: dict = {}, format: str = 'xml', failed=False):
-    """ Wrap any json-like dict with the subsonic response elements
-     and output the appropriate 'format' (json or xml) """
+def artist_name_to_id(artist_name: str):
+    base64_name = base64.urlsafe_b64encode(artist_name.encode('utf-8')).decode('utf-8')
+    return f"{ART_ID_PREF}{base64_name}"
 
-    if format.startswith('json'):
-        wrapped = {
-            'subsonic-response': {
-                'status': 'failed' if failed else 'ok',
-                'version': API_VERSION,
-                'type': 'Beetstream',
-                'serverVersion': '1.4.5',
-                'openSubsonic': True,
-                **data
-            }
-        }
-        return jsonpify(format, wrapped)
+def artist_id_to_name(artist_id: str):
+    base64_id = artist_id[len(ART_ID_PREF):]
+    return base64.urlsafe_b64decode(base64_id.encode('utf-8')).decode('utf-8')
 
-    else:
-        root = dict_to_xml("subsonic-response", data)
-        root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'failed' if failed else 'ok')
-        root.set("version", API_VERSION)
-        root.set("type", 'Beetstream')
-        root.set("serverVersion", '1.4.5')
-        root.set("openSubsonic", 'true')
+def album_beetid_to_subid(album_id: str):
+    return ALB_ID_PREF + album_id
 
-        xml_str = minidom.parseString(ET.tostring(root, encoding='unicode',
-                                                  method='xml', xml_declaration=True)).toprettyxml()
+def album_subid_to_beetid(album_id: str):
+    return album_id[len(ALB_ID_PREF):]
 
-        return flask.Response(xml_str, mimetype="text/xml")
+def song_beetid_to_subid(song_id: str):
+    return SNG_ID_PREF + song_id
 
+def song_subid_to_beetid(song_id: str):
+    return song_id[len(SNG_ID_PREF):]
+
+
+# === Mapping functions to translate Beets to Subsonic dict-like structures ===
 
 def map_album(album):
     album = dict(album)
@@ -165,11 +143,6 @@ def map_song(song):
         "discNumber": song["disc"]
     }
 
-def _cover_art_id(song):
-    if song['album_id']:
-        return album_beetid_to_subid(str(song['album_id']))
-    return song_beetid_to_subid(str(song['id']))
-
 def map_artist(artist_name):
     return {
         "id": artist_name_to_id(artist_name),
@@ -193,43 +166,90 @@ def map_playlist(playlist):
         # 'public': True,
     }
 
-def artist_name_to_id(artist_name: str):
-    base64_name = base64.urlsafe_b64encode(artist_name.encode('utf-8')).decode('utf-8')
-    return f"{ART_ID_PREF}{base64_name}"
 
-def artist_id_to_name(artist_id: str):
-    base64_id = artist_id[len(ART_ID_PREF):]
-    return base64.urlsafe_b64decode(base64_id.encode('utf-8')).decode('utf-8')
+# === Core response-formatting functions ===
 
-def album_beetid_to_subid(album_id: str):
-    return ALB_ID_PREF + album_id
+def dict_to_xml(tag: str, data):
+    """ Recursively converts a json-like dict to an XML tree """
+    elem = ET.Element(tag)
+    if isinstance(data, dict):
+        for key, val in data.items():
+            if isinstance(val, (dict, list)):
+                child = dict_to_xml(key, val)
+                elem.append(child)
+            else:
+                child = ET.Element(key)
+                child.text = str(val)
+                elem.append(child)
+    elif isinstance(data, list):
+        for item in data:
+            child = dict_to_xml(tag, item)
+            elem.append(child)
+    else:
+        elem.text = str(data)
+    return elem
 
-def album_subid_to_beetid(album_id: str):
-    return album_id[len(ALB_ID_PREF):]
+def jsonpify(format: str, data: dict):
+    if format == 'jsonp':
+        callback = flask.request.values.get("callback")
+        return f"{callback}({json.dumps(data)});"
+    else:
+        return flask.jsonify(data)
 
-def song_beetid_to_subid(song_id: str):
-    return SNG_ID_PREF + song_id
+def subsonic_response(data: dict = {}, format: str = 'xml', failed=False):
+    """ Wrap any json-like dict with the subsonic response elements
+     and output the appropriate 'format' (json or xml) """
 
-def song_subid_to_beetid(song_id: str):
-    return song_id[len(SNG_ID_PREF):]
+    if format.startswith('json'):
+        wrapped = {
+            'subsonic-response': {
+                'status': 'failed' if failed else 'ok',
+                'version': API_VERSION,
+                'type': 'Beetstream',
+                'serverVersion': BEETSTREAM_VERSION,
+                'openSubsonic': True,
+                **data
+            }
+        }
+        return jsonpify(format, wrapped)
+
+    else:
+        root = dict_to_xml("subsonic-response", data)
+        root.set("xmlns", "http://subsonic.org/restapi")
+        root.set("status", 'failed' if failed else 'ok')
+        root.set("version", API_VERSION)
+        root.set("type", 'Beetstream')
+        root.set("serverVersion", BEETSTREAM_VERSION)
+        root.set("openSubsonic", 'true')
+
+        xml_str = minidom.parseString(ET.tostring(root, encoding='unicode',
+                                                  method='xml', xml_declaration=True)).toprettyxml()
+
+        return flask.Response(xml_str, mimetype="text/xml")
+
+
+# === Various other utility functions ===
+
+def strip_accents(s):
+    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+
+def timestamp_to_iso(timestamp):
+    return datetime.fromtimestamp(int(timestamp)).isoformat()
 
 def path_to_mimetype(path):
     result = mimetypes.guess_type(path)[0]
-
     if result:
         return result
 
     # our mimetype database didn't have information about this file extension.
     base, ext = posixpath.splitext(path)
     result = EXTENSION_TO_MIME_TYPE_FALLBACK.get(ext)
-
     if result:
         return result
 
     flask.current_app.logger.warning(f"No mime type mapped for {ext} extension: {path}")
 
     return DEFAULT_MIME_TYPE
-
 
 def genres_splitter(genres_string):
     delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
@@ -238,7 +258,6 @@ def genres_splitter(genres_string):
             .replace('Prog ', 'Prog-')
             .replace('.', ' ')
             for g in re.split(delimiters, genres_string)]
-
 
 def creation_date(filepath):
     """ Get a file's creation date
@@ -267,3 +286,8 @@ def creation_date(filepath):
             except:
                 # If that did not work, settle for last modification time
                 return stat.st_mtime
+
+def _cover_art_id(song):
+    if song['album_id']:
+        return album_beetid_to_subid(str(song['album_id']))
+    return song_beetid_to_subid(str(song['id']))

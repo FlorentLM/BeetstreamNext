@@ -101,11 +101,11 @@ def get_cover_art():
     elif req_id.startswith(SNG_ID_PREF):
         item_id = int(song_subid_to_beetid(req_id))
         item = flask.g.lib.get_item(item_id)
-        # album_id = item.get('album_id')
-        # if album_id:
-        #     response = send_album_art(album_id, size)
-        #     if response is not None:
-        #         return response
+        album_id = item.get('album_id')
+        if album_id:
+            response = send_album_art(album_id, size)
+            if response is not None:
+                return response
 
         # Fallback: try to extract cover from the song file
         cover = extract_cover(item.path)

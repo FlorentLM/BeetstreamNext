@@ -1,140 +1,154 @@
-import glob
-import os
-import pathlib
-import re
-import sys
-from beetsplug.beetstream.utils import strip_accents
-from flask import current_app as app
-from werkzeug.utils import safe_join
+from beetsplug.beetstream.utils import genres_splitter, creation_date
+from beetsplug.beetstream import app
+import flask
+from typing import Union, List
+from pathlib import Path
+from itertools import chain
 
-extinf_regex = re.compile(r'^#EXTINF:([0-9]+)( [^,]+)?,[\s]*(.*)')
-highint32 = 1<<31
+PL_ID_PREF = 'plid-'
 
-class PlaylistProvider:
-    def __init__(self, dir):
-        self.dir = dir
-        self._playlists = {}
 
-    def _refresh(self):
-        self._playlists = {p.id: p for p in self._load_playlists()}
-        app.logger.debug(f"Loaded {len(self._playlists)} playlists")
+def parse_m3u(filepath):
+    """ Parses a playlist (m3u, m3u8 or m3a) and yields its entries """
 
-    def _load_playlists(self):
-        if not self.dir:
-            return
-        paths = glob.glob(os.path.join(self.dir, "**.m3u8"))
-        paths += glob.glob(os.path.join(self.dir, "**.m3u"))
-        paths.sort()
-        for path in paths:
-            try:
-                yield self._playlist(path)
-            except Exception as e:
-                app.logger.error(f"Failed to load playlist {filepath}: {e}")
+    with open(filepath, 'r', encoding='UTF-8') as f:
+        curr_entry = {}
 
-    def playlists(self):
-        self._refresh()
-        playlists = self._playlists
-        ids = [k for k, v in playlists.items() if v]
-        ids.sort()
-        return [playlists[id] for id in ids]
+        for line in f:
+            line = line.strip()
 
-    def playlist(self, id):
-        filepath = safe_join(self.dir, id)
-        playlist = self._playlist(filepath)
-        if playlist.id not in self._playlists: #  add to cache
-            playlists = self._playlists.copy()
-            playlists[playlist.id] = playlist
-            self._playlists = playlists
-        return playlist
+            if not line:
+                continue
 
-    def _playlist(self, filepath):
-        id = self._path2id(filepath)
-        name = pathlib.Path(os.path.basename(filepath)).stem
-        playlist = self._playlists.get(id)
-        mtime = pathlib.Path(filepath).stat().st_mtime
-        if playlist and playlist.modified == mtime:
-            return playlist # cached metadata
-        app.logger.debug(f"Loading playlist {filepath}")
-        return Playlist(id, name, mtime, filepath)
+            if line.startswith('#EXTM3U'):
+                continue
 
-    def _path2id(self, filepath):
-        return os.path.relpath(filepath, self.dir)
+            if line.startswith('#EXTINF:'):
+                left_part, info = line[8:].split(",", 1)
+                duration_and_props = left_part.split()
+                curr_entry['info'] = info.strip()
+                curr_entry['runtime'] = int(duration_and_props[0].strip())
+                curr_entry['props'] = {k.strip(): v.strip('"').strip()
+                                         for k, v in (p.split('=', 1) for p in duration_and_props[1:])}
+                continue
+
+            # Add content from any additional m3u directives
+            elif line.startswith('#PLAYLIST:'):
+                curr_entry['name'] = line[10:].strip()
+                continue
+
+            elif line.startswith('#EXTGRP:'):
+                curr_entry['group'] = line[8:].strip()
+                continue
+
+            elif line.startswith('#EXTALB:'):
+                curr_entry['album'] = line[8:].strip()
+                continue
+
+            elif line.startswith('#EXTART:'):
+                curr_entry['artist'] = line[8:].strip()
+                continue
+
+            elif line.startswith('#EXTGENRE:'):
+                curr_entry['genres'] = genres_splitter(line[10:])
+                continue
+
+            elif line.startswith('#EXTM3A'):
+                curr_entry['m3a'] = True
+                continue
+
+            elif line.startswith('#EXTBYT:'):
+                curr_entry['size'] = int(line[8:].strip())
+                continue
+
+            elif line.startswith('#EXTBIN:'):
+                # Skip the binary mp3 content
+                continue
+
+            elif line.startswith('#EXTALBUMARTURL:'):
+                curr_entry['artpath'] = line[16:].strip()
+                continue
+
+            elif line.startswith('#EXT-X-'):
+                # We ignore HLS M3U fields
+                continue
+
+            curr_entry['uri'] = line
+            yield curr_entry
+            curr_entry = {}
+
 
 class Playlist:
-    def __init__(self, id, name, modified, path):
-        self.id = id
-        self.name = name
-        self.modified = modified
+    def __init__(self, path):
+        self.id = f'{PL_ID_PREF}{path.parent.stem.lower()}-{path.name}'
+        self.name = path.stem
+        self.ctime = creation_date(path)
+        self.mtime = path.stat().st_mtime
         self.path = path
-        self.count = 0
+        self.songs = []
         self.duration = 0
-        artists = {}
-        max_artists = 10
-        for item in self.items():
-            self.count += 1
-            self.duration += item.duration
-            artist = Artist(item.title.split(' - ')[0])
-            found = artists.get(artist.key)
-            if found:
-                found.count += 1
+        for entry in parse_m3u(path):
+
+            entry_path = (path.parent / Path(entry['uri'])).resolve()
+            entry_id = entry.get('props', {}).get('id', None)
+
+            if entry_id:
+                song = [flask.g.lib.get_item(entry_id)]
             else:
-                if len(artists) > max_artists:
-                    l = _sortedartists(artists)[:max_artists]
-                    artists = {a.key: a for a in l}
-                artists[artist.key] = artist
-        self.artists = ', '.join([a.name for a in _sortedartists(artists)])
+                with flask.g.lib.transaction() as tx:
+                    song = tx.query("SELECT * FROM items WHERE (path) LIKE (?) LIMIT 1", (entry_path.as_posix(),))
 
-    def items(self):
-        return parse_m3u_playlist(self.path)
+            if song:
+                self.songs.append(dict(song[0]))
+                self.duration += int(song[0]['length'] or 0)
 
-def _sortedartists(artists):
-    l = [a for _,a in artists.items()]
-    l.sort(key=lambda a: (highint32-a.count, a.name))
-    return l
 
-class Artist:
-    def __init__(self, name):
-        self.key = strip_accents(name.lower())
-        self.name = name
-        self.count = 1
-
-def parse_m3u_playlist(filepath):
-    '''
-    Parses an M3U playlist and yields its items, one at a time.
-    CAUTION: Attribute values that contain ',' or ' ' are not supported!
-    '''
-    with open(filepath, 'r', encoding='UTF-8') as file:
-        linenum = 0
-        item = PlaylistItem()
-        while line := file.readline():
-            line = line.rstrip()
-            linenum += 1
-            if linenum == 1:
-                assert line == '#EXTM3U', f"File {filepath} is not an EXTM3U playlist!"
-                continue
-            if len(line.strip()) == 0:
-                continue
-            m = extinf_regex.match(line)
-            if m:
-                item = PlaylistItem()
-                duration = m.group(1)
-                item.duration = int(duration)
-                attrs = m.group(2)
-                if attrs:
-                    item.attrs = {k: v.strip('"') for k,v in [kv.split('=') for kv in attrs.strip().split(' ')]}
-                else:
-                    item.attrs = {}
-                item.title = m.group(3)
-                continue
-            if line.startswith('#'):
-                continue
-            item.uri = line
-            yield item
-            item = PlaylistItem()
-
-class PlaylistItem():
+class PlaylistProvider:
     def __init__(self):
-        self.title = None
-        self.duration = None
-        self.uri = None
-        self.attrs = None
+
+        self.playlist_dirs = app.config.get('playlist_dirs', set())
+        self._playlists = {}
+
+        if len(self.playlist_dirs) == 0:
+            app.logger.warning('No playlist directories could be found.')
+
+        else:
+            for path in chain.from_iterable(Path(d).glob('*.m3u*') for d in self.playlist_dirs):
+                try:
+                    self._load_playlist(path)
+                except Exception as e:
+                    app.logger.error(f"Failed to load playlist {path.name}: {e}")
+
+            app.logger.debug(f"Loaded {len(self._playlists)} playlists.")
+
+    def _load_playlist(self, filepath):
+        """ Load playlist data from a file, or from cache if it exists """
+
+        file_mtime = filepath.stat().st_mtime
+        playlist_id = f'{PL_ID_PREF}{'-'.join(filepath.parts[-2:]).lower()}'
+
+        # Get potential cached version
+        playlist = self._playlists.get(playlist_id)
+
+        # If the playlist is not found in cache, or if the cached version is outdated
+        if not playlist or playlist.mtime < file_mtime:
+            # Load new data from file
+            playlist = Playlist(filepath)
+            # And cache it
+            self._playlists[playlist_id] = playlist
+
+        return playlist
+
+    def get(self, playlist_id: str) -> Union[Playlist, None]:
+        """ Get a playlist by its id """
+        folder, file = playlist_id.rsplit('-')[1:]
+        filepath = next(dir_path / file for dir_path in self.playlist_dirs if dir_path.stem.lower() == folder)
+
+        if filepath.is_file():
+            return self._load_playlist(filepath)
+        else:
+            return None
+
+    def getall(self) -> List[Playlist]:
+        """ Get all playlists """
+        return list(self._playlists.values())

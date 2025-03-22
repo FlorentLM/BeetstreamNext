@@ -1,17 +1,20 @@
 from beetsplug.beetstream.utils import *
-from beetsplug.beetstream import app
 import flask
+from beetsplug.beetstream import app
 from .playlistprovider import PlaylistProvider
 
-_playlist_provider = PlaylistProvider('')
 
-# TODO link with https://beets.readthedocs.io/en/stable/plugins/playlist.html
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
-def playlists():
+def get_playlists():
+
     r = flask.request.values
 
-    playlists = playlist_provider().playlists()
+    # Lazily initialize the playlist provider the first time it's needed
+    if not hasattr(flask.g, 'playlist_provider'):
+        flask.g.playlist_provider = PlaylistProvider()
+
+    playlists = flask.g.playlist_provider.getall()
 
     payload = {
         'playlists': {
@@ -20,31 +23,31 @@ def playlists():
     }
     return subsonic_response(payload, r.get('f', 'xml'))
 
+
 @app.route('/rest/getPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
-def playlist():
+def get_playlist():
     r = flask.request.values
 
     playlist_id = r.get('id')
-    playlist = playlist_provider().playlist(playlist_id)
-    items = playlist.items()
+    if playlist_id:
 
-    payload = {
-        'playlist': {
-            'entry': [
-                map_song(
-                    flask.g.lib.get_item(int(item.attrs['id']))
-                )
-                for item in items
-            ]
-        }
-    }
-    return subsonic_response(payload, r.get('f', 'xml'))
+        # Lazily initialize the playlist provider the first time it's needed
+        if not hasattr(flask.g, 'playlist_provider'):
+            flask.g.playlist_provider = PlaylistProvider()
 
+        playlist = flask.g.playlist_provider.get(playlist_id)
 
-def playlist_provider():
-    if 'playlist_dir' in app.config:
-        _playlist_provider.dir = app.config['playlist_dir']
-    if not _playlist_provider.dir:
-        app.logger.warning('No playlist_dir configured')
-    return _playlist_provider
+        if playlist is not None:
+            payload = {
+                'playlist': {
+                    'entry': [
+                        map_song(
+                            flask.g.lib.get_item(int(song['id']))
+                        )
+                        for song in playlist.songs
+                    ]
+                }
+            }
+            return subsonic_response(payload, r.get('f', 'xml'))
+    flask.abort(404)

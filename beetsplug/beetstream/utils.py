@@ -3,6 +3,8 @@ import unicodedata
 from datetime import datetime
 from typing import Union
 import beets
+import subprocess
+import platform
 import flask
 import json
 import base64
@@ -259,12 +261,13 @@ def map_playlist(playlist):
     return {
         'id': playlist.id,
         'name': playlist.name,
-        'songCount': playlist.count,
+        'songCount': len(playlist.songs),
         'duration': playlist.duration,
-        'comment': playlist.artists,
-        'created': timestamp_to_iso(playlist.modified),
+        'created': timestamp_to_iso(playlist.ctime),
+        'changed': timestamp_to_iso(playlist.mtime),
+        # 'owner': 'userA',     # TODO
+        # 'public': True,
     }
-
 
 def artist_name_to_id(artist_name: str):
     base64_name = base64.urlsafe_b64encode(artist_name.encode('utf-8')).decode('utf-8')
@@ -319,3 +322,32 @@ def genres_splitter(genres_string):
             .replace('Prog ', 'Prog-')
             .replace('.', ' ')
             for g in re.split(delimiters, genres_string)]
+
+
+def creation_date(filepath):
+    """ Get a file's creation date
+        See: http://stackoverflow.com/a/39501288/1709587 """
+    if platform.system() == 'Windows':
+        return os.path.getctime(filepath)
+    elif platform.system() == 'Darwin':
+        stat = os.stat(filepath)
+        return stat.st_birthtime
+    else:
+        stat = os.stat(filepath)
+        try:
+            # On some Unix systems, st_birthtime is available so try it
+            return stat.st_birthtime
+        except AttributeError:
+            try:
+                # Run stat twice because it's faster and easier than parsing the %W format...
+                ret = subprocess.run(['stat', '--format=%W', filepath], stdout=subprocess.PIPE)
+                timestamp = ret.stdout.decode('utf-8').strip()
+
+                # ...but we still want millisecond precision :)
+                ret = subprocess.run(['stat', '--format=%w', filepath], stdout=subprocess.PIPE)
+                millis = ret.stdout.decode('utf-8').rsplit('.', 1)[1].split()[0].strip()
+
+                return float(f'{timestamp}.{millis}')
+            except:
+                # If that did not work, settle for last modification time
+                return stat.st_mtime

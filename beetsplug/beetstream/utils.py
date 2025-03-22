@@ -57,11 +57,11 @@ def dict_to_xml(tag, d):
         elem.text = str(d)
     return elem
 
-def subsonic_response(d: dict = {}, format: str = 'xml'):
+def subsonic_response(d: dict = {}, format: str = 'xml', failed=False):
     """ Wrap any json-like dict with the subsonic response elements
      and output the appropriate 'format' (json or xml) """
 
-    STATUS = 'ok'
+    STATUS = 'failed' if failed else 'ok'
     VERSION = '1.16.1'
 
     if format == 'json' or format == 'jsonp':

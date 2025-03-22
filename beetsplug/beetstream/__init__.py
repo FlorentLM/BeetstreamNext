@@ -14,18 +14,20 @@
 # included in all copies or substantial portions of the Software.
 
 """Beetstream is a Beets.io plugin that exposes SubSonic API endpoints."""
+
 from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
 import flask
 from flask import g
 from flask_cors import CORS
+from pathlib import Path
 
-ARTIST_ID_PREFIX = "ar-"
-ALBUM_ID_PREFIX = "al-"
-SONG_ID_PREFIX = "sg-"
+ART_ID_PREF = "ar-"
+ALB_ID_PREF = "al-"
+SNG_ID_PREF = "sg-"
 
-# Flask setup.
+# Flask setup
 app = flask.Flask(__name__)
 
 @app.before_request
@@ -46,12 +48,12 @@ import beetsplug.beetstream.search
 import beetsplug.beetstream.songs
 import beetsplug.beetstream.users
 
-# Plugin hook.
+# Plugin hook
 class BeetstreamPlugin(BeetsPlugin):
     def __init__(self):
         super(BeetstreamPlugin, self).__init__()
         self.config.add({
-            'host': u'0.0.0.0',
+            'host': '0.0.0.0',
             'port': 8080,
             'cors': '*',
             'cors_supports_credentials': True,
@@ -62,9 +64,8 @@ class BeetstreamPlugin(BeetsPlugin):
         })
 
     def commands(self):
-        cmd = ui.Subcommand('beetstream', help=u'run Beetstream server, exposing SubSonic API')
-        cmd.parser.add_option(u'-d', u'--debug', action='store_true',
-                              default=False, help=u'debug mode')
+        cmd = ui.Subcommand('beetstream', help='run Beetstream server, exposing SubSonic API')
+        cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='debug mode')
 
         def func(lib, opts, args):
             args = ui.decargs(args)
@@ -74,23 +75,23 @@ class BeetstreamPlugin(BeetsPlugin):
                 self.config['port'] = int(args.pop(0))
 
             app.config['lib'] = lib
+
             # Normalizes json output
-            app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+            # app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
-            app.config['INCLUDE_PATHS'] = self.config['include_paths']
-            app.config['never_transcode'] = self.config['never_transcode']
-            playlist_dir = self.config['playlist_dir']
-            if not playlist_dir:
-                try:
-                    playlist_dir = config['smartplaylist']['playlist_dir'].get()
-                except:
-                    pass
-            app.config['playlist_dir'] = playlist_dir
+            # app.config['INCLUDE_PATHS'] = self.config['include_paths']
 
-            # Enable CORS if required.
+            app.config['never_transcode'] = self.config['never_transcode'].get(False)
+
+            playlist_directories = [self.config['playlist_dir'].get(None),                  # Beetstream's own
+                                    config['playlist']['playlist_dir'].get(None),           # Playlists plugin
+                                    config['smartplaylist']['playlist_dir'].get(None)]      # Smartplaylists plugin
+
+            app.config['playlist_dirs'] = set(Path(d) for d in playlist_directories if d and os.path.isdir(d))
+
+            # Enable CORS if required
             if self.config['cors']:
-                self._log.info(u'Enabling CORS with origin: {0}',
-                               self.config['cors'])
+                self._log.info(f'Enabling CORS with origin: {self.config["cors"]}')
                 app.config['CORS_ALLOW_HEADERS'] = "Content-Type"
                 app.config['CORS_RESOURCES'] = {
                     r"/*": {"origins": self.config['cors'].get(str)}
@@ -106,15 +107,16 @@ class BeetstreamPlugin(BeetsPlugin):
             if self.config['reverse_proxy']:
                 app.wsgi_app = ReverseProxied(app.wsgi_app)
 
-            # Start the web application.
+            # Start the web application
             app.run(host=self.config['host'].as_str(),
                     port=self.config['port'].get(int),
                     debug=opts.debug, threaded=True)
         cmd.func = func
         return [cmd]
 
-class ReverseProxied(object):
-    '''Wrap the application in this middleware and configure the
+
+class ReverseProxied:
+    """ Wrap the application in this middleware and configure the
     front-end server to add these headers, to let you quietly bind
     this to a URL other than / and to an HTTP scheme that is
     different than what is used locally.
@@ -131,7 +133,7 @@ class ReverseProxied(object):
     From: http://flask.pocoo.org/snippets/35/
 
     :param app: the WSGI application
-    '''
+    """
     def __init__(self, app):
         self.app = app
 

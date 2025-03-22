@@ -31,6 +31,7 @@ def resize_image(data: BytesIO, size: int) -> BytesIO:
 
     buf = BytesIO()
     img.save(buf, format='JPEG')
+    buf.seek(0)
 
     return buf
 
@@ -49,6 +50,7 @@ def get_cover_art():
         album = flask.g.lib.get_album(album_id)
 
         art_path = album.get('artpath', b'').decode('utf-8')
+        print(art_path)
 
         if os.path.isfile(art_path):
             if size:

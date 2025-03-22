@@ -4,6 +4,7 @@ from io import BytesIO
 from PIL import Image
 import flask
 import os
+import requests
 import subprocess
 
 
@@ -36,6 +37,35 @@ def resize_image(data: BytesIO, size: int) -> BytesIO:
     return buf
 
 
+def send_album_art(album_id, size=None):
+    """ Generate a response with the album art for given album ID and (optional) size
+        (Local file first, then fallback to redirecting to coverarchive.org) """
+    album = flask.g.lib.get_album(album_id)
+    art_path = album.get('artpath', b'').decode('utf-8')
+    if os.path.isfile(art_path):
+        if size:
+            cover = resize_image(art_path, int(size))
+            return flask.send_file(cover, mimetype='image/jpeg')
+        return flask.send_file(art_path, mimetype=path_to_content_type(art_path))
+    else:
+        mbid = album.get('mb_albumid', None)
+        if mbid:
+            art_url = f'https://coverartarchive.org/release/{mbid}/front'
+            if size:
+                # If requested size is one of coverarchive's available sizes, query it directly
+                if size in (250, 500, 1200):
+                    return flask.redirect(f'{art_url}-{size}')
+                else:
+                    response = requests.get(art_url)
+                    cover = resize_image(BytesIO(response.content), int(size))
+                    return flask.send_file(cover, mimetype='image/jpeg')
+            return flask.redirect(art_url)
+
+    # If nothing found: return empty XML document on error
+    # https://opensubsonic.netlify.app/docs/endpoints/getcoverart/
+    return subsonic_response({}, 'xml', failed=True)
+
+
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def get_cover_art():
@@ -45,32 +75,21 @@ def get_cover_art():
     size = r.get('size', None)
 
     if req_id.startswith(ALB_ID_PREF):
-
         album_id = int(album_subid_to_beetid(req_id))
-        album = flask.g.lib.get_album(album_id)
-
-        art_path = album.get('artpath', b'').decode('utf-8')
-        print(art_path)
-
-        if os.path.isfile(art_path):
-            if size:
-                cover = resize_image(art_path, int(size))
-                return flask.send_file(cover, mimetype='image/jpg')
-            return flask.send_file(art_path, mimetype=path_to_content_type(art_path))
-
-        # TODO - Query from coverartarchive.org if no local file found
+        return send_album_art(album_id, size)
 
     elif req_id.startswith(SNG_ID_PREF):
         item_id = int(song_subid_to_beetid(req_id))
         item = flask.g.lib.get_item(item_id)
 
-        # TODO - try to get the album's cover first, then extract only if needed
+        album_id = item.get('album_id', None)
+        if album_id:
+            return send_album_art(album_id, size)
+
         cover = extract_cover(item.path)
         if size:
             cover = resize_image(cover, int(size))
-
-        return flask.send_file(cover, mimetype='image/jpg')
-
+        return flask.send_file(cover, mimetype='image/jpeg')
 
     # TODO - Get artist image if req_id is 'ar-'
 

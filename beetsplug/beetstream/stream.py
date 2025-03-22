@@ -1,4 +1,4 @@
-from beetsplug.beetstream.utils import path_to_content_type
+from beetsplug.beetstream.utils import path_to_mimetype
 import flask
 import shutil
 import importlib
@@ -15,7 +15,7 @@ have_ffmpeg = ffmpeg_python or ffmpeg_bin
 
 
 def direct(filePath):
-    return flask.send_file(filePath, mimetype=path_to_content_type(filePath))
+    return flask.send_file(filePath, mimetype=path_to_mimetype(filePath))
 
 def transcode(filePath, maxBitrate):
     if ffmpeg_python:

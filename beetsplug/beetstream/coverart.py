@@ -4,65 +4,86 @@ from io import BytesIO
 from PIL import Image
 import flask
 import os
+from typing import Union
 import requests
-import subprocess
+import shutil
+import importlib
 
+ffmpeg_bin = shutil.which("ffmpeg") is not None
+ffmpeg_python = importlib.util.find_spec("ffmpeg") is not None
 
-# TODO - Use python ffmpeg module if available (like in stream.py)
+if ffmpeg_python:
+    import ffmpeg
+elif ffmpeg_bin:
+    import subprocess
+
 
 def extract_cover(path) -> Union[BytesIO, None]:
-    command = [
-        'ffmpeg',
-        '-i', path,
-        '-vframes', '1',      # extract only one frame
-        '-f', 'image2pipe',   # output format is image2pipe
-        '-c:v', 'mjpeg',
-        '-q:v', '2',          # jpg quality (lower is better)
-        'pipe:1'
-    ]
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    img_bytes, _ = proc.communicate()
-    if img_bytes:
-        return BytesIO(img_bytes)
+
+    if ffmpeg_python:
+        img_bytes, err = (
+            ffmpeg
+            .input(path)
+            # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
+            .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+        if err:
+            app.logger.error(err.decode('utf-8', 'ignore'))
+            return None
+
+    elif ffmpeg_bin:
+        command = [
+            'ffmpeg',
+            '-i', path,
+            # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
+            '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
+            'pipe:1'
+        ]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        img_bytes, err = process.communicate()
+        if process.returncode != 0:
+            app.logger.error(err.decode('utf-8', 'ignore') if err else "unknown error")
+            return None
     else:
-        return None
+        app.logger.error("Can't extract cover art, ffmpeg is not available.")
+        img_bytes = b''
+    return BytesIO(img_bytes) if img_bytes else None
 
 
 def resize_image(data: BytesIO, size: int) -> BytesIO:
-
     img = Image.open(data)
     img.thumbnail((size, size))
-
     buf = BytesIO()
     img.save(buf, format='JPEG')
     buf.seek(0)
-
     return buf
 
 
 def send_album_art(album_id, size=None):
-    """ Generate a response with the album art for given album ID and (optional) size
-        (Local file first, then fallback to redirecting to coverarchive.org) """
+    """ Generates a response with the album art for the given album ID and (optional) size
+    Uses the local file first, then falls back to coverartarchive.org """
+
     album = flask.g.lib.get_album(album_id)
     art_path = album.get('artpath', b'').decode('utf-8')
     if os.path.isfile(art_path):
         if size:
-            cover = resize_image(art_path, int(size))
+            cover = resize_image(art_path, size)
             return flask.send_file(cover, mimetype='image/jpeg')
-        return flask.send_file(art_path, mimetype=path_to_content_type(art_path))
-    else:
-        mbid = album.get('mb_albumid', None)
-        if mbid:
-            art_url = f'https://coverartarchive.org/release/{mbid}/front'
-            if size:
-                # If requested size is one of coverarchive's available sizes, query it directly
-                if int(size) in (250, 500, 1200):
-                    return flask.redirect(f'{art_url}-{size}')
-                else:
-                    response = requests.get(art_url)
-                    cover = resize_image(BytesIO(response.content), int(size))
-                    return flask.send_file(cover, mimetype='image/jpeg')
-            return flask.redirect(art_url)
+        return flask.send_file(art_path, mimetype=path_to_mimetype(art_path))
+
+    mbid = album.get('mb_albumid')
+    if mbid:
+        art_url = f'https://coverartarchive.org/release/{mbid}/front'
+        if size:
+            # If requested size is one of coverarchive's available sizes, query it directly
+            if size in (250, 500, 1200):
+                return flask.redirect(f'{art_url}-{size}')
+            response = requests.get(art_url)
+            cover = resize_image(BytesIO(response.content), size)
+            return flask.send_file(cover, mimetype='image/jpeg')
+        return flask.redirect(art_url)
+
     return None
 
 
@@ -72,33 +93,35 @@ def get_cover_art():
     r = flask.request.values
 
     req_id = r.get('id')
-    size = r.get('size', None)
+    size = int(r.get('size')) if r.get('size') else None
 
+    # album requests
     if req_id.startswith(ALB_ID_PREF):
         album_id = int(album_subid_to_beetid(req_id))
         response = send_album_art(album_id, size)
         if response is not None:
             return response
 
+    # song requests
     elif req_id.startswith(SNG_ID_PREF):
         item_id = int(song_subid_to_beetid(req_id))
         item = flask.g.lib.get_item(item_id)
-
-        album_id = item.get('album_id', None)
+        album_id = item.get('album_id')
         if album_id:
             response = send_album_art(album_id, size)
             if response is not None:
                 return response
 
-        # If no album art found and nothing found on coverarchive.org, try to it extract from the song file
+        # Fallback: try to extract cover from the song file
         cover = extract_cover(item.path)
         if cover is not None:
             if size:
-                cover = resize_image(cover, int(size))
+                cover = resize_image(cover, size)
             return flask.send_file(cover, mimetype='image/jpeg')
 
-    # TODO - Get artist image if req_id is 'ar-'
+    # artist requests
+    elif req_id.startswith(ART_ID_PREF):
+        pass
 
-    # If nothing found: return empty XML document on error
-    # https://opensubsonic.netlify.app/docs/endpoints/getcoverart/
+    # Fallback: return empty XML document on error
     return subsonic_response({}, 'xml', failed=True)

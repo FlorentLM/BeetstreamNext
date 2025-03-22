@@ -192,7 +192,7 @@ def map_song(song):
         "genre": song["genre"],
         "coverArt": _cover_art_id(song),
         "size": os.path.getsize(path),
-        "contentType": path_to_content_type(path),
+        "contentType": path_to_mimetype(path),
         "suffix": song["format"].lower(),
         "duration": ceil(song["length"]),
         "bitRate": ceil(song["bitrate"]/1000),
@@ -221,7 +221,7 @@ def map_song_xml(xml, song):
     xml.set("genre", song["genre"])
     xml.set("coverArt", _cover_art_id(song)),
     xml.set("size", str(os.path.getsize(path)))
-    xml.set("contentType", path_to_content_type(path))
+    xml.set("contentType", path_to_mimetype(path))
     xml.set("suffix", song["format"].lower())
     xml.set("duration", str(ceil(song["length"])))
     xml.set("bitRate", str(ceil(song["bitrate"]/1000)))
@@ -289,7 +289,7 @@ def song_beetid_to_subid(song_id: str):
 def song_subid_to_beetid(song_id: str):
     return song_id[len(SNG_ID_PREF):]
 
-def path_to_content_type(path):
+def path_to_mimetype(path):
     result = mimetypes.guess_type(path)[0]
 
     if result:

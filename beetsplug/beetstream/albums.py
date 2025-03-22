@@ -3,6 +3,7 @@ from beetsplug.beetstream import app
 import flask
 import re
 from typing import List
+import urllib.parse
 from beetsplug.beetstream.artists import artist_payload
 from beetsplug.beetstream.songs import song_payload
 
@@ -47,17 +48,20 @@ def get_album_info(ver=None):
     album_id = int(album_subid_to_beetid(req_id))
     album = flask.g.lib.get_album(album_id)
 
-    image_url = flask.url_for('get_cover_art', id=album_id, _external=True)
+    artist_quot = urllib.parse.quote(album.get('albumartist', ''))
+    album_quot = urllib.parse.quote(album.get('album', ''))
+    lastfm_url = f'https://www.last.fm/music/{artist_quot}/{album_quot}' if artist_quot and album_quot else ''
 
     tag = f"albumInfo{ver if ver else ''}"
     payload = {
         tag: {
-        'notes': album.get('comments', ''),
         'musicBrainzId': album.get('mb_albumid', ''),
-        'largeImageUrl': image_url
+        'lastFmUrl': lastfm_url,
+        'largeImageUrl': flask.url_for('get_cover_art', id=album_id, size=1200, _external=False),
+        'mediumImageUrl': flask.url_for('get_cover_art', id=album_id, size=500, _external=False),
+        'smallImageUrl': flask.url_for('get_cover_art', id=album_id, size=250, _external=False)
         }
     }
-
     return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])

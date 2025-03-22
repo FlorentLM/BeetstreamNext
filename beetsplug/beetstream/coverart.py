@@ -10,7 +10,7 @@ import subprocess
 
 # TODO - Use python ffmpeg module if available (like in stream.py)
 
-def extract_cover(path) -> BytesIO:
+def extract_cover(path) -> Union[BytesIO, None]:
     command = [
         'ffmpeg',
         '-i', path,
@@ -22,7 +22,10 @@ def extract_cover(path) -> BytesIO:
     ]
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     img_bytes, _ = proc.communicate()
-    return BytesIO(img_bytes)
+    if img_bytes:
+        return BytesIO(img_bytes)
+    else:
+        return None
 
 
 def resize_image(data: BytesIO, size: int) -> BytesIO:
@@ -53,17 +56,14 @@ def send_album_art(album_id, size=None):
             art_url = f'https://coverartarchive.org/release/{mbid}/front'
             if size:
                 # If requested size is one of coverarchive's available sizes, query it directly
-                if size in (250, 500, 1200):
+                if int(size) in (250, 500, 1200):
                     return flask.redirect(f'{art_url}-{size}')
                 else:
                     response = requests.get(art_url)
                     cover = resize_image(BytesIO(response.content), int(size))
                     return flask.send_file(cover, mimetype='image/jpeg')
             return flask.redirect(art_url)
-
-    # If nothing found: return empty XML document on error
-    # https://opensubsonic.netlify.app/docs/endpoints/getcoverart/
-    return subsonic_response({}, 'xml', failed=True)
+    return None
 
 
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
@@ -76,7 +76,9 @@ def get_cover_art():
 
     if req_id.startswith(ALB_ID_PREF):
         album_id = int(album_subid_to_beetid(req_id))
-        return send_album_art(album_id, size)
+        response = send_album_art(album_id, size)
+        if response is not None:
+            return response
 
     elif req_id.startswith(SNG_ID_PREF):
         item_id = int(song_subid_to_beetid(req_id))
@@ -84,14 +86,19 @@ def get_cover_art():
 
         album_id = item.get('album_id', None)
         if album_id:
-            return send_album_art(album_id, size)
+            response = send_album_art(album_id, size)
+            if response is not None:
+                return response
 
+        # If no album art found and nothing found on coverarchive.org, try to it extract from the song file
         cover = extract_cover(item.path)
-        if size:
-            cover = resize_image(cover, int(size))
-        return flask.send_file(cover, mimetype='image/jpeg')
+        if cover is not None:
+            if size:
+                cover = resize_image(cover, int(size))
+            return flask.send_file(cover, mimetype='image/jpeg')
 
     # TODO - Get artist image if req_id is 'ar-'
 
-    # Fallback: return an empty 'ok' response
-    return subsonic_response({}, r.get('f', 'xml'), failed=True)
+    # If nothing found: return empty XML document on error
+    # https://opensubsonic.netlify.app/docs/endpoints/getcoverart/
+    return subsonic_response({}, 'xml', failed=True)

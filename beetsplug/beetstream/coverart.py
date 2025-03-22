@@ -21,16 +21,13 @@ elif ffmpeg_bin:
 def extract_cover(path) -> Union[BytesIO, None]:
 
     if ffmpeg_python:
-        img_bytes, err = (
+        img_bytes, _ = (
             ffmpeg
             .input(path)
             # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
             .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
-            .run(capture_stdout=True, capture_stderr=True)
+            .run(capture_stdout=True, capture_stderr=False, quiet=True)
         )
-        if err:
-            app.logger.error(err.decode('utf-8', 'ignore'))
-            return None
 
     elif ffmpeg_bin:
         command = [
@@ -40,14 +37,12 @@ def extract_cover(path) -> Union[BytesIO, None]:
             '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
             'pipe:1'
         ]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        img_bytes, err = process.communicate()
-        if process.returncode != 0:
-            app.logger.error(err.decode('utf-8', 'ignore') if err else "unknown error")
-            return None
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        img_bytes, _ = process.communicate()
+
     else:
-        app.logger.error("Can't extract cover art, ffmpeg is not available.")
         img_bytes = b''
+
     return BytesIO(img_bytes) if img_bytes else None
 
 
@@ -106,11 +101,11 @@ def get_cover_art():
     elif req_id.startswith(SNG_ID_PREF):
         item_id = int(song_subid_to_beetid(req_id))
         item = flask.g.lib.get_item(item_id)
-        album_id = item.get('album_id')
-        if album_id:
-            response = send_album_art(album_id, size)
-            if response is not None:
-                return response
+        # album_id = item.get('album_id')
+        # if album_id:
+        #     response = send_album_art(album_id, size)
+        #     if response is not None:
+        #         return response
 
         # Fallback: try to extract cover from the song file
         cover = extract_cover(item.path)

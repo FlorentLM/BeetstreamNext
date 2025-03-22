@@ -16,6 +16,8 @@ import xml.etree.cElementTree as ET
 from math import ceil
 from xml.dom import minidom
 
+API_VERSION = '1.16.1'
+
 DEFAULT_MIME_TYPE = 'application/octet-stream'
 EXTENSION_TO_MIME_TYPE_FALLBACK = {
     '.aac'  : 'audio/aac',
@@ -33,15 +35,11 @@ def strip_accents(s):
 def timestamp_to_iso(timestamp):
     return datetime.fromtimestamp(int(timestamp)).isoformat()
 
-def is_json(res_format):
-    return res_format == 'json' or res_format == 'jsonp'
-
-
-def dict_to_xml(tag, d):
+def dict_to_xml(tag: str, data):
     """ Recursively converts a json-like dict to an XML tree """
     elem = ET.Element(tag)
-    if isinstance(d, dict):
-        for key, val in d.items():
+    if isinstance(data, dict):
+        for key, val in data.items():
             if isinstance(val, (dict, list)):
                 child = dict_to_xml(key, val)
                 elem.append(child)
@@ -49,71 +47,52 @@ def dict_to_xml(tag, d):
                 child = ET.Element(key)
                 child.text = str(val)
                 elem.append(child)
-    elif isinstance(d, list):
-        for item in d:
+    elif isinstance(data, list):
+        for item in data:
             child = dict_to_xml(tag, item)
             elem.append(child)
     else:
-        elem.text = str(d)
+        elem.text = str(data)
     return elem
 
-def subsonic_response(d: dict = {}, format: str = 'xml', failed=False):
-    """ Wrap any json-like dict with the subsonic response elements
-     and output the appropriate 'format' (json or xml) """
-
-    STATUS = 'failed' if failed else 'ok'
-    VERSION = '1.16.1'
-
-    if format == 'json' or format == 'jsonp':
-        wrapped = {
-            'subsonic-response': {
-                'status': STATUS,
-                'version': VERSION,
-                'type': 'Beetstream',
-                'serverVersion': '1.4.5',
-                'openSubsonic': True,
-                **d
-            }
-        }
-        return jsonpify(flask.request, wrapped)
-
-    else:
-        root = dict_to_xml("subsonic-response", d)
-        root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", STATUS)
-        root.set("version", VERSION)
-        root.set("type", 'Beetstream')
-        root.set("serverVersion", '1.4.5')
-        root.set("openSubsonic", 'true')
-
-        return flask.Response(xml_to_string(root), mimetype="text/xml")
-
-def wrap_res(key, json):
-    return {
-        "subsonic-response": {
-            "status": "ok",
-            "version": "1.16.1",
-            key: json
-        }
-    }
-
-def jsonpify(request, data):
-    if request.values.get("f") == "jsonp":
-        callback = request.values.get("callback")
+def jsonpify(format: str, data: dict):
+    if format == 'jsonp':
+        callback = flask.request.values.get("callback")
         return f"{callback}({json.dumps(data)});"
     else:
         return flask.jsonify(data)
 
-def get_xml_root():
-    root = ET.Element('subsonic-response')
-    root.set('xmlns', 'http://subsonic.org/restapi')
-    root.set('status', 'ok')
-    root.set('version', '1.16.1')
-    return root
+def subsonic_response(data: dict = {}, format: str = 'xml', failed=False):
+    """ Wrap any json-like dict with the subsonic response elements
+     and output the appropriate 'format' (json or xml) """
 
-def xml_to_string(xml):
-    # Add declaration: <?xml version="1.0" encoding="UTF-8"?>
-    return minidom.parseString(ET.tostring(xml, encoding='unicode', method='xml', xml_declaration=True)).toprettyxml()
+    if format.startswith('json'):
+        wrapped = {
+            'subsonic-response': {
+                'status': 'failed' if failed else 'ok',
+                'version': API_VERSION,
+                'type': 'Beetstream',
+                'serverVersion': '1.4.5',
+                'openSubsonic': True,
+                **data
+            }
+        }
+        return jsonpify(format, wrapped)
+
+    else:
+        root = dict_to_xml("subsonic-response", data)
+        root.set("xmlns", "http://subsonic.org/restapi")
+        root.set("status", 'failed' if failed else 'ok')
+        root.set("version", API_VERSION)
+        root.set("type", 'Beetstream')
+        root.set("serverVersion", '1.4.5')
+        root.set("openSubsonic", 'true')
+
+        xml_str = minidom.parseString(ET.tostring(root, encoding='unicode',
+                                                  method='xml', xml_declaration=True)).toprettyxml()
+
+        return flask.Response(xml_str, mimetype="text/xml")
+
 
 def map_album(album):
     album = dict(album)
@@ -136,26 +115,6 @@ def map_album(album):
         "starred": "1970-01-01T00:00:00.000Z", # TODO
         "averageRating": 0 # TODO
     }
-
-def map_album_xml(xml, album):
-    album = dict(album)
-    xml.set("id", album_beetid_to_subid(str(album["id"])))
-    xml.set("name", album["album"])
-    xml.set("title", album["album"])
-    xml.set("album", album["album"])
-    xml.set("artist", album["albumartist"])
-    xml.set("artistId", artist_name_to_id(album["albumartist"]))
-    xml.set("parent", artist_name_to_id(album["albumartist"]))
-    xml.set("isDir", "true")
-    xml.set("coverArt", album_beetid_to_subid(str(album["id"])) or "")
-    xml.set("songCount", str(1)) # TODO
-    xml.set("duration", str(1)) # TODO
-    xml.set("playCount", str(1)) # TODO
-    xml.set("created", timestamp_to_iso(album["added"]))
-    xml.set("year", str(album["year"]))
-    xml.set("genre", album["genre"])
-    xml.set("starred", "1970-01-01T00:00:00.000Z") # TODO
-    xml.set("averageRating", "0") # TODO
 
 def map_album_list(album):
     album = dict(album)
@@ -206,34 +165,6 @@ def map_song(song):
         "discNumber": song["disc"]
     }
 
-def map_song_xml(xml, song):
-    song = dict(song)
-    path = song["path"].decode('utf-8')
-    xml.set("id", song_beetid_to_subid(str(song["id"])))
-    xml.set("parent", album_beetid_to_subid(str(song["album_id"])))
-    xml.set("isDir", "false")
-    xml.set("title", song["title"])
-    xml.set("name", song["title"])
-    xml.set("album", song["album"])
-    xml.set("artist", song["albumartist"])
-    xml.set("track", str(song["track"]))
-    xml.set("year", str(song["year"]))
-    xml.set("genre", song["genre"])
-    xml.set("coverArt", _cover_art_id(song)),
-    xml.set("size", str(os.path.getsize(path)))
-    xml.set("contentType", path_to_mimetype(path))
-    xml.set("suffix", song["format"].lower())
-    xml.set("duration", str(ceil(song["length"])))
-    xml.set("bitRate", str(ceil(song["bitrate"]/1000)))
-    xml.set("path", path)
-    xml.set("playCount", str(1)) #TODO
-    xml.set("created", timestamp_to_iso(song["added"]))
-    xml.set("albumId", album_beetid_to_subid(str(song["album_id"])))
-    xml.set("artistId", artist_name_to_id(song["albumartist"]))
-    xml.set("type", "music")
-    if song["disc"]:
-        xml.set("discNumber", str(song["disc"]))
-
 def _cover_art_id(song):
     if song['album_id']:
         return album_beetid_to_subid(str(song['album_id']))
@@ -249,13 +180,6 @@ def map_artist(artist_name):
         "albumCount": 1,
         "artistImageUrl": "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg"
     }
-
-def map_artist_xml(xml, artist_name):
-    xml.set("id", artist_name_to_id(artist_name))
-    xml.set("name", artist_name)
-    xml.set("coverArt", "")
-    xml.set("albumCount", "1")
-    xml.set("artistImageUrl", "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg")
 
 def map_playlist(playlist):
     return {
@@ -306,14 +230,6 @@ def path_to_mimetype(path):
 
     return DEFAULT_MIME_TYPE
 
-def handleSizeAndOffset(collection, size, offset):
-    if size is not None:
-        if offset is not None:
-            return collection[offset:offset + size]
-        else:
-            return collection[0:size]
-    else:
-        return collection
 
 def genres_splitter(genres_string):
     delimiters = re.compile('|'.join([';', ',', '/', '\\|']))

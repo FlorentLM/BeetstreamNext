@@ -43,7 +43,7 @@ def get_cover_art():
     req_id = r.get('id')
     size = r.get('size', None)
 
-    if req_id.startswith(ALBUM_ID_PREFIX):
+    if req_id.startswith(ALB_ID_PREF):
 
         album_id = int(album_subid_to_beetid(req_id))
         album = flask.g.lib.get_album(album_id)
@@ -58,7 +58,7 @@ def get_cover_art():
 
         # TODO - Query from coverartarchive.org if no local file found
 
-    elif req_id.startswith(SONG_ID_PREFIX):
+    elif req_id.startswith(SNG_ID_PREF):
         item_id = int(song_subid_to_beetid(req_id))
         item = flask.g.lib.get_item(item_id)
 

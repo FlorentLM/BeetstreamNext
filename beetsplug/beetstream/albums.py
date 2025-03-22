@@ -47,7 +47,7 @@ def get_album_info(ver=None):
     album_id = int(album_subid_to_beetid(req_id))
     album = flask.g.lib.get_album(album_id)
 
-    image_url = flask.url_for('cover_art_file', id=album_id, _external=True)
+    image_url = flask.url_for('get_cover_art', id=album_id, _external=True)
 
     tag = f"albumInfo{ver if ver else ''}"
     payload = {
@@ -145,15 +145,10 @@ def genres():
             SELECT genre, "" AS n_song, COUNT(*) AS n_album FROM albums GROUP BY genre
             """))
 
-    delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
-
     g_dict = {}
     for row in mixed_genres:
         genre_field, n_song, n_album = row
-        for key in [g.strip().title()
-                            .replace('Post ', 'Post-')
-                            .replace('Prog ', 'Prog-')
-                            .replace('.', ' ') for g in re.split(delimiters, genre_field)]:
+        for key in genres_splitter(genre_field):
             if key not in g_dict:
                 g_dict[key] = [0, 0]
             if n_song:  # Update song count if present
@@ -182,16 +177,16 @@ def musicDirectory():
 
     req_id = r.get('id')
 
-    if req_id.startswith(ARTIST_ID_PREFIX):
+    if req_id.startswith(ART_ID_PREF):
         payload = artist_payload(req_id)
         payload['directory'] = payload.pop('artist')
 
-    elif req_id.startswith(ALBUM_ID_PREFIX):
+    elif req_id.startswith(ALB_ID_PREF):
         payload = album_payload(req_id)
         payload['directory'] = payload.pop('album')
         payload['directory']['child'] = payload['directory'].pop('song')
 
-    elif req_id.startswith(SONG_ID_PREFIX):
+    elif req_id.startswith(SNG_ID_PREF):
         payload = song_payload(req_id)
         payload['directory'] = payload.pop('song')
 

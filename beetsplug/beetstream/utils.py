@@ -1,12 +1,14 @@
-from beetsplug.beetstream import ALBUM_ID_PREFIX, ARTIST_ID_PREFIX, SONG_ID_PREFIX
+from beetsplug.beetstream import ALB_ID_PREF, ART_ID_PREF, SNG_ID_PREF
 import unicodedata
 from datetime import datetime
 from typing import Union
+import beets
 import flask
 import json
 import base64
 import mimetypes
 import os
+import re
 import posixpath
 import xml.etree.cElementTree as ET
 from math import ceil
@@ -172,23 +174,6 @@ def map_album_list(album):
         "starred": ""
     }
 
-def map_album_list_xml(xml, album):
-    album = dict(album)
-    xml.set("id", album_beetid_to_subid(str(album["id"])))
-    xml.set("parent", artist_name_to_id(album["albumartist"]))
-    xml.set("isDir", "true")
-    xml.set("title", album["album"])
-    xml.set("album", album["album"])
-    xml.set("artist", album["albumartist"])
-    xml.set("year", str(album["year"]))
-    xml.set("genre", album["genre"])
-    xml.set("coverArt", album_beetid_to_subid(str(album["id"])) or "")
-    xml.set("userRating", "5") # TODO
-    xml.set("averageRating", "5") # TODO
-    xml.set("playCount", "1")  # TODO
-    xml.set("created", timestamp_to_iso(album["added"]))
-    xml.set("starred", "")
-
 def map_song(song):
     song = dict(song)
     path = song["path"].decode('utf-8')
@@ -280,33 +265,26 @@ def map_playlist(playlist):
         'created': timestamp_to_iso(playlist.modified),
     }
 
-def map_playlist_xml(xml, playlist):
-    xml.set('id', playlist.id)
-    xml.set('name', playlist.name)
-    xml.set('songCount', str(playlist.count))
-    xml.set('duration', str(ceil(playlist.duration)))
-    xml.set('comment', playlist.artists)
-    xml.set('created', timestamp_to_iso(playlist.modified))
 
 def artist_name_to_id(artist_name: str):
     base64_name = base64.urlsafe_b64encode(artist_name.encode('utf-8')).decode('utf-8')
-    return f"{ARTIST_ID_PREFIX}{base64_name}"
+    return f"{ART_ID_PREF}{base64_name}"
 
 def artist_id_to_name(artist_id: str):
-    base64_id = artist_id[len(ARTIST_ID_PREFIX):]
+    base64_id = artist_id[len(ART_ID_PREF):]
     return base64.urlsafe_b64decode(base64_id.encode('utf-8')).decode('utf-8')
 
 def album_beetid_to_subid(album_id: str):
-    return ALBUM_ID_PREFIX + album_id
+    return ALB_ID_PREF + album_id
 
 def album_subid_to_beetid(album_id: str):
-    return album_id[len(ALBUM_ID_PREFIX):]
+    return album_id[len(ALB_ID_PREF):]
 
 def song_beetid_to_subid(song_id: str):
-    return SONG_ID_PREFIX + song_id
+    return SNG_ID_PREF + song_id
 
 def song_subid_to_beetid(song_id: str):
-    return song_id[len(SONG_ID_PREFIX):]
+    return song_id[len(SNG_ID_PREF):]
 
 def path_to_content_type(path):
     result = mimetypes.guess_type(path)[0]
@@ -333,3 +311,11 @@ def handleSizeAndOffset(collection, size, offset):
             return collection[0:size]
     else:
         return collection
+
+def genres_splitter(genres_string):
+    delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
+    return [g.strip().title()
+            .replace('Post ', 'Post-')
+            .replace('Prog ', 'Prog-')
+            .replace('.', ' ')
+            for g in re.split(delimiters, genres_string)]

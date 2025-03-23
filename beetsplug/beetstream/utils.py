@@ -72,75 +72,103 @@ def song_subid_to_beetid(song_id: str):
 
 # === Mapping functions to translate Beets to Subsonic dict-like structures ===
 
-def map_album(album):
+def map_album(album, songs=None):
     album = dict(album)
-    return {
-        "id": album_beetid_to_subid(str(album["id"])),
-        "name": album["album"],
-        "title": album["album"],
-        "album": album["album"],
-        "artist": album["albumartist"],
-        "artistId": artist_name_to_id(album["albumartist"]),
-        "parent": artist_name_to_id(album["albumartist"]),
-        "isDir": True,
-        "coverArt": album_beetid_to_subid(str(album["id"])) or "",
-        "songCount": 1, # TODO
-        "duration": 1, # TODO
-        "playCount": 1, # TODO
-        "created": timestamp_to_iso(album["added"]),
-        "year": album["year"],
-        "genre": album["genre"],
-        "starred": "1970-01-01T00:00:00.000Z", # TODO
-        "averageRating": 0 # TODO
-    }
+    album_id = album_beetid_to_subid(str(album["id"]))
+    subsonic_album = {
+        'id': album_id,
+        'name': album.get('album', ''),
+        # 'version': 'Deluxe Edition',                          # TODO
+        'artist': album.get('albumartist', ''),
+        'year': album.get('year', None),
+        'coverArt': album_id,
+        # 'starred': '1970-01-01T00:00:00.000Z',                # TODO
+        # 'playCount': 1,                                       # TODO
+        'genre': album.get('genre', ''),
+        'created': timestamp_to_iso(album["added"]),
+        'artistId': artist_name_to_id(album["albumartist"]),
+        # 'played': '1970-01-01T00:00:00.000Z',                 # TODO
+        # 'userRating': '1970-01-01T00:00:00.000Z',             # TODO
+        'recordLabels': [{'name': album.get('label', '')}],
+        'musicBrainzId': album.get("mb_albumid", ''),
+        'genres': [{'name': g for g in stringlist_splitter(album.get('genre', ''))}],
+        'displayArtist': album.get('albumartist', ''),
+        'sortName': album["album"],
+        'originalReleaseDate': {
+            'year': album.get('original_year', 0),
+            'month': album.get('original_month', 0),
+            'day': album.get('original_day', 0)
+        },
+        'releaseDate': {
+            'year': album.get('year', 0),
+            'month': album.get('month', 0),
+            'day': album.get('day', 0)
+        },
+        'isCompilation': bool(album.get('comp', False)),
+        # 'explicitStatus': 'explicit',                         # TODO
 
-def map_album_list(album):
-    album = dict(album)
-    return {
-        "id": album_beetid_to_subid(str(album["id"])),
-        "parent": artist_name_to_id(album["albumartist"]),
-        "isDir": True,
-        "title": album["album"],
-        "album": album["album"],
-        "artist": album["albumartist"],
-        "year": album["year"],
-        "genre": album["genre"],
-        "coverArt": album_beetid_to_subid(str(album["id"])) or "",
-        "userRating": 5, # TODO
-        "averageRating": 5, # TODO
-        "playCount": 1,  # TODO
-        "created": timestamp_to_iso(album["added"]),
-        "starred": ""
+        # These are only needed when part of a directory response
+        'isDir': True,
+        'parent': artist_name_to_id(album["albumartist"]),
+
+        # These are only needed when part of an albumList or albumList2 response
+        'title': album.get('album', ''),
+        'album': album.get('album', ''),
     }
+    # Add release types if possible
+    release_types = stringlist_splitter(album.get('albumtypes', '')) or stringlist_splitter(album.get('albumtype', ''))
+    print(album.get('album', ''), type(release_types))
+    subsonic_album['releaseTypes'] = [r.strip().title() for r in release_types]
+
+    # Add multi-disc info if needed
+    nb_discs = album.get("disctotal", 1)
+    if nb_discs > 1:
+        subsonic_album["discTitles"] = [
+            {
+                'disc': d,
+                'title': ' - '.join(filter(None, [album.get('album', None), f'Disc {d + 1}']))
+            } for d in range(nb_discs)
+        ]
+
+    # Used when part of an AlbumID3WithSongs response OR directory ('song' key gets changed to 'child')
+    if songs:
+        subsonic_album['song'] = list(map(map_song, songs))
+        subsonic_album['duration'] = int(sum(s.get('length', 0) for s in subsonic_album['song']))
+        subsonic_album['songCount'] = len(subsonic_album['song'])
+    else:
+        subsonic_album['duration'] = 0
+        subsonic_album['songCount'] = 0
+        # TODO - These need to be set even when no songs are passed to the mapper...
+    return subsonic_album
 
 def map_song(song):
     song = dict(song)
-    path = song["path"].decode('utf-8')
+    path = song.get('path', b'').decode('utf-8')
     return {
-        "id": song_beetid_to_subid(str(song["id"])),
-        "parent": album_beetid_to_subid(str(song["album_id"])),
-        "isDir": False,
-        "title": song["title"],
-        "name": song["title"],
-        "album": song["album"],
-        "artist": song["albumartist"],
-        "track": song["track"],
-        "year": song["year"],
-        "genre": song["genre"],
-        "coverArt": _cover_art_id(song),
-        "size": os.path.getsize(path),
-        "contentType": path_to_mimetype(path),
-        "suffix": song["format"].lower(),
-        "duration": ceil(song["length"]),
-        "bitRate": ceil(song["bitrate"]/1000),
-        "path": path,
-        "playCount": 1, #TODO
-        "created": timestamp_to_iso(song["added"]),
+        'id': song_beetid_to_subid(str(song["id"])),
+        'parent': album_beetid_to_subid(str(song["album_id"])),
+        'isDir': False,
+        'title': song["title"],
+        'name': song["title"],
+        'album': song["album"],
+        'artist': song["albumartist"],
+        'track': song["track"],
+        'year': song["year"],
+        'genre': song["genre"],
+        'coverArt': _cover_art_id(song),
+        'size': os.path.getsize(path),
+        'contentType': path_to_mimetype(path),
+        'suffix': song["format"].lower(),
+        'duration': ceil(song.get("length", 0)),
+        'bitRate': ceil(song.get("bitrate", 0)/1000),
+        'path': path,
+        'playCount': 1, # TODO
+        'created': timestamp_to_iso(song["added"]),
         # "starred": "2019-10-23T04:41:17.107Z",
-        "albumId": album_beetid_to_subid(str(song["album_id"])),
-        "artistId": artist_name_to_id(song["albumartist"]),
-        "type": "music",
-        "discNumber": song["disc"]
+        'albumId': album_beetid_to_subid(str(song["album_id"])),
+        'artistId': artist_name_to_id(song["albumartist"]),
+        'type': "music",
+        'discNumber': song["disc"]
     }
 
 def map_artist(artist_name):
@@ -253,7 +281,7 @@ def path_to_mimetype(path):
 
     return DEFAULT_MIME_TYPE
 
-def genres_splitter(genres_string):
+def stringlist_splitter(genres_string):
     delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
     return [g.strip().title()
             .replace('Post ', 'Post-')

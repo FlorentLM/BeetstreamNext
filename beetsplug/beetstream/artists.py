@@ -2,15 +2,13 @@ from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import time
 from collections import defaultdict
+from functools import partial
 import flask
 
 
-def artist_payload(artist_id: str) -> dict:
+def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
-    artist_name = artist_id_to_name(artist_id).replace("'", "\\'")
-
-    albums = flask.g.lib.albums(artist_name)
-    albums = filter(lambda a: a.albumartist == artist_name, albums)
+    artist_name = stb_artist(subsonic_artist_id)
 
     payload = {
         "artist": {
@@ -19,6 +17,13 @@ def artist_payload(artist_id: str) -> dict:
             "album": list(map(map_album, albums))
         }
     }
+
+    # When part of a directory response or a ArtistWithAlbumsID3 response
+    if with_albums:
+        albums = flask.g.lib.albums(f'albumartist:{artist_name}')
+                                     # I don't think there is any endpoint that returns an artist with albums AND songs?
+        payload['artist']['album'] = list(map(partial(map_album, with_songs=False), albums))
+
     return payload
 
 @app.route('/rest/getArtists', methods=["GET", "POST"])
@@ -59,7 +64,7 @@ def get_artist():
     r = flask.request.values
 
     artist_id = r.get('id')
-    payload = artist_payload(artist_id)
+    payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
 
     return subsonic_response(payload, r.get('f', 'xml'))
 
@@ -70,7 +75,7 @@ def artistInfo2():
 
     r = flask.request.values
 
-    artist_name = artist_id_to_name(r.get('id'))
+    artist_name = stb_artist(r.get('id'))
 
     payload = {
         "artistInfo2": {

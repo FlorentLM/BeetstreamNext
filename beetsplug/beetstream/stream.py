@@ -6,7 +6,7 @@ have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
 
 
 def direct(filePath):
-    return flask.send_file(filePath, mimetype=path_to_mimetype(filePath))
+    return flask.send_file(filePath, mimetype=get_mimetype(filePath))
 
 def transcode(filePath, maxBitrate):
     if FFMPEG_PYTHON:

@@ -1,14 +1,15 @@
 import unicodedata
 from datetime import datetime
 import platform
+from pathlib import Path
+from typing import Union
 import flask
 import json
 import base64
 import mimetypes
 import os
 import re
-import posixpath
-from math import ceil
+from beets import library
 import xml.etree.cElementTree as ET
 from xml.dom import minidom
 import shutil
@@ -25,17 +26,6 @@ SNG_ID_PREF = 'sg-'
 PLY_ID_PREF = 'pl-'
 
 
-DEFAULT_MIME_TYPE = 'application/octet-stream'
-EXTENSION_TO_MIME_TYPE_FALLBACK = {
-    '.aac'  : 'audio/aac',
-    '.flac' : 'audio/flac',
-    '.mp3'  : 'audio/mpeg',
-    '.mp4'  : 'audio/mp4',
-    '.m4a'  : 'audio/mp4',
-    '.ogg'  : 'audio/ogg',
-    '.opus' : 'audio/opus',
-}
-
 FFMPEG_BIN = shutil.which("ffmpeg") is not None
 FFMPEG_PYTHON = importlib.util.find_spec("ffmpeg") is not None
 
@@ -49,132 +39,210 @@ elif FFMPEG_BIN:
 # These IDs are sent to the client once (when it accesses endpoints such as getArtists or getAlbumList
 # and the client will then use these to access a specific item via endpoints that need an ID
 
-def artist_name_to_id(artist_name: str):
-    base64_name = base64.urlsafe_b64encode(artist_name.encode('utf-8')).decode('utf-8')
-    return f"{ART_ID_PREF}{base64_name}"
+def bts_artist(beet_artist_name):
+    base64_name = base64.urlsafe_b64encode(str(beet_artist_name).encode('utf-8'))
+    return f"{ART_ID_PREF}{base64_name.rstrip(b"=").decode('utf-8')}"
 
-def artist_id_to_name(artist_id: str):
-    base64_id = artist_id[len(ART_ID_PREF):]
-    return base64.urlsafe_b64decode(base64_id.encode('utf-8')).decode('utf-8')
+def stb_artist(subsonic_artist_id):
+    subsonic_artist_id = str(subsonic_artist_id)[len(ART_ID_PREF):]
+    padding = 4 - (len(subsonic_artist_id) % 4)
+    return base64.urlsafe_b64decode(subsonic_artist_id + ("=" * padding)).decode('utf-8')
 
-def album_beetid_to_subid(album_id: str):
-    return ALB_ID_PREF + album_id
+def bts_album(beet_album_id):
+    return f'{ALB_ID_PREF}{beet_album_id}'
 
-def album_subid_to_beetid(album_id: str):
-    return album_id[len(ALB_ID_PREF):]
+def stb_album(subsonic_album_id):
+    return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
 
-def song_beetid_to_subid(song_id: str):
-    return SNG_ID_PREF + song_id
+def bts_song(beet_song_id):
+    return f'{SNG_ID_PREF}{beet_song_id}'
 
-def song_subid_to_beetid(song_id: str):
-    return song_id[len(SNG_ID_PREF):]
+def stb_song(subsonic_song_id):
+    return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
 
 
 # === Mapping functions to translate Beets to Subsonic dict-like structures ===
 
-def map_album(album, songs=None):
-    album = dict(album)
-    album_id = album_beetid_to_subid(str(album["id"]))
-    subsonic_album = {
-        'id': album_id,
-        'name': album.get('album', ''),
-        # 'version': 'Deluxe Edition',                          # TODO
-        'artist': album.get('albumartist', ''),
-        'year': album.get('year', None),
-        'coverArt': album_id,
-        # 'starred': '1970-01-01T00:00:00.000Z',                # TODO
-        # 'playCount': 1,                                       # TODO
-        'genre': album.get('genre', ''),
-        'created': timestamp_to_iso(album["added"]),
-        'artistId': artist_name_to_id(album["albumartist"]),
-        # 'played': '1970-01-01T00:00:00.000Z',                 # TODO
-        # 'userRating': '1970-01-01T00:00:00.000Z',             # TODO
-        'recordLabels': [{'name': album.get('label', '')}],
-        'musicBrainzId': album.get("mb_albumid", ''),
-        'genres': [{'name': g for g in stringlist_splitter(album.get('genre', ''))}],
-        'displayArtist': album.get('albumartist', ''),
-        'sortName': album["album"],
+# TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/
+
+def map_media(beets_object: Union[dict, library.LibModel]):
+    beets_object = dict(beets_object)
+
+    artist_name = beets_object.get('albumartist', '')
+
+    # Common fields to albums and songs
+    subsonic_media = {
+        'artist': artist_name,
+        'artistId': bts_artist(artist_name),
+        'displayArtist': artist_name,
+        'displayAlbumArtist': artist_name,
+        'album': beets_object.get('album', ''),
+        'year': beets_object.get('year', 0),
+        'genre': beets_object.get('genre', ''),
+        'genres': [{'name': g} for g in genres_formatter(beets_object.get('genre', ''))],
+        'created': timestamp_to_iso(beets_object.get('added')) or datetime.now().isoformat(),   # default to now?
         'originalReleaseDate': {
-            'year': album.get('original_year', 0),
-            'month': album.get('original_month', 0),
-            'day': album.get('original_day', 0)
+            'year': beets_object.get('original_year', 0),
+            'month': beets_object.get('original_month', 0),
+            'day': beets_object.get('original_day', 0)
         },
         'releaseDate': {
-            'year': album.get('year', 0),
-            'month': album.get('month', 0),
-            'day': album.get('day', 0)
+            'year': beets_object.get('year', 0),
+            'month': beets_object.get('month', 0),
+            'day': beets_object.get('day', 0)
         },
+        'replayGain': {
+            'albumGain': (beets_object.get('rg_album_gain') or 0) or ((beets_object.get('r128_album_gain') or 107) - 107),
+            'albumPeak': beets_object.get('rg_album_peak') or 0
+        }
+    }
+    return subsonic_media
+
+def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict:
+    album = dict(album_object)
+
+    subsonic_album = map_media(album)
+
+    beets_album_id = album.get('id', 0)
+    subsonic_album_id = bts_album(beets_album_id)
+    album_name = album.get('album', '')
+
+    album_specific = {
+        'id': subsonic_album_id,
+        'musicBrainzId': album.get('mb_albumid', ''),
+        'name': album_name,
+        'sortName': album_name,
+        # 'version': 'Deluxe Edition',                          # TODO - Use the 'media' field maybe?
+        'coverArt': subsonic_album_id,
+
+        # 'starred': timestamp_to_iso(album.get('last_liked_album', 0)),
+        # 'userRating': album.get('stars_rating_album', 0),
+
+        'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
         'isCompilation': bool(album.get('comp', False)),
-        # 'explicitStatus': 'explicit',                         # TODO
 
         # These are only needed when part of a directory response
         'isDir': True,
-        'parent': artist_name_to_id(album["albumartist"]),
+        'parent': subsonic_album['artistId'],
 
-        # These are only needed when part of an albumList or albumList2 response
-        'title': album.get('album', ''),
-        'album': album.get('album', ''),
+        # Title field is required for Child responses (also used in albumList or albumList2 responses)
+        'title': album.get('album'),
+
+        # This is only needed when part of a Child response
+        'mediaType': 'album'
     }
+    subsonic_album.update(album_specific)
+
     # Add release types if possible
     release_types = album.get('albumtypes', '') or album.get('albumtype', '')
     if isinstance(release_types, str):
-        subsonic_album['releaseTypes'] = [r.strip().title() for r in stringlist_splitter(release_types)]
+        subsonic_album['releaseTypes'] = stringlist_splitter(release_types)
     else:
         subsonic_album['releaseTypes'] = [r.strip().title() for r in release_types]
 
     # Add multi-disc info if needed
-    nb_discs = album.get("disctotal", 1)
+    nb_discs = album.get('disctotal', 1)
     if nb_discs > 1:
         subsonic_album["discTitles"] = [
-            {
-                'disc': d,
-                'title': ' - '.join(filter(None, [album.get('album', None), f'Disc {d + 1}']))
-            } for d in range(nb_discs)
+            {'disc': d, 'title': ' - '.join(filter(None, [album.get('album', None), f'Disc {d + 1}']))}
+            for d in range(nb_discs)
         ]
 
-    # Used when part of an AlbumID3WithSongs response OR directory ('song' key gets changed to 'child')
-    if songs:
-        subsonic_album['song'] = list(map(map_song, songs))
-        subsonic_album['duration'] = int(sum(s.get('length', 0) for s in subsonic_album['song']))
-        subsonic_album['songCount'] = len(subsonic_album['song'])
+    # Songs should be included when part of either:
+    # - an AlbumID3WithSongs response
+    # - a directory response (in which case the 'song' key needs to be renamed to 'child')
+
+    # Even if not including songs in the response, we still need to have their count and duration...
+    if not isinstance(album_object, library.Album):
+        # ...so in case album_object comes from a direct SQL transaction, we need to query once more
+        songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
     else:
-        subsonic_album['duration'] = 0
-        subsonic_album['songCount'] = 0
-        # TODO - These need to be set even when no songs are passed to the mapper...
+        # ...if it is a beets.library.Album object, we already have them
+        songs = list(album_object.items())
+
+    if with_songs:
+        songs.sort(key=lambda s: s.track)  # Is it really necessary to sort them?
+        subsonic_album['song'] = list(map(map_song, songs))
+
+    # Add remaining required fields
+    subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
+    subsonic_album['songCount'] = len(songs)
+
+    # Optional field
+    songs_ratings = [s.get('stars_rating', 0) for s in subsonic_album.get('song', []) if s.get('stars_rating', 0)]
+    subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
+
     return subsonic_album
 
-def map_song(song):
-    song = dict(song)
-    path = song.get('path', b'').decode('utf-8')
-    return {
-        'id': song_beetid_to_subid(str(song["id"])),
-        'parent': album_beetid_to_subid(str(song["album_id"])),
+def map_song(song_object):
+    song = dict(song_object)
+
+    subsonic_song = map_media(song)
+
+    song_id = bts_song(song.get('id', 0))
+    song_name = song.get('title', '')
+    song_filepath = song.get('path', b'').decode('utf-8')
+
+    album_id = bts_album(song.get('album_id', 0))
+
+    song_specific = {
+        'id': song_id,
+        'musicBrainzId': song.get('mb_albumid', ''),
+        'name': song_name,
+        'sortName': song_name,
+        'albumId': album_id,
+        'coverArt': album_id or song_id,
+
+        'track': song.get('track', 1),
+        'path': song_filepath if os.path.isfile(song_filepath) else '',
+
+        'played': timestamp_to_iso(song.get('last_played', 0)),
+        'starred': timestamp_to_iso(song.get('last_liked', 0)),
+        'playCount': song.get('play_count', 0),
+        'userRating': song.get('stars_rating', 0),
+
+        'duration': round(song.get('length', 0)),
+        'bpm': song.get('bpm', 0),
+        'bitRate': round(song.get('bitrate', 0) / 1000) or 0,
+        'bitDepth': song.get('bitdepth', 0),
+        'samplingRate': song.get('samplerate', 0),
+        'channelCount': song.get('channels', 2),
+        'discNumber': song.get('disc', 0),
+        'comment': song.get('comment', ''),
+
+        # These are only needed when part of a directory response
         'isDir': False,
-        'title': song["title"],
-        'name': song["title"],
-        'album': song["album"],
-        'artist': song["albumartist"],
-        'track': song["track"],
-        'year': song["year"],
-        'genre': song["genre"],
-        'coverArt': _cover_art_id(song),
-        'size': os.path.getsize(path),
-        'contentType': path_to_mimetype(path),
-        'suffix': song["format"].lower(),
-        'duration': ceil(song.get("length", 0)),
-        'bitRate': ceil(song.get("bitrate", 0)/1000),
-        'path': path,
-        'playCount': 1, # TODO
-        'created': timestamp_to_iso(song["added"]),
-        # "starred": "2019-10-23T04:41:17.107Z",
-        'albumId': album_beetid_to_subid(str(song["album_id"])),
-        'artistId': artist_name_to_id(song["albumartist"]),
-        'type': "music",
-        'discNumber': song["disc"]
+        'parent': album_id or subsonic_song['artistId'],
+
+        # TODO - is there really no chance to have videos in beets' database?
+        'isVideo': False,
+        'type': 'music',
+
+        # Title field is required for Child responses
+        'title': song_name,
+
+        # This is only needed when part of a Child response
+        'mediaType': 'song'
     }
+    subsonic_song.update(song_specific)
+
+    subsonic_song['replayGain'].update(
+        {
+            'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
+            'trackPeak': song.get('rg_track_peak', 0)
+        }
+    )
+
+    # Add remaining filetype-related elements with fallbacks
+    subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
+    subsonic_song['size'] = os.path.getsize(subsonic_song['path']) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
+    subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None) or subsonic_song.get('suffix', None))
+
+    return subsonic_song
+
 
 def map_artist(artist_name):
-    artist_id = artist_name_to_id(artist_name)
+    artist_id = bts_artist(artist_name)
     return {
         'id': artist_id,
         'name': artist_name,
@@ -183,7 +251,10 @@ def map_artist(artist_name):
         # "starred": "2021-07-03T06:15:28.757Z", # nothing if not starred
         # 'coverArt': artist_id,
         'albumCount': 1,
-        'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg"
+        'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg",
+
+        # This is only needed when part of a Child response
+        'mediaType': 'artist'
     }
 
 def map_playlist(playlist):
@@ -300,30 +371,48 @@ def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 def timestamp_to_iso(timestamp):
-    return datetime.fromtimestamp(int(timestamp)).isoformat()
+    return datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
 
-def path_to_mimetype(path):
-    result = mimetypes.guess_type(path)[0]
-    if result:
-        return result
+def get_mimetype(path):
 
-    # our mimetype database didn't have information about this file extension.
-    base, ext = posixpath.splitext(path)
-    result = EXTENSION_TO_MIME_TYPE_FALLBACK.get(ext)
-    if result:
-        return result
+    if isinstance(path, (bytes, bytearray)):
+        path = path.decode('utf-8')
+    elif isinstance(path, Path):
+        path = path.as_posix()
+    if not '.' in path:     # Assume the passed arg is just an extension
+        path = f'file.{path}'
 
-    flask.current_app.logger.warning(f"No mime type mapped for {ext} extension: {path}")
+    mimetype_fallback = {
+        '.aac': 'audio/aac',
+        '.flac': 'audio/flac',
+        '.mp3': 'audio/mpeg',
+        '.mp4': 'audio/mp4',
+        '.m4a': 'audio/mp4',
+        '.ogg': 'audio/ogg',
+        '.opus': 'audio/opus',
+        None: 'application/octet-stream'
+    }
+    return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
 
-    return DEFAULT_MIME_TYPE
-
-def stringlist_splitter(genres_string):
+def stringlist_splitter(delimiter_separated_string: str):
     delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
+    return re.split(delimiters, delimiter_separated_string)
+
+def genres_formatter(genres):
+    """ Additional cleaning for common genres formatting issues """
+    if isinstance(genres, str):
+        genres = stringlist_splitter(genres)
     return [g.strip().title()
             .replace('Post ', 'Post-')
-            .replace('Prog ', 'Prog-')
+            .replace('Prog ', 'Progressive ')
+            .replace('Rnb', 'R&B')
+            .replace("R'N'B", 'R&B')
+            .replace("R 'N' B", 'R&B')
+            .replace('Rock & ', 'Rock and ')
+            .replace("Rock'N'", 'Rock and')
+            .replace("Rock 'N'", 'Rock and')
             .replace('.', ' ')
-            for g in re.split(delimiters, genres_string)]
+            for g in genres]
 
 def creation_date(filepath):
     """ Get a file's creation date
@@ -352,8 +441,3 @@ def creation_date(filepath):
             except:
                 # If that did not work, settle for last modification time
                 return stat.st_mtime
-
-def _cover_art_id(song):
-    if song['album_id']:
-        return album_beetid_to_subid(str(song['album_id']))
-    return song_beetid_to_subid(str(song['id']))

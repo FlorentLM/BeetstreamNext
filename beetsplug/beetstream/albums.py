@@ -2,16 +2,17 @@ from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import flask
 import urllib.parse
+from functools import partial
 
 
-def album_payload(album_id: str) -> dict:
-    album_id = int(album_subid_to_beetid(album_id))
-    album = flask.g.lib.get_album(album_id)
-    songs = sorted(album.items(), key=lambda s: s.track)
+def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
+    beets_album_id = stb_album(subsonic_album_id)
+
+    album = flask.g.lib.get_album(beets_album_id)
 
     payload = {
         "album": {
-            **map_album(album, songs)
+            **map_album(album, with_songs=with_songs)
         }
     }
     return payload
@@ -21,9 +22,8 @@ def album_payload(album_id: str) -> dict:
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def get_album():
     r = flask.request.values
-
     album_id = r.get('id')
-    payload = album_payload(album_id)
+    payload = album_payload(album_id, with_songs=True)
     return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
@@ -40,7 +40,7 @@ def _album_info(ver=None):
     r = flask.request.values
 
     req_id = r.get('id')
-    album_id = int(album_subid_to_beetid(req_id))
+    album_id = int(stb_album(req_id))
     album = flask.g.lib.get_album(album_id)
 
     artist_quot = urllib.parse.quote(album.get('albumartist', ''))
@@ -92,7 +92,7 @@ def get_album_list(ver=None):
 
     if sort_by == 'byGenre' and genre_filter:
         conditions.append("lower(genre) LIKE ?")
-        params.append(f"%{genre_filter.lower().strip()}%")
+        params.append(f"%{genre_filter.strip().lower()}%")
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -113,18 +113,20 @@ def get_album_list(ver=None):
     elif sort_by == 'random':
         query += " ORDER BY RANDOM()"
 
+    # TODO - sort_by: highest, frequent
+
     # Add LIMIT and OFFSET for pagination
     query += " LIMIT ? OFFSET ?"
     params.extend([size, offset])
 
     # Execute the query within a transaction
     with flask.g.lib.transaction() as tx:
-        albums = list(tx.query(query, params))
+        albums = tx.query(query, params)
 
     tag = f"albumList{ver if ver else ''}"
     payload = {
-        tag: {
-            "album": list(map(map_album, albums))
+        tag: {                        # albumList response does not include songs
+            "album": list(map(partial(map_album, with_songs=False), albums))
         }
     }
     return subsonic_response(payload, r.get('f', 'xml'))

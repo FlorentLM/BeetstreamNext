@@ -62,6 +62,19 @@ class BeetstreamPlugin(BeetsPlugin):
             'playlist_dir': '',
         })
 
+    item_types = {
+        # We use the same fields as the MPDStats plugin for interoperability
+        'play_count': types.INTEGER,
+        'last_played': DateType(),
+        'last_liked': DateType(),
+        'stars_rating': types.INTEGER    # ... except this one, it's a different rating system from MPDStats' "rating"
+    }
+
+    # album_types = {
+    #     'last_liked_album': DateType(),
+    #     'stars_rating_album': types.INTEGER
+    # }
+
     def commands(self):
         cmd = ui.Subcommand('beetstream', help='run Beetstream server, exposing SubSonic API')
         cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='debug mode')
@@ -73,6 +86,7 @@ class BeetstreamPlugin(BeetsPlugin):
             if args:
                 self.config['port'] = int(args.pop(0))
 
+            app.config['root_directory'] = Path(config['directory'].get())
             app.config['lib'] = lib
             app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
             app.config['INCLUDE_PATHS'] = self.config['include_paths']

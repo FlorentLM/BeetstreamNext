@@ -3,10 +3,9 @@ from beetsplug.beetstream import app, stream
 import flask
 
 
-def song_payload(song_id: str) -> dict:
-    song_id = int(song_subid_to_beetid(song_id))
-    song_item = flask.g.lib.get_item(song_id)
-
+def song_payload(subsonic_song_id: str) -> dict:
+    beets_song_id = stb_song(subsonic_song_id)
+    song_item = flask.g.lib.get_item(beets_song_id)
     payload = {
         'song': map_song(song_item)
     }
@@ -78,7 +77,7 @@ def stream_song():
     maxBitrate = int(r.get('maxBitRate') or 0)
     format = r.get('format')
 
-    song_id = int(song_subid_to_beetid(r.get('id')))
+    song_id = int(stb_song(r.get('id')))
     item = flask.g.lib.get_item(song_id)
 
     item_path = item.get('path', b'').decode('utf-8')
@@ -95,17 +94,16 @@ def stream_song():
 def download_song():
     r = flask.request.values
 
-    song_id = int(song_subid_to_beetid(r.get('id')))
+    song_id = int(stb_song(r.get('id')))
     item = flask.g.lib.get_item(song_id)
 
     return stream.direct(item.path.decode('utf-8'))
 
 
-# TODO link with Last.fm or ListenBrainz
 @app.route('/rest/getTopSongs', methods=["GET", "POST"])
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
 def get_top_songs():
-    # TODO
+    # TODO - Use the play_count, and/or link with Last.fm or ListenBrainz
 
     r = flask.request.values
 

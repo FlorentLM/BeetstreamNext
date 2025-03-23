@@ -1,5 +1,6 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
+from functools import partial
 
 
 @app.route('/rest/search2', methods=["GET", "POST"])
@@ -59,8 +60,8 @@ def _search(ver=None):
     tag = f'searchResult{ver if ver else ""}'
     payload = {
         tag: {
-            'artist': list(map(map_artist, artists)),
-            'album': list(map(map_album, albums)),
+            'artist': list(map(partial(map_artist, with_albums=False), artists)),  # no need to include albums twice
+            'album': list(map(partial(map_album, with_songs=False), albums)), # no need to include songs twice
             'song': list(map(map_song, songs))
         }
     }

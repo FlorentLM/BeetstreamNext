@@ -1,4 +1,4 @@
-from beetsplug.beetstream.utils import PLY_ID_PREF, stringlist_splitter, creation_date
+from beetsplug.beetstream.utils import PLY_ID_PREF, genres_formatter, creation_date
 from beetsplug.beetstream import app
 import flask
 from typing import Union, List
@@ -48,7 +48,7 @@ def parse_m3u(filepath):
                 continue
 
             elif line.startswith('#EXTGENRE:'):
-                curr_entry['genres'] = stringlist_splitter(line[10:])
+                curr_entry['genres'] = genres_formatter(line[10:])
                 continue
 
             elif line.startswith('#EXTM3A'):

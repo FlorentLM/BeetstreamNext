@@ -11,8 +11,7 @@ def album_payload(album_id: str) -> dict:
 
     payload = {
         "album": {
-            **map_album(album),
-            **{"song": list(map(map_song, songs))}
+            **map_album(album, songs)
         }
     }
     return payload

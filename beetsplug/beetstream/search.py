@@ -12,7 +12,6 @@ def search2():
 def search3():
     return _search(ver=3)
 
-
 def _search(ver=None):
     r = flask.request.values
 
@@ -23,7 +22,10 @@ def _search(ver=None):
     artist_count = int(r.get('artistCount', 20))
     artist_offset = int(r.get('artistOffset', 0))
 
-    query = r.get('query') or ''
+    query = r.get('query', '')
+    # Remove surrounding quotes if present
+    if query.startswith('"') and query.endswith('"'):
+        query = query[1:-1]
 
     if not query:
         if ver == 2:
@@ -45,12 +47,13 @@ def _search(ver=None):
             "SELECT * FROM albums WHERE lower(album) LIKE ? ORDER BY album LIMIT ? OFFSET ?",
             (pattern, album_count, album_offset)
         ))
-        artist_rows = list(tx.query(
-            "SELECT DISTINCT albumartist FROM albums WHERE lower(albumartist) LIKE ? ORDER BY albumartist LIMIT ? OFFSET ?",
+        artists = [row[0] for row in tx.query(
+            """SELECT DISTINCT albumartist FROM albums WHERE lower(albumartist) LIKE ? 
+            and albumartist is NOT NULL LIMIT ? OFFSET ?""",
             (pattern, artist_count, artist_offset)
-        ))
+        )]
 
-    artists = [row[0] for row in artist_rows if row[0]]
+    # TODO - do the sort in the SQL query instead?
     artists.sort(key=lambda name: strip_accents(name).upper())
 
     tag = f'searchResult{ver if ver else ""}'

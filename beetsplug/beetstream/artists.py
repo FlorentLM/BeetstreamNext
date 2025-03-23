@@ -37,13 +37,10 @@ def _artists(version: str):
     with flask.g.lib.transaction() as tx:
         rows = tx.query("SELECT DISTINCT albumartist FROM albums")
 
-    all_artists = [r[0] for r in rows if r[0]]
-    all_artists.sort(key=lambda name: strip_accents(name).upper())
-
     alphanum_dict = defaultdict(list)
-    for artist in all_artists:
-        ind = strip_accents(artist[0]).upper()
-        alphanum_dict[ind].append(artist)
+    for row in rows:
+        if row[0]:
+            alphanum_dict[strip_accents(row[0][0]).upper()].append(row[0])
 
     payload = {
         version: {

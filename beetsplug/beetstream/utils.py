@@ -144,14 +144,16 @@ def map_song(song):
     }
 
 def map_artist(artist_name):
+    artist_id = artist_name_to_id(artist_name)
     return {
-        "id": artist_name_to_id(artist_name),
-        "name": artist_name,
+        'id': artist_id,
+        'name': artist_name,
+        # 'sortName': artist_name,
         # TODO
         # "starred": "2021-07-03T06:15:28.757Z", # nothing if not starred
-        "coverArt": "",
-        "albumCount": 1,
-        "artistImageUrl": "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg"
+        # 'coverArt': artist_id,
+        'albumCount': 1,
+        'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg"
     }
 
 def map_playlist(playlist):

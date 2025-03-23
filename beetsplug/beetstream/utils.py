@@ -117,7 +117,6 @@ def map_album(album, songs=None):
     }
     # Add release types if possible
     release_types = stringlist_splitter(album.get('albumtypes', '')) or stringlist_splitter(album.get('albumtype', ''))
-    print(album.get('album', ''), type(release_types))
     subsonic_album['releaseTypes'] = [r.strip().title() for r in release_types]
 
     # Add multi-disc info if needed

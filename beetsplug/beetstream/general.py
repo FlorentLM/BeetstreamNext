@@ -5,6 +5,7 @@ from beetsplug.beetstream.albums import album_payload
 from beetsplug.beetstream.songs import song_payload
 import flask
 
+
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def genres():
@@ -13,9 +14,9 @@ def genres():
     with flask.g.lib.transaction() as tx:
         mixed_genres = list(tx.query(
             """
-            SELECT genre, COUNT(*) AS n_song, "" AS n_album FROM items GROUP BY genre
+            SELECT genre, COUNT(*) AS n_song, '' AS n_album FROM items GROUP BY genre
             UNION ALL
-            SELECT genre, "" AS n_song, COUNT(*) AS n_album FROM albums GROUP BY genre
+            SELECT genre, '' AS n_song, COUNT(*) AS n_album FROM albums GROUP BY genre
             """))
 
     g_dict = {}

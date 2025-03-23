@@ -22,7 +22,7 @@ def genres():
     g_dict = {}
     for row in mixed_genres:
         genre_field, n_song, n_album = row
-        for key in genres_splitter(genre_field):
+        for key in stringlist_splitter(genre_field):
             if key not in g_dict:
                 g_dict[key] = [0, 0]
             if n_song:  # Update song count if present

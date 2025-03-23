@@ -16,6 +16,8 @@
 """Beetstream is a Beets.io plugin that exposes SubSonic API endpoints."""
 
 from beets.plugins import BeetsPlugin
+from beets.dbcore import types
+from beets.library import DateType
 from beets import config
 from beets import ui
 import flask
@@ -43,6 +45,7 @@ import beetsplug.beetstream.playlists
 import beetsplug.beetstream.search
 import beetsplug.beetstream.songs
 import beetsplug.beetstream.users
+import beetsplug.beetstream.general
 
 # Plugin hook
 class BeetstreamPlugin(BeetsPlugin):

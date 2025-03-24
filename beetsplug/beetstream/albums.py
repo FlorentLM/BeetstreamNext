@@ -6,13 +6,13 @@ from functools import partial
 
 
 def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
-    beets_album_id = stb_album(subsonic_album_id)
 
-    album = flask.g.lib.get_album(beets_album_id)
+    beets_album_id = stb_album(subsonic_album_id)
+    album_object = flask.g.lib.get_album(beets_album_id)
 
     payload = {
         "album": {
-            **map_album(album, with_songs=with_songs)
+            **map_album(album_object, with_songs=with_songs)
         }
     }
     return payload
@@ -40,7 +40,7 @@ def _album_info(ver=None):
     r = flask.request.values
 
     req_id = r.get('id')
-    album_id = int(stb_album(req_id))
+    album_id = stb_album(req_id)
     album = flask.g.lib.get_album(album_id)
 
     artist_quot = urllib.parse.quote(album.get('albumartist', ''))

@@ -26,18 +26,21 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
     return payload
 
+
 @app.route('/rest/getArtists', methods=["GET", "POST"])
 @app.route('/rest/getArtists.view', methods=["GET", "POST"])
 def get_artists():
-    return _artists("artists")
+    return _artists('artists')
 
 @app.route('/rest/getIndexes', methods=["GET", "POST"])
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
 def get_indexes():
-    return _artists("indexes")
+    return _artists('indexes')
 
 def _artists(version: str):
     r = flask.request.values
+
+    modified_since = r.get('ifModifiedSince', '')
 
     with flask.g.lib.transaction() as tx:
         artists = [row[0] for row in tx.query("SELECT DISTINCT albumartist FROM albums WHERE albumartist is NOT NULL")]
@@ -48,14 +51,29 @@ def _artists(version: str):
 
     payload = {
         version: {
-            "ignoredArticles": "",
-            "lastModified": int(time.time() * 1000),
-            "index": [
-                {"name": char, "artist": list(map(map_artist, artists))}
+            'ignoredArticles': '',      # TODO - include config from 'the' plugin??
+            'index': [
+                {'name': char, 'artist': list(map(map_artist, artists))}
                 for char, artists in sorted(alphanum_dict.items())
             ]
         }
     }
+
+    if version == 'indexes':
+
+        with flask.g.lib.transaction() as tx:
+            latest = int(tx.query('SELECT added FROM items ORDER BY added DESC LIMIT 1')[0][0])
+            # TODO - 'mtime' field?
+            nb_items = tx.query('SELECT COUNT(*) FROM items')[0][0]
+
+        if nb_items < app.config['nb_items']:
+            app.logger.warning('Media deletion detected (or very first time getIndexes is queried)')
+            # Deletion of items (or very first check since Beetstream started)
+            latest = int(time.time() * 1000)
+            app.config['nb_items'] = nb_items
+
+        payload[version]['lastModified'] = latest
+
     return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/getArtist', methods=["GET", "POST"])

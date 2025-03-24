@@ -19,11 +19,6 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -
             }]
         }
     }
-
-    if with_artists:
-        # TODO
-        pass
-
     return payload
 
 
@@ -108,16 +103,13 @@ def get_music_directory():
         payload = song_payload(req_id)
         payload['directory'] = payload.pop('song')
 
-    elif req_id == 'm-0':
+    else:
         payload = musicdirectory_payload('m-0', with_artists=True)
 
         # TODO - Add missing fields to artist mapper so we can return a directory with artist children
         # payload['directory'] = payload.pop('artist')
         # payload['directory']['child'] = payload['directory'].pop('album')
 
-    else:
-        return flask.abort(404)
-
     return subsonic_response(payload, r.get('f', 'xml'))
-##
+
 

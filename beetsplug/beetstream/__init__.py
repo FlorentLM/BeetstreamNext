@@ -23,7 +23,6 @@ from beets import ui
 import flask
 from flask import g
 from flask_cors import CORS
-from pathlib import Path
 
 # Flask setup
 app = flask.Flask(__name__)
@@ -87,6 +86,12 @@ class BeetstreamPlugin(BeetsPlugin):
                 self.config['port'] = int(args.pop(0))
 
             app.config['root_directory'] = Path(config['directory'].get())
+
+            # Total number of items in the Beets database (only used to detect deletions in getIndexes endpoint)
+            # We initialise to +inf at Beetstream start, so the real count is set the first time a client queries
+            # the getIndexes endpoint
+            app.config['nb_items'] = float('inf')
+
             app.config['lib'] = lib
             app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
             app.config['INCLUDE_PATHS'] = self.config['include_paths']

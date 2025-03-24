@@ -91,10 +91,6 @@ def map_media(beets_object: Union[dict, library.LibModel]):
             'month': beets_object.get('month', 0),
             'day': beets_object.get('day', 0)
         },
-        'replayGain': {
-            'albumGain': (beets_object.get('rg_album_gain') or 0) or ((beets_object.get('r128_album_gain') or 107) - 107),
-            'albumPeak': beets_object.get('rg_album_peak') or 0
-        }
     }
     return subsonic_media
 
@@ -126,7 +122,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         'parent': subsonic_album['artistId'],
 
         # Title field is required for Child responses (also used in albumList or albumList2 responses)
-        'title': album.get('album'),
+        'title': album_name,
 
         # This is only needed when part of a Child response
         'mediaType': 'album'
@@ -226,12 +222,12 @@ def map_song(song_object):
     }
     subsonic_song.update(song_specific)
 
-    subsonic_song['replayGain'].update(
-        {
-            'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
-            'trackPeak': song.get('rg_track_peak', 0)
-        }
-    )
+    # subsonic_song['replayGain'] = {
+    #         'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
+    #         'albumGain': (song.get('rg_album_gain') or 0) or ((song.get('r128_album_gain') or 107) - 107),
+    #         'trackPeak': song.get('rg_track_peak', 0),
+    #         'albumPeak': song.get('rg_album_peak', 0)
+    # }
 
     # Add remaining filetype-related elements with fallbacks
     subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
@@ -241,13 +237,13 @@ def map_song(song_object):
     return subsonic_song
 
 
-def map_artist(artist_name):
-    artist_id = bts_artist(artist_name)
+def map_artist(artist_name, with_albums=True):
+    subsonid_artist_id = bts_artist(artist_name)
     return {
-        'id': artist_id,
+        'id': subsonid_artist_id,
         'name': artist_name,
-        # 'sortName': artist_name,
-        # TODO
+        'sortName': artist_name,
+        'title': artist_name,
         # "starred": "2021-07-03T06:15:28.757Z", # nothing if not starred
         # 'coverArt': artist_id,
         'albumCount': 1,
@@ -371,7 +367,7 @@ def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 def timestamp_to_iso(timestamp):
-    return datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
+    return datetime.fromtimestamp(timestamp).isoformat() if timestamp else ''
 
 def get_mimetype(path):
 

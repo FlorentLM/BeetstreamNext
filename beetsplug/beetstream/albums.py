@@ -17,7 +17,7 @@ def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
     }
     return payload
 
-
+'/rest/search3.view&query=""&songCount=500&songOffset=0&artistCount=0&albumCount=0'
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def get_album():
@@ -72,7 +72,7 @@ def album_list_2():
 def get_album_list(ver=None):
 
     r = flask.request.values
-
+    '/rest/getAlbumList2.view?v=1.13.0&c=subtracks&u=ttj&s=.ZQ8&t=7b041defbd997bfa4a8b71724cfc5f6a&type=frequent&size=500&offset=0'
     sort_by = r.get('type', 'alphabeticalByName')
     size = int(r.get('size', 10))
     offset = int(r.get('offset', 0))

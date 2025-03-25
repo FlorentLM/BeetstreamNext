@@ -52,6 +52,7 @@ def bts_album(beet_album_id):
     return f'{ALB_ID_PREF}{beet_album_id}'
 
 def stb_album(subsonic_album_id):
+    print('hgnuygjugy', subsonic_album_id)
     return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
 
 def bts_song(beet_song_id):
@@ -79,18 +80,18 @@ def map_media(beets_object: Union[dict, library.LibModel]):
         'album': beets_object.get('album', ''),
         'year': beets_object.get('year', 0),
         'genre': beets_object.get('genre', ''),
-        'genres': [{'name': g} for g in genres_formatter(beets_object.get('genre', ''))],
+        # 'genres': [{'name': g} for g in genres_formatter(beets_object.get('genre', ''))],
         'created': timestamp_to_iso(beets_object.get('added')) or datetime.now().isoformat(),   # default to now?
-        'originalReleaseDate': {
-            'year': beets_object.get('original_year', 0),
-            'month': beets_object.get('original_month', 0),
-            'day': beets_object.get('original_day', 0)
-        },
-        'releaseDate': {
-            'year': beets_object.get('year', 0),
-            'month': beets_object.get('month', 0),
-            'day': beets_object.get('day', 0)
-        },
+        # 'originalReleaseDate': {
+        #     'year': beets_object.get('original_year', 0),
+        #     'month': beets_object.get('original_month', 0),
+        #     'day': beets_object.get('original_day', 0)
+        # },
+        # 'releaseDate': {
+        #     'year': beets_object.get('year', 0),
+        #     'month': beets_object.get('month', 0),
+        #     'day': beets_object.get('day', 0)
+        # },
     }
     return subsonic_media
 
@@ -114,7 +115,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         # 'starred': timestamp_to_iso(album.get('last_liked_album', 0)),
         # 'userRating': album.get('stars_rating_album', 0),
 
-        'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
+        # 'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
         'isCompilation': bool(album.get('comp', False)),
 
         # These are only needed when part of a directory response
@@ -128,21 +129,21 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         'mediaType': 'album'
     }
     subsonic_album.update(album_specific)
+    #
+    # # Add release types if possible
+    # release_types = album.get('albumtypes', '') or album.get('albumtype', '')
+    # if isinstance(release_types, str):
+    #     subsonic_album['releaseTypes'] = stringlist_splitter(release_types)
+    # else:
+    #     subsonic_album['releaseTypes'] = [r.strip().title() for r in release_types]
 
-    # Add release types if possible
-    release_types = album.get('albumtypes', '') or album.get('albumtype', '')
-    if isinstance(release_types, str):
-        subsonic_album['releaseTypes'] = stringlist_splitter(release_types)
-    else:
-        subsonic_album['releaseTypes'] = [r.strip().title() for r in release_types]
-
-    # Add multi-disc info if needed
-    nb_discs = album.get('disctotal', 1)
-    if nb_discs > 1:
-        subsonic_album["discTitles"] = [
-            {'disc': d, 'title': ' - '.join(filter(None, [album.get('album', None), f'Disc {d + 1}']))}
-            for d in range(nb_discs)
-        ]
+    # # Add multi-disc info if needed
+    # nb_discs = album.get('disctotal', 1)
+    # if nb_discs > 1:
+    #     subsonic_album["discTitles"] = [
+    #         {'disc': d, 'title': ' - '.join(filter(None, [album.get('album', None), f'Disc {d + 1}']))}
+    #         for d in range(nb_discs)
+    #     ]
 
     # Songs should be included when part of either:
     # - an AlbumID3WithSongs response
@@ -329,11 +330,12 @@ def jsonpify(format: str, data: dict):
     else:
         return flask.jsonify(data)
 
-def subsonic_response(data: dict = {}, format: str = 'xml', failed=False):
+
+def subsonic_response(data: dict = {}, resp_fmt: str = 'xml', failed=False):
     """ Wrap any json-like dict with the subsonic response elements
      and output the appropriate 'format' (json or xml) """
 
-    if format.startswith('json'):
+    if resp_fmt.startswith('json'):
         wrapped = {
             'subsonic-response': {
                 'status': 'failed' if failed else 'ok',
@@ -344,7 +346,7 @@ def subsonic_response(data: dict = {}, format: str = 'xml', failed=False):
                 **data
             }
         }
-        return jsonpify(format, wrapped)
+        return jsonpify(resp_fmt, wrapped)
 
     else:
         root = dict_to_xml("subsonic-response", data)
@@ -355,8 +357,9 @@ def subsonic_response(data: dict = {}, format: str = 'xml', failed=False):
         root.set("serverVersion", BEETSTREAM_VERSION)
         root.set("openSubsonic", 'true')
 
-        xml_str = minidom.parseString(ET.tostring(root, encoding='unicode',
-                                                  method='xml', xml_declaration=True)).toprettyxml()
+        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
+        pretty_xml = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
+        xml_str = pretty_xml.decode('UTF-8')
 
         return flask.Response(xml_str, mimetype="text/xml")
 

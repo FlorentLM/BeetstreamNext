@@ -75,8 +75,8 @@ def get_random_songs():
 def stream_song():
     r = flask.request.values
 
-    maxBitrate = int(r.get('maxBitRate') or 0)
-    format = r.get('format')
+    max_bitrate = int(r.get('maxBitRate') or 0)
+    req_format = r.get('format')
 
     song_id = stb_song(r.get('id'))
     item = flask.g.lib.get_item(song_id)
@@ -85,10 +85,10 @@ def stream_song():
     if not item_path:
         flask.abort(404)
 
-    if app.config['never_transcode'] or format == 'raw' or maxBitrate <= 0 or item.bitrate <= maxBitrate * 1000:
+    if app.config['never_transcode'] or req_format == 'raw' or max_bitrate <= 0 or item.bitrate <= max_bitrate * 1000:
         return stream.direct(item_path)
     else:
-        return stream.try_transcode(item_path, maxBitrate)
+        return stream.try_transcode(item_path, max_bitrate)
 
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])

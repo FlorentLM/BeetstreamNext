@@ -17,7 +17,6 @@ def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
     }
     return payload
 
-'/rest/search3.view&query=""&songCount=500&songOffset=0&artistCount=0&albumCount=0'
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def get_album():

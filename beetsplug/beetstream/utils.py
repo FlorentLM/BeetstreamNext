@@ -202,24 +202,58 @@ def map_playlist(playlist):
 # === Core response-formatting functions ===
 
 def dict_to_xml(tag: str, data):
-    """ Recursively converts a json-like dict to an XML tree """
+    """
+    Converts a json-like dict to an XML tree where every key/value pair
+    with a simple value is mapped as an attribute.... unless if adding the attribute
+    would create a duplicate, in which case a new element with that tag is created instead
+    """
     elem = ET.Element(tag)
+
     if isinstance(data, dict):
         for key, val in data.items():
-            if isinstance(val, (dict, list)):
+            if not isinstance(val, (dict, list)):
+                # If the attribute already exists, create a child element
+                if key in elem.attrib:
+                    child = ET.Element(key)
+                    child.text = str(val)
+                    elem.append(child)
+                else:
+                    elem.set(key, str(val))
+            elif isinstance(val, list):
+                for item in val:
+                    # For each item in the list, process depending on type
+                    if not isinstance(item, (dict, list)):
+                        if key in elem.attrib:
+                            child = ET.Element(key)
+                            child.text = str(item)
+                            elem.append(child)
+                        else:
+                            elem.set(key, str(item))
+                    else:
+                        child = dict_to_xml(key, item)
+                        elem.append(child)
+            elif isinstance(val, dict):
                 child = dict_to_xml(key, val)
                 elem.append(child)
-            else:
-                child = ET.Element(key)
-                child.text = str(val)
-                elem.append(child)
+
     elif isinstance(data, list):
+        # when data is a list, each item becomes a new child
         for item in data:
-            child = dict_to_xml(tag, item)
-            elem.append(child)
+            if not isinstance(item, (dict, list)):
+                if tag in elem.attrib:
+                    child = ET.Element(tag)
+                    child.text = str(item)
+                    elem.append(child)
+                else:
+                    elem.set(tag, str(item))
+            else:
+                child = dict_to_xml(tag, item)
+                elem.append(child)
     else:
         elem.text = str(data)
+
     return elem
+
 
 def jsonpify(format: str, data: dict):
     if format == 'jsonp':

@@ -72,7 +72,7 @@ def album_list_2():
 def get_album_list(ver=None):
 
     r = flask.request.values
-    '/rest/getAlbumList2.view?v=1.13.0&c=subtracks&u=ttj&s=.ZQ8&t=7b041defbd997bfa4a8b71724cfc5f6a&type=frequent&size=500&offset=0'
+
     sort_by = r.get('type', 'alphabeticalByName')
     size = int(r.get('size', 10))
     offset = int(r.get('offset', 0))

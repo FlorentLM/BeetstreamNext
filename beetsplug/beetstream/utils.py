@@ -116,7 +116,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         # 'starred': timestamp_to_iso(album.get('last_liked_album', 0)),
         'userRating': album.get('stars_rating_album', 0),
 
-        'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
+        # 'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
         'isCompilation': bool(album.get('comp', False)),
 
         # These are only needed when part of a directory response
@@ -224,12 +224,12 @@ def map_song(song_object):
     }
     subsonic_song.update(song_specific)
 
-    # subsonic_song['replayGain'] = {
-    #         'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
-    #         'albumGain': (song.get('rg_album_gain') or 0) or ((song.get('r128_album_gain') or 107) - 107),
-    #         'trackPeak': song.get('rg_track_peak', 0),
-    #         'albumPeak': song.get('rg_album_peak', 0)
-    # }
+    subsonic_song['replayGain'] = {
+            'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
+            'albumGain': (song.get('rg_album_gain') or 0) or ((song.get('r128_album_gain') or 107) - 107),
+            'trackPeak': song.get('rg_track_peak', 0),
+            'albumPeak': song.get('rg_album_peak', 0)
+    }
 
     # Add remaining filetype-related elements with fallbacks
     subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
@@ -252,17 +252,17 @@ def map_artist(artist_name, with_albums=True):
         # 'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg",
         "userRating": 0,
 
-        # "roles": [
-        #     "artist",
-        #     "albumartist",
-        #     "composer"
-        # ],
+        "roles": [
+            "artist",
+            "albumartist",
+            "composer"
+        ],
 
         # This is only needed when part of a Child response
         'mediaType': 'artist'
     }
 
-    albums = list(g.lib.albums(f'albumartist:{artist_name}'))
+    albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
     subsonic_artist['albumCount'] = len(albums)
     if albums:
         subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')

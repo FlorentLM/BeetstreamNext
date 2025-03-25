@@ -63,16 +63,47 @@ def send_album_art(album_id, size=None):
     mbid = album.get('mb_albumid')
     if mbid:
         art_url = f'https://coverartarchive.org/release/{mbid}/front'
+        available_sizes = [250, 500, 1200]
         if size:
             # If requested size is one of coverarchive's available sizes, query it directly
-            if size in (250, 500, 1200):
+            if size in available_sizes:
                 return flask.redirect(f'{art_url}-{size}')
-            response = requests.get(art_url)
+            # Otherwise, get the smallest available size that is greater than the requested size
+            next_size = next((s for s in sorted(available_sizes) if s > size), None)
+            if next_size is None:
+                next_size = max(available_sizes)
+            response = requests.get(f'{art_url}-{next_size}')
             cover = resize_image(BytesIO(response.content), size)
             return flask.send_file(cover, mimetype='image/jpeg')
         return flask.redirect(art_url)
 
     return None
+
+
+def send_artist_image(artist_id, size=None):
+
+    # TODO - Load from disk if available
+    # TODO - Maybe make a separate plugin to save the deezer data permanently to disk??
+
+    artist_name = sub_to_beets_artist(artist_id)
+    dz_data = query_deezer(artist_name, 'artist')
+
+    if dz_data:
+        artist_image_url = dz_data.get('picture_small', '')
+        available_sizes = [56, 250, 500, 1000]
+        if artist_image_url:
+            if size:
+                # If requested size is one of coverarchive's available sizes, query it directly
+                if size in available_sizes:
+                    return flask.redirect(artist_image_url.replace('56x56', f'{size}x{size}'))
+                # Otherwise, get the smallest available size that is greater than the requested size
+                next_size = next((s for s in sorted(available_sizes) if s >= size), None)
+                if next_size is None:
+                    next_size = max(available_sizes)
+                response = requests.get(artist_image_url.replace('56x56', f'{next_size}x{next_size}'))
+                cover = resize_image(BytesIO(response.content), size)
+                return flask.send_file(cover, mimetype='image/jpeg')
+            return flask.redirect(artist_image_url)
 
 
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
@@ -110,13 +141,9 @@ def get_cover_art():
 
     # artist requests
     elif req_id.startswith(ART_ID_PREF):
-        img = Image.open('./artist.png')
-        if size:
-            img.thumbnail((size, size))
-        buf = BytesIO()
-        img.save(buf, format='JPEG')
-        buf.seek(0)
-        return flask.send_file(buf, mimetype='image/jpeg')
+        response = send_artist_image(req_id, size=None)
+        if response is not None:
+            return response
 
     # Fallback: return empty XML document on error
     return subsonic_response({}, 'xml', failed=True)

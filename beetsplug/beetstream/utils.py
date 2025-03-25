@@ -16,6 +16,7 @@ import shutil
 import importlib
 from functools import partial
 import requests
+import urllib.parse
 
 
 API_VERSION = '1.16.1'
@@ -240,16 +241,15 @@ def map_song(song_object):
 
 
 def map_artist(artist_name, with_albums=True):
-    subsonid_artist_id = beets_to_sub_artist(artist_name)
+    subsonic_artist_id = beets_to_sub_artist(artist_name)
 
     subsonic_artist = {
-        'id': subsonid_artist_id,
+        'id': subsonic_artist_id,
         'name': artist_name,
         'sortName': artist_name,
         'title': artist_name,
         # "starred": "2021-07-03T06:15:28.757Z", # nothing if not starred
-        'coverArt': subsonid_artist_id,
-        # 'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg",
+        'coverArt': subsonic_artist_id,
         "userRating": 0,
 
         "roles": [
@@ -261,6 +261,10 @@ def map_artist(artist_name, with_albums=True):
         # This is only needed when part of a Child response
         'mediaType': 'artist'
     }
+
+    dz_data = query_deezer(artist_name, 'artist')
+    if dz_data:
+        subsonic_artist['artistImageUrl'] = dz_data.get('picture_big', '')
 
     albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
     subsonic_artist['albumCount'] = len(albums)
@@ -465,8 +469,23 @@ def query_musicbrainz(mbid:str, type: str):
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
 
-    headers = {'User-Agent': 'Beetstream/1.4.5 ( https://github.com/FlorentLM/Beetstream )'}
+    headers = {'User-Agent': f'Beetstream/{BEETSTREAM_VERSION} ( https://github.com/FlorentLM/Beetstream )'}
     params = {'fmt': 'json'}
+
+    if types_mb[type] == 'artist':
+        params['inc'] = 'annotation'
 
     response = requests.get(endpoint, headers=headers, params=params)
     return response.json()
+
+
+def query_deezer(query:str, type: str):
+
+    query_urlsafe = urllib.parse.quote_plus(query.replace(' ', '-'))
+    endpoint = f'https://api.deezer.com/{type}/{query_urlsafe}'
+
+    headers = {'User-Agent': f'Beetstream/{BEETSTREAM_VERSION} ( https://github.com/FlorentLM/Beetstream )'}
+
+    response = requests.get(endpoint, headers=headers)
+
+    return response.json() if response.ok else {}

@@ -16,7 +16,7 @@ def artist_payload(artist_id: str) -> dict:
         "artist": {
             "id": artist_id,
             "name": artist_name,
-            "child": list(map(map_album, albums))
+            "album": list(map(map_album, albums))
         }
     }
     return payload

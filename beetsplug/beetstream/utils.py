@@ -268,7 +268,7 @@ def map_artist(artist_name, with_albums=True):
         subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
 
     if with_albums:
-        subsonic_artist['song'] = list(map(partial(map_album, with_songs=False), albums))
+        subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
 
     return subsonic_artist
 

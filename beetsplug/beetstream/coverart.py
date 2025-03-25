@@ -110,8 +110,13 @@ def get_cover_art():
 
     # artist requests
     elif req_id.startswith(ART_ID_PREF):
-        # TODO
-        pass
+        img = Image.open('./artist.png')
+        if size:
+            img.thumbnail((size, size))
+        buf = BytesIO()
+        img.save(buf, format='JPEG')
+        buf.seek(0)
+        return flask.send_file(buf, mimetype='image/jpeg')
 
     # Fallback: return empty XML document on error
     return subsonic_response({}, 'xml', failed=True)

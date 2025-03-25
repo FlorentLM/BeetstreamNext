@@ -14,6 +14,7 @@ import xml.etree.cElementTree as ET
 from xml.dom import minidom
 import shutil
 import importlib
+from functools import partial
 
 
 API_VERSION = '1.16.1'
@@ -240,19 +241,28 @@ def map_song(song_object):
 
 def map_artist(artist_name, with_albums=True):
     subsonid_artist_id = bts_artist(artist_name)
-    return {
+
+    subsonic_artist = {
         'id': subsonid_artist_id,
         'name': artist_name,
         'sortName': artist_name,
         'title': artist_name,
         # "starred": "2021-07-03T06:15:28.757Z", # nothing if not starred
-        # 'coverArt': artist_id,
+        'coverArt': subsonid_artist_id,
         'albumCount': 1,
-        'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg",
+        # 'artistImageUrl': "https://t4.ftcdn.net/jpg/00/64/67/63/360_F_64676383_LdbmhiNM6Ypzb3FM4PPuFP9rHe7ri8Ju.jpg",
 
         # This is only needed when part of a Child response
         'mediaType': 'artist'
     }
+
+    albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+    subsonic_artist['albumCount'] = len(albums)
+
+    if with_albums:
+        subsonic_artist['song'] = list(map(partial(map_album, with_songs=False), albums))
+
+    return subsonic_artist
 
 def map_playlist(playlist):
     return {

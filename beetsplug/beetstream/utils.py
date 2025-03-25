@@ -41,25 +41,25 @@ elif FFMPEG_BIN:
 # These IDs are sent to the client once (when it accesses endpoints such as getArtists or getAlbumList
 # and the client will then use these to access a specific item via endpoints that need an ID
 
-def bts_artist(beet_artist_name):
+def beets_to_sub_artist(beet_artist_name):
     base64_name = base64.urlsafe_b64encode(str(beet_artist_name).encode('utf-8'))
     return f"{ART_ID_PREF}{base64_name.rstrip(b"=").decode('utf-8')}"
 
-def stb_artist(subsonic_artist_id):
+def sub_to_beets_artist(subsonic_artist_id):
     subsonic_artist_id = str(subsonic_artist_id)[len(ART_ID_PREF):]
     padding = 4 - (len(subsonic_artist_id) % 4)
     return base64.urlsafe_b64decode(subsonic_artist_id + ("=" * padding)).decode('utf-8')
 
-def bts_album(beet_album_id):
+def beets_to_sub_album(beet_album_id):
     return f'{ALB_ID_PREF}{beet_album_id}'
 
-def stb_album(subsonic_album_id):
+def sub_to_beets_album(subsonic_album_id):
     return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
 
-def bts_song(beet_song_id):
+def beets_to_sub_song(beet_song_id):
     return f'{SNG_ID_PREF}{beet_song_id}'
 
-def stb_song(subsonic_song_id):
+def sub_to_beets_song(subsonic_song_id):
     return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
 
 
@@ -75,7 +75,7 @@ def map_media(beets_object: Union[dict, library.LibModel]):
     # Common fields to albums and songs
     subsonic_media = {
         'artist': artist_name,
-        'artistId': bts_artist(artist_name),
+        'artistId': beets_to_sub_artist(artist_name),
         'displayArtist': artist_name,
         'displayAlbumArtist': artist_name,
         'album': beets_object.get('album', ''),
@@ -102,7 +102,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
     subsonic_album = map_media(album)
 
     beets_album_id = album.get('id', 0)
-    subsonic_album_id = bts_album(beets_album_id)
+    subsonic_album_id = beets_to_sub_album(beets_album_id)
     album_name = album.get('album', '')
 
     album_specific = {
@@ -177,11 +177,11 @@ def map_song(song_object):
 
     subsonic_song = map_media(song)
 
-    song_id = bts_song(song.get('id', 0))
+    song_id = beets_to_sub_song(song.get('id', 0))
     song_name = song.get('title', '')
     song_filepath = song.get('path', b'').decode('utf-8')
 
-    album_id = bts_album(song.get('album_id', 0))
+    album_id = beets_to_sub_album(song.get('album_id', 0))
 
     song_specific = {
         'id': song_id,
@@ -240,7 +240,7 @@ def map_song(song_object):
 
 
 def map_artist(artist_name, with_albums=True):
-    subsonid_artist_id = bts_artist(artist_name)
+    subsonid_artist_id = beets_to_sub_artist(artist_name)
 
     subsonic_artist = {
         'id': subsonid_artist_id,

@@ -85,14 +85,14 @@ def get_cover_art():
 
     # album requests
     if req_id.startswith(ALB_ID_PREF):
-        album_id = stb_album(req_id)
+        album_id = sub_to_beets_album(req_id)
         response = send_album_art(album_id, size)
         if response is not None:
             return response
 
     # song requests
     elif req_id.startswith(SNG_ID_PREF):
-        item_id = stb_song(req_id)
+        item_id = sub_to_beets_song(req_id)
         item = flask.g.lib.get_item(item_id)
         album_id = item.get('album_id')
         if album_id:

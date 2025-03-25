@@ -4,7 +4,7 @@ import flask
 
 
 def song_payload(subsonic_song_id: str) -> dict:
-    beets_song_id = stb_song(subsonic_song_id)
+    beets_song_id = sub_to_beets_song(subsonic_song_id)
     song_item = flask.g.lib.get_item(beets_song_id)
 
     payload = {
@@ -78,7 +78,7 @@ def stream_song():
     max_bitrate = int(r.get('maxBitRate') or 0)
     req_format = r.get('format')
 
-    song_id = stb_song(r.get('id'))
+    song_id = sub_to_beets_song(r.get('id'))
     item = flask.g.lib.get_item(song_id)
 
     item_path = item.get('path', b'').decode('utf-8') if item else ''
@@ -95,7 +95,7 @@ def stream_song():
 def download_song():
     r = flask.request.values
 
-    song_id = stb_song(r.get('id'))
+    song_id = sub_to_beets_song(r.get('id'))
     item = flask.g.lib.get_item(song_id)
 
     return stream.direct(item.path.decode('utf-8'))

@@ -8,7 +8,7 @@ import flask
 
 def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
-    artist_name = stb_artist(subsonic_artist_id)
+    artist_name = sub_to_beets_artist(subsonic_artist_id)
 
     payload = {
         "artist": {
@@ -93,7 +93,7 @@ def artistInfo2():
 
     r = flask.request.values
 
-    artist_name = stb_artist(r.get('id'))
+    artist_name = sub_to_beets_artist(r.get('id'))
 
     payload = {
         "artistInfo2": {

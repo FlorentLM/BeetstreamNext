@@ -1,4 +1,4 @@
-from beetsplug.beetstream.utils import PLY_ID_PREF, genres_formatter, creation_date
+from beetsplug.beetstream.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song
 from beetsplug.beetstream import app
 import flask
 from typing import Union, List
@@ -97,7 +97,7 @@ class Playlist:
                     song = tx.query("SELECT * FROM items WHERE (path) LIKE (?) LIMIT 1", (entry_path.as_posix(),))
 
             if song:
-                self.songs.append(dict(song[0]))
+                self.songs.append(map_song(song[0]))
                 self.duration += int(song[0]['length'] or 0)
 
 

@@ -40,14 +40,7 @@ def get_playlist():
 
         if playlist is not None:
             payload = {
-                'playlist': {
-                    'entry': [
-                        map_song(
-                            flask.g.lib.get_item(int(song['id']))
-                        )
-                        for song in playlist.songs
-                    ]
-                }
+                'playlist': map_playlist(playlist)
             }
             return subsonic_response(payload, r.get('f', 'xml'))
     flask.abort(404)

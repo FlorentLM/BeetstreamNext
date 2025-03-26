@@ -35,7 +35,17 @@ beetstream:
   never_transcode: False
 ```
 
-5) Run with:
+5) Other configuration parameters:
+
+If `fetch_artists_images` is enabled, Beetstream will fetch the artists photos to display in your preferred client. If you enable this, it is recommended to also enable `save_artists_images`.
+Beetstream supports playlists from Beets' **playlist** and **smartplaylist** plugins. But you can also define a Beetstream-specific playlist folder with the `playlist_dir` option .
+```yaml
+    fetch_artists_images: False   # Whether Beetstream should fetch artists photos for clients that support this
+    save_artists_images: False    # Save artists photos to their respective folders in your music library
+    playlist_dir: './path/to/playlists'  # A directory with Beetstream-specific playlists
+```
+
+6) Run with:
 ```
 $ beet beetstream
 ```

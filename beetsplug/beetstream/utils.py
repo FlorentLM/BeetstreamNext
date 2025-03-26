@@ -225,12 +225,12 @@ def map_song(song_object):
     }
     subsonic_song.update(song_specific)
 
-    subsonic_song['replayGain'] = {
-            'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
-            'albumGain': (song.get('rg_album_gain') or 0) or ((song.get('r128_album_gain') or 107) - 107),
-            'trackPeak': song.get('rg_track_peak', 0),
-            'albumPeak': song.get('rg_album_peak', 0)
-    }
+    # subsonic_song['replayGain'] = {
+    #         'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
+    #         'albumGain': (song.get('rg_album_gain') or 0) or ((song.get('r128_album_gain') or 107) - 107),
+    #         'trackPeak': song.get('rg_track_peak', 0),
+    #         'albumPeak': song.get('rg_album_peak', 0)
+    # }
 
     # Add remaining filetype-related elements with fallbacks
     subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
@@ -252,11 +252,11 @@ def map_artist(artist_name, with_albums=True):
         'coverArt': subsonic_artist_id,
         "userRating": 0,
 
-        "roles": [
-            "artist",
-            "albumartist",
-            "composer"
-        ],
+        # "roles": [
+        #     "artist",
+        #     "albumartist",
+        #     "composer"
+        # ],
 
         # This is only needed when part of a Child response
         'mediaType': 'artist'
@@ -276,17 +276,21 @@ def map_artist(artist_name, with_albums=True):
 
     return subsonic_artist
 
+
 def map_playlist(playlist):
-    return {
+    subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
         'songCount': len(playlist.songs),
         'duration': playlist.duration,
         'created': timestamp_to_iso(playlist.ctime),
         'changed': timestamp_to_iso(playlist.mtime),
+        'entry': playlist.songs
+
         # 'owner': 'userA',     # TODO
         # 'public': True,
     }
+    return subsonic_playlist
 
 
 # === Core response-formatting functions ===
@@ -305,20 +309,20 @@ def dict_to_xml(tag: str, data):
                 # If the attribute already exists, create a child element
                 if key in elem.attrib:
                     child = ET.Element(key)
-                    child.text = str(val)
+                    child.text = str(val).lower() if isinstance(val, bool) else str(val)
                     elem.append(child)
                 else:
-                    elem.set(key, str(val))
+                    elem.set(key, str(val).lower() if isinstance(val, bool) else str(val))
             elif isinstance(val, list):
                 for item in val:
                     # For each item in the list, process depending on type
                     if not isinstance(item, (dict, list)):
                         if key in elem.attrib:
                             child = ET.Element(key)
-                            child.text = str(item)
+                            child.text = str(item).lower() if isinstance(item, bool) else str(item)
                             elem.append(child)
                         else:
-                            elem.set(key, str(item))
+                            elem.set(key, str(item).lower() if isinstance(item, bool) else str(item))
                     else:
                         child = dict_to_xml(key, item)
                         elem.append(child)
@@ -332,15 +336,15 @@ def dict_to_xml(tag: str, data):
             if not isinstance(item, (dict, list)):
                 if tag in elem.attrib:
                     child = ET.Element(tag)
-                    child.text = str(item)
+                    child.text = str(item).lower() if isinstance(item, bool) else str(item)
                     elem.append(child)
                 else:
-                    elem.set(tag, str(item))
+                    elem.set(tag, str(item).lower() if isinstance(item, bool) else str(item))
             else:
                 child = dict_to_xml(tag, item)
                 elem.append(child)
     else:
-        elem.text = str(data)
+        elem.text = str(data).lower() if isinstance(data, bool) else str(data)
 
     return elem
 

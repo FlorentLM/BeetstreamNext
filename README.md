@@ -1,4 +1,5 @@
 # Beetstream
+<img alt="Beetstream logo (a beetroot with soundwaves-like leaves)" height="80" src="beetstream.svg" title="Beetstream logo" width="80"/>
 
 Beetstream is a [Beets.io](https://beets.io) plugin that exposes [SubSonic API endpoints](http://www.subsonic.org/pages/api.jsp), allowing you to stream your music everywhere.
 
@@ -37,12 +38,14 @@ beetstream:
 
 5) Other configuration parameters:
 
-If `fetch_artists_images` is enabled, Beetstream will fetch the artists photos to display in your preferred client. If you enable this, it is recommended to also enable `save_artists_images`.
-Beetstream supports playlists from Beets' **playlist** and **smartplaylist** plugins. But you can also define a Beetstream-specific playlist folder with the `playlist_dir` option .
+If `fetch_artists_images` is enabled, Beetstream will fetch the artists photos to display in your client player (if you enable this, it is recommended to also enable `save_artists_images`).
+
+Beetstream supports playlists from Beets' [playlist](https://beets.readthedocs.io/en/stable/plugins/playlist.html) and [smartplaylist](https://beets.readthedocs.io/en/stable/plugins/smartplaylist.html) plugins. You can also define a Beetstream-specific playlist folder with the `playlist_dir` option:
 ```yaml
-    fetch_artists_images: False   # Whether Beetstream should fetch artists photos for clients that support this
-    save_artists_images: False    # Save artists photos to their respective folders in your music library
-    playlist_dir: './path/to/playlists'  # A directory with Beetstream-specific playlists
+beetstream:
+  fetch_artists_images: False   # Whether Beetstream should fetch artists photos when clients request them
+  save_artists_images: False    # Save artists photos to their respective folders in your music library
+  playlist_dir: './path/to/playlists'  # A directory with Beetstream-specific playlists
 ```
 
 6) Run with:
@@ -58,12 +61,7 @@ There is currently no security whatsoever. You can put whatever user and passwor
 
 ### Server and Port
 
-Currently runs on port `8080`. i.e: `https://192.168.1.10:8080`. You can configure it in `~/.config/beets/config.yaml`. Defaults are:
-```yaml
-beetstream:
-  host: 0.0.0.0
-  port: 8080
-```
+Currently runs on port `8080` (i.e.: `https://192.168.1.10:8080`)
 
 ## Supported Clients
 

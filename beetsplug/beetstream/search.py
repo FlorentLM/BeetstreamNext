@@ -5,15 +5,11 @@ from functools import partial
 
 @app.route('/rest/search2', methods=["GET", "POST"])
 @app.route('/rest/search2.view', methods=["GET", "POST"])
-def search2():
-    return _search(ver=2)
 
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
-def search3():
-    return _search(ver=3)
 
-def _search(ver=None):
+def search(ver=None):
     r = flask.request.values
 
     song_count = int(r.get('songCount', 20))
@@ -57,7 +53,7 @@ def _search(ver=None):
     # TODO - do the sort in the SQL query instead?
     artists.sort(key=lambda name: strip_accents(name).upper())
 
-    tag = f'searchResult{ver if ver else ""}'
+    tag = endpoint_to_tag(flask.request.path)
     payload = {
         tag: {
             'artist': list(map(partial(map_artist, with_albums=False), artists)),  # no need to include albums twice

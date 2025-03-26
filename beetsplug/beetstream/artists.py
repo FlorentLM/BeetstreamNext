@@ -30,15 +30,10 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
 @app.route('/rest/getArtists', methods=["GET", "POST"])
 @app.route('/rest/getArtists.view', methods=["GET", "POST"])
-def get_artists():
-    return _artists('artists')
 
 @app.route('/rest/getIndexes', methods=["GET", "POST"])
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
-def get_indexes():
-    return _artists('indexes')
-
-def _artists(version: str):
+def get_artists_or_indexes():
     r = flask.request.values
 
     modified_since = r.get('ifModifiedSince', '')
@@ -50,8 +45,9 @@ def _artists(version: str):
     for artist in artists:
         alphanum_dict[strip_accents(artist[0]).upper()].append(artist)
 
+    tag = endpoint_to_tag(flask.request.path)
     payload = {
-        version: {
+        tag: {
             'ignoredArticles': '',      # TODO - include config from 'the' plugin??
             'index': [
                 {'name': char, 'artist': list(map(map_artist, artists))}
@@ -60,8 +56,7 @@ def _artists(version: str):
         }
     }
 
-    if version == 'indexes':
-
+    if tag == 'indexes':
         with flask.g.lib.transaction() as tx:
             latest = int(tx.query('SELECT added FROM items ORDER BY added DESC LIMIT 1')[0][0])
             # TODO - 'mtime' field?
@@ -73,7 +68,7 @@ def _artists(version: str):
             latest = int(time.time() * 1000)
             app.config['nb_items'] = nb_items
 
-        payload[version]['lastModified'] = latest
+        payload[tag]['lastModified'] = latest
 
     return subsonic_response(payload, r.get('f', 'xml'))
 
@@ -86,6 +81,9 @@ def get_artist():
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
 
     return subsonic_response(payload, r.get('f', 'xml'))
+
+@app.route('/rest/getArtistInfo', methods=["GET", "POST"])
+@app.route('/rest/getArtistInfo.view', methods=["GET", "POST"])
 
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
@@ -104,8 +102,9 @@ def artistInfo2():
     else:
         short_bio = f'wow. much artist. very {artist_name}'
 
+    tag = endpoint_to_tag(flask.request.path)
     payload = {
-        'artistInfo2': {
+        tag: {
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
             'lastFmUrl': f'https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}',

@@ -1,10 +1,8 @@
 # Missing Endpoints
 
 To be implemented:
-- `getArtistInfo`
 - `getSimilarSongs`
 - `getSimilarSongs2`
-- `search`
 
 Could be fun to implement:
 - `createPlaylist`

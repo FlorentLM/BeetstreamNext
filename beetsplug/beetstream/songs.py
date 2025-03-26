@@ -116,21 +116,15 @@ def get_top_songs():
 
 @app.route('/rest/getStarred', methods=["GET", "POST"])
 @app.route('/rest/getStarred.view', methods=["GET", "POST"])
-def get_starred_songs():
-    return _starred_songs()
 
 @app.route('/rest/getStarred2', methods=["GET", "POST"])
 @app.route('/rest/getStarred2.view', methods=["GET", "POST"])
-def get_starred2_songs():
-    return _starred_songs(ver=2)
-
-
-def _starred_songs(ver=None):
+def get_starred_songs(ver=None):
     # TODO
 
     r = flask.request.values
 
-    tag = f'starred{ver if ver else ''}'
+    tag = endpoint_to_tag(flask.request.path)
     payload = {
         tag: {
             'song': []

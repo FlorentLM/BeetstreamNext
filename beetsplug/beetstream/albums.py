@@ -27,15 +27,10 @@ def get_album():
 
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
-def get_album_info():
-    return _album_info()
 
 @app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
-def get_album_info_2():
-    return _album_info(ver=2)
-
-def _album_info(ver=None):
+def get_album_info(ver=None):
     r = flask.request.values
 
     req_id = r.get('id')
@@ -46,7 +41,7 @@ def _album_info(ver=None):
     album_quot = urllib.parse.quote(album.get('album', ''))
     lastfm_url = f'https://www.last.fm/music/{artist_quot}/{album_quot}' if artist_quot and album_quot else ''
 
-    tag = f"albumInfo{ver if ver else ''}"
+    tag = endpoint_to_tag(flask.request.path)
     payload = {
         tag: {
         'musicBrainzId': album.get('mb_albumid', ''),
@@ -60,14 +55,9 @@ def _album_info(ver=None):
 
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
-def album_list():
-    return get_album_list()
 
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
-def album_list_2():
-    return get_album_list(ver=2)
-
 def get_album_list(ver=None):
 
     r = flask.request.values
@@ -122,7 +112,7 @@ def get_album_list(ver=None):
     with flask.g.lib.transaction() as tx:
         albums = tx.query(query, params)
 
-    tag = f"albumList{ver if ver else ''}"
+    tag = endpoint_to_tag(flask.request.path)
     payload = {
         tag: {                        # albumList response does not include songs
             "album": list(map(partial(map_album, with_songs=False), albums))

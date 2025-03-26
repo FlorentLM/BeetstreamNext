@@ -1,6 +1,7 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
 import time
+import urllib.parse
 from collections import defaultdict
 from functools import partial
 import flask
@@ -89,21 +90,35 @@ def get_artist():
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
 def artistInfo2():
-    # TODO
 
     r = flask.request.values
 
     artist_name = sub_to_beets_artist(r.get('id'))
+    first_item = flask.g.lib.items(f'albumartist:{artist_name}')[0]
+    artist_mbid = first_item.get('mb_albumartistid', '')
+
+    if app.config['lastfm_api_key']:
+        data_lastfm = query_lastfm(artist_mbid, 'artist')
+        bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
+        short_bio = trim_bio(bio, char_limit=300)
+    else:
+        short_bio = f'wow. much artist. very {artist_name}'
 
     payload = {
-        "artistInfo2": {
-            "biography": f"wow. much artist. very {artist_name}",
-            "musicBrainzId": "",
-            "lastFmUrl": "",
-            "smallImageUrl": "",
-            "mediumImageUrl": "",
-            "largeImageUrl": ""
+        'artistInfo2': {
+            'biography': short_bio,
+            'musicBrainzId': artist_mbid,
+            'lastFmUrl': f'https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}',
         }
     }
+
+    if app.config['fetch_artists_images']:
+        # TODO - this is not fetching the actual images, maybe we keep it as always on?
+        dz_query = urllib.parse.quote_plus(artist_name.replace(' ', '-'))
+        dz_data = query_deezer(dz_query, 'artist')
+        if dz_data:
+            payload['artistInfo2']['smallImageUrl'] = dz_data.get('picture_medium', ''),
+            payload['artistInfo2']['mediumImageUrl'] = dz_data.get('picture_big', ''),
+            payload['artistInfo2']['largeImageUrl'] = dz_data.get('picture_xl', '')
 
     return subsonic_response(payload, r.get('f', 'xml'))

@@ -17,6 +17,8 @@ import importlib
 from functools import partial
 import requests
 import urllib.parse
+from beetsplug.beetstream import app
+
 
 
 API_VERSION = '1.16.1'
@@ -468,7 +470,7 @@ def creation_date(filepath):
                 return stat.st_mtime
 
 
-def query_musicbrainz(mbid:str, type: str):
+def query_musicbrainz(mbid: str, type: str):
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
@@ -480,10 +482,10 @@ def query_musicbrainz(mbid:str, type: str):
         params['inc'] = 'annotation'
 
     response = requests.get(endpoint, headers=headers, params=params)
-    return response.json()
+    return response.json() if response.ok else {}
 
 
-def query_deezer(query:str, type: str):
+def query_deezer(query: str, type: str):
 
     query_urlsafe = urllib.parse.quote_plus(query.replace(' ', '-'))
     endpoint = f'https://api.deezer.com/{type}/{query_urlsafe}'
@@ -493,3 +495,41 @@ def query_deezer(query:str, type: str):
     response = requests.get(endpoint, headers=headers)
 
     return response.json() if response.ok else {}
+
+
+def query_lastfm(query: str, type: str, mbid=True):
+    if not app.config['lastfm_api_key']:
+        return {}
+
+    query_lastfm = query.replace(' ', '+')
+    endpoint = 'http://ws.audioscrobbler.com/2.0/'
+
+    params = {
+        'format': 'json',
+        'method': f'{type}.getInfo',
+        'api_key': app.config['lastfm_api_key'],
+        }
+
+    if mbid:
+        params['mbid'] = query
+    elif query_lastfm and type != 'user':
+        params[type] = query_lastfm
+
+
+    headers = {'User-Agent': f'Beetstream/{BEETSTREAM_VERSION} ( https://github.com/FlorentLM/Beetstream )'}
+    response = requests.get(endpoint, headers=headers, params=params)
+
+    return response.json() if response.ok else {}
+
+
+def trim_bio(text, char_limit=300):
+    if len(text) <= char_limit:
+        return text
+
+    snippet = text[:char_limit]
+    period_index = text.find(".", char_limit)
+
+    if period_index != -1:
+        snippet = text[:period_index + 1]
+
+    return snippet

@@ -58,6 +58,8 @@ class BeetstreamPlugin(BeetsPlugin):
             'reverse_proxy': False,
             'include_paths': False,
             'never_transcode': False,
+            'fetch_artists_images': False,
+            'save_artists_images': False,
             'playlist_dir': '',
         })
 
@@ -85,6 +87,8 @@ class BeetstreamPlugin(BeetsPlugin):
             if args:
                 self.config['port'] = int(args.pop(0))
 
+            app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(False)
+            app.config['save_artists_images'] = self.config['save_artists_images'].get(False)
             app.config['root_directory'] = Path(config['directory'].get())
 
             # Total number of items in the Beets database (only used to detect deletions in getIndexes endpoint)

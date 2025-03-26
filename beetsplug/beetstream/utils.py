@@ -262,9 +262,9 @@ def map_artist(artist_name, with_albums=True):
         'mediaType': 'artist'
     }
 
-    dz_data = query_deezer(artist_name, 'artist')
-    if dz_data:
-        subsonic_artist['artistImageUrl'] = dz_data.get('picture_big', '')
+    # dz_data = query_deezer(artist_name, 'artist')
+    # if dz_data:
+    #     subsonic_artist['artistImageUrl'] = dz_data.get('picture_big', '')
 
     albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
     subsonic_artist['albumCount'] = len(albums)

@@ -86,8 +86,29 @@ def send_artist_image(artist_id, size=None):
     # TODO - Maybe make a separate plugin to save the deezer data permanently to disk??
 
     artist_name = sub_to_beets_artist(artist_id)
-    dz_data = query_deezer(artist_name, 'artist')
 
+    local_folder = app.config['root_directory'] / artist_name
+    local_image_path = local_folder / f'{artist_name}.jpg'
+
+    # First, check if we have the image already downloaded
+    if app.config['save_artists_images'] and not local_image_path.is_file():
+        dz_data = query_deezer(artist_name, 'artist')
+        if dz_data:
+            artist_image_url = dz_data.get('picture_xl', '')
+            response = requests.get(artist_image_url)
+            if response.ok:
+                img = Image.open(BytesIO(response.content))
+                img.save(local_image_path)
+
+    # If we have the image locally, serve it
+    if os.path.isfile(local_image_path):
+        if size:
+            cover = resize_image(local_image_path, size)
+            return flask.send_file(cover, mimetype='image/jpeg')
+        return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
+
+    # No local image, and no need to cache - Query deezer
+    dz_data = query_deezer(artist_name, 'artist')
     if dz_data:
         artist_image_url = dz_data.get('picture_small', '')
         available_sizes = [56, 250, 500, 1000]
@@ -140,8 +161,8 @@ def get_cover_art():
                 return flask.send_file(cover, mimetype='image/jpeg')
 
     # artist requests
-    elif req_id.startswith(ART_ID_PREF):
-        response = send_artist_image(req_id, size=None)
+    elif req_id.startswith(ART_ID_PREF) and app.config['fetch_artists_images']:
+        response = send_artist_image(req_id, size=size)
         if response is not None:
             return response
 

@@ -1,5 +1,6 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app
+from beetsplug.beetstream import authentication
 import flask
 
 
@@ -12,4 +13,6 @@ import flask
 @app.route('/rest/ping.view', methods=["GET", "POST"])
 def ping():
     r = flask.request.values
+    authentication.authenticate(r)
+
     return subsonic_response({}, r.get('f', 'xml'))

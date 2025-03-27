@@ -45,6 +45,8 @@ import beetsplug.beetstream.search
 import beetsplug.beetstream.songs
 import beetsplug.beetstream.users
 import beetsplug.beetstream.general
+import beetsplug.beetstream.authentication
+
 
 # Plugin hook
 class BeetstreamPlugin(BeetsPlugin):
@@ -62,7 +64,9 @@ class BeetstreamPlugin(BeetsPlugin):
             'save_artists_images': False,
             'lastfm_api_key': '',
             'playlist_dir': '',
+            'users_storage': Path(config['library'].get()).parent / 'beetstream_users.bin',
         })
+        self.config['lastfm_api_key'].redact = True
 
     item_types = {
         # We use the same fields as the MPDStats plugin for interoperability
@@ -78,10 +82,34 @@ class BeetstreamPlugin(BeetsPlugin):
     # }
 
     def commands(self):
-        cmd = ui.Subcommand('beetstream', help='run Beetstream server, exposing SubSonic API')
-        cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='debug mode')
+        cmd = ui.Subcommand('beetstream', help='run Beetstream server, exposing OpenSubsonic API')
+        cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='Debug mode')
+        cmd.parser.add_option('-k', '--key', action='store_true', default=False, help='Generate a key to store passwords')
 
         def func(lib, opts, args):
+            if opts.key:
+                users_storage = Path(self.config['users_storage'].get())
+
+                if not users_storage.is_file():
+                    key = authentication.generate_key()
+                    print(f'Here is your new key (store it safely): {key}')
+                    yn_input = input('No existing users, create one? [y/n]: ')
+                    if 'y' in yn_input.lower():
+                        username = input('Username: ')
+                        password = input('Password: ')
+                        success = authentication.update_user(users_storage, key, {username: password})
+                        if success:
+                            print('User created.')
+                else:
+                    yn_input = input('Users storage file exists, update key? [y/n]: ')
+                    if 'y' in yn_input.lower():
+                        current_key = input('Current key: ').encode()
+                        new_key = authentication.generate_key()
+                        success = authentication.update_key(users_storage, current_key, new_key)
+                        if success:
+                            print(f'Key updated (store it safely): {new_key.decode()}')
+                return
+
             args = ui.decargs(args)
             if args:
                 self.config['host'] = args.pop(0)
@@ -94,6 +122,7 @@ class BeetstreamPlugin(BeetsPlugin):
             app.config['save_artists_images'] = self.config['save_artists_images'].get(False)
 
             app.config['root_directory'] = Path(config['directory'].get())
+            app.config['users_storage'] = Path(self.config['users_storage'].get())
 
             # Total number of items in the Beets database (only used to detect deletions in getIndexes endpoint)
             # We initialise to +inf at Beetstream start, so the real count is set the first time a client queries

@@ -53,7 +53,12 @@ def search(ver=None):
     # TODO - do the sort in the SQL query instead?
     artists.sort(key=lambda name: strip_accents(name).upper())
 
-    tag = flask.request.path.rsplit('.', 1)[0][6:]
+    if flask.request.path.rsplit('.', 1)[0][6:] == 'search2':
+        tag = 'searchResult2'
+    elif flask.request.path.rsplit('.', 1)[0][6:] == 'search3':
+        tag = 'searchResult3'
+    else:
+        tag = 'searchResult'
     payload = {
         tag: {
             'artist': list(map(partial(map_artist, with_albums=False), artists)),  # no need to include albums twice

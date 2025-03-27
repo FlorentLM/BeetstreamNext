@@ -394,9 +394,6 @@ def subsonic_response(data: dict = {}, resp_fmt: str = 'xml', failed=False):
 
 # === Various other utility functions ===
 
-def endpoint_to_tag(endpoint):
-    tag = endpoint[9:].rsplit('.', 1)[0]
-    return tag[0].lower() + tag[1:]
 
 def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')

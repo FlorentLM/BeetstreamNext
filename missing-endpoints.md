@@ -1,9 +1,5 @@
 # Missing Endpoints
 
-To be implemented:
-- `getSimilarSongs`
-- `getSimilarSongs2`
-
 Could be fun to implement:
 - `createPlaylist`
 - `updatePlaylist`

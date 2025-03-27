@@ -198,7 +198,7 @@ def map_song(song_object):
         'path': song_filepath if os.path.isfile(song_filepath) else '',
 
         'played': timestamp_to_iso(song.get('last_played', 0)),
-        'starred': timestamp_to_iso(song.get('last_liked', 0)),
+        # 'starred': timestamp_to_iso(song.get('last_liked', 0)),
         'playCount': song.get('play_count', 0),
         'userRating': song.get('stars_rating', 0),
 
@@ -273,8 +273,8 @@ def map_artist(artist_name, with_albums=True):
     if albums:
         subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
 
-    if with_albums:
-        subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
+        if with_albums:
+            subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
 
     return subsonic_artist
 
@@ -501,7 +501,7 @@ def query_deezer(query: str, type: str):
     return response.json() if response.ok else {}
 
 
-def query_lastfm(query: str, type: str, mbid=True):
+def query_lastfm(query: str, type: str, method: str = 'info', mbid=True):
     if not app.config['lastfm_api_key']:
         return {}
 
@@ -510,7 +510,7 @@ def query_lastfm(query: str, type: str, mbid=True):
 
     params = {
         'format': 'json',
-        'method': f'{type}.getInfo',
+        'method': f'{type}.get{method.title()}',
         'api_key': app.config['lastfm_api_key'],
         }
 
@@ -526,7 +526,7 @@ def query_lastfm(query: str, type: str, mbid=True):
     return response.json() if response.ok else {}
 
 
-def trim_bio(text, char_limit=300):
+def trim_text(text, char_limit=300):
     if len(text) <= char_limit:
         return text
 

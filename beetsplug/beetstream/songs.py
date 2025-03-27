@@ -1,6 +1,10 @@
 from beetsplug.beetstream.utils import *
 from beetsplug.beetstream import app, stream
 import flask
+import re
+
+
+artists_separators = re.compile(r', | & ')
 
 
 def song_payload(subsonic_song_id: str) -> dict:
@@ -128,6 +132,94 @@ def get_starred_songs(ver=None):
     payload = {
         tag: {
             'song': []
+        }
+    }
+    return subsonic_response(payload, r.get('f', 'xml'))
+
+
+@app.route('/rest/getSimilarSongs', methods=["GET", "POST"])
+@app.route('/rest/getSimilarSongs.view', methods=["GET", "POST"])
+
+@app.route('/rest/getSimilarSongs2', methods=["GET", "POST"])
+@app.route('/rest/getSimilarSongs2.view', methods=["GET", "POST"])
+def get_similar_songs():
+
+    r = flask.request.values
+
+    req_id = r.get('id')
+    limit = r.get('count', 50)
+
+    if req_id.startswith(ART_ID_PREF):
+        artist_name = sub_to_beets_artist(req_id)
+        # grab the artist's mbid
+        with flask.g.lib.transaction() as tx:
+            mbid_artist = tx.query(f""" SELECT mb_artistid FROM items WHERE albumartist LIKE '{artist_name}' LIMIT 1 """)
+    else:
+        flask.abort(404)    # just for now
+
+    similar_artists = {}
+
+    # If we can ask lastfm
+    if app.config['lastfm_api_key']:
+        # Query last.fm for similar artists and parse the response
+        if mbid_artist:
+            lastfm_resp = query_lastfm(query=mbid_artist[0][0], type='artist', method='similar', mbid=True)
+        else:
+            lastfm_resp = query_lastfm(query=artist_name, type='artist', method='similar', mbid=False)
+
+        if lastfm_resp:
+
+            similar_artists = {
+                artist.get('name'): artist.get('mbid', '')
+                for artist in lastfm_resp.get('similarartists', {}).get('artist', [])
+            }
+
+    # Add the requested artist (will be the only fallback if no lastfm key available)
+    similar_artists[artist_name] = mbid_artist[0][0] if mbid_artist else ''
+
+    # Build up a humongous SQL query to get everything with related artists
+    mbid_fields = ['mb_artistid', 'mb_artistids']
+    name_fields = ['artist', 'artists', 'composer', 'lyricist']
+    conditions = []
+    params = []
+    for name, mbid in similar_artists.items():
+        if mbid:
+            # When we have an mbid, match against all relevant mbid fields
+            sub_conditions = []
+            # Check each mbid field for an exact match
+            for field in mbid_fields:
+                sub_conditions.append(f"{field} = ?")
+                params.append(mbid)
+            # Also check each name field with a LIKE condition
+            for field in name_fields:
+                sub_conditions.append(f"{field} LIKE ?")
+                params.append(f"%{name}%")
+            conditions.append("(" + " OR ".join(sub_conditions) + ")")
+        else:
+            # no mbid: typically with lastfm responses that's bc the entry is several artists in a collab
+            parts = re.split(artists_separators, name)
+            sub_conditions_outer = []
+            for part in parts:
+                sub_conditions_inner = []
+                for field in name_fields:
+                    sub_conditions_inner.append(f"{field} LIKE ?")
+                    params.append(f"%{part}%")
+                sub_conditions_outer.append("(" + " OR ".join(sub_conditions_inner) + ")")
+            conditions.append("(" + " OR ".join(sub_conditions_outer) + ")")
+
+    # we also let SQL remove duplicate rows using DISTINCT, and apply the limit there directly
+    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"
+    params.append(limit)
+
+    # Run the single big SQL query
+    with flask.g.lib.transaction() as tx:
+        beets_results = list(tx.query(query, params))
+
+    # and finally reply to the client
+    tag = endpoint_to_tag(flask.request.path)
+    payload = {
+        tag: {
+            'song': list(map(map_song, beets_results))
         }
     }
     return subsonic_response(payload, r.get('f', 'xml'))

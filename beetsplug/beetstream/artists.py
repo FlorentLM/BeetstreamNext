@@ -98,7 +98,7 @@ def artistInfo2():
     if app.config['lastfm_api_key']:
         data_lastfm = query_lastfm(artist_mbid, 'artist')
         bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
-        short_bio = trim_bio(bio, char_limit=300)
+        short_bio = trim_text(bio, char_limit=300)
     else:
         short_bio = f'wow. much artist. very {artist_name}'
 
@@ -116,8 +116,8 @@ def artistInfo2():
         dz_query = urllib.parse.quote_plus(artist_name.replace(' ', '-'))
         dz_data = query_deezer(dz_query, 'artist')
         if dz_data:
-            payload['artistInfo2']['smallImageUrl'] = dz_data.get('picture_medium', ''),
-            payload['artistInfo2']['mediumImageUrl'] = dz_data.get('picture_big', ''),
-            payload['artistInfo2']['largeImageUrl'] = dz_data.get('picture_xl', '')
+            payload[tag]['smallImageUrl'] = dz_data.get('picture_medium', ''),
+            payload[tag]['mediumImageUrl'] = dz_data.get('picture_big', ''),
+            payload[tag]['largeImageUrl'] = dz_data.get('picture_xl', '')
 
     return subsonic_response(payload, r.get('f', 'xml'))

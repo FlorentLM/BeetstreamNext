@@ -41,7 +41,7 @@ def get_album_info(ver=None):
     album_quot = urllib.parse.quote(album.get('album', ''))
     lastfm_url = f'https://www.last.fm/music/{artist_quot}/{album_quot}' if artist_quot and album_quot else ''
 
-    tag = endpoint_to_tag(flask.request.path)
+    tag = 'albumInfo2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'albumInfo'
     payload = {
         tag: {
         'musicBrainzId': album.get('mb_albumid', ''),
@@ -112,7 +112,7 @@ def get_album_list(ver=None):
     with flask.g.lib.transaction() as tx:
         albums = tx.query(query, params)
 
-    tag = endpoint_to_tag(flask.request.path)
+    tag = 'albumList2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'albumList'
     payload = {
         tag: {                        # albumList response does not include songs
             "album": list(map(partial(map_album, with_songs=False), albums))

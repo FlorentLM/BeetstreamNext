@@ -108,13 +108,40 @@ def download_song():
 @app.route('/rest/getTopSongs', methods=["GET", "POST"])
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
 def get_top_songs():
-    # TODO - Use the play_count, and/or link with Last.fm or ListenBrainz
 
     r = flask.request.values
 
-    payload = {
-        'topSongs': {}
-    }
+    req_id = r.get('id', '')
+
+    payload = {'topSongs': {'song': []}}
+
+    if req_id.startswith(ART_ID_PREF):
+        artist_name = sub_to_beets_artist(req_id)
+        # grab the artist's mbid
+        with flask.g.lib.transaction() as tx:
+            mbid_artist = tx.query(f""" SELECT mb_artistid FROM items WHERE albumartist LIKE '{artist_name}' LIMIT 1 """)
+
+        if app.config['lastfm_api_key']:
+            # Query last.fm for top tracks for this artist and parse the response
+            if mbid_artist:
+                lastfm_resp = query_lastfm(query=mbid_artist[0][0], type='artist', method='TopTracks', mbid=True)
+            else:
+                lastfm_resp = query_lastfm(query=artist_name, type='artist', method='TopTracks', mbid=False)
+
+            if lastfm_resp:
+                beets_results = [flask.g.lib.items(f'title:{t.get('name', '').replace("'", "")}')
+                                 for t in lastfm_resp.get('toptracks', {}).get('track', [])]
+                top_tracks_available = [track[0] for track in beets_results if track]
+
+                payload = {
+                    'topSongs': {
+                        'song': list(map(map_song, top_tracks_available))
+                    }
+                }
+        else:
+            # TODO - Use the local play_count in this case
+            pass
+
     return subsonic_response(payload, r.get('f', 'xml'))
 
 
@@ -128,7 +155,7 @@ def get_starred_songs(ver=None):
 
     r = flask.request.values
 
-    tag = endpoint_to_tag(flask.request.path)
+    tag = 'starred2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'starred'
     payload = {
         tag: {
             'song': []
@@ -231,7 +258,7 @@ def get_similar_songs():
         beets_results = list(tx.query(query, params))
 
     # and finally reply to the client
-    tag = endpoint_to_tag(flask.request.path)
+    tag = 'similarSongs2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'similarSongs'
     payload = {
         tag: {
             'song': list(map(map_song, beets_results))

@@ -6,22 +6,6 @@ from beetsplug.beetstream.songs import song_payload
 import flask
 
 
-subsonic_errors = {
-    0:  'A generic error.',
-    10: 'Required parameter is missing.',
-    20: 'Incompatible Subsonic REST protocol version. Client must upgrade.',
-    30: 'Incompatible Subsonic REST protocol version. Server must upgrade.',
-    40: 'Wrong username or password.',
-    41: 'Token authentication not supported for LDAP users.',
-    42: 'Provided authentication mechanism not supported.',
-    43: 'Multiple conflicting authentication mechanisms provided.',
-    44: 'Invalid API key.',
-    50: 'User is not authorized for the given operation.',
-    # 60: 'The trial period for the Subsonic server is over.',
-    70: 'The requested data was not found.'
-}
-
-
 def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -> dict:
 
     # Only one possible root directory in beets (?), so just return its name

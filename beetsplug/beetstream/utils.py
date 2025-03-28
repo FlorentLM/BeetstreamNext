@@ -359,14 +359,14 @@ def jsonpify(format: str, data: dict):
         return flask.jsonify(data)
 
 
-def subsonic_response(data: dict = {}, resp_fmt: str = 'xml', failed=False):
+def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
     """ Wrap any json-like dict with the subsonic response elements
      and output the appropriate 'format' (json or xml) """
 
     if resp_fmt.startswith('json'):
         wrapped = {
             'subsonic-response': {
-                'status': 'failed' if failed else 'ok',
+                'status': 'ok',
                 'version': API_VERSION,
                 'type': 'Beetstream',
                 'serverVersion': BEETSTREAM_VERSION,
@@ -379,7 +379,61 @@ def subsonic_response(data: dict = {}, resp_fmt: str = 'xml', failed=False):
     else:
         root = dict_to_xml("subsonic-response", data)
         root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'failed' if failed else 'ok')
+        root.set("status", 'ok')
+        root.set("version", API_VERSION)
+        root.set("type", 'Beetstream')
+        root.set("serverVersion", BEETSTREAM_VERSION)
+        root.set("openSubsonic", 'true')
+
+        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
+        pretty_xml = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
+        xml_str = pretty_xml.decode('UTF-8')
+
+        return flask.Response(xml_str, mimetype="text/xml")
+
+
+def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
+
+    subsonic_errors = {
+        0: 'A generic error.',
+        10: 'Required parameter is missing.',
+        20: 'Incompatible Subsonic REST protocol version. Client must upgrade.',
+        30: 'Incompatible Subsonic REST protocol version. Server must upgrade.',
+        40: 'Wrong username or password.',
+        41: 'Token authentication not supported.',
+        42: 'Provided authentication mechanism not supported.',
+        43: 'Multiple conflicting authentication mechanisms provided.',
+        44: 'Invalid API key.',
+        50: 'User is not authorized for the given operation.',
+        # 60: 'The trial period for the Subsonic server is over.',
+        70: 'The requested data was not found.'
+    }
+
+    err_payload = {
+        'error': {
+            'code': code,
+            'message': message if message else subsonic_errors[code],
+            # 'helpUrl': ''
+        }
+    }
+
+    if resp_fmt.startswith('json'):
+        wrapped = {
+            'subsonic-response': {
+                'status': 'failed',
+                'version': API_VERSION,
+                'type': 'Beetstream',
+                'serverVersion': BEETSTREAM_VERSION,
+                'openSubsonic': True,
+                **err_payload
+            }
+        }
+        return jsonpify(resp_fmt, wrapped)
+
+    else:
+        root = dict_to_xml("subsonic-response", err_payload)
+        root.set("xmlns", "http://subsonic.org/restapi")
+        root.set("status", 'failed')
         root.set("version", API_VERSION)
         root.set("type", 'Beetstream')
         root.set("serverVersion", BEETSTREAM_VERSION)

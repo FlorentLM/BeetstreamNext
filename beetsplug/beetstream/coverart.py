@@ -168,4 +168,4 @@ def get_cover_art():
             return response
 
     # Fallback: return empty XML document on error
-    return subsonic_response({}, 'xml', failed=True)
+    return subsonic_error(70, message='Covert art not found.', resp_fmt='xml')

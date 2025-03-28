@@ -27,7 +27,7 @@ def search(ver=None):
     if not query:
         if ver == 2:
             # search2 does not support empty queries: return an empty response
-            return subsonic_response({}, r.get('f', 'xml'), failed=True)
+            return subsonic_error(10, r.get('f', 'xml'))
 
         # search3 "must support an empty query and return all the data"
         # https://opensubsonic.netlify.app/docs/endpoints/search3/

@@ -88,7 +88,7 @@ def authenticate(req_values):
         return False
 
     if user and token and salt:
-        pw_digest = hashlib.md5(f'{users_data.get(user, '')}{salt}'.encode('utf-8')).hexdigest().lower()
+        pw_digest = hashlib.md5(f"{users_data.get(user, '')}{salt}".encode('utf-8')).hexdigest().lower()
         is_auth = token == pw_digest
     elif clearpass:
         pw = clearpass.lstrip('enc:')
@@ -96,5 +96,5 @@ def authenticate(req_values):
     else:
         is_auth = False
 
-    print(f"User {user} {'is' if is_auth else 'isn\'t'} authenticated.")
+    print(f"User {user} {'is' if is_auth else 'isn not'} authenticated.")
     return is_auth

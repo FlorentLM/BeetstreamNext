@@ -123,7 +123,7 @@ class PlaylistProvider:
         """ Load playlist data from a file, or from cache if it exists """
 
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f'{PLY_ID_PREF}{'-'.join(filepath.parts[-2:]).lower()}'
+        playlist_id = f"{PLY_ID_PREF}{'-'.join(filepath.parts[-2:]).lower()}"
 
         # Get potential cached version
         playlist = self._playlists.get(playlist_id)

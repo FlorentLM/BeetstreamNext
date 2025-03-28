@@ -129,7 +129,7 @@ def get_top_songs():
                 lastfm_resp = query_lastfm(query=artist_name, type='artist', method='TopTracks', mbid=False)
 
             if lastfm_resp:
-                beets_results = [flask.g.lib.items(f'title:{t.get('name', '').replace("'", "")}')
+                beets_results = [flask.g.lib.items(f"""title:{t.get('name', '').replace("'", "")}""")
                                  for t in lastfm_resp.get('toptracks', {}).get('track', [])]
                 top_tracks_available = [track[0] for track in beets_results if track]
 

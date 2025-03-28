@@ -107,7 +107,7 @@ def artistInfo2():
         tag: {
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
-            'lastFmUrl': f'https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}',
+            'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
         }
     }
 

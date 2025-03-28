@@ -46,12 +46,12 @@ elif FFMPEG_BIN:
 
 def beets_to_sub_artist(beet_artist_name):
     base64_name = base64.urlsafe_b64encode(str(beet_artist_name).encode('utf-8'))
-    return f"{ART_ID_PREF}{base64_name.rstrip(b"=").decode('utf-8')}"
+    return f"{ART_ID_PREF}{base64_name.rstrip(b'=').decode('utf-8')}"
 
 def sub_to_beets_artist(subsonic_artist_id):
     subsonic_artist_id = str(subsonic_artist_id)[len(ART_ID_PREF):]
     padding = 4 - (len(subsonic_artist_id) % 4)
-    return base64.urlsafe_b64decode(subsonic_artist_id + ("=" * padding)).decode('utf-8')
+    return base64.urlsafe_b64decode(subsonic_artist_id + ('=' * padding)).decode('utf-8')
 
 def beets_to_sub_album(beet_album_id):
     return f'{ALB_ID_PREF}{beet_album_id}'

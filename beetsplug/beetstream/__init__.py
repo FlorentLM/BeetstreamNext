@@ -138,7 +138,7 @@ class BeetstreamPlugin(BeetsPlugin):
                                     config['playlist']['playlist_dir'].get(None),           # Playlists plugin
                                     config['smartplaylist']['playlist_dir'].get(None)]      # Smartplaylists plugin
 
-            app.config['playlist_dirs'] = set(Path(d) for d in playlist_directories if d and os.path.isdir(d))
+            app.config['playlist_dirs'] = {i: Path(d) for i, d in enumerate(playlist_directories) if d and os.path.isdir(d)}
 
             # Enable CORS if required
             if self.config['cors']:

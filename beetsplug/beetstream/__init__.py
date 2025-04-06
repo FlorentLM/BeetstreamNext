@@ -73,7 +73,6 @@ class BeetstreamPlugin(BeetsPlugin):
         'play_count': types.INTEGER,
         'last_played': DateType(),
         'last_liked': DateType(),
-        'stars_rating': types.INTEGER    # ... except this one, it's a different rating system from MPDStats' "rating"
     }
 
     # album_types = {

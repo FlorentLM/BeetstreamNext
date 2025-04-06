@@ -1,8 +1,12 @@
 # Missing Endpoints
 
-Could be fun to implement:
+These need the beetstream internal database first:
+- `getUsers`
+- `createUser`
+- `updateUser`
+- `deleteUser`
+- `changePassword`
 - `updatePlaylist`
-- `getLyrics`
 - `getAvatar`
 - `star`
 - `unstar`
@@ -10,12 +14,15 @@ Could be fun to implement:
 - `getBookmarks`
 - `createBookmark`
 - `deleteBookmark`
+
+Could be fun to implement:
+- `getLyrics`
 - `getPlayQueue`
 - `savePlayQueue`
 - `getScanStatus`
 - `startScan`
 
-Video/Radio/Podcast stuff. Not related to this project
+Video/Radio/Podcast stuff:
 - `getVideos`
 - `getVideoInfo`
 - `hls`
@@ -41,10 +48,3 @@ Social stuff. Some could be fun to implement but I'm still not sure:
 - `jukeboxControl`
 - `getChatMessages`
 - `addChatMessage`
-
-Handling users is annoying but may be useful:
-- `getUsers`
-- `createUser`
-- `updateUser`
-- `deleteUser`
-- `changePassword`

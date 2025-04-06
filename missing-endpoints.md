@@ -2,7 +2,6 @@
 
 Could be fun to implement:
 - `updatePlaylist`
-- `deletePlaylist`
 - `getLyrics`
 - `getAvatar`
 - `star`

@@ -79,20 +79,29 @@ def get_random_songs():
 def stream_song():
     r = flask.request.values
 
-    max_bitrate = int(r.get('maxBitRate') or 0)
+    max_bitrate = int(r.get('maxBitRate', 0))
     req_format = r.get('format')
+    estimate_content_length = bool(r.get('estimateContentLength', False))
+    time_offset = float(r.get('timeOffset', 0.0))
+
 
     song_id = sub_to_beets_song(r.get('id'))
-    item = flask.g.lib.get_item(song_id)
+    song = flask.g.lib.get_item(song_id)
+    song_path = song.get('path', b'').decode('utf-8') if song else ''
 
-    item_path = item.get('path', b'').decode('utf-8') if item else ''
-    if not item_path:
-        flask.abort(404)
+    if song_path:
+        if app.config['never_transcode'] or req_format == 'raw' or max_bitrate <= 0 or song.bitrate <= max_bitrate * 1000:
+            response = stream.direct(song_path)
+            est_size = os.path.getsize(song_path) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
+        else:
+            response = stream.try_transcode(song_path, start_at=time_offset, max_bitrate=max_bitrate)
+            est_size = int(((max_bitrate * 1000) / 8) * song.get('length', 0))
 
-    if app.config['never_transcode'] or req_format == 'raw' or max_bitrate <= 0 or item.bitrate <= max_bitrate * 1000:
-        return stream.direct(item_path)
-    else:
-        return stream.try_transcode(item_path, max_bitrate)
+        if response is not None:
+            if estimate_content_length and est_size:
+                response.headers['Content-Length'] = est_size
+
+    subsonic_error(70, message="Song not found.", resp_fmt=r.get('f', 'xml'))
 
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])

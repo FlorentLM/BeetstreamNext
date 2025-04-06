@@ -28,7 +28,12 @@ def get_open_subsonic_extensions():
     r = flask.request.values
 
     payload = {
-        'openSubsonicExtensions': []
+        'openSubsonicExtensions': [
+            {
+                'name': 'transcodeOffset',
+                'versions': [1]
+            },
+        ]
     }
     return subsonic_response(payload, r.get('f', 'xml'))
 

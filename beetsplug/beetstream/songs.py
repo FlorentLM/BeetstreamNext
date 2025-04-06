@@ -100,6 +100,7 @@ def stream_song():
         if response is not None:
             if estimate_content_length and est_size:
                 response.headers['Content-Length'] = est_size
+            return response
 
     subsonic_error(70, message="Song not found.", resp_fmt=r.get('f', 'xml'))
 

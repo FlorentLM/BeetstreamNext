@@ -1,4 +1,5 @@
 from beetsplug.beetstream.utils import *
+import os
 import flask
 from beetsplug.beetstream import app
 from .playlistprovider import PlaylistProvider, Playlist
@@ -80,3 +81,24 @@ def create_playlist():
         return subsonic_response(payload, r.get('f', 'xml'))
 
     return subsonic_error(10, r.get('f', 'xml'))
+
+
+@app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
+@app.route('/rest/deletePlaylist.view', methods=['GET', 'POST'])
+def delete_playlist():
+
+    r = flask.request.values
+
+    playlist_id = r.get('id')
+
+    if playlist_id:
+        # Lazily initialize the playlist provider the first time it's needed
+        if not hasattr(flask.g, 'playlist_provider'):
+            flask.g.playlist_provider = PlaylistProvider()
+        try:
+            flask.g.playlist_provider.delete(playlist_id)
+            return subsonic_response({}, r.get('f', 'xml'))
+        except FileExistsError as e:
+            subsonic_error(70, message=str(e), resp_fmt=r.get('f', 'xml'))
+
+    subsonic_error(70, resp_fmt=r.get('f', 'xml'))

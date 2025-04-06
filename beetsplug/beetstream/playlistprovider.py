@@ -3,7 +3,7 @@ from beetsplug.beetstream import app
 import flask
 from typing import Union, List
 from pathlib import Path
-import time
+import os
 
 
 class Playlist:
@@ -16,7 +16,6 @@ class Playlist:
         self.songs = []
         self.duration = 0
         for entry in self.from_m3u(path):
-
             entry_path = (path.parent / Path(entry['uri'])).resolve()
             entry_id = entry.get('props', {}).get('id', None)
 
@@ -214,3 +213,14 @@ class PlaylistProvider:
 
     def register(self, playlist: Playlist) -> None:
         self._playlists[playlist.id] = playlist
+
+    def delete(self, playlist_id: str) -> None:
+        playlist = self._playlists.get(playlist_id)
+        if playlist:
+            path = Path(playlist.path)
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                err = f"Playlist {path.name} does not exist in {path.parent}."
+                app.logger.warning(err)
+                raise FileExistsError(err)

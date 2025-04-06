@@ -1,7 +1,6 @@
 # Missing Endpoints
 
 Could be fun to implement:
-- `createPlaylist`
 - `updatePlaylist`
 - `deletePlaylist`
 - `getLyrics`

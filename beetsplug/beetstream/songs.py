@@ -81,9 +81,8 @@ def stream_song():
 
     max_bitrate = int(r.get('maxBitRate', 0))
     req_format = r.get('format')
-    estimate_content_length = bool(r.get('estimateContentLength', False))
     time_offset = float(r.get('timeOffset', 0.0))
-
+    estimate_content_length = r.get('estimateContentLength', 'false').lower() == 'true'
 
     song_id = sub_to_beets_song(r.get('id'))
     song = flask.g.lib.get_item(song_id)

@@ -61,7 +61,7 @@ class BeetstreamPlugin(BeetsPlugin):
             'include_paths': False,
             'never_transcode': False,
             'fetch_artists_images': False,
-            'save_artists_images': False,
+            'save_artists_images': True,
             'lastfm_api_key': '',
             'playlist_dir': '',
             'users_storage': Path(config['library'].get()).parent / 'beetstream_users.bin',
@@ -134,11 +134,21 @@ class BeetstreamPlugin(BeetsPlugin):
             app.config['INCLUDE_PATHS'] = self.config['include_paths']
             app.config['never_transcode'] = self.config['never_transcode'].get(False)
 
-            playlist_directories = [self.config['playlist_dir'].get(None),                  # Beetstream's own
-                                    config['playlist']['playlist_dir'].get(None),           # Playlists plugin
-                                    config['smartplaylist']['playlist_dir'].get(None)]      # Smartplaylists plugin
+            possible_paths = [
+                (0, self.config['playlist_dir'].get(None)),  # Beetstream's own
+                (1, config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
+                (2, config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
+            ]
 
-            app.config['playlist_dirs'] = {i: Path(d) for i, d in enumerate(playlist_directories) if d and os.path.isdir(d)}
+            playlist_dirs = {}
+            used_paths = set()
+            for k, path in possible_paths:
+                if path not in used_paths:
+                    playlist_dirs[k] = path
+                    used_paths.add(path)
+                else:
+                    playlist_dirs[k] = None
+            app.config['playlist_dirs'] = playlist_dirs
 
             # Enable CORS if required
             if self.config['cors']:

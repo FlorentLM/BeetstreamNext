@@ -1,12 +1,61 @@
 import sqlite3
 import os
+import base64
+import hashlib
+from pathlib import Path
 from typing import Union
 from cryptography.fernet import Fernet
 
 # TODO - handle these correctly in the init and in a flask.g attribute
-GLOBAL_ENCRYPTION_KEY = os.environ.get('BEETSTREAM_KEY')
-cipher = Fernet(GLOBAL_ENCRYPTION_KEY)
+
 DB_PATH = './beetstream-dev.db'
+
+
+def load_env_file(filepath: Union[Path, str] = ".env") -> None:
+    env_file = Path(filepath)
+
+    if not env_file.is_file():
+        return
+
+    for line in env_file.read_text().splitlines():
+        line = line.strip()
+
+        if not line or line.startswith("#") or '=' not in line:
+            continue
+
+        var, value = line.split('=', 1)
+        os.environ[var.strip()] = value.strip().strip('"').strip("'")
+
+
+def get_cipher() -> Union[Fernet, None]:
+    load_env_file()
+    key = os.environ.get('BEETSTREAM_KEY')
+    try:
+        cipher = Fernet(key)
+    except ValueError:
+        cipher = None
+    return cipher
+
+
+def get_key_hash() -> Union[str, None]:
+    load_env_file()
+    key = os.environ.get('BEETSTREAM_KEY')
+    if not key:
+        return None
+    decoded_key = base64.urlsafe_b64decode(key)
+    return hashlib.sha256(decoded_key).hexdigest()
+
+
+def verify_key():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    result = cur.execute("SELECT value FROM encryption WHERE key = 'key_hash'").fetchone()
+    conn.close()
+
+    stored_hash = result[0] if result else None
+    current_hash = get_key_hash()
+
+    return current_hash == stored_hash
 
 
 def initialise_db():
@@ -14,6 +63,33 @@ def initialise_db():
     cur = conn.cursor()
 
     cur.execute("PRAGMA foreign_keys = ON;")
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS encryption (
+            key TEXT PRIMARY KEY,
+            value TEXT)
+        """)
+
+    cipher = get_cipher()
+
+    if cipher is not None:
+        key_hash = get_key_hash()
+
+        cur.execute(f"""
+                    INSERT INTO encryption (key, value) VALUES ('enabled', 'true');
+                """)
+
+        cur.execute("""
+                        INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
+                    """, ('key_hash', key_hash))
+    else:
+        cur.execute(f"""
+                            INSERT INTO encryption (key, value) VALUES ('enabled', 'false');
+                        """)
+
+        cur.execute("""
+                        INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
+                    """, ('key_hash', None))
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -58,7 +134,7 @@ def initialise_db():
                 position  REAL NOT NULL,
                 comments  TEXT,
                 FOREIGN KEY (username) REFERENCES users (username)
-            );
+            )
         """)
 
     conn.commit()
@@ -76,8 +152,10 @@ def store_userdata(user_dict):
     updates = []
     values = [username]
 
+    cipher = get_cipher()
+
     for key, val in user_dict.items():
-        if key == 'password':
+        if cipher:
             val = cipher.encrypt(val.encode("utf-8"))
         columns.append(key)
         placeholders.append('?')
@@ -137,13 +215,14 @@ def load_userdata(username: str, fields: Union[list[str], tuple[str], set[str], 
 
     user_dict = {k: v for k, v in zip(columns_str, row)}
 
+    cipher = get_cipher()
+
     if 'password' in user_dict.keys():
         password = user_dict.pop('password')
 
-        try:
+        if cipher:
             user_dict['password'] = cipher.decrypt(password).decode("utf-8")
-        except Exception:
-            # TODO - need to deal with exceptions correctly here
-            pass
+        else:
+            user_dict['password'] = password
 
     return user_dict

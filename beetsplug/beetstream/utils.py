@@ -87,9 +87,9 @@ def map_media(beets_object: Union[dict, library.LibModel]):
         'genres': [{'name': g} for g in genres_formatter(beets_object.get('genre', ''))],
         'created': timestamp_to_iso(beets_object.get('added')) or datetime.now().isoformat(),   # default to now?
         'originalReleaseDate': {
-            'year': beets_object.get('original_year', 0),
-            'month': beets_object.get('original_month', 0),
-            'day': beets_object.get('original_day', 0)
+            'year': beets_object.get('original_year', 0) or beets_object.get('year', 0),
+            'month': beets_object.get('original_month', 0) or beets_object.get('month', 0),
+            'day': beets_object.get('original_day', 0) or beets_object.get('day', 0)
         },
         'releaseDate': {
             'year': beets_object.get('year', 0),

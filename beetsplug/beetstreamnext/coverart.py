@@ -1,5 +1,5 @@
-from beetsplug.beetstream.utils import *
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext.utils import *
+from beetsplug.beetstreamnext import app
 import os
 from typing import Union
 import requests
@@ -167,11 +167,11 @@ def get_cover_art():
         if response is not None:
             return response
 
-    # root folder ID or name: serve Beetstream's logo
+    # root folder ID or name: serve BeetstreamNext's logo
     elif req_id == app.config['root_directory'].name or req_id == 'm-0':
         module_dir = os.path.dirname(os.path.abspath(__file__))
-        beetstream_icon = os.path.join(module_dir, '../../beetstream.png')
-        return flask.send_file(beetstream_icon, mimetype=get_mimetype(beetstream_icon))
+        beetstreamnext_icon = os.path.join(module_dir, '../../beetstreamnext.png')
+        return flask.send_file(beetstreamnext_icon, mimetype=get_mimetype(beetstreamnext_icon))
 
     # TODO - We mighe want to serve artists images when a client requests an artist folder by name (for instance Tempo does this)
 

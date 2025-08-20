@@ -17,14 +17,14 @@ import importlib
 from functools import partial
 import requests
 import urllib.parse
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext import app
 
 
 
 API_VERSION = '1.16.1'
-BEETSTREAM_VERSION = '1.4.5'
+BEETSTREAMNEXT_VERSION = '1.4.5'
 
-# Prefixes for Beetstream's internal IDs
+# Prefixes for BeetstreamNext's internal IDs
 ART_ID_PREF = 'ar-'
 ALB_ID_PREF = 'al-'
 SNG_ID_PREF = 'sg-'
@@ -40,7 +40,7 @@ elif FFMPEG_BIN:
     import subprocess
 
 
-# === Beetstream internal IDs makers/readers ===
+# === BeetstreamNext internal IDs makers/readers ===
 # These IDs are sent to the client once (when it accesses endpoints such as getArtists or getAlbumList
 # and the client will then use these to access a specific item via endpoints that need an ID
 
@@ -368,8 +368,8 @@ def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
             'subsonic-response': {
                 'status': 'ok',
                 'version': API_VERSION,
-                'type': 'Beetstream',
-                'serverVersion': BEETSTREAM_VERSION,
+                'type': 'BeetstreamNext',
+                'serverVersion': BEETSTREAMNEXT_VERSION,
                 'openSubsonic': True,
                 **data
             }
@@ -381,7 +381,7 @@ def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
         root.set("xmlns", "http://subsonic.org/restapi")
         root.set("status", 'ok')
         root.set("version", API_VERSION)
-        root.set("type", 'Beetstream')
+        root.set("type", 'BeetstreamNext')
         root.set("serverVersion", BEETSTREAM_VERSION)
         root.set("openSubsonic", 'true')
 
@@ -422,8 +422,8 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
             'subsonic-response': {
                 'status': 'failed',
                 'version': API_VERSION,
-                'type': 'Beetstream',
-                'serverVersion': BEETSTREAM_VERSION,
+                'type': 'BeetstreamNext',
+                'serverVersion': BEETSTREAMNEXT_VERSION,
                 'openSubsonic': True,
                 **err_payload
             }
@@ -435,8 +435,8 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
         root.set("xmlns", "http://subsonic.org/restapi")
         root.set("status", 'failed')
         root.set("version", API_VERSION)
-        root.set("type", 'Beetstream')
-        root.set("serverVersion", BEETSTREAM_VERSION)
+        root.set("type", 'BeetstreamNext')
+        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
         root.set("openSubsonic", 'true')
 
         xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
@@ -530,7 +530,7 @@ def query_musicbrainz(mbid: str, type: str):
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
 
-    headers = {'User-Agent': f'Beetstream/{BEETSTREAM_VERSION} ( https://github.com/FlorentLM/Beetstream )'}
+    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
     params = {'fmt': 'json'}
 
     if types_mb[type] == 'artist':
@@ -545,7 +545,7 @@ def query_deezer(query: str, type: str):
     query_urlsafe = urllib.parse.quote_plus(query.replace(' ', '-'))
     endpoint = f'https://api.deezer.com/{type}/{query_urlsafe}'
 
-    headers = {'User-Agent': f'Beetstream/{BEETSTREAM_VERSION} ( https://github.com/FlorentLM/Beetstream )'}
+    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
 
     response = requests.get(endpoint, headers=headers)
 
@@ -571,7 +571,7 @@ def query_lastfm(query: str, type: str, method: str = 'info', mbid=True):
         params[type] = query_lastfm
 
 
-    headers = {'User-Agent': f'Beetstream/{BEETSTREAM_VERSION} ( https://github.com/FlorentLM/Beetstream )'}
+    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
     response = requests.get(endpoint, headers=headers, params=params)
 
     return response.json() if response.ok else {}

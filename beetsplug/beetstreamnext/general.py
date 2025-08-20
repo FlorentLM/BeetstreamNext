@@ -1,8 +1,8 @@
-from beetsplug.beetstream.utils import *
-from beetsplug.beetstream import app
-from beetsplug.beetstream.artists import artist_payload
-from beetsplug.beetstream.albums import album_payload
-from beetsplug.beetstream.songs import song_payload
+from beetsplug.beetstreamnext.utils import *
+from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.artists import artist_payload
+from beetsplug.beetstreamnext.albums import album_payload
+from beetsplug.beetstreamnext.songs import song_payload
 import flask
 
 

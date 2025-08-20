@@ -1,6 +1,6 @@
-from beetsplug.beetstream.utils import *
-from beetsplug.beetstream import authentication
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext.utils import *
+from beetsplug.beetstreamnext import authentication
+from beetsplug.beetstreamnext import app
 import flask
 import urllib.parse
 from functools import partial

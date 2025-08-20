@@ -1,5 +1,5 @@
-from beetsplug.beetstream.utils import *
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext.utils import *
+from beetsplug.beetstreamnext import app
 import flask
 
 

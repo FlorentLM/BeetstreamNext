@@ -1,5 +1,5 @@
-from beetsplug.beetstream.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song
+from beetsplug.beetstreamnext import app
 import flask
 from typing import Union, List
 from pathlib import Path
@@ -37,7 +37,7 @@ class Playlist:
         instance.id = f'{PLY_ID_PREF}0-{instance.name}.m3u'
         instance.path = Path(flask.g.playlist_provider.playlist_dirs[0]) / f'{instance.name}.m3u'
         if instance.path.is_file():
-            err = f"Playlist {instance.name}.m3u already exists in Beetstream's folder!"
+            err = f"Playlist {instance.name}.m3u already exists in BeetstreamNext's folder!"
             app.logger.warning(err)
             raise FileExistsError(err)
         instance.songs = [dict(song) for song in songs]

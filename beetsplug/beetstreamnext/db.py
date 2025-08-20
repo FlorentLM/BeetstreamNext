@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet
 
 # TODO - handle these correctly in the init and in a flask.g attribute
 
-DB_PATH = './beetstream-dev.db'
+DB_PATH = './beetstreamnext-dev.db'
 
 
 def load_env_file(filepath: Union[Path, str] = ".env") -> None:
@@ -29,7 +29,7 @@ def load_env_file(filepath: Union[Path, str] = ".env") -> None:
 
 def get_cipher() -> Union[Fernet, None]:
     load_env_file()
-    key = os.environ.get('BEETSTREAM_KEY')
+    key = os.environ.get('BEETSTREAMNEXT_KEY')
     try:
         cipher = Fernet(key)
     except ValueError:
@@ -39,7 +39,7 @@ def get_cipher() -> Union[Fernet, None]:
 
 def get_key_hash() -> Union[str, None]:
     load_env_file()
-    key = os.environ.get('BEETSTREAM_KEY')
+    key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
     decoded_key = base64.urlsafe_b64decode(key)

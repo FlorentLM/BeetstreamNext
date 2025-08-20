@@ -1,4 +1,4 @@
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext import app
 import hashlib
 import os
 from cryptography.fernet import Fernet
@@ -77,7 +77,7 @@ def authenticate(req_values):
         app.logger.warning('No authentication data provided.')
         return False
 
-    key = os.environ.get('BEETSTREAM_KEY', '')
+    key = os.environ.get('BEETSTREAMNEXT_KEY', '')
     if not key:
         app.logger.warning('Decryption key not found.')
         return False

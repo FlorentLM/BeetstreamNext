@@ -1,28 +1,45 @@
-# Beetstream
-<img alt="Beetstream logo (a beetroot with soundwaves-like leaves)" height="80" src="beetstream.svg" title="Beetstream logo" width="80"/>
+<br />
 
-Beetstream is a [Beets.io](https://beets.io) plugin that exposes [SubSonic API endpoints](http://www.subsonic.org/pages/api.jsp), allowing you to stream your music everywhere.
+<div align="center">
+
+  <a href="https://github.com/FlorentLM/pytinybvh">
+    <img src="beetstreamnext.svg" alt="Logo" width="128" height="128">
+  </a>
+
+<h3 align="center">BeetstreamNext</h3>
+  <p>
+  BeetstreamNext exposes your Beets.io database with the OpenSubsonic API
+  <br/>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
+
+  </p>
+</div>
+
+
+BeetstreamNext is a fork of Beetstream, a [Beets.io](https://beets.io) plugin that exposes [OpenSubsonic API endpoints](https://opensubsonic.netlify.app/docs/opensubsonic-api/), allowing you to stream your Beets library.
 
 ## Motivation
 
-I personally use Beets to manage my music library on a Raspberry Pi but when I was looking for a way to stream it to my phone I couldn't find any comfortable, suitable and free options.  
-I tried [AirSonic](https://airsonic.github.io) and [SubSonic](http://www.subsonic.org), [Plex](https://www.plex.tv) and some other tools but a lot of these solutions want to manage the library as they need (but I prefer Beets) and AirSonic/SubSonic were quite slow and CPU intensive and seemed to have a lot of overhead just to browse albums and send music files. Thus said, SubSonic APIs are good and implemented by a lot of different [clients](#supported-clients), so I decided to re-implement the server side but based on Beets database (and some piece of code).
+I started implementing new features to Beetstream but ended up rewriting a significant part of it, so I figured it'd make more sense to keep it as a distinct project.
+The goal is to cover all of the modern OpenSubsonic API, with some additions. I'm getting there :)
+
+Personally, I use Beets to manage my music library but I don't like to write metadata to the files. So with this, I can have the best of both worlds.
 
 ## Install & Run
 
 Requires Python 3.8 or newer.
 
 1) First of all, you need to [install Beets](https://beets.readthedocs.io/en/stable/guides/main.html):
-
 2) Install the dependancies with:
 
 ```
-$ pip install beetstream
+$ pip install beetstreamnext
 ```
 
 3) Enable the plugin for Beets in your config file `~/.config/beets/config.yaml`:
 ```yaml
-plugins: beetstream
+plugins: beetstreamnext
 ```
 
 4) **Optional** You can change the host and port in your config file `~/.config/beets/config.yaml`.  
@@ -30,7 +47,7 @@ You can also chose to never re-encode files even if the clients asks for it with
 
 Here are the default values:
 ```yaml
-beetstream:
+beetstreamnext:
   host: 0.0.0.0
   port: 8080
   never_transcode: False
@@ -38,26 +55,27 @@ beetstream:
 
 5) Other configuration parameters:
 
-If `fetch_artists_images` is enabled, Beetstream will fetch the artists photos to display in your client player (if you enable this, it is recommended to also enable `save_artists_images`).
+If `fetch_artists_images` is enabled, BeetstreamNext will fetch the artists photos to display in your client player (if you enable this, it is recommended to also enable `save_artists_images`).
 
-Beetstream supports playlists from Beets' [playlist](https://beets.readthedocs.io/en/stable/plugins/playlist.html) and [smartplaylist](https://beets.readthedocs.io/en/stable/plugins/smartplaylist.html) plugins. You can also define a Beetstream-specific playlist folder with the `playlist_dir` option:
+BeetstreamNext supports playlists from Beets' [playlist](https://beets.readthedocs.io/en/stable/plugins/playlist.html) and [smartplaylist](https://beets.readthedocs.io/en/stable/plugins/smartplaylist.html) plugins. You can also define a BeetstreamNext-specific playlist folder with the `playlist_dir` option:
 ```yaml
-beetstream:
-  fetch_artists_images: False   # Whether Beetstream should fetch artists photos when clients request them
+beetstreamnext:
+  fetch_artists_images: False   # Whether BeetstreamNext should fetch artists photos when clients request them
   save_artists_images: False    # Save artists photos to their respective folders in your music library
-  playlist_dir: './path/to/playlists'  # A directory with Beetstream-specific playlists
+  playlist_dir: './path/to/playlists'  # A directory with BeetstreamNext-specific playlists
 ```
 
 6) Run with:
 ```
-$ beet beetstream
+$ beet beetstreamnext
 ```
 
 ## Clients Configuration
 
 ### Authentication
 
-There is currently no security whatsoever. You can put whatever user and password you want in your favorite app.
+There is currently no security. You can put whatever user and password you want in your favorite app.
+But this is going to change soon.
 
 ### Server and Port
 
@@ -65,31 +83,27 @@ Currently runs on port `8080` (i.e.: `https://192.168.1.10:8080`)
 
 ## Supported Clients
 
-All clients below are working with this server. By "working", it means one can use most of the features, browse library and most importantly play music!
+All clients below have been tested and are working with this server. But in theory any Subsonic-compatible player should work.
 
 ### Android
 
-- [Subsonic](https://play.google.com/store/apps/details?id=net.sourceforge.subsonic.androidapp) (official app)
-- [DSub](https://play.google.com/store/apps/details?id=github.daneren2005.dsub)
-- [Audinaut](https://play.google.com/store/apps/details?id=net.nullsum.audinaut)
-- [Ultrasonic](https://play.google.com/store/apps/details?id=org.moire.ultrasonic)
-- [GoSONIC](https://play.google.com/store/apps/details?id=com.readysteadygosoftware.gosonic)
-- [Subtracks](https://play.google.com/store/apps/details?id=com.subtracks)
-- [Music Stash](https://play.google.com/store/apps/details?id=com.ghenry22.mymusicstash)
-- [substreamer](https://play.google.com/store/apps/details?id=com.ghenry22.substream2)
+- [Synfonium](https://symfonium.app/)
+- [Tempo](https://github.com/CappielloAntonio/tempo)
+- [SubTune](https://github.com/TaylorKunZhang/SubTune)
+- [Subtracks](https://github.com/austinried/subtracks)
+- [K-19 Player](https://github.com/ulysg/k19-player)
+- [substreamer](https://substreamerapp.com/)
+- [GoSONIC](https://play.google.com/store/apps/details?id=com.readysteadygosoftware.gosonic&hl=en_GB)
+- [Ultrasonic](https://gitlab.com/ultrasonic/ultrasonic)
 
 ### Desktop
 
-- [Clementine](https://www.clementine-player.org)
+- [Supersonic](https://github.com/dweymouth/supersonic)
 
-### Web
+## Roadmap
 
-- [Jamstash](http://jamstash.com) ([Chrome App](https://chrome.google.com/webstore/detail/jamstash/jccdpflnecheidefpofmlblgebobbloc))
-- [SubFire](http://subfireplayer.net)
-
-_Currently supports a subset of API v1.16.1, avaiable as Json, Jsonp and XML._
-
-## Contributing
-
-There is still some [missing endpoints](missing-endpoints.md) and `TODO` in the code.
-Feel free to create some PR!
+- [ ] Finalise BeetstreamNext's database storage (for multiple users etc)
+- [ ] Finalise authentication (needs database to be fully operational)
+- [ ] Implement missing endpoints
+- [ ] Create a Docker image
+- [ ] Cleanup the README and update the installation instructions

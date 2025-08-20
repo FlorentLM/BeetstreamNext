@@ -1,6 +1,6 @@
 # Missing Endpoints
 
-These need the beetstream internal database first:
+These need the BeetstreamNext internal database first:
 - `getUsers`
 - `createUser`
 - `updateUser`

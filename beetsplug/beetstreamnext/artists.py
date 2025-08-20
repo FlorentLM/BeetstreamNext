@@ -1,5 +1,5 @@
-from beetsplug.beetstream.utils import *
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext.utils import *
+from beetsplug.beetstreamnext import app
 import time
 import urllib.parse
 from collections import defaultdict
@@ -64,7 +64,7 @@ def get_artists_or_indexes():
 
         if nb_items < app.config['nb_items']:
             app.logger.warning('Media deletion detected (or very first time getIndexes is queried)')
-            # Deletion of items (or very first check since Beetstream started)
+            # Deletion of items (or very first check since BeetstreamNext started)
             latest = int(time.time() * 1000)
             app.config['nb_items'] = nb_items
 

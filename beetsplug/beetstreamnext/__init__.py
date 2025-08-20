@@ -13,7 +13,7 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
-"""Beetstream is a Beets.io plugin that exposes SubSonic API endpoints."""
+"""BeetstreamNext is a Beets.io plugin that exposes SubSonic API endpoints."""
 
 from beets.plugins import BeetsPlugin
 from beets.dbcore import types
@@ -33,25 +33,25 @@ def before_request():
 
 @app.route('/')
 def home():
-    return "Beetstream server running"
+    return "BeetstreamNext server running"
 
-from beetsplug.beetstream.utils import *
-import beetsplug.beetstream.albums
-import beetsplug.beetstream.artists
-import beetsplug.beetstream.coverart
-import beetsplug.beetstream.dummy
-import beetsplug.beetstream.playlists
-import beetsplug.beetstream.search
-import beetsplug.beetstream.songs
-import beetsplug.beetstream.users
-import beetsplug.beetstream.general
-import beetsplug.beetstream.authentication
+from beetsplug.beetstreamnext.utils import *
+import beetsplug.beetstreamnext.albums
+import beetsplug.beetstreamnext.artists
+import beetsplug.beetstreamnext.coverart
+import beetsplug.beetstreamnext.dummy
+import beetsplug.beetstreamnext.playlists
+import beetsplug.beetstreamnext.search
+import beetsplug.beetstreamnext.songs
+import beetsplug.beetstreamnext.users
+import beetsplug.beetstreamnext.general
+import beetsplug.beetstreamnext.authentication
 
 
 # Plugin hook
-class BeetstreamPlugin(BeetsPlugin):
+class BeetstreamNextPlugin(BeetsPlugin):
     def __init__(self):
-        super(BeetstreamPlugin, self).__init__()
+        super(BeetstreamNextPlugin, self).__init__()
         self.config.add({
             'host': '0.0.0.0',
             'port': 8080,
@@ -64,7 +64,7 @@ class BeetstreamPlugin(BeetsPlugin):
             'save_artists_images': True,
             'lastfm_api_key': '',
             'playlist_dir': '',
-            'users_storage': Path(config['library'].get()).parent / 'beetstream_users.bin',
+            'users_storage': Path(config['library'].get()).parent / 'beetstreamnext_users.bin',
         })
         self.config['lastfm_api_key'].redact = True
 
@@ -81,7 +81,7 @@ class BeetstreamPlugin(BeetsPlugin):
     # }
 
     def commands(self):
-        cmd = ui.Subcommand('beetstream', help='run Beetstream server, exposing OpenSubsonic API')
+        cmd = ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
         cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='Debug mode')
         cmd.parser.add_option('-k', '--key', action='store_true', default=False, help='Generate a key to store passwords')
 
@@ -124,7 +124,7 @@ class BeetstreamPlugin(BeetsPlugin):
             app.config['users_storage'] = Path(self.config['users_storage'].get())
 
             # Total number of items in the Beets database (only used to detect deletions in getIndexes endpoint)
-            # We initialise to +inf at Beetstream start, so the real count is set the first time a client queries
+            # We initialise to +inf at BeetstreamNext start, so the real count is set the first time a client queries
             # the getIndexes endpoint
             app.config['nb_items'] = float('inf')
 
@@ -134,7 +134,7 @@ class BeetstreamPlugin(BeetsPlugin):
             app.config['never_transcode'] = self.config['never_transcode'].get(False)
 
             possible_paths = [
-                (0, self.config['playlist_dir'].get(None)),  # Beetstream's own
+                (0, self.config['playlist_dir'].get(None)),  # BeetstreamNext's own
                 (1, config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
                 (2, config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
             ]

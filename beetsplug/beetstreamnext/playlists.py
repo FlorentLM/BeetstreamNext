@@ -1,7 +1,7 @@
-from beetsplug.beetstream.utils import *
+from beetsplug.beetstreamnext.utils import *
 import os
 import flask
-from beetsplug.beetstream import app
+from beetsplug.beetstreamnext import app
 from .playlistprovider import PlaylistProvider, Playlist
 
 

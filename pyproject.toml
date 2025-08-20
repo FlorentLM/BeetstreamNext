@@ -1,0 +1,16 @@
+[project]
+name = "BeetstreamNext"
+version = "2.0"
+description = "BeetstreamNext exposes your Beets.io database with the OpenSubsonic API."
+readme = "README.md"
+requires-python = "==3.8.*"
+dependencies = [
+    "beets>=2.2.0",
+    "cryptography>=44.0.2",
+    "ffmpeg-python>=0.2.0",
+    "flask-cors>=5.0.1",
+    "flask-jwt-extended>=4.7.1",
+    "pillow>=11.1.0",
+    "pylast>=5.5.0",
+    "requests>=2.32.3",
+]

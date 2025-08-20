@@ -1,6 +1,14 @@
+# Dependency Licenses
+
+This fork includes code from the parent project. The original license and copyright notices are preserved below.
+
+---
+
+## beetsream
+
 MIT License
 
-Copyright (c) 2025 Florent Le Moël
+Copyright (c) 2020 Sacha Bron
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

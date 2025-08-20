@@ -1,4 +1,4 @@
-from beetsplug.beetstream.utils import *
+from beetsplug.beetstreamnext.utils import *
 import subprocess
 import flask
 

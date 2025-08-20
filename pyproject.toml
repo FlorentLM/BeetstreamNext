@@ -1,16 +1,50 @@
-[project]
-name = "BeetstreamNext"
-version = "2.0"
-description = "BeetstreamNext exposes your Beets.io database with the OpenSubsonic API."
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "beetstreamnext"
+version = "1.9.0"
+description = "A modern, feature-rich OpenSubsonic API server for your Beets.io music library."
+authors = ["Florent Le Moël <25004801+FlorentLM@users.noreply.github.com>"]
+license = "MIT"
 readme = "README.md"
-requires-python = "==3.8.*"
-dependencies = [
-    "beets>=2.2.0",
-    "cryptography>=44.0.2",
-    "ffmpeg-python>=0.2.0",
-    "flask-cors>=5.0.1",
-    "flask-jwt-extended>=4.7.1",
-    "pillow>=11.1.0",
-    "pylast>=5.5.0",
-    "requests>=2.32.3",
+repository = "https://github.com/FlorentLM/BeetstreamNext"
+packages = [{include = "beetsplug"}]
+
+[tool.poetry.dependencies]
+python = ">3.9.1,<4.0"
+beets = ">=2.0.0"
+flask-cors = ">=6.0.1"
+cryptography = ">=45.0.6"
+pillow = ">=11.3.0"
+requests = ">=2.32.4"
+ffmpeg-python = {version = ">=0.2.0", optional = true}
+
+[tool.poetry.extras]
+transcode = ["ffmpeg-python"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.4.0"
+ruff = ">=0.1.0"
+poethepoet = ">=0.24.0"
+pre-commit = ">=3.5.0"
+
+[tool.ruff]
+# same line length as beets for consistency
+line-length = 79
+select = ["E", "F", "I", "W", "C90", "N"]
+ignore = ["E501"] # handled by formatter
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.poe.tasks]
+# dev tasks
+lint = "ruff check ."
+format = "ruff format ."
+check = [
+  {cmd = "ruff format . --check"},
+  {cmd = "ruff check ."},
 ]
+test = "pytest"

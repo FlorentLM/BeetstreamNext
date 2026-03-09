@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext import app
 
 
 API_VERSION = '1.16.1'
-BEETSTREAMNEXT_VERSION = '1.4.5'
+BEETSTREAMNEXT_VERSION = '1.5.0-dev'
 
 # Prefixes for BeetstreamNext's internal IDs
 ART_ID_PREF = 'ar-'
@@ -382,7 +382,7 @@ def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
         root.set("status", 'ok')
         root.set("version", API_VERSION)
         root.set("type", 'BeetstreamNext')
-        root.set("serverVersion", BEETSTREAM_VERSION)
+        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
         root.set("openSubsonic", 'true')
 
         xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)

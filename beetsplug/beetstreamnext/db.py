@@ -19,15 +19,16 @@ def create_user(username, password, admin=False):
     cipher = get_cipher()
     encrypted_pw = cipher.encrypt(password.encode('utf-8')) if cipher else password.encode('utf-8')
 
-    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     try:
-        conn.execute("""
-                     INSERT INTO users (username, password, api_key_hash, adminRole, playlistRole, settingsRole)
-                     VALUES (?, ?, ?, ?, 1, 1)
-                     """, (username, encrypted_pw, api_key_hash, 1 if admin else 0))
-        conn.commit()
-    finally:
-        conn.close()
+        with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+            conn.execute("""
+                         INSERT INTO users (username, password, api_key_hash, adminRole, playlistRole, settingsRole)
+                         VALUES (?, ?, ?, ?, 1, 1)
+                         """, (username, encrypted_pw, api_key_hash, 1 if admin else 0))
+    except sqlite3.IntegrityError as e:
+        if 'UNIQUE' in str(e):
+            raise ValueError(f"Username '{username}' already exists.") from e
+        raise
 
     return raw_api_key
 
@@ -97,16 +98,16 @@ def initialise_db():
     if cipher is not None:
         key_hash = get_key_hash()
 
-        cur.execute(f"""
-                    INSERT INTO encryption (key, value) VALUES ('enabled', 'true');
+        cur.execute("""
+                    INSERT OR IGNORE INTO encryption (key, value) VALUES ('enabled', 'true');
                 """)
 
         cur.execute("""
                         INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
                     """, ('key_hash', key_hash))
     else:
-        cur.execute(f"""
-                            INSERT INTO encryption (key, value) VALUES ('enabled', 'false');
+        cur.execute("""
+                            INSERT OR IGNORE INTO encryption (key, value) VALUES ('enabled', 'false');
                         """)
 
         cur.execute("""
@@ -163,6 +164,13 @@ def initialise_db():
     conn.commit()
     conn.close()
 
+    # TODO: Could support key rotation and eventually encryption of a clear db? But that's probably not worth the hassle
+    if cipher is not None and not verify_key():
+        raise RuntimeError(
+            "BEETSTREAMNEXT_KEY has changed since the database was initialised. Stored passwords are unrecoverable with the current key. "
+            f"\nRestore the original key, or delete the database (`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
+        )
+
 
 def store_userdata(user_dict):
     user_dict = user_dict.copy()
@@ -212,27 +220,29 @@ def store_userdata(user_dict):
     conn.close()
 
 
+_ALL_USER_FIELDS = frozenset({
+    'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
+    'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
+    'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
+})
+
+
 def load_userdata(username: str, fields: Union[list[str], tuple[str], set[str], str, None] = None) -> Union[dict, None]:
 
     if fields is None:
-        return None
-
+        # return all safe fields
+        safe_fields = list(_ALL_USER_FIELDS)
     elif isinstance(fields, str):
-        fields = {fields}
+        safe_fields = [fields] if fields in _ALL_USER_FIELDS else []
     else:
-        fields = set(fields)
-
-    # We don't really want SQL injection :)
-    safe_fields = list(set(fields).intersection(
-        {'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
-         'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
-         'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'}
-    ))
+        # We don't really want SQL injection :)
+        safe_fields = list(set(fields).intersection(_ALL_USER_FIELDS))
 
     if not safe_fields:
         return None
 
-    columns_str = "username, " + ", ".join(safe_fields)
+    column_names = ['username'] + safe_fields
+    columns_str = ', '.join(column_names)
 
     conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     row = conn.execute(f"""
@@ -245,7 +255,7 @@ def load_userdata(username: str, fields: Union[list[str], tuple[str], set[str], 
     if not row:
         return None
 
-    user_dict = {k: v for k, v in zip(columns_str, row)}
+    user_dict = dict(zip(column_names, row))
 
     cipher = get_cipher()
 

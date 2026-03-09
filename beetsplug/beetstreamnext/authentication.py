@@ -53,7 +53,7 @@ def authenticate(req_values):
         if hmac.compare_digest(token, expected):
             return True, 0, user
     elif clearpass:
-        if hmac.compare_digest(clearpass.lstrip('enc:'), stored_password):
+        if hmac.compare_digest(clearpass.removeprefix('enc:'), stored_password):
             return True, 0, user
 
     return False, 40, None

@@ -110,7 +110,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     password = getpass.getpass('Password: ')
                     is_admin = input('Admin? [y/n]: ').lower() == 'y'
 
-                    api_key = db.create_user(username, password, admin=is_admin)
+                    try:
+                        api_key = db.create_user(username, password, admin=is_admin)
+                    except ValueError as e:
+                        print(f"\n[ERROR] {e}")
+                        return
                     print(f"\nUser created successfully!")
                     print(f"API KEY: {api_key}")
                     print("This key is needed by your Subsonic client. Store it safely (it will not be shown again).")

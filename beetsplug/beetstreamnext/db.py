@@ -1,14 +1,35 @@
+import secrets
 import sqlite3
 import os
 import base64
 import hashlib
 from pathlib import Path
 from typing import Union
+
+import flask
 from cryptography.fernet import Fernet
 
-# TODO - handle these correctly in the init and in a flask.g attribute
 
-DB_PATH = './beetstreamnext-dev.db'
+def create_user(username, password, admin=False):
+    """Creates a user, hashes new API key, returns API key."""
+    raw_api_key = secrets.token_urlsafe(32)
+    api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
+
+    # Encrypt password for legacy Subsonic MD5 support
+    cipher = get_cipher()
+    encrypted_pw = cipher.encrypt(password.encode('utf-8')) if cipher else password.encode('utf-8')
+
+    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
+    try:
+        conn.execute("""
+                     INSERT INTO users (username, password, api_key_hash, adminRole, playlistRole, settingsRole)
+                     VALUES (?, ?, ?, ?, 1, 1)
+                     """, (username, encrypted_pw, api_key_hash, 1 if admin else 0))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return raw_api_key
 
 
 def load_env_file(filepath: Union[Path, str] = ".env") -> None:
@@ -30,11 +51,12 @@ def load_env_file(filepath: Union[Path, str] = ".env") -> None:
 def get_cipher() -> Union[Fernet, None]:
     load_env_file()
     key = os.environ.get('BEETSTREAMNEXT_KEY')
+    if not key:
+        return None
     try:
-        cipher = Fernet(key)
-    except ValueError:
-        cipher = None
-    return cipher
+        return Fernet(key)
+    except Exception:
+        return None
 
 
 def get_key_hash() -> Union[str, None]:
@@ -47,7 +69,7 @@ def get_key_hash() -> Union[str, None]:
 
 
 def verify_key():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     cur = conn.cursor()
     result = cur.execute("SELECT value FROM encryption WHERE key = 'key_hash'").fetchone()
     conn.close()
@@ -59,7 +81,7 @@ def verify_key():
 
 
 def initialise_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     cur = conn.cursor()
 
     cur.execute("PRAGMA foreign_keys = ON;")
@@ -95,6 +117,7 @@ def initialise_db():
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             password BLOB NOT NULL,
+            api_key_hash TEXT UNIQUE,
             email TEXT,
             avatar BLOB,
             avatarLastChanged REAL,
@@ -142,25 +165,34 @@ def initialise_db():
 
 
 def store_userdata(user_dict):
-
+    user_dict = user_dict.copy()
     username = user_dict.pop("username", None)
     if not username:
         raise ValueError('User dict must have the "username" key!')
 
+    safe_fields = {
+        'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled',
+        'adminRole', 'settingsRole', 'streamRole', 'jukeboxRole', 'downloadRole',
+        'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole', 'podcastRole',
+        'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
+    }
+    filtered_dict = {k: v for k, v in user_dict.items() if k in safe_fields}
+
+    
+    cipher = get_cipher()
+    if 'password' in filtered_dict and cipher:
+        filtered_dict['password'] = cipher.encrypt(filtered_dict['password'].encode("utf-8"))
+
     columns = ['username']
-    placeholders = ['?']
+    placeholders =['?']
     updates = []
     values = [username]
 
-    cipher = get_cipher()
-
-    for key, val in user_dict.items():
-        if cipher:
-            val = cipher.encrypt(val.encode("utf-8"))
+    for key, val in filtered_dict.items():
         columns.append(key)
         placeholders.append('?')
         updates.append(f"{key} = excluded.{key}")
-        values.append(1 if val else 0)
+        values.append(val)
 
     columns_str = ', '.join(columns)
     placeholders_str = ', '.join(['?'] * len(columns))
@@ -174,7 +206,7 @@ def store_userdata(user_dict):
             {updates_str}
         """
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(flask.current_app.config['DB_PATH']) # Note: Consider passing the path dynamically from Flask config!
     conn.execute(sql, values)
     conn.commit()
     conn.close()
@@ -202,7 +234,7 @@ def load_userdata(username: str, fields: Union[list[str], tuple[str], set[str], 
 
     columns_str = "username, " + ", ".join(safe_fields)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     row = conn.execute(f"""
             SELECT {columns_str}
               FROM users

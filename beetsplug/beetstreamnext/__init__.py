@@ -14,6 +14,7 @@
 # included in all copies or substantial portions of the Software.
 
 """BeetstreamNext is a Beets.io plugin that exposes SubSonic API endpoints."""
+import getpass
 
 from beets.plugins import BeetsPlugin
 from beets.dbcore import types
@@ -50,6 +51,7 @@ import beetsplug.beetstreamnext.authentication
 
 # Plugin hook
 class BeetstreamNextPlugin(BeetsPlugin):
+
     def __init__(self):
         super(BeetstreamNextPlugin, self).__init__()
         self.config.add({
@@ -64,7 +66,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'save_artists_images': True,
             'lastfm_api_key': '',
             'playlist_dir': '',
-            'users_storage': Path(config['library'].get()).parent / 'beetstreamnext_users.bin',
+            'legacy_auth': True
         })
         self.config['lastfm_api_key'].redact = True
 
@@ -83,30 +85,35 @@ class BeetstreamNextPlugin(BeetsPlugin):
     def commands(self):
         cmd = ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
         cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='Debug mode')
-        cmd.parser.add_option('-k', '--key', action='store_true', default=False, help='Generate a key to store passwords')
+        cmd.parser.add_option('-u', '--user', action='store_true', default=False, help='Create a new user')
 
         def func(lib, opts, args):
-            if opts.key:
-                users_storage = Path(self.config['users_storage'].get())
+            # Shared DB path setup
+            db_path = Path(config['library'].get()).parent / 'beetstreamnext.db'
+            app.config['DB_PATH'] = db_path
 
-                if not users_storage.is_file():
-                    key = authentication.generate_key()
-                    print(f'Here is your new key (store it safely): {key}')
-                    yn_input = input('No existing users, create one? [y/n]: ')
-                    if 'y' in yn_input.lower():
-                        username = input('Username: ')
-                        password = input('Password: ')
-                        success = authentication.update_user(users_storage, key, {username: password})
-                        if success:
-                            print('User created.')
-                else:
-                    yn_input = input('Users storage file exists, update key? [y/n]: ')
-                    if 'y' in yn_input.lower():
-                        current_key = input('Current key: ').encode()
-                        new_key = authentication.generate_key()
-                        success = authentication.update_key(users_storage, current_key, new_key)
-                        if success:
-                            print(f'Key updated (store it safely): {new_key.decode()}')
+            if opts.user:
+                from beetsplug.beetstreamnext import db
+                with app.app_context():
+                    db.initialise_db()
+
+                    legacy_enabled = self.config['legacy_auth'].get(bool)
+
+                    if legacy_enabled and db.get_cipher() is None:
+                        print("\n[WARNING] Legacy authentication is enabled, but BEETSTREAMNEXT_KEY env var is not set.")
+                        print("Without it, passwords for legacy Subsonic clients will be stored in PLAINTEXT.")
+                        confirm = input("Continue anyway? [y/N]: ")
+                        if confirm.lower() != 'y':
+                            return
+
+                    username = input('Username: ')
+                    password = getpass.getpass('Password: ')
+                    is_admin = input('Admin? [y/n]: ').lower() == 'y'
+
+                    api_key = db.create_user(username, password, admin=is_admin)
+                    print(f"\nUser created successfully!")
+                    print(f"API KEY: {api_key}")
+                    print("This key is needed by your Subsonic client. Store it safely (it will not be shown again).")
                 return
 
             args = ui.decargs(args)
@@ -115,23 +122,22 @@ class BeetstreamNextPlugin(BeetsPlugin):
             if args:
                 self.config['port'] = int(args.pop(0))
 
+            app.config['lib'] = lib
+            app.config['root_directory'] = Path(config['directory'].get())
+            app.config['legacy_auth'] = self.config['legacy_auth'].get(bool)
+            app.config['INCLUDE_PATHS'] = self.config['include_paths']
             app.config['lastfm_api_key'] = self.config['lastfm_api_key'].get(None)
+
+            app.config['never_transcode'] = self.config['never_transcode'].get(False)
+            app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
             app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(False)
             app.config['save_artists_images'] = self.config['save_artists_images'].get(False)
 
-            app.config['root_directory'] = Path(config['directory'].get())
-            app.config['users_storage'] = Path(self.config['users_storage'].get())
+            app.config['DB_PATH'] = Path(config['library'].get()).parent / 'beetstreamnext.db'
 
-            # Total number of items in the Beets database (only used to detect deletions in getIndexes endpoint)
-            # We initialise to +inf at BeetstreamNext start, so the real count is set the first time a client queries
-            # the getIndexes endpoint
-            app.config['nb_items'] = float('inf')
-
-            app.config['lib'] = lib
-            app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-            app.config['INCLUDE_PATHS'] = self.config['include_paths']
-            app.config['never_transcode'] = self.config['never_transcode'].get(False)
+            # Total number of items in Beets database (only used to detect deletions in getIndexes endpoint)
+            app.config['nb_items'] = float('inf') # set the first time a client queries the getIndexes endpoint
 
             possible_paths = [
                 (0, self.config['playlist_dir'].get(None)),  # BeetstreamNext's own
@@ -167,6 +173,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
             if self.config['reverse_proxy']:
                 app.wsgi_app = ReverseProxied(app.wsgi_app)
 
+            with app.app_context():
+                from beetsplug.beetstreamnext import db
+                db.initialise_db()
+
             # Start the web application
             app.run(host=self.config['host'].as_str(),
                     port=self.config['port'].get(int),
@@ -176,7 +186,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
 
 class ReverseProxied:
-    """ Wrap the application in this middleware and configure the
+    """
+    Wrap the application in this middleware and configure the
     front-end server to add these headers, to let you quietly bind
     this to a URL other than / and to an HTTP scheme that is
     different than what is used locally.

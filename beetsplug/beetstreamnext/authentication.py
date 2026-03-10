@@ -44,6 +44,8 @@ def authenticate(req_values):
 
     user_data = load_userdata(user, fields=['password'])
     if not user_data:
+        # Dummy comparison to keep response time constant regardless if username exists or not
+        hmac.compare_digest('dummy', 'comparison')
         return False, 40, None
 
     stored_password = user_data['password']

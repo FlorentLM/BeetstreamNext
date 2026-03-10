@@ -1,5 +1,4 @@
 from beetsplug.beetstreamnext.utils import *
-from beetsplug.beetstreamnext import authentication
 from beetsplug.beetstreamnext import app
 import flask
 import urllib.parse
@@ -62,7 +61,6 @@ def get_album_info(ver=None):
 def get_album_list(ver=None):
 
     r = flask.request.values
-    authentication.authenticate(r)
 
     sort_by = r.get('type', 'alphabeticalByName')
     size = int(r.get('size', 10))

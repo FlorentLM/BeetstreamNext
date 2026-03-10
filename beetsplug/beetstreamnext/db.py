@@ -49,8 +49,16 @@ def load_env_file(filepath: Union[Path, str] = ".env") -> None:
         os.environ[var.strip()] = value.strip().strip('"').strip("'")
 
 
+def _load_env():
+    try:
+        db_dir = Path(flask.current_app.config['DB_PATH']).parent
+        load_env_file(db_dir / '.env')
+    except RuntimeError:
+        load_env_file()
+
+
 def get_cipher() -> Union[Fernet, None]:
-    load_env_file()
+    _load_env()
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
@@ -61,7 +69,7 @@ def get_cipher() -> Union[Fernet, None]:
 
 
 def get_key_hash() -> Union[str, None]:
-    load_env_file()
+    _load_env()
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
@@ -214,10 +222,8 @@ def store_userdata(user_dict):
             {updates_str}
         """
 
-    conn = sqlite3.connect(flask.current_app.config['DB_PATH']) # Note: Consider passing the path dynamically from Flask config!
-    conn.execute(sql, values)
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+        conn.execute(sql, values)
 
 
 _ALL_USER_FIELDS = frozenset({

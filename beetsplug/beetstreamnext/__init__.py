@@ -182,9 +182,16 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 db.initialise_db()
 
             # Start the web application
-            app.run(host=self.config['host'].as_str(),
+            host = self.config['host'].as_str()
+            debug = opts.debug
+            if debug and host == '0.0.0.0':
+                print("[ERROR] Debug mode cannot be used with host 0.0.0.0. "
+                      "The Werkzeug debugger allows arbitrary remote code execution. "
+                      "Use 127.0.0.1 for local debugging.")
+                return
+            app.run(host=host,
                     port=self.config['port'].get(int),
-                    debug=opts.debug, threaded=True)
+                    debug=debug, threaded=True)
         cmd.func = func
         return [cmd]
 

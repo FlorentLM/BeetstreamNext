@@ -32,6 +32,20 @@ app = flask.Flask(__name__)
 def before_request():
     g.lib = app.config['lib']
 
+    if flask.request.path == '/':
+        return
+
+    from beetsplug.beetstreamnext.authentication import authenticate
+    from beetsplug.beetstreamnext.db import load_userdata
+
+    ok, error_code, username = authenticate(flask.request.values)
+    if not ok:
+        resp_fmt = flask.request.values.get('f', 'xml')
+        return subsonic_error(error_code, resp_fmt=resp_fmt)
+
+    g.username = username
+    g.user_data = load_userdata(username)
+
 @app.route('/')
 def home():
     return "BeetstreamNext server running"

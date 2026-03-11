@@ -17,8 +17,8 @@ import importlib
 from functools import partial
 import requests
 import urllib.parse
-from beetsplug.beetstreamnext import app
 
+from beetsplug.beetstreamnext import app
 
 
 API_VERSION = '1.16.1'
@@ -38,6 +38,7 @@ if FFMPEG_PYTHON:
     import ffmpeg
 elif FFMPEG_BIN:
     import subprocess
+    ffmpeg = None
 
 
 # BeetstreamNext internal IDs: they are sent to the client once (when it accesses endpoints such as getArtists

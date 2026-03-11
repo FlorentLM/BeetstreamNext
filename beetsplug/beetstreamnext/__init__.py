@@ -15,6 +15,7 @@
 
 """BeetstreamNext is a Beets.io plugin that exposes SubSonic API endpoints."""
 import getpass
+from pathlib import Path
 
 from beets.plugins import BeetsPlugin
 from beets.dbcore import types
@@ -37,6 +38,7 @@ def before_request():
 
     from beetsplug.beetstreamnext.authentication import authenticate
     from beetsplug.beetstreamnext.db import load_user_roles
+    from beetsplug.beetstreamnext.utils import subsonic_error
 
     ok, error_code, username = authenticate(flask.request.values)
     if not ok:
@@ -55,7 +57,6 @@ def before_request():
 def home():
     return "BeetstreamNext server running"
 
-from beetsplug.beetstreamnext.utils import *
 import beetsplug.beetstreamnext.albums
 import beetsplug.beetstreamnext.artists
 import beetsplug.beetstreamnext.coverart

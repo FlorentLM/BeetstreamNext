@@ -5,7 +5,6 @@ import base64
 import hashlib
 from pathlib import Path
 from typing import Union, List, Tuple, Set
-
 import flask
 from cryptography.fernet import Fernet
 

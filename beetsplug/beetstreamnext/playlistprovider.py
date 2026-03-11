@@ -1,9 +1,10 @@
+from typing import Union, List
+import os
+from pathlib import Path
+import flask
+
 from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song
 from beetsplug.beetstreamnext import app
-import flask
-from typing import Union, List
-from pathlib import Path
-import os
 
 
 class Playlist:

@@ -1,10 +1,17 @@
-from beetsplug.beetstreamnext.utils import *
-from beetsplug.beetstreamnext import app
 import time
 import urllib.parse
 from collections import defaultdict
 from functools import partial
 import flask
+
+from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.utils import (
+    subsonic_response,
+    sub_to_beets_artist,
+    map_artist, map_album,
+    query_deezer, query_lastfm,
+    trim_text, strip_accents
+)
 
 
 def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:

@@ -1,6 +1,7 @@
-from beetsplug.beetstreamnext.utils import *
-from beetsplug.beetstreamnext import app
 import flask
+
+from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.utils import subsonic_response
 
 
 # Fake endpoint to avoid some apps errors

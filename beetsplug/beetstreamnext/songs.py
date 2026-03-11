@@ -1,7 +1,16 @@
-from beetsplug.beetstreamnext.utils import *
-from beetsplug.beetstreamnext import app, stream
-import flask
+import os
 import re
+import flask
+
+from beetsplug.beetstreamnext import app, stream
+from beetsplug.beetstreamnext.utils import (
+    subsonic_response, subsonic_error,
+    ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
+    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
+    map_song,
+    query_lastfm
+)
+
 
 
 artists_separators = re.compile(r', | & ')
@@ -190,6 +199,7 @@ def get_similar_songs():
         # grab the artist's mbid
         with flask.g.lib.transaction() as tx:
             mbid_artist = tx.query(f""" SELECT mb_artistid FROM items WHERE albumartist LIKE '{artist_name}' LIMIT 1 """)
+
     elif req_id.startswith(SNG_ID_PREF):
         # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?
         beets_song_id = sub_to_beets_song(req_id)
@@ -198,6 +208,7 @@ def get_similar_songs():
             flask.abort(404)
         artist_name = song_item.get('albumartist', '')
         mbid_artist = [[song_item.get('mb_artistid', '')]]
+
     elif req_id.startswith(ALB_ID_PREF):
         beets_album_id = sub_to_beets_album(req_id)
         album_object = flask.g.lib.get_album(beets_album_id)
@@ -205,6 +216,7 @@ def get_similar_songs():
             flask.abort(404)
         artist_name = album_object.get('albumartist', '')
         mbid_artist = [[album_object.get('mb_artistid', '')]]
+
     else:
         flask.abort(404)    # just for now
 

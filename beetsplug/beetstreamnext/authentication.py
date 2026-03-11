@@ -3,6 +3,7 @@ import hmac
 import sqlite3
 import flask
 from urllib.parse import unquote
+
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import load_userdata
 

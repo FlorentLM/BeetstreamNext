@@ -1,6 +1,13 @@
-from beetsplug.beetstreamnext.utils import *
-from beetsplug.beetstreamnext import app
 from functools import partial
+import flask
+
+from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.utils import (
+    subsonic_error, subsonic_response,
+    strip_accents,
+    map_artist, map_album, map_song
+)
+
 
 
 @app.route('/rest/search2', methods=["GET", "POST"])

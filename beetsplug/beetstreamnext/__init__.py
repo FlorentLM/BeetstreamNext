@@ -46,6 +46,11 @@ def before_request():
     g.username = username
     g.user_data = load_user_roles(username)
 
+    if app.config.get('playlist_provider') is None:
+        from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
+        app.config['playlist_provider'] = PlaylistProvider()
+    g.playlist_provider = app.config['playlist_provider']
+
 @app.route('/')
 def home():
     return "BeetstreamNext server running"

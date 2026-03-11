@@ -1,8 +1,7 @@
 from beetsplug.beetstreamnext.utils import *
-import os
 import flask
 from beetsplug.beetstreamnext import app
-from .playlistprovider import PlaylistProvider, Playlist
+from .playlistprovider import Playlist
 
 
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
@@ -10,10 +9,6 @@ from .playlistprovider import PlaylistProvider, Playlist
 def get_playlists():
 
     r = flask.request.values
-
-    # Lazily initialize the playlist provider the first time it's needed
-    if not hasattr(flask.g, 'playlist_provider'):
-        flask.g.playlist_provider = PlaylistProvider()
 
     playlists = flask.g.playlist_provider.getall()
 
@@ -31,56 +26,45 @@ def get_playlist():
     r = flask.request.values
 
     playlist_id = r.get('id')
-    if playlist_id:
+    if not playlist_id:
+        return subsonic_error(10, resp_fmt=r.get('f', 'xml'))
 
-        # Lazily initialize the playlist provider the first time it's needed
-        if not hasattr(flask.g, 'playlist_provider'):
-            flask.g.playlist_provider = PlaylistProvider()
+    playlist = flask.g.playlist_provider.get(playlist_id)
 
-        playlist = flask.g.playlist_provider.get(playlist_id)
+    if playlist is None:
+        return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
 
-        if playlist is not None:
-            payload = {
-                'playlist': map_playlist(playlist)
-            }
-            return subsonic_response(payload, r.get('f', 'xml'))
-
-    return subsonic_error(70, r.get('f', 'xml'))
-
+    payload = {
+        'playlist': map_playlist(playlist)
+    }
+    return subsonic_response(payload, r.get('f', 'xml'))
 
 @app.route('/rest/createPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
 def create_playlist():
 
     r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
 
     playlist_id = r.get('playlistId')
     name = r.get('name')
     songs_ids = r.getlist('songId')
 
-    # Lazily initialize the playlist provider the first time it's needed
-    if not hasattr(flask.g, 'playlist_provider'):
-        flask.g.playlist_provider = PlaylistProvider()
-
     if playlist_id:
         # Update mode: API documentation is unclear so we just return an error; probably better to use updatePlaylist
-        return subsonic_error(0, r.get('f', 'xml'))
-    elif name and songs_ids:
-        # Create mode
-        songs = list(flask.g.lib.items('id:' + ' , id:'.join(songs_ids)))
-        try:
-            playlist = Playlist.from_songs(name, songs)
-        except FileExistsError as e:
-            return subsonic_error(10, message=str(e), resp_fmt=r.get('f', 'xml'))
+        return subsonic_error(0, resp_fmt=resp_fmt)
 
-        flask.g.playlist_provider.register(playlist)
+    if not name or not songs_ids:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
-        payload = {
-            'playlist': map_playlist(playlist)
-        }
-        return subsonic_response(payload, r.get('f', 'xml'))
+    songs = list(flask.g.lib.items('id:' + ' , id:'.join(songs_ids)))
+    try:
+        playlist = Playlist.from_songs(name, songs)
+    except FileExistsError as e:
+        return subsonic_error(10, message=str(e), resp_fmt=resp_fmt)
 
-    return subsonic_error(10, r.get('f', 'xml'))
+    flask.g.playlist_provider.register(playlist)
+    return subsonic_response({'playlist': map_playlist(playlist)}, resp_fmt)
 
 
 @app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
@@ -88,17 +72,15 @@ def create_playlist():
 def delete_playlist():
 
     r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
 
     playlist_id = r.get('id')
+    if not playlist_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if playlist_id:
-        # Lazily initialize the playlist provider the first time it's needed
-        if not hasattr(flask.g, 'playlist_provider'):
-            flask.g.playlist_provider = PlaylistProvider()
-        try:
-            flask.g.playlist_provider.delete(playlist_id)
-            return subsonic_response({}, r.get('f', 'xml'))
-        except FileExistsError as e:
-            subsonic_error(70, message=str(e), resp_fmt=r.get('f', 'xml'))
+    try:
+        flask.g.playlist_provider.delete(playlist_id)
+    except FileNotFoundError as e:
+        return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
-    subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+    return subsonic_response({}, resp_fmt)

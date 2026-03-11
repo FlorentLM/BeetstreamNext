@@ -36,7 +36,7 @@ def before_request():
         return
 
     from beetsplug.beetstreamnext.authentication import authenticate
-    from beetsplug.beetstreamnext.db import load_userdata
+    from beetsplug.beetstreamnext.db import load_user_roles
 
     ok, error_code, username = authenticate(flask.request.values)
     if not ok:
@@ -44,7 +44,7 @@ def before_request():
         return subsonic_error(error_code, resp_fmt=resp_fmt)
 
     g.username = username
-    g.user_data = load_userdata(username)
+    g.user_data = load_user_roles(username)
 
 @app.route('/')
 def home():
@@ -195,17 +195,32 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 from beetsplug.beetstreamnext import db
                 db.initialise_db()
 
-            # Start the web application
             host = self.config['host'].as_str()
+            port = self.config['port'].get(int)
             debug = opts.debug
-            if debug and host == '0.0.0.0':
-                print("[ERROR] Debug mode cannot be used with host 0.0.0.0. "
+
+            if debug and host not in ['127.0.0.1', 'localhost']:
+                print(f"[ERROR] Debug mode cannot be used with host {host}. "
                       "The Werkzeug debugger allows arbitrary remote code execution. "
                       "Use 127.0.0.1 for local debugging.")
                 return
-            app.run(host=host,
-                    port=self.config['port'].get(int),
-                    debug=debug, threaded=True)
+
+            if app.config['legacy_auth'] and not self.config['reverse_proxy']:
+                if host not in ['127.0.0.1', 'localhost']:
+                    print(
+                        "[WARNING] Legacy authentication is enabled and the server is listening on "
+                        f"{host}:{port} without a reverse proxy. Passwords from legacy "
+                        "clients may be transmitted in cleartext over HTTP. "
+                        "Use a reverse proxy with TLS or disable legacy_auth."
+                    )
+
+            app.run(
+                host=host,
+                port=port,
+                debug=debug,
+                threaded=True
+            )
+
         cmd.func = func
         return [cmd]
 

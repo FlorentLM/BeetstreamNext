@@ -4,7 +4,7 @@ import os
 import base64
 import hashlib
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Tuple, Set
 
 import flask
 from cryptography.fernet import Fernet
@@ -233,7 +233,12 @@ _ALL_USER_FIELDS = frozenset({
 })
 
 
-def load_userdata(username: str, fields: Union[list[str], tuple[str], set[str], str, None] = None) -> Union[dict, None]:
+def load_user_roles(username: str) -> Union[dict, None]:
+    """Load all user fields except password, safe to cache in g."""
+    return load_userdata(username, fields=set(_ALL_USER_FIELDS - {'password'}))
+
+
+def load_userdata(username: str, fields: Union[List[str], Tuple[str], Set[str], str, None] = None) -> Union[dict, None]:
 
     if fields is None:
         # return all safe fields

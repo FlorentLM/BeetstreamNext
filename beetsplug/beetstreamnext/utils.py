@@ -40,9 +40,8 @@ elif FFMPEG_BIN:
     import subprocess
 
 
-# === BeetstreamNext internal IDs makers/readers ===
-# These IDs are sent to the client once (when it accesses endpoints such as getArtists or getAlbumList
-# and the client will then use these to access a specific item via endpoints that need an ID
+# BeetstreamNext internal IDs: they are sent to the client once (when it accesses endpoints such as getArtists
+# or getAlbumList) and the client will then use them to access a specific item via endpoints that need an ID
 
 def beets_to_sub_artist(beet_artist_name):
     base64_name = base64.urlsafe_b64encode(str(beet_artist_name).encode('utf-8'))
@@ -66,8 +65,7 @@ def sub_to_beets_song(subsonic_song_id):
     return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
 
 
-# === Mapping functions to translate Beets to Subsonic dict-like structures ===
-
+# Mapping functions to translate Beets to OpenSubsonic dict-like structures
 # TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/
 
 def map_media(beets_object: Union[dict, library.LibModel]):
@@ -113,7 +111,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         'musicBrainzId': album.get('mb_albumid', ''),
         'name': album_name,
         'sortName': album_name,
-        # 'version': 'Deluxe Edition',                          # TODO - Use the 'media' field maybe?
+        # 'version': 'Deluxe Edition',   # TODO - Use the 'media' field maybe?
         'coverArt': subsonic_album_id,
 
         # 'starred': timestamp_to_iso(album.get('last_liked_album', 0)),
@@ -162,10 +160,9 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         songs = list(album_object.items())
 
     if with_songs:
-        songs.sort(key=lambda s: s.track)  # Is it really necessary to sort them?
+        songs.sort(key=lambda s: s.track)  # TODO - is it really necessary to sort them?
         subsonic_album['song'] = list(map(map_song, songs))
 
-    # Add remaining required fields
     subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
     subsonic_album['songCount'] = len(songs)
 
@@ -234,7 +231,6 @@ def map_song(song_object):
     #         'albumPeak': song.get('rg_album_peak', 0)
     # }
 
-    # Add remaining filetype-related elements with fallbacks
     subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
     subsonic_song['size'] = os.path.getsize(subsonic_song['path']) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
     subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None) or subsonic_song.get('suffix', None))
@@ -360,8 +356,8 @@ def jsonpify(format: str, data: dict):
 
 
 def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
-    """ Wrap any json-like dict with the subsonic response elements
-     and output the appropriate 'format' (json or xml) """
+    """Wrap any json-like dict with the subsonic response elements
+     and output the appropriate 'format' (json or xml)."""
 
     if resp_fmt.startswith('json'):
         wrapped = {
@@ -446,8 +442,7 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
         return flask.Response(xml_str, mimetype="text/xml")
 
 
-# === Various other utility functions ===
-
+# Other utility functions
 
 def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
@@ -481,7 +476,7 @@ def stringlist_splitter(delimiter_separated_string: str):
     return re.split(delimiters, delimiter_separated_string)
 
 def genres_formatter(genres):
-    """ Additional cleaning for common genres formatting issues """
+    """Additional cleaning for common genres formatting issues."""
     if isinstance(genres, str):
         genres = stringlist_splitter(genres)
     return [g.strip().title()
@@ -497,8 +492,10 @@ def genres_formatter(genres):
             for g in genres]
 
 def creation_date(filepath):
-    """ Get a file's creation date
-        See: http://stackoverflow.com/a/39501288/1709587 """
+    """
+    Get a file's creation date.
+    (see: http://stackoverflow.com/a/39501288/1709587)
+    """
     if platform.system() == 'Windows':
         return os.path.getctime(filepath)
     elif platform.system() == 'Darwin':

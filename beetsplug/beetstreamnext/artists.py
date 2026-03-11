@@ -13,9 +13,8 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
     payload = {
         "artist": {
-            "id": artist_id,
+            "id": subsonic_artist_id,
             "name": artist_name,
-            "album": list(map(map_album, albums))
         }
     }
 

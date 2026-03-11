@@ -271,6 +271,6 @@ def load_userdata(username: str, fields: Union[list[str], tuple[str], set[str], 
         if cipher:
             user_dict['password'] = cipher.decrypt(password).decode("utf-8")
         else:
-            user_dict['password'] = password
+            user_dict['password'] = password.decode('utf-8')
 
     return user_dict

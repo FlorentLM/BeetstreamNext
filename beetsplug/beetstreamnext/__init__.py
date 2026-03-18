@@ -18,8 +18,6 @@ import getpass
 from pathlib import Path
 
 from beets.plugins import BeetsPlugin
-from beets.dbcore import types
-from beets.library import DateType
 from beets import config
 from beets import ui
 import flask
@@ -90,12 +88,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
         })
         self.config['lastfm_api_key'].redact = True
 
-    item_types = {
-        # We use the same fields as the MPDStats plugin for interoperability
-        'play_count': types.INTEGER,
-        'last_played': DateType(),
-        'last_liked': DateType(),
-    }
+    item_types = {}
 
     # album_types = {
     #     'last_liked_album': DateType(),

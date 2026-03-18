@@ -212,6 +212,18 @@ def initialise_db():
                 )
                 """)
 
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS play_stats
+                (
+                    username    TEXT    NOT NULL,
+                    song_id     INTEGER NOT NULL,
+                    play_count  INTEGER NOT NULL DEFAULT 0,
+                    last_played REAL, -- timestamp of most recent play
+                    PRIMARY KEY (username, song_id),
+                    FOREIGN KEY (username) REFERENCES users (username)
+                )
+                """)
+
     conn.commit()
     conn.close()
 
@@ -289,7 +301,6 @@ def load_userdata(username: str, fields: Union[List[str], Tuple[str], Set[str], 
     elif isinstance(fields, str):
         safe_fields = [fields] if fields in _ALL_USER_FIELDS else []
     else:
-        # We don't really want SQL injection :)
         safe_fields = list(set(fields).intersection(_ALL_USER_FIELDS))
 
     if not safe_fields:

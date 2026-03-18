@@ -59,6 +59,7 @@ import beetsplug.beetstreamnext.albums
 import beetsplug.beetstreamnext.artists
 import beetsplug.beetstreamnext.coverart
 import beetsplug.beetstreamnext.dummy
+import beetsplug.beetstreamnext.likes
 import beetsplug.beetstreamnext.playlists
 import beetsplug.beetstreamnext.search
 import beetsplug.beetstreamnext.songs

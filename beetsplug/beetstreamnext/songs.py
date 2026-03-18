@@ -163,24 +163,6 @@ def get_top_songs():
     return subsonic_response(payload, r.get('f', 'xml'))
 
 
-@app.route('/rest/getStarred', methods=["GET", "POST"])
-@app.route('/rest/getStarred.view', methods=["GET", "POST"])
-
-@app.route('/rest/getStarred2', methods=["GET", "POST"])
-@app.route('/rest/getStarred2.view', methods=["GET", "POST"])
-def get_starred_songs(ver=None):
-    # TODO
-
-    r = flask.request.values
-
-    tag = 'starred2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'starred'
-    payload = {
-        tag: {
-            'song': []
-        }
-    }
-    return subsonic_response(payload, r.get('f', 'xml'))
-
 
 @app.route('/rest/getSimilarSongs', methods=["GET", "POST"])
 @app.route('/rest/getSimilarSongs.view', methods=["GET", "POST"])

@@ -40,10 +40,10 @@ def get_song():
 def songs_by_genre():
     r = flask.request.values
 
-    genre = r.get('genre').replace("'", "\\'")
     count = int(r.get('count') or 10)
     offset = int(r.get('offset') or 0)
 
+    genre = r.get('genre')
     genre_pattern = f"%{genre}%"
     with flask.g.lib.transaction() as tx:
         songs = list(tx.query(
@@ -137,7 +137,7 @@ def get_top_songs():
         artist_name = sub_to_beets_artist(req_id)
         # grab the artist's mbid
         with flask.g.lib.transaction() as tx:
-            mbid_artist = tx.query(f""" SELECT mb_artistid FROM items WHERE albumartist LIKE '{artist_name}' LIMIT 1 """)
+            mbid_artist = tx.query("SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1", (artist_name,))
 
         if app.config['lastfm_api_key']:
             # Query last.fm for top tracks for this artist and parse the response
@@ -198,7 +198,7 @@ def get_similar_songs():
         artist_name = sub_to_beets_artist(req_id)
         # grab the artist's mbid
         with flask.g.lib.transaction() as tx:
-            mbid_artist = tx.query(f""" SELECT mb_artistid FROM items WHERE albumartist LIKE '{artist_name}' LIMIT 1 """)
+            mbid_artist = tx.query("SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1", (artist_name,))
 
     elif req_id.startswith(SNG_ID_PREF):
         # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?
@@ -249,15 +249,18 @@ def get_similar_songs():
         if mbid:
             # When we have an mbid, match against all relevant mbid fields
             sub_conditions = []
+
             # Check each mbid field for an exact match
             for field in mbid_fields:
                 sub_conditions.append(f"{field} = ?")
                 params.append(mbid)
+
             # Also check each name field with a LIKE condition
             for field in name_fields:
                 sub_conditions.append(f"{field} LIKE ?")
                 params.append(f"%{name}%")
             conditions.append("(" + " OR ".join(sub_conditions) + ")")
+
         else:
             # no mbid: typically with lastfm responses that's bc the entry is several artists in a collab
             parts = re.split(artists_separators, name)

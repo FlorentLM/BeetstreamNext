@@ -155,7 +155,7 @@ def initialise_db():
                 (
                     username   TEXT    NOT NULL,
                     item_type  TEXT    NOT NULL, -- 'song', 'album', 'artist'
-                    item_id    INTEGER NOT NULL,
+                    item_id    TEXT    NOT NULL, -- subsonic ID (can be anything i think, sg-1, al-2, ar-xxx, etc)
                     starred_at REAL    NOT NULL DEFAULT (unixepoch()),
                     PRIMARY KEY (username, item_type, item_id),
                     FOREIGN KEY (username) REFERENCES users (username)

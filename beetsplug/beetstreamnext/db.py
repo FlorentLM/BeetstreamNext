@@ -106,67 +106,111 @@ def initialise_db():
         key_hash = get_key_hash()
 
         cur.execute("""
-                    INSERT OR IGNORE INTO encryption (key, value) VALUES ('enabled', 'true');
-                """)
+                    INSERT OR IGNORE INTO encryption (key, value)
+                    VALUES ('enabled', 'true');
+                    """)
 
         cur.execute("""
                         INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
                     """, ('key_hash', key_hash))
     else:
         cur.execute("""
-                            INSERT OR IGNORE INTO encryption (key, value) VALUES ('enabled', 'false');
-                        """)
+                    INSERT OR IGNORE INTO encryption (key, value)
+                    VALUES ('enabled', 'false');
+                    """)
 
         cur.execute("""
                         INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
                     """, ('key_hash', None))
 
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            username TEXT PRIMARY KEY,
-            password BLOB NOT NULL,
-            api_key_hash TEXT UNIQUE,
-            email TEXT,
-            avatar BLOB,
-            avatarLastChanged REAL,
-            scrobblingEnabled INTEGER DEFAULT 0,
-            adminRole INTEGER DEFAULT 0,
-            settingsRole INTEGER DEFAULT 1,
-            streamRole INTEGER DEFAULT 0,
-            jukeboxRole INTEGER DEFAULT 0,
-            downloadRole INTEGER DEFAULT 0,
-            uploadRole INTEGER DEFAULT 0,
-            coverArtRole INTEGER DEFAULT 0,
-            playlistRole INTEGER DEFAULT 1,
-            commentRole INTEGER DEFAULT 1,
-            podcastRole INTEGER DEFAULT 0,
-            shareRole INTEGER DEFAULT 0,
-            videoConversionRole INTEGER DEFAULT 0,
-            folder INTEGER DEFAULT 0,
-            maxBitRate INTEGER DEFAULT 0        -- 0 (no limit), 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320
-        )
-    """)
+                CREATE TABLE IF NOT EXISTS users
+                (
+                    username            TEXT PRIMARY KEY,
+                    password            BLOB NOT NULL,
+                    api_key_hash        TEXT UNIQUE,
+                    email               TEXT,
+                    avatar              BLOB,
+                    avatarLastChanged   REAL,
+                    scrobblingEnabled   INTEGER DEFAULT 0,
+                    adminRole           INTEGER DEFAULT 0,
+                    settingsRole        INTEGER DEFAULT 1,
+                    streamRole          INTEGER DEFAULT 1,
+                    jukeboxRole         INTEGER DEFAULT 0,
+                    downloadRole        INTEGER DEFAULT 0,
+                    uploadRole          INTEGER DEFAULT 0,
+                    coverArtRole        INTEGER DEFAULT 0,
+                    playlistRole        INTEGER DEFAULT 1,
+                    commentRole         INTEGER DEFAULT 1,
+                    podcastRole         INTEGER DEFAULT 0,
+                    shareRole           INTEGER DEFAULT 0,
+                    videoConversionRole INTEGER DEFAULT 0,
+                    folder              INTEGER DEFAULT 0,
+                    maxBitRate          INTEGER DEFAULT 0  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
+                )
+                """)
 
     cur.execute("""
-            CREATE TABLE IF NOT EXISTS likes (
-                username   TEXT NOT NULL,
-                item_type  TEXT NOT NULL,
-                item_id    INTEGER NOT NULL,
-                PRIMARY KEY (username, item_type, item_id),
-                FOREIGN KEY (username) REFERENCES users (username)
-        )
-    """)
+                CREATE TABLE IF NOT EXISTS likes
+                (
+                    username   TEXT    NOT NULL,
+                    item_type  TEXT    NOT NULL, -- 'song', 'album', 'artist'
+                    item_id    INTEGER NOT NULL,
+                    starred_at REAL    NOT NULL DEFAULT (unixepoch()),
+                    PRIMARY KEY (username, item_type, item_id),
+                    FOREIGN KEY (username) REFERENCES users (username)
+                )
+                """)
 
     cur.execute("""
-            CREATE TABLE IF NOT EXISTS bookmarks (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                username  TEXT NOT NULL,
-                song_id   INTEGER NOT NULL,
-                position  REAL NOT NULL,
-                comments  TEXT,
-                FOREIGN KEY (username) REFERENCES users (username)
-            )
-        """)
+                CREATE TABLE IF NOT EXISTS bookmarks
+                (
+                    username TEXT    NOT NULL,
+                    song_id  INTEGER NOT NULL,
+                    position REAL    NOT NULL DEFAULT 0, -- playback offset (milliseconds)
+                    comment  TEXT,
+                    created  REAL    NOT NULL DEFAULT (unixepoch()),
+                    changed  REAL    NOT NULL DEFAULT (unixepoch()),
+                    PRIMARY KEY (username, song_id),
+                    FOREIGN KEY (username) REFERENCES users (username)
+                )
+                """)
+
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS ratings
+                (
+                    username  TEXT    NOT NULL,
+                    item_type TEXT    NOT NULL, -- 'song', 'album'
+                    item_id   INTEGER NOT NULL,
+                    rating    INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                    rated_at  REAL    NOT NULL DEFAULT (unixepoch()),
+                    PRIMARY KEY (username, item_type, item_id),
+                    FOREIGN KEY (username) REFERENCES users (username)
+                )
+                """)
+
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS play_queue
+                (
+                    username   TEXT PRIMARY KEY,
+                    current    INTEGER,        -- song_id currently queued up
+                    position   REAL DEFAULT 0, -- offset in the song (ms)
+                    changed    REAL,           -- last save timestamp
+                    changed_by TEXT,           -- Subsonic client name that saved the queue
+                    FOREIGN KEY (username) REFERENCES users (username)
+                )
+                """)
+
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS play_queue_entries
+                (
+                    username TEXT    NOT NULL,
+                    position INTEGER NOT NULL,
+                    song_id  INTEGER NOT NULL,
+                    PRIMARY KEY (username, position),
+                    FOREIGN KEY (username) REFERENCES play_queue (username)
+                )
+                """)
 
     conn.commit()
     conn.close()
@@ -193,13 +237,13 @@ def store_userdata(user_dict):
     }
     filtered_dict = {k: v for k, v in user_dict.items() if k in safe_fields}
 
-    
+
     cipher = get_cipher()
     if 'password' in filtered_dict and cipher:
         filtered_dict['password'] = cipher.encrypt(filtered_dict['password'].encode("utf-8"))
 
     columns = ['username']
-    placeholders =['?']
+    placeholders = ['?']
     updates = []
     values = [username]
 

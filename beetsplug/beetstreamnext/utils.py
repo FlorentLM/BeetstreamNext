@@ -2,7 +2,7 @@ import unicodedata
 from datetime import datetime
 import platform
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 import flask
 import json
 import base64
@@ -84,7 +84,7 @@ def map_media(beets_object: Union[dict, library.LibModel]):
         'year': beets_object.get('year', 0),
         'genre': beets_object.get('genre', ''),
         'genres': [{'name': g} for g in genres_formatter(beets_object.get('genre', ''))],
-        'created': timestamp_to_iso(beets_object.get('added')) or datetime.now().isoformat(),   # default to now?
+        'created': timestamp_to_iso(beets_object.get('added')),
         'originalReleaseDate': {
             'year': beets_object.get('original_year', 0) or beets_object.get('year', 0),
             'month': beets_object.get('original_month', 0) or beets_object.get('month', 0),
@@ -467,8 +467,10 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
 def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
-def timestamp_to_iso(timestamp):
-    return datetime.fromtimestamp(timestamp if timestamp else 0).isoformat()
+def timestamp_to_iso(timestamp) -> Optional[str]:
+    if not timestamp:
+        return None
+    return datetime.fromtimestamp(timestamp).isoformat()
 
 def get_mimetype(path):
 

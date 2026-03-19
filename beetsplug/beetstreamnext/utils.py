@@ -199,7 +199,7 @@ def map_song(song_object):
         'track': song.get('track', 1),
         'path': song_filepath if os.path.isfile(song_filepath) else '',
 
-        'played': None,
+        'played': '',
         'playCount': 0,
         'userRating': song.get('stars_rating', 0),
 
@@ -467,9 +467,9 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
 def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
-def timestamp_to_iso(timestamp) -> Optional[str]:
+def timestamp_to_iso(timestamp) -> str:
     if not timestamp:
-        return None
+        return ''
     return datetime.fromtimestamp(timestamp).isoformat()
 
 def get_mimetype(path):

@@ -293,6 +293,19 @@ def load_user_roles(username: str) -> Union[dict, None]:
     return load_userdata(username, fields=set(_ALL_USER_FIELDS - {'password'}))
 
 
+def load_user_likes(username: str) -> dict:
+    """Load all likes for a user as {(item_type, item_id): starred_at}."""
+
+    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+        rows = conn.execute("""
+                            SELECT item_type, item_id, starred_at
+                            FROM likes
+                            WHERE username = ?
+                            """, (username,)).fetchall()
+    likes = {(item_type, item_id): starred_at for item_type, item_id, starred_at in rows}
+    return likes
+
+
 def load_userdata(username: str, fields: Union[List[str], Tuple[str], Set[str], str, None] = None) -> Union[dict, None]:
 
     if fields is None:
@@ -309,13 +322,12 @@ def load_userdata(username: str, fields: Union[List[str], Tuple[str], Set[str], 
     column_names = ['username'] + safe_fields
     columns_str = ', '.join(column_names)
 
-    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
-    row = conn.execute(f"""
-            SELECT {columns_str}
-              FROM users
-             WHERE username = ?
-        """, (username,)).fetchone()
-    conn.close()
+    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+        row = conn.execute(f"""
+                SELECT {columns_str}
+                  FROM users
+                 WHERE username = ?
+            """, (username,)).fetchone()
 
     if not row:
         return None

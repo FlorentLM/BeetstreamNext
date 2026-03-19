@@ -6,7 +6,6 @@ from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
     sub_to_beets_song, sub_to_beets_album, sub_to_beets_artist,
-    timestamp_to_iso,
 )
 
 
@@ -77,27 +76,19 @@ def get_starred():
     songs, albums, artists = [], [], []
 
     for item_type, item_id, starred_at in rows:
-        starred_iso = timestamp_to_iso(starred_at)
-
         if item_type == 'song':
             item = flask.g.lib.get_item(sub_to_beets_song(item_id))
             if item:
-                mapped = map_song(item)
-                mapped['starred'] = starred_iso
-                songs.append(mapped)
+                songs.append(map_song(item))
 
         elif item_type == 'album':
             item = flask.g.lib.get_album(sub_to_beets_album(item_id))
             if item:
-                mapped = map_album(item, with_songs=False)
-                mapped['starred'] = starred_iso
-                albums.append(mapped)
+                albums.append(map_album(item, with_songs=False))
 
         elif item_type == 'artist':
             artist_name = sub_to_beets_artist(item_id)
-            mapped = map_artist(artist_name, with_albums=False)
-            mapped['starred'] = starred_iso
-            artists.append(mapped)
+            artists.append(map_artist(artist_name, with_albums=False))
 
     tag = 'starred2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'starred'
     payload = {

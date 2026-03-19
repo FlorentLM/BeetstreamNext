@@ -171,6 +171,10 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
     songs_ratings = [s.get('stars_rating', 0) for s in subsonic_album.get('song', []) if s.get('stars_rating', 0)]
     subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
 
+    liked_at = flask.g.get('liked', {}).get(('album', subsonic_album_id))
+    if liked_at:
+        subsonic_album['starred'] = timestamp_to_iso(liked_at)
+
     return subsonic_album
 
 def map_song(song_object):
@@ -236,6 +240,10 @@ def map_song(song_object):
     subsonic_song['size'] = os.path.getsize(subsonic_song['path']) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
     subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None) or subsonic_song.get('suffix', None))
 
+    liked_at = flask.g.get('liked', {}).get(('song', subsonic_song['id']))
+    if liked_at:
+        subsonic_song['starred'] = timestamp_to_iso(liked_at)
+
     return subsonic_song
 
 
@@ -247,7 +255,6 @@ def map_artist(artist_name, with_albums=True):
         'name': artist_name,
         'sortName': artist_name,
         'title': artist_name,
-        # "starred": "2021-07-03T06:15:28.757Z", # nothing if not starred
         'coverArt': subsonic_artist_id,
         "userRating": 0,
 
@@ -272,6 +279,10 @@ def map_artist(artist_name, with_albums=True):
 
         if with_albums:
             subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
+
+    liked_at = flask.g.get('liked', {}).get(('artist', subsonic_artist_id))
+    if liked_at:
+        subsonic_artist['starred'] = timestamp_to_iso(liked_at)
 
     return subsonic_artist
 

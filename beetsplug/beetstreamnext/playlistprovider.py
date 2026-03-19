@@ -1,72 +1,113 @@
-from typing import Union, List
+from typing import Union, List, Any
 import os
 from pathlib import Path
 import flask
 
-from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song
+from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song
 from beetsplug.beetstreamnext import app
 
 
 class Playlist:
 
     def __init__(self, dir_id, path):
-        self.id = f'{PLY_ID_PREF}{dir_id}-{path.name.lower()}'
-        self.name = path.stem
-        self.ctime = creation_date(path)
-        self.mtime = path.stat().st_mtime
-        self.path = path
+
+        self.path = Path(path)
+        self.id = f'{PLY_ID_PREF}{dir_id}-{self.path.name}'
+        self.name = self.path.stem
+        self.ctime = creation_date(self.path)
+        self.mtime = self.path.stat().st_mtime
         self.songs = []
         self.duration = 0
+
         self._load_songs()
 
     def _load_songs(self):
         """Resolve all songs in the M3U in a minimal number of DB queries."""
 
         entries = list(self.from_m3u(self.path))
+        if not entries:
+            return
 
         id_entries = [(i, e) for i, e in enumerate(entries) if e.get('props', {}).get('id')]
         path_entries = [(i, e) for i, e in enumerate(entries) if not e.get('props', {}).get('id')]
 
         results = {}    # keyed by original entry index to keep order
 
-        # Resolve songs that have a beets id embedded in the m3u
+        # Resolve songs that have a subsonic id embedded in the m3u
         if id_entries:
-            ids = [e['props']['id'] for _, e in id_entries]
-            id_query = "SELECT * FROM items WHERE id IN ({})".format(','.join('?' * len(ids)))
+            beets_ids = [sub_to_beets_song(e['props']['id']) for _, e in id_entries]
+
+            question_marks = ','.join('?' * len(beets_ids))
+            id_query = f"SELECT * FROM items WHERE id IN ({question_marks})"
 
             with flask.g.lib.transaction() as tx:
-                rows = tx.query(id_query, ids)
+                rows = tx.query(id_query, beets_ids)
 
-            rows_by_id = {str(row['id']): row for row in rows}
+            id_map = {row['id']: row for row in rows}
 
             for idx, entry in id_entries:
-                row = rows_by_id.get(entry['props']['id'])
+                beets_id = sub_to_beets_song(entry['props']['id'])
+                row = id_map.get(beets_id)
                 if row:
                     results[idx] = row
 
         # Resolve songs that only have a path
         if path_entries:
-            paths_str = [(self.path.parent / Path(e['uri'])).resolve().as_posix() for _, e in path_entries]
-            paths_bytes = [p.encode('utf-8') for p in paths_str]
-            path_query = "SELECT * FROM items WHERE path IN ({})".format(','.join('?' * len(paths_bytes)))
+            absolute_paths_bytes = []
+            for _, e in path_entries:
+                uri = e['uri']
+                full_path = (self.path.parent / uri).resolve()
+                absolute_paths_bytes.append(str(full_path).encode('utf-8'))
+
+            question_marks = ','.join('?' * len(absolute_paths_bytes))
+            path_query = f"SELECT * FROM items WHERE path IN ({question_marks})"
 
             with flask.g.lib.transaction() as tx:
-                rows = tx.query(path_query, paths_bytes)
+                rows = tx.query(path_query, absolute_paths_bytes)
 
-            rows_by_path = {(row['path'].decode('utf-8') if isinstance(row['path'], bytes)
-                             else row['path']): row for row in rows}
-
-            for idx, (entry, path_str) in enumerate(zip(path_entries, paths_str)):
-                orig_idx = path_entries[idx][0]
-                row = rows_by_path.get(path_str)
+            path_map = {row['path']: row for row in rows}
+            for (idx, entry), path_bytes in zip(path_entries, absolute_paths_bytes):
+                row = path_map.get(path_bytes)
                 if row:
-                    results[orig_idx] = row
+                    results[idx] = row
 
         # Rebuild original order
+        self.songs = []
+        self.duration = 0
         for idx in sorted(results):
             row = results[idx]
             self.songs.append(map_song(row))
             self.duration += int(row['length'] or 0)
+
+    def rename(self, name=None):
+        if name and name != self.name:
+            name = str(name).rstrip('/').rsplit('.', 1)[0]
+            new_path = self.path.with_name(name).with_suffix('.m3u')
+
+            if new_path.exists():
+                raise FileExistsError(f"A playlist named {new_path.name} already exists.")
+
+            self.path.rename(new_path)
+            self.path = new_path
+            self.name = self.path.stem  # ID will also change
+
+    def remove_songs(self, indices: List[Any]):
+        indices = list(map(int, indices))
+
+        for index in sorted(indices, reverse=True): # descending so that removing an item doesn't shift other indices
+            if 0 <= index < len(self.songs):
+                self.songs.pop(index)
+        self._calc_duration()
+        self.to_m3u()
+
+    def add_songs(self, beets_items):
+        for item in beets_items:
+            self.songs.append(map_song(item))
+        self._calc_duration()
+        self.to_m3u()
+
+    def _calc_duration(self):
+        self.duration = sum(int(s.get('duration', 0) or 0) for s in self.songs)
 
     @classmethod
     def from_songs(cls, name, songs):
@@ -83,7 +124,7 @@ class Playlist:
             app.logger.warning(err)
             raise FileExistsError(err)
 
-        instance.id = f'{PLY_ID_PREF}0-{instance.path.name.lower()}'
+        instance.id = f'{PLY_ID_PREF}0-{instance.path.name}'
         instance.ctime = None
         instance.mtime = None
         instance.songs = [map_song(song) for song in songs]
@@ -102,7 +143,9 @@ class Playlist:
     def from_m3u(cls, filepath):
         """Parse a playlist (m3u, m3u8 or m3a) and yield its entries."""
 
-        with open(filepath, 'r', encoding='UTF-8') as f:
+        filepath = Path(filepath)
+
+        with filepath.open('r', encoding='UTF-8') as f:
             curr_entry = {}
 
             for line in f:
@@ -212,22 +255,21 @@ class PlaylistProvider:
     def _load_playlist(self, dir_id, filepath):
         """Load playlist data from a file, or return the cached version if still current."""
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.name.lower()}"
+        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.name}"
 
-        # Get potential cached version
+        # check cache
         playlist = self._playlists.get(playlist_id)
 
-        # If the playlist is not found in cache, or if the cached version is outdated
         if not playlist or playlist.mtime < file_mtime:
-            # Load new data from file
             playlist = Playlist(dir_id, filepath)
-            # And cache it
+            # cache it
             self.register(playlist)
 
         return playlist
 
     def get(self, playlist_id: str) -> Union[Playlist, None]:
         """Get a playlist by its id, reloading from disk if file changed."""
+
         if not playlist_id.startswith(PLY_ID_PREF):
             return None
 
@@ -252,6 +294,9 @@ class PlaylistProvider:
     def register(self, playlist: Playlist) -> None:
         self._playlists[playlist.id] = playlist
 
+    def deregister(self, playlist_id: str):
+        self._playlists.pop(playlist_id, None)
+
     def delete(self, playlist_id: str) -> None:
         playlist = self._playlists.get(playlist_id)
         if not playlist:
@@ -265,5 +310,4 @@ class PlaylistProvider:
             app.logger.warning(err)
             raise FileNotFoundError(err)
         finally:
-            # always remove from cache
-            self._playlists.pop(playlist_id, None)
+            self.deregister(playlist_id) # always remove from cache

@@ -85,3 +85,53 @@ def delete_playlist():
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
     return subsonic_response({}, resp_fmt)
+
+
+@app.route('/rest/updatePlaylist', methods=['GET', 'POST'])
+@app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
+def update_playlist():
+    r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
+
+    plid = r.get('playlistId')
+    new_name = r.get('name')
+
+    to_add = r.getlist('songIdToAdd')
+    to_remove = r.getlist('songIndexToRemove')
+
+    if not plid:
+        return subsonic_error(10, "playlistId is required", resp_fmt=resp_fmt)
+
+    pp = flask.g.playlist_provider
+
+    playlist = pp.get(plid)
+    if not playlist:
+        return subsonic_error(70, "Playlist not found", resp_fmt=resp_fmt)
+
+    try:
+        if new_name:
+            old_id = playlist.id
+            playlist.rename(name=new_name)
+
+            # filename changed so ID changed. Update provider cache.
+            pp.deregister(old_id)
+            pp.register(playlist)
+
+        if to_remove:
+            playlist.remove_songs(to_remove)
+
+        if to_add:
+            from beetsplug.beetstreamnext.utils import sub_to_beets_song
+            beets_items = []
+
+            for s_id in to_add:
+                item = flask.g.lib.get_item(sub_to_beets_song(s_id))
+                if item:
+                    beets_items.append(item)
+            playlist.add_songs(beets_items)
+
+    except Exception as e:
+        app.logger.error(f"Error updating playlist: {e}")
+        return subsonic_error(0, str(e), resp_fmt=resp_fmt)
+
+    return subsonic_response({}, resp_fmt)

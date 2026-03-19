@@ -12,7 +12,8 @@ class Playlist:
     def __init__(self, dir_id, path):
 
         self.path = Path(path)
-        self.id = f'{PLY_ID_PREF}{dir_id}-{self.path.name}'
+        self.dir_id = dir_id
+        self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
         self.name = self.path.stem
         self.ctime = creation_date(self.path)
         self.mtime = self.path.stat().st_mtime
@@ -89,12 +90,14 @@ class Playlist:
 
             self.path.rename(new_path)
             self.path = new_path
-            self.name = self.path.stem  # ID will also change
+            self.name = self.path.stem
+            self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
+            self.mtime = self.path.stat().st_mtime
 
     def remove_songs(self, indices: List[Any]):
-        indices = list(map(int, indices))
-
-        for index in sorted(indices, reverse=True): # descending so that removing an item doesn't shift other indices
+        # need descending order so that removing an item doesn't shift other indices
+        indices = sorted([int(i) for i in indices], reverse=True)
+        for index in indices:
             if 0 <= index < len(self.songs):
                 self.songs.pop(index)
         self._calc_duration()
@@ -255,7 +258,7 @@ class PlaylistProvider:
     def _load_playlist(self, dir_id, filepath):
         """Load playlist data from a file, or return the cached version if still current."""
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.name}"
+        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.name.lower()}"
 
         # check cache
         playlist = self._playlists.get(playlist_id)
@@ -273,6 +276,15 @@ class PlaylistProvider:
         if not playlist_id.startswith(PLY_ID_PREF):
             return None
 
+        playlist_id = playlist_id.lower()
+
+        # try cache first
+        if playlist_id in self._playlists:
+            playlist = self._playlists[playlist_id]
+
+            if playlist.path.is_file():
+                return self._load_playlist(playlist.dir_id, playlist.path)
+
         dir_key, file_name = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
         dir_id = int(dir_key)
 
@@ -284,8 +296,8 @@ class PlaylistProvider:
 
         if filepath.is_file():
             return self._load_playlist(dir_id, filepath)
-        else:
-            return None
+
+        return None
 
     def getall(self) -> List[Playlist]:
         """Return all cached playlists."""

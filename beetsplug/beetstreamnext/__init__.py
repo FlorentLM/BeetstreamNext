@@ -16,7 +16,7 @@
 """BeetstreamNext is a Beets.io plugin that exposes SubSonic API endpoints."""
 import getpass
 from pathlib import Path
-
+import threading
 from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
@@ -26,6 +26,7 @@ from flask_cors import CORS
 
 # Flask setup
 app = flask.Flask(__name__)
+_nb_items_lock = threading.Lock()
 
 @app.before_request
 def before_request():
@@ -47,11 +48,8 @@ def before_request():
     g.user_data = load_user_roles(username)
     g.liked = load_user_likes(username)
     g.play_stats = load_user_play_stats(username)
-
-    if app.config.get('playlist_provider') is None:
-        from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
-        app.config['playlist_provider'] = PlaylistProvider()
     g.playlist_provider = app.config['playlist_provider']
+
 
 @app.route('/')
 def home():
@@ -196,7 +194,9 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             with app.app_context():
                 from beetsplug.beetstreamnext import db
+                from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
                 db.initialise_db()
+                app.config['playlist_provider'] = PlaylistProvider()
 
             host = self.config['host'].as_str()
             port = self.config['port'].get(int)

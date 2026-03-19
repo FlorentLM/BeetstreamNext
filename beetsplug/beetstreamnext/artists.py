@@ -4,7 +4,7 @@ from collections import defaultdict
 from functools import partial
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext import app, _nb_items_lock
 from beetsplug.beetstreamnext.utils import (
     subsonic_response,
     sub_to_beets_artist,
@@ -64,15 +64,14 @@ def get_artists_or_indexes():
 
     if tag == 'indexes':
         with flask.g.lib.transaction() as tx:
-            latest = int(tx.query('SELECT added FROM items ORDER BY added DESC LIMIT 1')[0][0])
-            # TODO - 'mtime' field?
-            nb_items = tx.query('SELECT COUNT(*) FROM items')[0][0]
+            latest = int(tx.query("SELECT added FROM items ORDER BY added DESC LIMIT 1")[0][0])
+            nb_items = tx.query("SELECT COUNT(*) FROM items")[0][0]
 
-        if nb_items < app.config['nb_items']:
-            app.logger.warning('Media deletion detected (or very first time getIndexes is queried)')
-            # Deletion of items (or very first check since BeetstreamNext started)
-            latest = int(time.time() * 1000)
-            app.config['nb_items'] = nb_items
+        with _nb_items_lock:
+            if nb_items < app.config['nb_items']:
+                app.logger.warning('Media deletion detected (or very first time getIndexes is queried)')
+                latest = int(time.time() * 1000)
+                app.config['nb_items'] = nb_items
 
         payload[tag]['lastModified'] = latest
 

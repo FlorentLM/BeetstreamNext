@@ -35,7 +35,7 @@ def before_request():
         return
 
     from beetsplug.beetstreamnext.authentication import authenticate
-    from beetsplug.beetstreamnext.db import load_user_roles, load_user_likes
+    from beetsplug.beetstreamnext.db import load_user_roles, load_user_likes, load_user_play_stats
     from beetsplug.beetstreamnext.utils import subsonic_error
 
     ok, error_code, username = authenticate(flask.request.values)
@@ -46,6 +46,7 @@ def before_request():
     g.username = username
     g.user_data = load_user_roles(username)
     g.liked = load_user_likes(username)
+    g.play_stats = load_user_play_stats(username)
 
     if app.config.get('playlist_provider') is None:
         from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
@@ -63,6 +64,7 @@ import beetsplug.beetstreamnext.dummy
 import beetsplug.beetstreamnext.likes
 import beetsplug.beetstreamnext.playlists
 import beetsplug.beetstreamnext.search
+import beetsplug.beetstreamnext.scrobble
 import beetsplug.beetstreamnext.songs
 import beetsplug.beetstreamnext.users
 import beetsplug.beetstreamnext.general

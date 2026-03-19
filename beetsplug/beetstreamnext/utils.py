@@ -199,9 +199,8 @@ def map_song(song_object):
         'track': song.get('track', 1),
         'path': song_filepath if os.path.isfile(song_filepath) else '',
 
-        'played': timestamp_to_iso(song.get('last_played', 0)),
-        # 'starred': timestamp_to_iso(song.get('last_liked', 0)),
-        'playCount': song.get('play_count', 0),
+        'played': None,
+        'playCount': 0,
         'userRating': song.get('stars_rating', 0),
 
         'duration': round(song.get('length', 0)),
@@ -239,6 +238,12 @@ def map_song(song_object):
     subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
     subsonic_song['size'] = os.path.getsize(subsonic_song['path']) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
     subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None) or subsonic_song.get('suffix', None))
+
+    stats = flask.g.get('play_stats', {}).get(song.get('id'))
+    if stats:
+        subsonic_song['playCount'] = stats['play_count']
+        if stats['last_played']:
+            subsonic_song['played'] = timestamp_to_iso(stats['last_played'])
 
     liked_at = flask.g.get('liked', {}).get(('song', subsonic_song['id']))
     if liked_at:

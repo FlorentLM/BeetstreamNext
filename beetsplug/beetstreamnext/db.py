@@ -306,6 +306,22 @@ def load_user_likes(username: str) -> dict:
     return likes
 
 
+def load_user_play_stats(username: str) -> dict:
+    """Load play stats for a user as {beets_song_id: {'play_count': N, 'last_played': ts}}."""
+
+    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+        rows = conn.execute("""
+                            SELECT song_id, play_count, last_played
+                            FROM play_stats
+                            WHERE username = ?
+                            """, (username,)).fetchall()
+    play_stats = {
+        song_id: {'play_count': play_count, 'last_played': last_played}
+        for song_id, play_count, last_played in rows
+    }
+    return play_stats
+
+
 def load_userdata(username: str, fields: Union[List[str], Tuple[str], Set[str], str, None] = None) -> Union[dict, None]:
 
     if fields is None:

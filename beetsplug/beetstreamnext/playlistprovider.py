@@ -34,9 +34,9 @@ class Playlist:
 
         results = {}    # keyed by original entry index to keep order
 
-        # Resolve songs that have a subsonic id embedded in the m3u
+        # Resolve songs that have a beets id embedded in the m3u
         if id_entries:
-            beets_ids = [sub_to_beets_song(e['props']['id']) for _, e in id_entries]
+            beets_ids = [int(e['props']['id']) for _, e in id_entries]
 
             question_marks = ','.join('?' * len(beets_ids))
             id_query = f"SELECT * FROM items WHERE id IN ({question_marks})"
@@ -47,7 +47,7 @@ class Playlist:
             id_map = {row['id']: row for row in rows}
 
             for idx, entry in id_entries:
-                beets_id = sub_to_beets_song(entry['props']['id'])
+                beets_id = int(entry['props']['id'])
                 row = id_map.get(beets_id)
                 if row:
                     results[idx] = row
@@ -127,7 +127,8 @@ class Playlist:
             app.logger.warning(err)
             raise FileExistsError(err)
 
-        instance.id = f'{PLY_ID_PREF}0-{instance.path.name}'
+        instance.dir_id = 0
+        instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.name}'
         instance.ctime = None
         instance.mtime = None
         instance.songs = [map_song(song) for song in songs]
@@ -207,7 +208,7 @@ class Playlist:
             if not path:
                 continue
 
-            song_id = song.get('id', '')
+            song_id = sub_to_beets_song(song.get('id', ''))
             length = song.get('duration') or song.get('length', 0)
             info = f"#EXTINF:{round(length)} id={song_id}"
 

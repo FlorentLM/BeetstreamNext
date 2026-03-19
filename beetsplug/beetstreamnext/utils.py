@@ -308,7 +308,7 @@ def map_playlist(playlist):
     return subsonic_playlist
 
 
-# === Core response-formatting functions ===
+# Core response-formatting functions
 
 def dict_to_xml(tag: str, data):
     """

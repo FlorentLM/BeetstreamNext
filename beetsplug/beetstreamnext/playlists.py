@@ -2,7 +2,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.playlistprovider import Playlist
-from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subsonic_error, sub_to_beets_song
 
 
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
@@ -58,7 +58,8 @@ def create_playlist():
     if not name or not songs_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = list(flask.g.lib.items('id:' + ' , id:'.join(songs_ids)))
+    songs = [flask.g.lib.get_item(sub_to_beets_song(sid)) for sid in songs_ids]
+    songs = [s for s in songs if s]  # drop any that weren't found
     try:
         playlist = Playlist.from_songs(name, songs)
     except FileExistsError as e:
@@ -80,7 +81,7 @@ def delete_playlist():
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
-        flask.g.playlist_provider.delete(playlist_id)
+        flask.g.playlist_provider.delete(playlist_id.lower())
     except FileNotFoundError as e:
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
@@ -121,7 +122,6 @@ def update_playlist():
             playlist.remove_songs(to_remove)
 
         if to_add:
-            from beetsplug.beetstreamnext.utils import sub_to_beets_song
             beets_items = []
 
             for s_id in to_add:

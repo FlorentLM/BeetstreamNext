@@ -88,6 +88,9 @@ def get_random_songs():
 def stream_song():
     r = flask.request.values
 
+    if not bool(flask.g.user_data.get('streamRole')):
+        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
+
     max_bitrate = int(r.get('maxBitRate', 0))
     req_format = r.get('format')
     time_offset = float(r.get('timeOffset', 0.0))
@@ -116,6 +119,9 @@ def stream_song():
 @app.route('/rest/download.view', methods=["GET", "POST"])
 def download_song():
     r = flask.request.values
+
+    if not bool(flask.g.user_data.get('downloadRole')):
+        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
 
     song_id = sub_to_beets_song(r.get('id'))
     item = flask.g.lib.get_item(song_id)

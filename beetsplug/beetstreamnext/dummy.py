@@ -11,6 +11,16 @@ def ping():
     return subsonic_response({}, r.get('f', 'xml'))
 
 
+@app.route('/rest/startScan', methods=["GET", "POST"])
+@app.route('/rest/startScan.view', methods=["GET", "POST"])
+def start_scan():
+    r = flask.request.values
+
+    # TODO: maybe trigger a refresh of BeetstreamNext's data (album covers, etc)?
+
+    return subsonic_response({}, r.get('f', 'xml'))
+
+
 @app.route('/rest/tokenInfo', methods=["GET", "POST"])
 @app.route('/rest/tokenInfo.view', methods=["GET", "POST"])
 def token_info():

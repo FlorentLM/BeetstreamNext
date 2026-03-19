@@ -235,9 +235,12 @@ def map_song(song_object):
     #         'albumPeak': song.get('rg_album_peak', 0)
     # }
 
-    subsonic_song['suffix'] = song.get('format').lower() or subsonic_song['path'].rsplit('.', 1)[-1].lower()
-    subsonic_song['size'] = os.path.getsize(subsonic_song['path']) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
-    subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None) or subsonic_song.get('suffix', None))
+    subsonic_song['suffix'] = ((song.get('format') or '').lower()
+                               or subsonic_song['path'].rsplit('.', 1)[-1].lower())
+    subsonic_song['size'] = ((os.path.getsize(subsonic_song['path']) if subsonic_song['path'] else 0)
+                             or round(song.get('bitrate', 0) * song.get('length', 0) / 8))
+    subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None)
+                                                or subsonic_song.get('suffix', None))
 
     stats = flask.g.get('play_stats', {}).get(song.get('id'))
     if stats:

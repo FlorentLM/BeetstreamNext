@@ -280,13 +280,23 @@ def map_artist(artist_name, with_albums=True):
     # if dz_data:
     #     subsonic_artist['artistImageUrl'] = dz_data.get('picture_big', '')
 
-    albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
-    subsonic_artist['albumCount'] = len(albums)
-    if albums:
-        subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
-
-        if with_albums:
-            subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
+    if with_albums:
+        albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+        subsonic_artist['albumCount'] = len(albums)
+        if albums:
+            subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
+        subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
+    else:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                "SELECT COUNT(*), mb_albumartistid FROM albums WHERE albumartist = ? GROUP BY albumartist",
+                (artist_name,)
+            )
+        if rows:
+            subsonic_artist['albumCount'] = rows[0][0]
+            subsonic_artist['musicBrainzId'] = rows[0][1] or ''
+        else:
+            subsonic_artist['albumCount'] = 0
 
     liked_at = flask.g.get('liked', {}).get(('artist', subsonic_artist_id))
     if liked_at:

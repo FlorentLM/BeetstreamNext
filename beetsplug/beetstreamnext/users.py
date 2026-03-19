@@ -21,7 +21,7 @@ def _user_payload(user_data: dict) -> dict:
         'coverArtRole':        bool(user_data.get('coverArtRole', False)),
         'commentRole':         bool(user_data.get('commentRole', True)),
         'podcastRole':         bool(user_data.get('podcastRole', False)),
-        'streamRole':          bool(user_data.get('streamRole', False)),
+        'streamRole':          bool(user_data.get('streamRole', True)),
         'jukeboxRole':         bool(user_data.get('jukeboxRole', False)),
         'shareRole':           bool(user_data.get('shareRole', False)),
         'videoConversionRole': bool(user_data.get('videoConversionRole', False)),

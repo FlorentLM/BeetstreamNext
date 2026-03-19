@@ -516,7 +516,7 @@ def genres_formatter(genres):
 def creation_date(filepath):
     """
     Get a file's creation date.
-    (see: http://stackoverflow.com/a/39501288/1709587)
+    (see: https://stackoverflow.com/a/39501288/1709587)
     """
     if platform.system() == 'Windows':
         return os.path.getctime(filepath)
@@ -576,7 +576,7 @@ def query_lastfm(query: str, type: str, method: str = 'info', mbid=True):
         return {}
 
     query_lastfm = query.replace(' ', '+')
-    endpoint = 'http://ws.audioscrobbler.com/2.0/'
+    endpoint = 'https://ws.audioscrobbler.com/2.0/'
 
     params = {
         'format': 'json',

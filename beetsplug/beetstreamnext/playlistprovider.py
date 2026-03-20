@@ -20,9 +20,7 @@ class Playlist:
         self.songs = []
         self.duration = 0
 
-        self._load_songs()
-
-    def _load_songs(self):
+    def load_songs(self):
         """Resolve all songs in the M3U in a minimal number of DB queries."""
 
         entries = list(self.from_m3u(self.path))
@@ -258,6 +256,7 @@ class PlaylistProvider:
 
     def _load_playlist(self, dir_id, filepath):
         """Load playlist data from a file, or return the cached version if still current."""
+
         file_mtime = filepath.stat().st_mtime
         playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.name.lower()}"
 
@@ -284,6 +283,7 @@ class PlaylistProvider:
             playlist = self._playlists[playlist_id]
 
             if playlist.path.is_file():
+                playlist.load_songs()
                 return self._load_playlist(playlist.dir_id, playlist.path)
 
         dir_key, file_name = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
@@ -296,12 +296,16 @@ class PlaylistProvider:
         filepath = Path(dir_path) / file_name
 
         if filepath.is_file():
-            return self._load_playlist(dir_id, filepath)
+            playlist = self._load_playlist(dir_id, filepath)
+            playlist.load_songs()
+            return playlist
 
         return None
 
     def getall(self) -> List[Playlist]:
         """Return all cached playlists."""
+        for playlist in self._playlists.values():
+            playlist.load_songs()
         return list(self._playlists.values())
 
     def register(self, playlist: Playlist) -> None:

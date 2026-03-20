@@ -3,7 +3,7 @@ import urllib.parse
 from functools import partial
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.utils import sub_to_beets_album, map_album, subsonic_response
+from beetsplug.beetstreamnext.utils import sub_to_beets_album, map_album, subsonic_response, ALB_ID_PREF
 
 
 def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
@@ -76,8 +76,8 @@ def get_album_list(ver=None):
     if sort_by == 'starred':
         starred = {
             sub_to_beets_album(item_id): starred_at
-            for (item_type, item_id), starred_at in flask.g.liked.items()
-            if item_type == 'album'
+            for item_id, starred_at in flask.g.liked.items()
+            if item_id.startswith(ALB_ID_PREF)
         }
 
         # Sort by starred_at descending then page

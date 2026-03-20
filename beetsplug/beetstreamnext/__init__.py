@@ -36,7 +36,7 @@ def before_request():
         return
 
     from beetsplug.beetstreamnext.authentication import authenticate
-    from beetsplug.beetstreamnext.db import load_user_roles, load_user_likes, load_user_play_stats
+    from beetsplug.beetstreamnext.db import load_user_roles, load_user_likes, load_user_play_stats, load_user_ratings
     from beetsplug.beetstreamnext.utils import subsonic_error
 
     ok, error_code, username = authenticate(flask.request.values)
@@ -47,6 +47,7 @@ def before_request():
     g.username = username
     g.user_data = load_user_roles(username)
     g.liked = load_user_likes(username)
+    g.ratings = load_user_ratings(username)
     g.play_stats = load_user_play_stats(username)
     g.playlist_provider = app.config['playlist_provider']
 
@@ -60,6 +61,7 @@ import beetsplug.beetstreamnext.artists
 import beetsplug.beetstreamnext.coverart
 import beetsplug.beetstreamnext.dummy
 import beetsplug.beetstreamnext.likes
+import beetsplug.beetstreamnext.ratings
 import beetsplug.beetstreamnext.playlists
 import beetsplug.beetstreamnext.search
 import beetsplug.beetstreamnext.scrobble
@@ -92,23 +94,18 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
     item_types = {}
 
-    # album_types = {
-    #     'last_liked_album': DateType(),
-    #     'stars_rating_album': types.INTEGER
-    # }
-
     def commands(self):
         cmd = ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
         cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='Debug mode')
         cmd.parser.add_option('-u', '--user', action='store_true', default=False, help='Create a new user')
 
         def func(lib, opts, args):
-            # Shared DB path setup
             db_path = Path(config['library'].get()).parent / 'beetstreamnext.db'
             app.config['DB_PATH'] = db_path
 
             if opts.user:
                 from beetsplug.beetstreamnext import db
+
                 with app.app_context():
                     db.initialise_db()
 
@@ -130,9 +127,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     except ValueError as e:
                         print(f"\n[ERROR] {e}")
                         return
+
                     print(f"\nUser created successfully!")
                     print(f"API KEY: {api_key}")
                     print("This key is needed by your Subsonic client. Store it safely (it will not be shown again).")
+
                 return
 
             args = ui.decargs(args)

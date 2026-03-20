@@ -32,6 +32,9 @@ def get_song():
     r = flask.request.values
     song_id = r.get('id')
 
+    if not song_id:
+        return subsonic_error(10, resp_fmt=r.get('f', 'xml'))
+
     payload = song_payload(song_id)
     return subsonic_response(payload, r.get('f', 'xml'))
 
@@ -100,6 +103,7 @@ def stream_song():
     song = flask.g.lib.get_item(song_id)
     song_path = song.get('path', b'').decode('utf-8') if song else ''
 
+    print(song_path)
     if song_path:
         if app.config['never_transcode'] or req_format == 'raw' or max_bitrate <= 0 or song.bitrate <= max_bitrate * 1000:
             response = stream.direct(song_path)

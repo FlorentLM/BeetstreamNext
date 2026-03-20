@@ -70,12 +70,40 @@ def get_album_list(ver=None):
     to_year = int(r.get('toYear', 3000))
     genre_filter = r.get('genre')
 
-    # Start building the base query
+    tag = 'albumList2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'albumList'
+
+    # Starred filter needs data from the two dbs
+    if sort_by == 'starred':
+        starred = {
+            sub_to_beets_album(item_id): starred_at
+            for (item_type, item_id), starred_at in flask.g.liked.items()
+            if item_type == 'album'
+        }
+
+        # Sort by starred_at descending then page
+        sorted_ids = sorted(starred, key=lambda aid: starred[aid], reverse=True)
+        paged_ids = sorted_ids[offset:offset + size]
+
+        if paged_ids:
+            placeholders = ','.join('?' * len(paged_ids))
+
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(f"SELECT * FROM albums WHERE id IN ({placeholders})", paged_ids)
+
+            row_map = {row['id']: row for row in rows}
+            albums = [row_map[aid] for aid in paged_ids if aid in row_map]
+        else:
+            albums = []
+
+        payload = {tag: {"album": list(map(partial(map_album, with_songs=False), albums))}}
+        return subsonic_response(payload, r.get('f', 'xml'))
+
+    # All other sort types we can do in SQL directly
     query = "SELECT * FROM albums"
     conditions = []
     params = []
 
-    # Apply filtering conditions:
+    # filtering conditions:
     if sort_by == 'byYear':
         conditions.append("year BETWEEN ? AND ?")
         params.extend([min(from_year, to_year), max(from_year, to_year)])
@@ -109,13 +137,11 @@ def get_album_list(ver=None):
     query += " LIMIT ? OFFSET ?"
     params.extend([size, offset])
 
-    # Execute the query within a transaction
     with flask.g.lib.transaction() as tx:
         albums = tx.query(query, params)
 
-    tag = 'albumList2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'albumList'
     payload = {
-        tag: {                        # albumList response does not include songs
+        tag: {
             "album": list(map(partial(map_album, with_songs=False), albums))
         }
     }

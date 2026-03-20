@@ -5,28 +5,29 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
-    sub_to_beets_song, sub_to_beets_album, sub_to_beets_artist,
+    sub_to_beets_song, sub_to_beets_album, sub_to_beets_artist, SNG_ID_PREF, ALB_ID_PREF, ART_ID_PREF
 )
 
 
-def _set_liked(username: str, item_type: str, item_id: str, liked: bool) -> None:
+def _set_liked(username: str, item_id: str, liked: bool) -> None:
 
     db_path = flask.current_app.config['DB_PATH']
 
     with sqlite3.connect(db_path) as conn:
         if liked:
             conn.execute("""
-                INSERT INTO likes (username, item_type, item_id)
-                VALUES (?, ?, ?)
-                ON CONFLICT (username, item_type, item_id)
-                DO UPDATE SET starred_at = unixepoch()
-            """, (username, item_type, item_id))
+                         INSERT INTO likes (username, item_id)
+                         VALUES (?, ?)
+                         ON CONFLICT (username, item_id)
+                             DO UPDATE SET starred_at = unixepoch()
+                         """, (username, item_id))
         else:
             conn.execute("""
-                DELETE FROM likes
-                WHERE username = ? AND item_type = ? AND item_id = ?
-            """, (username, item_type, item_id))
-
+                         DELETE
+                         FROM likes
+                         WHERE username = ?
+                           AND item_id = ?
+                         """, (username, item_id))
 
 @app.route('/rest/star', methods=['GET', 'POST'])
 @app.route('/rest/star.view', methods=['GET', 'POST'])
@@ -38,8 +39,8 @@ def star_or_unstar():
     resp_fmt = r.get('f', 'xml')
     liked = 'unstar' not in flask.request.path
 
-    song_ids   = r.getlist('id')
-    album_ids  = r.getlist('albumId')
+    song_ids = r.getlist('id')
+    album_ids = r.getlist('albumId')
     artist_ids = r.getlist('artistId')
 
     if not any([song_ids, album_ids, artist_ids]):
@@ -47,12 +48,9 @@ def star_or_unstar():
 
     username = flask.g.username
 
-    for sid in song_ids:
-        _set_liked(username, 'song',   sid,  liked)
-    for alid in album_ids:
-        _set_liked(username, 'album',  alid,  liked)
-    for arid in artist_ids:
-        _set_liked(username, 'artist', arid, liked)
+    to_like = song_ids + album_ids + artist_ids
+    for id_ in to_like:
+        _set_liked(username, id_,  liked)
 
     return subsonic_response({}, resp_fmt)
 
@@ -70,23 +68,23 @@ def get_starred():
 
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute("""
-            SELECT item_type, item_id, starred_at FROM likes WHERE username = ?
+            SELECT item_id, starred_at FROM likes WHERE username = ?
         """, (username,)).fetchall()
 
     songs, albums, artists = [], [], []
 
-    for item_type, item_id, starred_at in rows:
-        if item_type == 'song':
+    for item_id, starred_at in rows:
+        if item_id.startswith(SNG_ID_PREF):
             item = flask.g.lib.get_item(sub_to_beets_song(item_id))
             if item:
                 songs.append(map_song(item))
 
-        elif item_type == 'album':
+        elif item_id.startswith(ALB_ID_PREF):
             item = flask.g.lib.get_album(sub_to_beets_album(item_id))
             if item:
                 albums.append(map_album(item, with_songs=False))
 
-        elif item_type == 'artist':
+        elif item_id.startswith(ART_ID_PREF):
             artist_name = sub_to_beets_artist(item_id)
             artists.append(map_artist(artist_name, with_albums=False))
 

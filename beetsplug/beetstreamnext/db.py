@@ -154,10 +154,9 @@ def initialise_db():
                 CREATE TABLE IF NOT EXISTS likes
                 (
                     username   TEXT    NOT NULL,
-                    item_type  TEXT    NOT NULL, -- 'song', 'album', 'artist'
-                    item_id    TEXT    NOT NULL, -- subsonic ID (can be anything i think, sg-1, al-2, ar-xxx, etc)
+                    item_id    TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
                     starred_at REAL    NOT NULL DEFAULT (unixepoch()),
-                    PRIMARY KEY (username, item_type, item_id),
+                    PRIMARY KEY (username, item_id),
                     FOREIGN KEY (username) REFERENCES users (username)
                 )
                 """)
@@ -180,11 +179,10 @@ def initialise_db():
                 CREATE TABLE IF NOT EXISTS ratings
                 (
                     username  TEXT    NOT NULL,
-                    item_type TEXT    NOT NULL, -- 'song', 'album'
-                    item_id   INTEGER NOT NULL,
+                    item_id   TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
                     rating    INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
                     rated_at  REAL    NOT NULL DEFAULT (unixepoch()),
-                    PRIMARY KEY (username, item_type, item_id),
+                    PRIMARY KEY (username, item_id),
                     FOREIGN KEY (username) REFERENCES users (username)
                 )
                 """)
@@ -294,16 +292,29 @@ def load_user_roles(username: str) -> Union[dict, None]:
 
 
 def load_user_likes(username: str) -> dict:
-    """Load all likes for a user as {(item_type, item_id): starred_at}."""
+    """Load all likes for a user as {subsonic_id: starred_at}."""
 
     with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
         rows = conn.execute("""
-                            SELECT item_type, item_id, starred_at
+                            SELECT item_id, starred_at
                             FROM likes
                             WHERE username = ?
                             """, (username,)).fetchall()
-    likes = {(item_type, item_id): starred_at for item_type, item_id, starred_at in rows}
+    likes = {item_id: starred_at for item_id, starred_at in rows}
     return likes
+
+
+def load_user_ratings(username: str) -> dict:
+    """Load all ratings for a user as {subsonic_id: starred_at}."""
+
+    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+        rows = conn.execute("""
+                                SELECT item_id, rating
+                                FROM ratings
+                                WHERE username = ?
+                                """, (username,)).fetchall()
+    ratings = {item_id: rating for item_id, rating in rows}
+    return ratings
 
 
 def load_user_play_stats(username: str) -> dict:

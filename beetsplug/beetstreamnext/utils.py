@@ -115,8 +115,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
         # 'version': 'Deluxe Edition',   # TODO - Use the 'media' field maybe?
         'coverArt': subsonic_album_id,
 
-        # 'starred': timestamp_to_iso(album.get('last_liked_album', 0)),
-        'userRating': album.get('stars_rating_album', 0),
+        'userRating': flask.g.get('ratings', {}).get(subsonic_album_id, 0),
 
         # 'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
         'isCompilation': bool(album.get('comp', False)),
@@ -168,10 +167,11 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
     subsonic_album['songCount'] = len(songs)
 
     # Optional field
-    songs_ratings = [s.get('stars_rating', 0) for s in subsonic_album.get('song', []) if s.get('stars_rating', 0)]
+    songs_ratings = [s.get('userRating', 0) for s in subsonic_album.get('song', []) if s.get('userRating', 0)]
     subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
+    # (the above returns 0 when partial album which is corrrect, averageRating is only really useful on a full album)
 
-    liked_at = flask.g.get('liked', {}).get(('album', subsonic_album_id))
+    liked_at = flask.g.get('liked', {}).get(subsonic_album_id)
     if liked_at:
         subsonic_album['starred'] = timestamp_to_iso(liked_at)
 
@@ -201,7 +201,7 @@ def map_song(song_object):
 
         'played': '',
         'playCount': 0,
-        'userRating': song.get('stars_rating', 0),
+        'userRating': flask.g.get('ratings', {}).get(song_id, 0),
 
         'duration': round(song.get('length', 0)),
         'bpm': song.get('bpm', 0),
@@ -248,7 +248,7 @@ def map_song(song_object):
         if stats['last_played']:
             subsonic_song['played'] = timestamp_to_iso(stats['last_played'])
 
-    liked_at = flask.g.get('liked', {}).get(('song', subsonic_song['id']))
+    liked_at = flask.g.get('liked', {}).get(subsonic_song['id'])
     if liked_at:
         subsonic_song['starred'] = timestamp_to_iso(liked_at)
 
@@ -264,7 +264,7 @@ def map_artist(artist_name, with_albums=True):
         'sortName': artist_name,
         'title': artist_name,
         'coverArt': subsonic_artist_id,
-        "userRating": 0,
+        'userRating': flask.g.get('ratings', {}).get(subsonic_artist_id, 0),
 
         # "roles": [
         #     "artist",
@@ -298,7 +298,7 @@ def map_artist(artist_name, with_albums=True):
         else:
             subsonic_artist['albumCount'] = 0
 
-    liked_at = flask.g.get('liked', {}).get(('artist', subsonic_artist_id))
+    liked_at = flask.g.get('liked', {}).get(subsonic_artist_id)
     if liked_at:
         subsonic_artist['starred'] = timestamp_to_iso(liked_at)
 

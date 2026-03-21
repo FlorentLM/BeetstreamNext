@@ -83,7 +83,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'cors_supports_credentials': True,
             'reverse_proxy': False,
             'legacy_auth': True,
-            # 'include_paths': False,
             'never_transcode': False,
             'fetch_artists_images': False,
             'save_artists_images': False,
@@ -101,8 +100,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('-u', '--user', action='store_true', default=False, help='Create a new user')
 
         def func(lib, opts, args):
-            db_path = Path(config['library'].get()).parent / 'beetstreamnext.db'
-            app.config['DB_PATH'] = db_path
+
+            app.config['DB_PATH'] = Path(config['library'].get()).parent / 'beetstreamnext.db'
 
             if opts.user:
                 from beetsplug.beetstreamnext import db
@@ -150,8 +149,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
             app.config['save_album_art'] = self.config['save_album_art'].get(bool)
 
-            app.config['DB_PATH'] = Path(config['library'].get()).parent / 'beetstreamnext.db'
-
             # Total number of items in Beets database (only used to detect deletions in getIndexes endpoint)
             app.config['nb_items'] = float('inf') # set the first time a client queries the getIndexes endpoint
 
@@ -165,7 +162,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             used_paths = set()
             for k, path in possible_paths:
                 if path not in used_paths:
-                    playlist_dirs[k] = path
+                    playlist_dirs[k] = Path(path)
                     used_paths.add(path)
                 else:
                     playlist_dirs[k] = None

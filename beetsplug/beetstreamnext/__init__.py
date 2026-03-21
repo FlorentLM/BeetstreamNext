@@ -161,7 +161,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             playlist_dirs = {}
             used_paths = set()
             for k, path in possible_paths:
-                if path not in used_paths:
+                if path and path not in used_paths:
                     playlist_dirs[k] = Path(path)
                     used_paths.add(path)
                 else:

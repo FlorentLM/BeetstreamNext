@@ -2,7 +2,7 @@ import unicodedata
 from datetime import datetime
 import platform
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 import flask
 import json
 import base64
@@ -39,6 +39,11 @@ if FFMPEG_PYTHON:
 elif FFMPEG_BIN:
     import subprocess
     ffmpeg = None
+try:
+    import wikipediaapi
+    WIKI_API = True
+except ImportError:
+    WIKI_API = False
 
 
 GENRE_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\␀', '\x00']))
@@ -489,8 +494,73 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
 
 # Other utility functions
 
-def strip_accents(s):
+def remove_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+
+
+def customstrip(value: Optional[Union[str, bytes]]) -> str:
+    if not value:
+        return ''
+    if isinstance(value, bytes):
+        try:
+            value = value.decode('utf-8')
+        except UnicodeDecodeError:
+            return ''
+    return str(value).strip(' \n\t\r\v\f\x00"\'()[]{};,\\/|')
+
+
+def standard_ascii(text: str) -> str:
+    """Replace fancy unicode characters by standard ASCII equivalents."""
+
+    if not text:
+        return ''
+
+    text = unicodedata.normalize('NFC', str(text))
+
+    replacements = {
+        '\u2010': '-',
+        '\u2011': '-',
+        '\u2012': '-',
+        '\u2013': '-',
+        '\u2014': '-',
+        '\u2015': '-',
+        '\u2212': '-',
+        '\u2018': "'",
+        '\u2019': "'",
+        '\u201a': "'",
+        '\u201b': "'",
+        '\u201c': '"',
+        '\u201d': '"',
+        '\u201e': '"',
+        '\u201f': '"',
+        '\u00a0': ' ',
+        '\u2000': ' ',
+        '\u2001': ' ',
+        '\u2002': ' ',
+        '\u2003': ' ',
+        '\u2004': ' ',
+        '\u2005': ' ',
+        '\u2006': ' ',
+        '\u2007': ' ',
+        '\u2008': ' ',
+        '\u2009': ' ',
+        '\u200a': ' ',
+        '\u202f': ' ',
+        '\u2026': '...',
+    }
+
+    for unicode_char, ascii_char in replacements.items():
+        text = text.replace(unicode_char, ascii_char)
+
+    return text.strip()
+
+
+def stringlist_splitter(delimiter_separated_string: str):
+    if not delimiter_separated_string:
+        return []
+    parts = GENRE_DELIM.split(str(delimiter_separated_string))
+    return [customstrip(p) for p in parts if customstrip(p)]
+
 
 def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
@@ -499,6 +569,7 @@ def timestamp_to_iso(timestamp) -> str:
         return datetime.fromtimestamp(float(timestamp)).isoformat()
     except (ValueError, TypeError):
         return ''
+
 
 def get_mimetype(path):
 
@@ -529,25 +600,6 @@ def get_beets_schema(table_name: str = 'items'):
         columns = [row[1] for row in cursor]
     return columns
 
-
-def string_strip(value: Optional[Union[str, bytes]]) -> str:
-    if not value:
-        return ''
-    if isinstance(value, bytes):
-        try:
-            value = value.decode('utf-8')
-        except UnicodeDecodeError:
-            return ''
-    return str(value).strip(' \n\t\r\v\f\x00"\'()[]{};,\\/|')
-
-
-def stringlist_splitter(delimiter_separated_string: str):
-    if not delimiter_separated_string:
-        return []
-    parts = GENRE_DELIM.split(str(delimiter_separated_string))
-    return [string_strip(p) for p in parts if string_strip(p)]
-
-
 def genres_formatter(genres: Union[str, list, None]) -> list:
     """Additional cleaning for common genres formatting issues."""
     if not genres:
@@ -562,7 +614,7 @@ def genres_formatter(genres: Union[str, list, None]) -> list:
 
     cleaned = []
     for g in raw_list:
-        tag = g.title()
+        tag = standard_ascii(g).title()
 
         tag = (tag.replace('Post ', 'Post-')
                .replace('Prog ', 'Progressive ')
@@ -574,7 +626,7 @@ def genres_formatter(genres: Union[str, list, None]) -> list:
                .replace("Rock 'N'", 'Rock and')
                .replace('.', ' '))
 
-        final_tag = string_strip(tag)
+        final_tag = customstrip(tag)
         if final_tag:
             cleaned.append(final_tag)
 
@@ -627,7 +679,7 @@ def query_musicbrainz(mbid: str, type: str):
     return response.json() if response.ok else {}
 
 
-def query_deezer(artist: Optional[str] = None, album: Optional[str] = None):
+def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> Dict:
 
     if artist:
         artist = urllib.parse.quote_plus(artist)
@@ -659,7 +711,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None):
     return {}
 
 
-def query_lastfm(query: str, type: str, method: str = 'info', mbid=True):
+def query_lastfm(query: str, type: str, method: str = 'info', mbid=True) -> Dict:
     if not app.config['lastfm_api_key']:
         return {}
 
@@ -682,6 +734,25 @@ def query_lastfm(query: str, type: str, method: str = 'info', mbid=True):
     response = requests.get(endpoint, headers=headers, params=params)
 
     return response.json() if response.ok else {}
+
+
+def query_wikipedia(query: str) -> Optional[str]:
+    if not WIKI_API:
+        return None
+
+    query = standard_ascii(query)
+
+    if not query:
+        return None
+
+    user_agent = f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'
+    wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language='en')
+    page = wiki.page(query)
+
+    if page.exists():
+        return page.summary
+
+    return None
 
 
 def trim_text(text, char_limit=300):

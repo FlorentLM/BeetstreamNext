@@ -4,7 +4,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
     subsonic_error, subsonic_response,
-    strip_accents,
+    remove_accents,
     map_artist, map_album, map_song
 )
 
@@ -58,7 +58,7 @@ def search(ver=None):
         )]
 
     # TODO - do the sort in the SQL query instead?
-    artists.sort(key=lambda name: strip_accents(name).upper())
+    artists.sort(key=lambda name: remove_accents(name).upper())
 
     if flask.request.path.rsplit('.', 1)[0][6:] == 'search2':
         tag = 'searchResult2'

@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.utils import (
     sub_to_beets_artist,
     map_artist, map_album,
     query_deezer, query_lastfm,
-    trim_text, strip_accents
+    trim_text, remove_accents, query_wikipedia, WIKI_API
 )
 
 
@@ -49,7 +49,7 @@ def get_artists_or_indexes():
 
     alphanum_dict = defaultdict(list)
     for artist in artists:
-        alphanum_dict[strip_accents(artist[0]).upper()].append(artist)
+        alphanum_dict[remove_accents(artist[0]).upper()].append(artist)
 
     tag = 'indexes' if flask.request.path.rsplit('.', 1)[0].endswith('Indexes') else 'artists'
     payload = {
@@ -100,11 +100,21 @@ def artistInfo2():
     first_item = flask.g.lib.items(f'albumartist:{artist_name}')[0]
     artist_mbid = first_item.get('mb_albumartistid', '')
 
+    short_bio = ''
+
     if app.config['lastfm_api_key']:
         data_lastfm = query_lastfm(artist_mbid, 'artist')
-        bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
-        short_bio = trim_text(bio, char_limit=300)
-    else:
+        lastfm_bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
+
+        if lastfm_bio:
+            short_bio = trim_text(lastfm_bio, char_limit=300)
+
+    if not short_bio and WIKI_API:
+        wiki_bio = query_wikipedia(artist_name)
+        if wiki_bio:
+            short_bio = trim_text(wiki_bio, char_limit=300)
+
+    if not short_bio:
         short_bio = f'wow. much artist. very {artist_name}'
 
     tag = 'artistInfo2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'artistInfo'

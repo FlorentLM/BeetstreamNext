@@ -321,58 +321,49 @@ def map_playlist(playlist):
     return subsonic_playlist
 
 
-# Core response-formatting functions
-
 def dict_to_xml(tag: str, data):
     """
-    Converts a json-like dict to an XML tree where every key/value pair
-    with a simple value is mapped as an attribute.... unless if adding the attribute
-    would create a duplicate, in which case a new element with that tag is created instead
+    Converts a json-like dict to an XML tree.
+    Simple values are mapped as attributes unless the attribute name already exists
+    or the key is "value", in which case they become text or child elements.
     """
     elem = ET.Element(tag)
 
+    def _fmt(v):
+        return str(v).lower() if isinstance(v, bool) else str(v)
+
+    def _add_node(parent, key, val):
+        """Decide if a simple value should be an attribute or a child/text."""
+        if key == "value":
+            parent.text = _fmt(val)
+        elif key in parent.attrib:
+            child = ET.Element(key)
+            child.text = _fmt(val)
+            parent.append(child)
+        else:
+            parent.set(key, _fmt(val))
+
     if isinstance(data, dict):
         for key, val in data.items():
-            if not isinstance(val, (dict, list)):
-                # If the attribute already exists, create a child element
-                if key in elem.attrib:
-                    child = ET.Element(key)
-                    child.text = str(val).lower() if isinstance(val, bool) else str(val)
-                    elem.append(child)
-                else:
-                    elem.set(key, str(val).lower() if isinstance(val, bool) else str(val))
-            elif isinstance(val, list):
+            if isinstance(val, list):
                 for item in val:
-                    # For each item in the list, process depending on type
-                    if not isinstance(item, (dict, list)):
-                        if key in elem.attrib:
-                            child = ET.Element(key)
-                            child.text = str(item).lower() if isinstance(item, bool) else str(item)
-                            elem.append(child)
-                        else:
-                            elem.set(key, str(item).lower() if isinstance(item, bool) else str(item))
+                    if isinstance(item, (dict, list)):
+                        elem.append(dict_to_xml(key, item))
                     else:
-                        child = dict_to_xml(key, item)
-                        elem.append(child)
+                        _add_node(elem, key, item)
             elif isinstance(val, dict):
-                child = dict_to_xml(key, val)
-                elem.append(child)
+                elem.append(dict_to_xml(key, val))
+            else:
+                _add_node(elem, key, val)
 
     elif isinstance(data, list):
-        # when data is a list, each item becomes a new child
         for item in data:
-            if not isinstance(item, (dict, list)):
-                if tag in elem.attrib:
-                    child = ET.Element(tag)
-                    child.text = str(item).lower() if isinstance(item, bool) else str(item)
-                    elem.append(child)
-                else:
-                    elem.set(tag, str(item).lower() if isinstance(item, bool) else str(item))
+            if isinstance(item, (dict, list)):
+                elem.append(dict_to_xml(tag, item))
             else:
-                child = dict_to_xml(tag, item)
-                elem.append(child)
+                _add_node(elem, tag, item)
     else:
-        elem.text = str(data).lower() if isinstance(data, bool) else str(data)
+        elem.text = _fmt(data)
 
     return elem
 

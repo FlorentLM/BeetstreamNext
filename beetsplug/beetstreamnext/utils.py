@@ -500,6 +500,8 @@ def stringlist_splitter(delimiter_separated_string: str):
 
 def genres_formatter(genres):
     """Additional cleaning for common genres formatting issues."""
+    if genres is None:
+        return ['']
     if isinstance(genres, str):
         genres = stringlist_splitter(genres)
     return [g.strip().title()

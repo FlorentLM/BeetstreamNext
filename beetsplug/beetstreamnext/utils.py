@@ -627,16 +627,36 @@ def query_musicbrainz(mbid: str, type: str):
     return response.json() if response.ok else {}
 
 
-def query_deezer(query: str, type: str):
+def query_deezer(artist: Optional[str] = None, album: Optional[str] = None):
 
-    query_urlsafe = urllib.parse.quote_plus(query.replace(' ', '-'))
-    endpoint = f'https://api.deezer.com/{type}/{query_urlsafe}'
+    if artist:
+        artist = urllib.parse.quote_plus(artist)
+    if album:
+        album = urllib.parse.quote_plus(album)
+
+    if not artist and not album:
+        return {}
+
+    base_search = 'https://api.deezer.com/search/'
+
+    if artist and album:
+        search_endpoint = base_search + f'?q=artist:"{artist}" album:"{album}"'
+    elif artist:
+        search_endpoint = base_search + f'artist?q={artist}'
+    elif album:
+        search_endpoint = base_search + f'album?q={album}'
+
+    search_endpoint += '&limit=1&index=0'
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
 
-    response = requests.get(endpoint, headers=headers)
+    response = requests.get(search_endpoint, headers=headers)
+    if response.ok:
+        data = response.json().get('data', {})
+        if data:
+            return data[0]
 
-    return response.json() if response.ok else {}
+    return {}
 
 
 def query_lastfm(query: str, type: str, method: str = 'info', mbid=True):

@@ -9,7 +9,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
-    get_mimetype, subsonic_error, query_deezer,
+    get_mimetype, query_deezer,
     ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
     sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song)
 
@@ -123,9 +123,13 @@ def send_artist_image(artist_id, size=None):
 
     # Fetch and save if enabled
     if app.config['fetch_artists_images'] and not local_image_path.is_file():
-        dz_data = query_deezer(artist_name, 'artist')
-        if dz_data:
-            artist_image_url = dz_data.get('picture_xl', '') or dz_data.get('picture_big', '')
+        dz_data = query_deezer(artist=artist_name)
+
+        if dz_data and dz_data.get('type', '') == 'artist':
+            img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
+            k = next(filter(dz_data.get, img_keys), None)
+            artist_image_url = dz_data[k]
+
             if artist_image_url:
                 try:
                     response = requests.get(artist_image_url, timeout=5)
@@ -144,12 +148,13 @@ def send_artist_image(artist_id, size=None):
 
     # Proxy from Deezer (without saving) if local save is off
     if app.config['fetch_artists_images']:
-        dz_data = query_deezer(artist_name, 'artist')
-        if dz_data:
-            available_sizes = [56, 250, 500, 1000]
-            target_size = next((s for s in sorted(available_sizes) if size and s >= size), 1000)
+        dz_data = query_deezer(artist=artist_name)
 
+        if dz_data and dz_data.get('type', '') == 'artist':
+            available_sizes = [56, 120, 250, 500, 1000]
+            target_size = next((s for s in sorted(available_sizes) if size and s >= size), 1000)
             artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')
+
             if artist_image_url:
                 try:
                     response = requests.get(artist_image_url, timeout=5)

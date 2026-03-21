@@ -118,9 +118,9 @@ def artistInfo2():
 
     if app.config['fetch_artists_images']:
         # TODO - this is not fetching the actual images, maybe we keep it as always on?
-        dz_query = urllib.parse.quote_plus(artist_name.replace(' ', '-'))
-        dz_data = query_deezer(dz_query, 'artist')
-        if dz_data:
+        dz_data = query_deezer(artist=artist_name)
+
+        if dz_data and dz_data.get('type', '') == 'artist':
             payload[tag]['smallImageUrl'] = dz_data.get('picture_medium', ''),
             payload[tag]['mediumImageUrl'] = dz_data.get('picture_big', ''),
             payload[tag]['largeImageUrl'] = dz_data.get('picture_xl', '')

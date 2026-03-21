@@ -64,8 +64,9 @@ import beetsplug.beetstreamnext.likes
 import beetsplug.beetstreamnext.ratings
 import beetsplug.beetstreamnext.playlists
 import beetsplug.beetstreamnext.search
-import beetsplug.beetstreamnext.scrobble
 import beetsplug.beetstreamnext.songs
+import beetsplug.beetstreamnext.scrobble
+import beetsplug.beetstreamnext.lyrics
 import beetsplug.beetstreamnext.users
 import beetsplug.beetstreamnext.general
 import beetsplug.beetstreamnext.authentication

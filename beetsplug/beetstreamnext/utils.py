@@ -41,6 +41,8 @@ elif FFMPEG_BIN:
     ffmpeg = None
 
 
+GENRE_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\␀', '\x00']))
+
 # BeetstreamNext internal IDs: they are sent to the client once (when it accesses endpoints such as getArtists
 # or getAlbumList) and the client will then use them to access a specific item via endpoints that need an ID
 
@@ -72,31 +74,37 @@ def sub_to_beets_song(subsonic_song_id):
 def map_media(beets_object: Union[dict, library.LibModel]):
     beets_object = dict(beets_object)
 
-    artist_name = beets_object.get('albumartist', '')
+    artist_name = beets_object.get('albumartist') or ''
 
-    # Common fields to albums and songs
+    raw_genres = beets_object.get('genres') or beets_object.get('genre') or ''
+    formatted_genres = genres_formatter(raw_genres)
+
+    main_genre = formatted_genres[0] if formatted_genres else ''
+    genres_list = [{'name': g} for g in formatted_genres]
+
     subsonic_media = {
         'artist': artist_name,
         'artistId': beets_to_sub_artist(artist_name),
         'displayArtist': artist_name,
         'displayAlbumArtist': artist_name,
-        'album': beets_object.get('album', ''),
-        'year': beets_object.get('year', 0),
-        'genre': beets_object.get('genre', ''),
-        'genres': [{'name': g} for g in genres_formatter(beets_object.get('genre', ''))],
+        'album': beets_object.get('album') or '',
+        'year': beets_object.get('year') or 0,
+        'genre': main_genre,
+        'genres': genres_list,
         'created': timestamp_to_iso(beets_object.get('added')),
         'originalReleaseDate': {
-            'year': beets_object.get('original_year', 0) or beets_object.get('year', 0),
-            'month': beets_object.get('original_month', 0) or beets_object.get('month', 0),
-            'day': beets_object.get('original_day', 0) or beets_object.get('day', 0)
+            'year': beets_object.get('original_year') or beets_object.get('year') or 0,
+            'month': beets_object.get('original_month') or beets_object.get('month') or 0,
+            'day': beets_object.get('original_day') or beets_object.get('day') or 0
         },
         'releaseDate': {
-            'year': beets_object.get('year', 0),
-            'month': beets_object.get('month', 0),
-            'day': beets_object.get('day', 0)
+            'year': beets_object.get('year') or 0,
+            'month': beets_object.get('month') or 0,
+            'day': beets_object.get('day') or 0
         },
     }
     return subsonic_media
+
 
 def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict:
     album = dict(album_object)
@@ -177,40 +185,53 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
 
     return subsonic_album
 
+
 def map_song(song_object):
     song = dict(song_object)
 
     subsonic_song = map_media(song)
 
     song_id = beets_to_sub_song(song.get('id', 0))
-    song_name = song.get('title', '')
-    song_filepath = song.get('path', b'').decode('utf-8')
+    song_name = song.get('title') or ''
+
+    filepath_beets = song.get('path')
+    if isinstance(filepath_beets, bytes):
+        try:
+            song_filepath = filepath_beets.decode('utf-8')
+        except UnicodeDecodeError:
+            song_filepath = ''
+    elif isinstance(filepath_beets, str):
+        song_filepath = filepath_beets
+    else:
+        song_filepath = ''
+    if song_filepath and not os.path.isfile(song_filepath):
+        song_filepath = ''
 
     album_id = beets_to_sub_album(song.get('album_id', 0))
 
     song_specific = {
         'id': song_id,
-        'musicBrainzId': song.get('mb_albumid', ''),
+        'musicBrainzId': song.get('mb_albumid') or '',
         'name': song_name,
         'sortName': song_name,
         'albumId': album_id,
         'coverArt': album_id or song_id,
 
-        'track': song.get('track', 1),
-        'path': song_filepath if os.path.isfile(song_filepath) else '',
+        'track': song.get('track') or 1,
+        'path': song_filepath,
 
         'played': '',
         'playCount': 0,
         'userRating': flask.g.get('ratings', {}).get(song_id, 0),
 
-        'duration': round(song.get('length', 0)),
-        'bpm': song.get('bpm', 0),
-        'bitRate': round(song.get('bitrate', 0) / 1000) or 0,
-        'bitDepth': song.get('bitdepth', 0),
-        'samplingRate': song.get('samplerate', 0),
-        'channelCount': song.get('channels', 2),
-        'discNumber': song.get('disc', 0),
-        'comment': song.get('comment', ''),
+        'duration': round(song.get('length') or 0),
+        'bpm': song.get('bpm') or 0,
+        'bitRate': round((song.get('bitrate') or 0) / 1000),
+        'bitDepth': song.get('bitdepth') or 0,
+        'samplingRate': song.get('samplerate') or 0,
+        'channelCount': song.get('channels') or 2,
+        'discNumber': song.get('disc') or 1,
+        'comment': song.get('comment') or '',
 
         # These are only needed when part of a directory response
         'isDir': False,
@@ -235,12 +256,15 @@ def map_song(song_object):
     #         'albumPeak': song.get('rg_album_peak', 0)
     # }
 
-    subsonic_song['suffix'] = ((song.get('format') or '').lower()
-                               or subsonic_song['path'].rsplit('.', 1)[-1].lower())
+    suffix = (song.get('format') or '').lower()
+    if not suffix and song_filepath:
+        suffix = song_filepath.rsplit('.', 1)[-1].lower()
+    subsonic_song['suffix'] = suffix or 'mp3'
+
     subsonic_song['size'] = ((os.path.getsize(subsonic_song['path']) if subsonic_song['path'] else 0)
                              or round(song.get('bitrate', 0) * song.get('length', 0) / 8))
-    subsonic_song['contentType'] = get_mimetype(subsonic_song.get('path', None)
-                                                or subsonic_song.get('suffix', None))
+
+    subsonic_song['contentType'] = get_mimetype(song_filepath or suffix)
 
     stats = flask.g.get('play_stats', {}).get(song.get('id'))
     if stats:
@@ -469,9 +493,12 @@ def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 def timestamp_to_iso(timestamp) -> str:
-    if not timestamp:
+    if not timestamp or timestamp == 0:
         return ''
-    return datetime.fromtimestamp(timestamp).isoformat()
+    try:
+        return datetime.fromtimestamp(float(timestamp)).isoformat()
+    except (ValueError, TypeError):
+        return ''
 
 def get_mimetype(path):
 
@@ -494,27 +521,57 @@ def get_mimetype(path):
     }
     return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
 
-def stringlist_splitter(delimiter_separated_string: str):
-    delimiters = re.compile('|'.join([';', ',', '/', '\\|']))
-    return re.split(delimiters, delimiter_separated_string)
 
-def genres_formatter(genres):
+def string_strip(value: Optional[Union[str, bytes]]) -> str:
+    if not value:
+        return ''
+    if isinstance(value, bytes):
+        try:
+            value = value.decode('utf-8')
+        except UnicodeDecodeError:
+            return ''
+    return str(value).strip(' \n\t\r\v\f\x00"\'()[]{};,\\/|')
+
+
+def stringlist_splitter(delimiter_separated_string: str):
+    if not delimiter_separated_string:
+        return []
+    parts = GENRE_DELIM.split(str(delimiter_separated_string))
+    return [string_strip(p) for p in parts if string_strip(p)]
+
+
+def genres_formatter(genres: Union[str, list, None]) -> list:
     """Additional cleaning for common genres formatting issues."""
-    if genres is None:
-        return ['']
-    if isinstance(genres, str):
-        genres = stringlist_splitter(genres)
-    return [g.strip().title()
-            .replace('Post ', 'Post-')
-            .replace('Prog ', 'Progressive ')
-            .replace('Rnb', 'R&B')
-            .replace("R'N'B", 'R&B')
-            .replace("R 'N' B", 'R&B')
-            .replace('Rock & ', 'Rock and ')
-            .replace("Rock'N'", 'Rock and')
-            .replace("Rock 'N'", 'Rock and')
-            .replace('.', ' ')
-            for g in genres]
+    if not genres:
+        return []
+
+    raw_list = []
+    if isinstance(genres, list):
+        for item in genres:
+            raw_list.extend(stringlist_splitter(item))
+    else:
+        raw_list = stringlist_splitter(genres)
+
+    cleaned = []
+    for g in raw_list:
+        tag = g.title()
+
+        tag = (tag.replace('Post ', 'Post-')
+               .replace('Prog ', 'Progressive ')
+               .replace('Rnb', 'R&B')
+               .replace("R'N'B", 'R&B')
+               .replace("R 'N' B", 'R&B')
+               .replace('Rock & ', 'Rock and ')
+               .replace("Rock'N'", 'Rock and')
+               .replace("Rock 'N'", 'Rock and')
+               .replace('.', ' '))
+
+        final_tag = string_strip(tag)
+        if final_tag:
+            cleaned.append(final_tag)
+
+    return cleaned
+
 
 def creation_date(filepath):
     """

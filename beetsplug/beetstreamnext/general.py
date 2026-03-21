@@ -4,7 +4,9 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.artists import artist_payload
 from beetsplug.beetstreamnext.albums import album_payload
 from beetsplug.beetstreamnext.songs import song_payload
-from beetsplug.beetstreamnext.utils import subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter
+from beetsplug.beetstreamnext.utils import (
+    get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter
+)
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -> dict:
@@ -44,26 +46,39 @@ def get_open_subsonic_extensions():
 def get_genres():
     r = flask.request.values
 
+    queries = []
+
+    item_cols = get_beets_schema('items')
+    if 'genres' in item_cols:
+        queries.append("SELECT genres AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genres")
+    if 'genre' in item_cols:
+        queries.append("SELECT genre AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genre")
+
+    alb_cols = get_beets_schema('albums')
+    if 'genres' in alb_cols:
+        queries.append("SELECT genres AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genres")
+    if 'genre' in alb_cols:
+        queries.append("SELECT genre AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genre")
+
+    if not queries:
+        return subsonic_response({"genres": {"genre": []}}, r.get('f', 'xml'))
+
     with flask.g.lib.transaction() as tx:
-        mixed_genres = list(tx.query(
-            """
-            SELECT genre, COUNT(*) AS n_song, '' AS n_album FROM items GROUP BY genre
-            UNION ALL
-            SELECT genre, '' AS n_song, COUNT(*) AS n_album FROM albums GROUP BY genre
-            """))
+        mixed_genres = list(tx.query(" UNION ALL ".join(queries)))
 
     g_dict = {}
     for row in mixed_genres:
         genre_field, n_song, n_album = row
+        if not genre_field:
+            continue
+
         for key in genres_formatter(genre_field):
             if key not in g_dict:
                 g_dict[key] = [0, 0]
-            if n_song:  # Update song count if present
-                g_dict[key][0] += int(n_song)
-            if n_album: # Update album count if present
-                g_dict[key][1] += int(n_album)
+            g_dict[key][0] += int(n_song or 0)
+            g_dict[key][1] += int(n_album or 0)
 
-    # And convert to list of tuples (only non-empty genres)
+    # And convert to list of tuples, remove empty genres, and sort by songCount
     g_list = [(k, *v) for k, v in g_dict.items() if k]
     g_list.sort(key=lambda g: g[1], reverse=True)
 

@@ -7,8 +7,7 @@ from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
     sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
-    map_song,
-    query_lastfm
+    map_song, query_lastfm, get_beets_schema
 )
 
 
@@ -38,6 +37,7 @@ def get_song():
     payload = song_payload(song_id)
     return subsonic_response(payload, r.get('f', 'xml'))
 
+
 @app.route('/rest/getSongsByGenre', methods=["GET", "POST"])
 @app.route('/rest/getSongsByGenre.view', methods=["GET", "POST"])
 def songs_by_genre():
@@ -48,11 +48,26 @@ def songs_by_genre():
 
     genre = r.get('genre')
     genre_pattern = f"%{genre}%"
-    with flask.g.lib.transaction() as tx:
-        songs = list(tx.query(
-            "SELECT * FROM items WHERE lower(genre) LIKE lower(?) ORDER BY title LIMIT ? OFFSET ?",
-            (genre_pattern, count, offset)
-        ))
+
+    cols = get_beets_schema('items')
+    conditions = []
+    params = []
+
+    if 'genres' in cols:
+        conditions.append("lower(genres) LIKE lower(?)")
+        params.append(genre_pattern)
+    if 'genre' in cols:
+        conditions.append("lower(genre) LIKE lower(?)")
+        params.append(genre_pattern)
+
+
+    songs = []
+    if conditions:
+        sql = f"SELECT * FROM items WHERE ({' OR '.join(conditions)}) ORDER BY title LIMIT ? OFFSET ?"
+        params.extend([count, offset])
+
+        with flask.g.lib.transaction() as tx:
+            songs = list(tx.query(sql, params))
 
     payload = {
         "songsByGenre": {

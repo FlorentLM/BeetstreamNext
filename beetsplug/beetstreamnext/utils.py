@@ -76,7 +76,7 @@ def map_media(beets_object: Union[dict, library.LibModel]):
 
     artist_name = beets_object.get('albumartist') or ''
 
-    raw_genres = beets_object.get('genres') or beets_object.get('genre') or ''
+    raw_genres = f"{beets_object.get('genres') or ''};{beets_object.get('genre') or ''}"
     formatted_genres = genres_formatter(raw_genres)
 
     main_genre = formatted_genres[0] if formatted_genres else ''
@@ -522,6 +522,14 @@ def get_mimetype(path):
     return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
 
 
+def get_beets_schema(table_name: str = 'items'):
+    """Query beets database for column names."""
+    with flask.g.lib.transaction() as tx:
+        cursor = tx.query(f"PRAGMA table_info({table_name})")
+        columns = [row[1] for row in cursor]
+    return columns
+
+
 def string_strip(value: Optional[Union[str, bytes]]) -> str:
     if not value:
         return ''
@@ -570,7 +578,7 @@ def genres_formatter(genres: Union[str, list, None]) -> list:
         if final_tag:
             cleaned.append(final_tag)
 
-    return cleaned
+    return list(set(cleaned))
 
 
 def creation_date(filepath):

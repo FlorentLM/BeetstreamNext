@@ -3,7 +3,9 @@ import urllib.parse
 from functools import partial
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.utils import sub_to_beets_album, map_album, subsonic_response, ALB_ID_PREF
+from beetsplug.beetstreamnext.utils import (
+    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, ALB_ID_PREF
+)
 
 
 def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
@@ -109,8 +111,19 @@ def get_album_list(ver=None):
         params.extend([min(from_year, to_year), max(from_year, to_year)])
 
     if sort_by == 'byGenre' and genre_filter:
-        conditions.append("lower(genre) LIKE ?")
-        params.append(f"%{genre_filter.strip().lower()}%")
+        cols = get_beets_schema('albums')
+        genre_conditions = []
+        pattern = f"%{genre_filter.strip().lower()}%"
+        if 'genres' in cols:
+            genre_conditions.append("lower(genres) LIKE ?")
+            params.append(pattern)
+        if 'genre' in cols:
+            genre_conditions.append("lower(genre) LIKE ?")
+            params.append(pattern)
+        if genre_conditions:
+            conditions.append("(" + " OR ".join(genre_conditions) + ")")
+        else:
+            conditions.append("1 = 0")
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)

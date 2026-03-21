@@ -82,13 +82,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'cors': '*',
             'cors_supports_credentials': True,
             'reverse_proxy': False,
-            'include_paths': False,
+            'legacy_auth': True,
+            # 'include_paths': False,
             'never_transcode': False,
             'fetch_artists_images': False,
-            'save_artists_images': True,
+            'save_artists_images': False,
+            'save_album_art': False,
             'lastfm_api_key': '',
-            'playlist_dir': '',
-            'legacy_auth': True
+            'playlist_dir': ''
         })
         self.config['lastfm_api_key'].redact = True
 
@@ -143,14 +144,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['lib'] = lib
             app.config['root_directory'] = Path(config['directory'].get())
             app.config['legacy_auth'] = self.config['legacy_auth'].get(bool)
-            app.config['INCLUDE_PATHS'] = self.config['include_paths']
-            app.config['lastfm_api_key'] = self.config['lastfm_api_key'].get(None)
-
-            app.config['never_transcode'] = self.config['never_transcode'].get(False)
-            app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-
-            app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(False)
-            app.config['save_artists_images'] = self.config['save_artists_images'].get(False)
+            app.config['lastfm_api_key'] = self.config['lastfm_api_key'].get(str)
+            app.config['never_transcode'] = self.config['never_transcode'].get(bool)
+            app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(bool)
+            app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
+            app.config['save_album_art'] = self.config['save_album_art'].get(bool)
 
             app.config['DB_PATH'] = Path(config['library'].get()).parent / 'beetstreamnext.db'
 

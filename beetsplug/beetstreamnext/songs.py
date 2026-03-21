@@ -104,12 +104,27 @@ def stream_song():
     song_path = song.get('path', b'').decode('utf-8') if song else ''
 
     if song_path:
-        if app.config['never_transcode'] or req_format == 'raw' or max_bitrate <= 0 or song.bitrate <= max_bitrate * 1000:
+        song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
+
+        needs_transcode = False
+        if not app.config['never_transcode'] and req_format != 'raw':
+            # Transcode if bitrate too high
+            if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
+                needs_transcode = True
+            # or if client wants different format
+            elif req_format and req_format != song_ext:
+                needs_transcode = True
+
+        if not needs_transcode:
             response = stream.direct(song_path)
             est_size = os.path.getsize(song_path) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
         else:
-            response = stream.try_transcode(song_path, start_at=time_offset, max_bitrate=max_bitrate)
-            est_size = int(((max_bitrate * 1000) / 8) * song.get('length', 0))
+            target_bitrate = max_bitrate if max_bitrate > 0 else 320
+
+            response = stream.try_transcode(song_path, start_at=time_offset, max_bitrate=target_bitrate)
+
+            remaining_time = max(0, song.get('length', 0) - time_offset)
+            est_size = int(((target_bitrate * 1000) / 8) * remaining_time)
 
         if response is not None:
             if estimate_content_length and est_size:

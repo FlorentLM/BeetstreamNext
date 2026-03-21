@@ -63,6 +63,7 @@ import beetsplug.beetstreamnext.dummy
 import beetsplug.beetstreamnext.likes
 import beetsplug.beetstreamnext.ratings
 import beetsplug.beetstreamnext.playlists
+import beetsplug.beetstreamnext.bookmarks
 import beetsplug.beetstreamnext.search
 import beetsplug.beetstreamnext.songs
 import beetsplug.beetstreamnext.scrobble

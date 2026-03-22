@@ -48,12 +48,12 @@ def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128):
                 if not chunk:
                     break
                 yield chunk
-        except GeneratorExit:
-            # client disconnected
-            pass
         finally:
-            output_stream.kill()
-            output_stream.wait()
+            try:
+                output_stream.kill()
+                output_stream.wait(timeout=10)
+            except Exception:
+                pass
 
     return flask.Response(generate(), mimetype='audio/mpeg')
 

@@ -71,22 +71,33 @@ def get_starred():
             SELECT item_id, starred_at FROM likes WHERE username = ?
         """, (username,)).fetchall()
 
+    song_ids, album_ids, artist_ids = [], [], []
+    for item_id, _ in rows:
+        if item_id.startswith(SNG_ID_PREF):
+            song_ids.append(sub_to_beets_song(item_id))
+        elif item_id.startswith(ALB_ID_PREF):
+            album_ids.append(sub_to_beets_album(item_id))
+        elif item_id.startswith(ART_ID_PREF):
+            artist_ids.append(sub_to_beets_artist(item_id))
+
     songs, albums, artists = [], [], []
 
-    for item_id, starred_at in rows:
-        if item_id.startswith(SNG_ID_PREF):
-            item = flask.g.lib.get_item(sub_to_beets_song(item_id))
-            if item:
-                songs.append(map_song(item))
+    if song_ids:
+        question_marks = ','.join('?' * len(song_ids))
+        with flask.g.lib.transaction() as tx:
+            song_rows = tx.query(f"SELECT * FROM items WHERE id IN ({question_marks})", song_ids)
 
-        elif item_id.startswith(ALB_ID_PREF):
-            item = flask.g.lib.get_album(sub_to_beets_album(item_id))
-            if item:
-                albums.append(map_album(item, with_songs=False))
+        songs = [map_song(row) for row in song_rows]
 
-        elif item_id.startswith(ART_ID_PREF):
-            artist_name = sub_to_beets_artist(item_id)
-            artists.append(map_artist(artist_name, with_albums=False))
+    if album_ids:
+        question_marks = ','.join('?' * len(album_ids))
+        with flask.g.lib.transaction() as tx:
+            album_rows = tx.query(f"SELECT * FROM albums WHERE id IN ({question_marks})", album_ids)
+
+        albums = [map_album(row, with_songs=False) for row in album_rows]
+
+    if artist_ids:
+        artists = [map_artist(name, with_albums=False) for name in artist_ids]
 
     tag = 'starred2' if 'starred2' in flask.request.path else 'starred'
     payload = {

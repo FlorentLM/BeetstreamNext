@@ -10,6 +10,8 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
+@app.route('/rest/search', methods=["GET", "POST"])
+@app.route('/rest/search.view', methods=["GET", "POST"])
 
 @app.route('/rest/search2', methods=["GET", "POST"])
 @app.route('/rest/search2.view', methods=["GET", "POST"])

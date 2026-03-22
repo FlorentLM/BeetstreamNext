@@ -1,10 +1,10 @@
-import time
+import os
 import urllib.parse
 from collections import defaultdict
 from functools import partial
 import flask
 
-from beetsplug.beetstreamnext import app, _nb_items_lock
+from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.utils import (
     subsonic_response,
@@ -44,17 +44,39 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
 def get_artists_or_indexes():
     r = flask.request.values
+    tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
 
-    modified_since = r.get('ifModifiedSince', '')
+    # Beets db modification time
+    lib_path = flask.g.lib.path
+    if isinstance(lib_path, bytes):
+        lib_path = lib_path.decode('utf-8')
+    latest_mtime = int(os.path.getmtime(lib_path) * 1000)
+
+    modified_since = r.get('ifModifiedSince')
+    if modified_since:
+        try:
+            modified_since_ms = int(modified_since)
+            if latest_mtime <= modified_since_ms:
+                # library hasn't changed: return empty payload
+                empty_payload = {tag: {}}
+                if tag == 'indexes':
+                    empty_payload[tag]['lastModified'] = latest_mtime
+
+                return subsonic_response(empty_payload, r.get('f', 'xml'))
+        except ValueError:
+            pass  # Client sent malformed timestamp, ignore and continue to full sync
 
     with flask.g.lib.transaction() as tx:
-        artists = [row[0] for row in tx.query("SELECT DISTINCT albumartist FROM albums WHERE albumartist is NOT NULL")]
+        artists = [row[0] for row in tx.query("""
+                                              SELECT DISTINCT albumartist 
+                                              FROM albums 
+                                              WHERE albumartist is NOT NULL
+                                              """)]
 
     alphanum_dict = defaultdict(list)
     for artist in artists:
         alphanum_dict[remove_accents(artist[0]).upper()].append(artist)
 
-    tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
     payload = {
         tag: {
             'ignoredArticles': '',      # TODO - include config from 'the' plugin??
@@ -66,17 +88,7 @@ def get_artists_or_indexes():
     }
 
     if tag == 'indexes':
-        with flask.g.lib.transaction() as tx:
-            latest = int(tx.query("SELECT added FROM items ORDER BY added DESC LIMIT 1")[0][0])
-            nb_items = tx.query("SELECT COUNT(*) FROM items")[0][0]
-
-        with _nb_items_lock:
-            if nb_items < app.config['nb_items']:
-                app.logger.warning('Media deletion detected (or very first time getIndexes is queried)')
-                latest = int(time.time() * 1000)
-                app.config['nb_items'] = nb_items
-
-        payload[tag]['lastModified'] = latest
+        payload[tag]['lastModified'] = latest_mtime
 
     return subsonic_response(payload, r.get('f', 'xml'))
 

@@ -29,7 +29,7 @@ app = flask.Flask(__name__)
 
 _now_playing = {}  # {username: {'song_id', 'started_at', 'player_name'}}
 _now_playing_lock = threading.Lock()
-_nb_items_lock = threading.Lock()
+
 
 @app.before_request
 def before_request():
@@ -150,9 +150,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(bool)
             app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
             app.config['save_album_art'] = self.config['save_album_art'].get(bool)
-
-            # Total number of items in Beets database (only used to detect deletions in getIndexes endpoint)
-            app.config['nb_items'] = float('inf') # set the first time a client queries the getIndexes endpoint
 
             possible_paths = [
                 (0, self.config['playlist_dir'].get(None)),  # BeetstreamNext's own

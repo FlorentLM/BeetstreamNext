@@ -146,7 +146,7 @@ def stream_song():
                 response.headers['Content-Length'] = est_size
             return response
 
-    subsonic_error(70, message="Song not found.", resp_fmt=r.get('f', 'xml'))
+    return subsonic_error(70, message="Song not found.", resp_fmt=r.get('f', 'xml'))
 
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])

@@ -2,12 +2,14 @@ import os
 import re
 import flask
 
+from beets.dbcore.query import MatchQuery
+
 from beetsplug.beetstreamnext import app, stream
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
     sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
-    map_song, query_lastfm, get_beets_schema
+    map_song, query_lastfm, get_beets_schema, cached_user_play_stats
 )
 
 
@@ -168,51 +170,58 @@ def get_top_songs():
 
     r = flask.request.values
 
-    req_id = r.get('id', '')
+    req_artist = r.get('id') or r.get('artist') or ''
+
+    if req_artist and req_artist.startswith(ART_ID_PREF):
+        artist_name = sub_to_beets_artist(req_artist)
+    else:
+        artist_name = req_artist
 
     payload = {'topSongs': {'song': []}}
 
-    if req_id.startswith(ART_ID_PREF):
-        artist_name = sub_to_beets_artist(req_id)
-        # grab the artist's mbid
-        with flask.g.lib.transaction() as tx:
-            mbid_artist = tx.query("SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1", (artist_name,))
+    # grab the artist's mbid
+    with flask.g.lib.transaction() as tx:
+        mbid_artist = tx.query("""SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1""", (artist_name,))
 
-        if app.config['lastfm_api_key']:
-            # Query last.fm for top tracks for this artist and parse the response
-            if mbid_artist:
-                lastfm_resp = query_lastfm(q=mbid_artist[0][0], type='artist', method='TopTracks', mbid=True)
-            else:
-                lastfm_resp = query_lastfm(q=artist_name, type='artist', method='TopTracks', mbid=False)
-
-            if lastfm_resp:
-                beets_results = [flask.g.lib.items(f"""title:{t.get('name', '').replace("'", "")}""")
-                                 for t in lastfm_resp.get('toptracks', {}).get('track', [])]
-                top_tracks_available = [track[0] for track in beets_results if track]
-
-                payload = {
-                    'topSongs': {
-                        'song': list(map(map_song, top_tracks_available))
-                    }
-                }
+    if app.config['lastfm_api_key']:
+        # Query last.fm for top tracks for this artist and parse the response
+        if mbid_artist:
+            lastfm_resp = query_lastfm(q=mbid_artist[0][0], type='artist', method='TopTracks', mbid=True)
         else:
-            # Fallback to local play stats
-            artist_items = flask.g.lib.items(f'albumartist:{artist_name}')
-            play_stats = flask.g.play_stats
+            lastfm_resp = query_lastfm(q=artist_name, type='artist', method='TopTracks', mbid=False)
 
-            scored = sorted(
-                artist_items,
-                key=lambda item: play_stats.get(item.id, {}).get('play_count', 0),
-                reverse=True
-            )
-            count = int(r.get('count', 50))
-            top_tracks_available = [t for t in scored if play_stats.get(t.id, {}).get('play_count', 0) > 0][:count]
+        if lastfm_resp:
+            top_tracks_available = []
+
+            for t in lastfm_resp.get('toptracks', {}).get('track', []):
+                query = MatchQuery('title', t.get('name', ''))
+                beets_results = list(flask.g.lib.items(query))
+                if beets_results:
+                    top_tracks_available.append(beets_results[0])
 
             payload = {
                 'topSongs': {
                     'song': list(map(map_song, top_tracks_available))
                 }
             }
+    else:
+        # Fallback to local play stats
+        artist_items = flask.g.lib.items(f'albumartist:{artist_name}')
+        play_stats = cached_user_play_stats()
+
+        scored = sorted(
+            artist_items,
+            key=lambda item: play_stats.get(item.id, {}).get('play_count', 0),
+            reverse=True
+        )
+        count = int(r.get('count', 50))
+        top_tracks_available = [t for t in scored if play_stats.get(t.id, {}).get('play_count', 0) > 0][:count]
+
+        payload = {
+            'topSongs': {
+                'song': list(map(map_song, top_tracks_available))
+            }
+        }
 
     return subsonic_response(payload, r.get('f', 'xml'))
 

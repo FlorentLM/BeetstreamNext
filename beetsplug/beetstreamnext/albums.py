@@ -6,7 +6,8 @@ from functools import partial
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, ALB_ID_PREF
+    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, ALB_ID_PREF,
+    cached_user_likes, cached_user_ratings, cached_user_play_stats
 )
 
 
@@ -100,7 +101,7 @@ def get_album_list(ver=None):
     if sort_by == 'starred':
         starred = {
             sub_to_beets_album(item_id): starred_at
-            for item_id, starred_at in flask.g.liked.items()
+            for item_id, starred_at in cached_user_likes().items()
             if item_id.startswith(ALB_ID_PREF)
         }
 
@@ -130,7 +131,7 @@ def get_album_list(ver=None):
     if sort_by in ('frequent', 'highest'):
 
         if sort_by == 'frequent':
-            play_stats = flask.g.play_stats
+            play_stats = cached_user_play_stats()
             if not play_stats:
                 payload = {tag: {'album': []}}
                 return subsonic_response(payload, r.get('f', 'xml'))
@@ -151,7 +152,7 @@ def get_album_list(ver=None):
             sorted_ids = sorted(album_counts, key=album_counts.get, reverse=True)
 
         elif sort_by == 'highest':
-            ratings = flask.g.ratings
+            ratings = cached_user_ratings()
 
             album_ratings = {
                 sub_to_beets_album(iid): rating

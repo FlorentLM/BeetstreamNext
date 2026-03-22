@@ -35,8 +35,9 @@ def before_request():
     if flask.request.path == '/':
         return
 
-    from beetsplug.beetstreamnext.authentication import authenticate
-    from beetsplug.beetstreamnext.users import load_user_roles, load_user_likes, load_user_play_stats, load_user_ratings
+    from beetsplug.beetstreamnext.users import (
+        load_user_roles, load_user_likes, load_user_play_stats, load_user_ratings, authenticate
+    )
     from beetsplug.beetstreamnext.utils import subsonic_error
 
     ok, error_code, username = authenticate(flask.request.values)
@@ -71,7 +72,6 @@ import beetsplug.beetstreamnext.scrobble
 import beetsplug.beetstreamnext.lyrics
 import beetsplug.beetstreamnext.users
 import beetsplug.beetstreamnext.general
-import beetsplug.beetstreamnext.authentication
 
 
 # Plugin hook

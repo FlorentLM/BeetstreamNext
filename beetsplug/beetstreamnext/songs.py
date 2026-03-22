@@ -300,7 +300,7 @@ def get_similar_songs():
     with flask.g.lib.transaction() as tx:
         beets_results = list(tx.query(query, params))
 
-    tag = 'similarSongs2' if 'similarSongs2' in flask.request.path else 'similarSongs'
+    tag = 'similarSongs2' if 'getSimilarSongs2' in flask.request.path else 'similarSongs'
     payload = {
         tag: {
             'song': list(map(map_song, beets_results))

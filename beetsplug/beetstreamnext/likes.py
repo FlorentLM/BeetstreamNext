@@ -99,7 +99,7 @@ def get_starred():
     if artist_ids:
         artists = [map_artist(name, with_albums=False) for name in artist_ids]
 
-    tag = 'starred2' if 'starred2' in flask.request.path else 'starred'
+    tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {
         tag: {
             'song':   songs,

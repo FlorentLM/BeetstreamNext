@@ -51,7 +51,7 @@ def get_artists_or_indexes():
     for artist in artists:
         alphanum_dict[remove_accents(artist[0]).upper()].append(artist)
 
-    tag = 'indexes' if flask.request.path.rsplit('.', 1)[0].endswith('Indexes') else 'artists'
+    tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
     payload = {
         tag: {
             'ignoredArticles': '',      # TODO - include config from 'the' plugin??
@@ -117,7 +117,7 @@ def artistInfo2():
     if not short_bio:
         short_bio = f'wow. much artist. very {artist_name}'
 
-    tag = 'artistInfo2' if 'artistInfo2' in flask.request.path else 'artistInfo'
+    tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
     payload = {
         tag: {
             'biography': short_bio,

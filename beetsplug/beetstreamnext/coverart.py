@@ -146,7 +146,7 @@ def send_artist_image(artist, size=None):
     # Serve local if it exists now
     if os.path.isfile(local_image_path):
         if size:
-            cover = resize_image(local_image_path, size)
+            cover = resize_image(BytesIO(open(local_image_path, 'rb').read()), size)
             return flask.send_file(cover, mimetype='image/jpeg')
         return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
 

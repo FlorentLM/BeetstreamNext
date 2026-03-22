@@ -1,3 +1,4 @@
+import threading
 from typing import Union, List, Any
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ from beetsplug.beetstreamnext import app
 class Playlist:
 
     def __init__(self, dir_id, path):
-
+        self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
         self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
@@ -103,33 +104,36 @@ class Playlist:
         self.song_count = len(self.songs)
 
     def rename(self, name=None):
-        if name and name != self.name:
-            name = str(name).rstrip('/').rsplit('.', 1)[0]
-            new_path = self.path.with_name(name).with_suffix('.m3u')
+        with self._lock:
+            if name and name != self.name:
+                name = str(name).rstrip('/').rsplit('.', 1)[0]
+                new_path = self.path.with_name(name).with_suffix('.m3u')
 
-            if new_path.exists():
-                raise FileExistsError(f"A playlist named {new_path.name} already exists.")
+                if new_path.exists():
+                    raise FileExistsError(f"A playlist named {new_path.name} already exists.")
 
-            self.path.rename(new_path)
-            self.path = new_path
-            self.name = self.path.stem
-            self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
-            self.mtime = self.path.stat().st_mtime
+                self.path.rename(new_path)
+                self.path = new_path
+                self.name = self.path.stem
+                self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
+                self.mtime = self.path.stat().st_mtime
 
     def remove_songs(self, indices: List[Any]):
-        # need descending order so that removing an item doesn't shift other indices
-        indices = sorted([int(i) for i in indices], reverse=True)
-        for index in indices:
-            if 0 <= index < len(self.songs):
-                self.songs.pop(index)
-        self._calc_duration()
-        self.to_m3u()
+        with self._lock:
+            # need descending order so that removing an item doesn't shift other indices
+            indices = sorted([int(i) for i in indices], reverse=True)
+            for index in indices:
+                if 0 <= index < len(self.songs):
+                    self.songs.pop(index)
+            self._calc_duration()
+            self.to_m3u()
 
     def add_songs(self, beets_items):
-        for item in beets_items:
-            self.songs.append(map_song(item))
-        self._calc_duration()
-        self.to_m3u()
+        with self._lock:
+            for item in beets_items:
+                self.songs.append(map_song(item))
+            self._calc_duration()
+            self.to_m3u()
 
     def _calc_duration(self):
         self.duration = sum(int(s.get('duration', 0) or 0) for s in self.songs)
@@ -219,43 +223,43 @@ class Playlist:
                     curr_entry = {}
 
     def to_m3u(self):
+        with self._lock:
+            content = ['#EXTM3U']
 
-        content = ['#EXTM3U']
+            for song in self.songs:
+                path = song.get('path')
 
-        for song in self.songs:
-            path = song.get('path')
+                if isinstance(path, bytes):
+                    path = path.decode('utf-8')
+                if not path:
+                    continue
 
-            if isinstance(path, bytes):
-                path = path.decode('utf-8')
-            if not path:
-                continue
+                song_id = sub_to_beets_song(song.get('id', ''))
+                length = song.get('duration') or song.get('length', 0)
+                info = f"#EXTINF:{round(length)} id={song_id}"
 
-            song_id = sub_to_beets_song(song.get('id', ''))
-            length = song.get('duration') or song.get('length', 0)
-            info = f"#EXTINF:{round(length)} id={song_id}"
+                artist = song.get('artist', '')
+                title = song.get('title', '')
+                album = song.get('album', '')
+                year = song.get('year', '')
 
-            artist = song.get('artist', '')
-            title = song.get('title', '')
-            album = song.get('album', '')
-            year = song.get('year', '')
+                if artist and title:
+                    info += f',{artist} - {title}'
+                elif artist:
+                    info += f',{artist}'
+                elif title:
+                    info += f',{title}'
+                content.append(info)
 
-            if artist and title:
-                info += f',{artist} - {title}'
-            elif artist:
-                info += f',{artist}'
-            elif title:
-                info += f',{title}'
-            content.append(info)
+                if album:
+                    albuminfo = f'#EXTALB:{album}'
+                    albuminfo += f' ({year})' if year else ''
+                    content.append(albuminfo)
 
-            if album:
-                albuminfo = f'#EXTALB:{album}'
-                albuminfo += f' ({year})' if year else ''
-                content.append(albuminfo)
+                content.append(Path(path).relative_to(app.config['root_directory']).as_posix())
 
-            content.append(Path(path).relative_to(app.config['root_directory']).as_posix())
-
-        with open(self.path.with_suffix('.m3u'), 'w', encoding='UTF-8') as f:
-            f.write('\n'.join(content))
+            with open(self.path.with_suffix('.m3u'), 'w', encoding='UTF-8') as f:
+                f.write('\n'.join(content))
 
 
 class PlaylistProvider:

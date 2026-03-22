@@ -209,8 +209,6 @@ def map_song(song_object):
         song_filepath = filepath_beets
     else:
         song_filepath = ''
-    if song_filepath and not os.path.isfile(song_filepath):
-        song_filepath = ''
 
     album_id = beets_to_sub_album(song.get('album_id', 0))
 
@@ -432,8 +430,8 @@ def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
         root.set("openSubsonic", 'true')
 
         xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
-        pretty_xml = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
-        xml_str = pretty_xml.decode('UTF-8')
+        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
+        xml_str = xml_bytes.decode('UTF-8')
 
         return flask.Response(xml_str, mimetype="text/xml")
 
@@ -711,11 +709,11 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     return {}
 
 
-def query_lastfm(query: str, type: str, method: str = 'info', mbid=True) -> Dict:
+def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
     if not app.config['lastfm_api_key']:
         return {}
 
-    query_lastfm = query.replace(' ', '+')
+    q = q.replace(' ', '+')
     endpoint = 'https://ws.audioscrobbler.com/2.0/'
 
     params = {
@@ -725,9 +723,9 @@ def query_lastfm(query: str, type: str, method: str = 'info', mbid=True) -> Dict
         }
 
     if mbid:
-        params['mbid'] = query
-    elif query_lastfm and type != 'user':
-        params[type] = query_lastfm
+        params['mbid'] = q
+    elif q and type != 'user':
+        params[type] = q
 
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
@@ -736,18 +734,17 @@ def query_lastfm(query: str, type: str, method: str = 'info', mbid=True) -> Dict
     return response.json() if response.ok else {}
 
 
-def query_wikipedia(query: str) -> Optional[str]:
+def query_wikipedia(q: str) -> Optional[str]:
     if not WIKI_API:
         return None
 
-    query = standard_ascii(query)
-
-    if not query:
+    q = standard_ascii(q)
+    if not q:
         return None
 
     user_agent = f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'
     wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language='en')
-    page = wiki.page(query)
+    page = wiki.page(q)
 
     if page.exists():
         return page.summary

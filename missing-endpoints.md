@@ -1,50 +1,34 @@
-# Missing Endpoints
+# OpenSubsonic API
 
-These need the BeetstreamNext internal database first:
-- `getUsers`
-- `createUser`
+## Recent additions
+- `getUsers` / `getUser`
+- `star` / `unstar` / `getStarred`
+- `setRating`
+- `getBookmarks` / `createBookmark` / `deleteBookmark`
+- `getPlayQueue` / `savePlayQueue`
+- `getLyrics` / `getLyricsBySongId`
+- `updatePlaylist`
+- `scrobble` (local play count tracking)
+- `getSimilarSongs` / `getTopSongs` (Last.fm integration)
+
+## Missing
+
+### User management via API
+- `createUser` (currently CLI only via `--user`)
 - `updateUser`
 - `deleteUser`
 - `changePassword`
-- `updatePlaylist`
 - `getAvatar`
-- `star`
-- `unstar`
-- `setRating`
-- `getBookmarks`
-- `createBookmark`
-- `deleteBookmark`
 
-Could be fun to implement:
-- `getLyrics`
-- `getPlayQueue`
-- `savePlayQueue`
-- `getScanStatus`
-- `startScan`
+### Social stuff
+- `getShares` / `createShare` / `updateShare` / `deleteShare`
+- `getNowPlaying` (aggregate currently playing from all users)
+- `getChatMessages` / `addChatMessage`
 
-Video/Radio/Podcast stuff:
-- `getVideos`
-- `getVideoInfo`
-- `hls`
-- `getCaptions`
+### Stuff that could be fun but needs to bridge other plugins or other softwares
 - `getPodcasts`
-- `getNewestPodcasts`
-- `refreshPodcasts`
-- `createPodcastChannel`
-- `deletePodcastChannel`
-- `deletePodcastEpisode`
-- `downloadPodcastEpisode`
 - `getInternetRadioStations`
-- `createInternetRadioStation`
-- `updateInternetRadioStation`
-- `deleteInternetRadioStation`
 
-Social stuff. Some could be fun to implement but I'm still not sure:
-- `getNowPlaying`
-- `getShares`
-- `createShare`
-- `updateShare`
-- `deleteShare`
+### Low priority or out of scope
 - `jukeboxControl`
-- `getChatMessages`
-- `addChatMessage`
+- `getVideos`

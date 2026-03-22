@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "beetstreamnext"
-version = "1.9.0"
+version = "1.6.0"
 description = "A modern, feature-rich OpenSubsonic API server for your Beets.io music library."
 authors = ["Florent Le Moël <25004801+FlorentLM@users.noreply.github.com>"]
 license = "MIT"
@@ -20,9 +20,11 @@ cryptography = ">=45.0.6"
 pillow = ">=11.3.0"
 requests = ">=2.32.4"
 ffmpeg-python = {version = ">=0.2.0", optional = true}
+wikipedia-api = {version = ">=0.11.0", optional = true}
 
 [tool.poetry.extras]
 transcode = ["ffmpeg-python"]
+wiki = ["wikipedia-api"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.4.0"

@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext import app
 
 
 API_VERSION = '1.16.1'
-BEETSTREAMNEXT_VERSION = '1.5.0-dev'
+BEETSTREAMNEXT_VERSION = '1.6.0-dev'
 
 # Prefixes for BeetstreamNext's internal IDs
 ART_ID_PREF = 'ar-'

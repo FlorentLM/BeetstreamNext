@@ -5,7 +5,7 @@ import flask
 from urllib.parse import unquote
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.db import load_userdata
+from beetsplug.beetstreamnext.users import load_userdata
 
 
 def get_user(api_key_hash: str) -> str:

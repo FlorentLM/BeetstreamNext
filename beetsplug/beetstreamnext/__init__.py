@@ -36,7 +36,7 @@ def before_request():
         return
 
     from beetsplug.beetstreamnext.authentication import authenticate
-    from beetsplug.beetstreamnext.db import load_user_roles, load_user_likes, load_user_play_stats, load_user_ratings
+    from beetsplug.beetstreamnext.users import load_user_roles, load_user_likes, load_user_play_stats, load_user_ratings
     from beetsplug.beetstreamnext.utils import subsonic_error
 
     ok, error_code, username = authenticate(flask.request.values)
@@ -126,7 +126,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     is_admin = input('Admin? [y/n]: ').lower() == 'y'
 
                     try:
-                        api_key = db.create_user(username, password, admin=is_admin)
+                        api_key = users.create_user(username, password, admin=is_admin)
                     except ValueError as e:
                         print(f"\n[ERROR] {e}")
                         return

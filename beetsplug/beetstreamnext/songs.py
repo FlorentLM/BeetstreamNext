@@ -181,9 +181,9 @@ def get_top_songs():
         if app.config['lastfm_api_key']:
             # Query last.fm for top tracks for this artist and parse the response
             if mbid_artist:
-                lastfm_resp = query_lastfm(query=mbid_artist[0][0], type='artist', method='TopTracks', mbid=True)
+                lastfm_resp = query_lastfm(q=mbid_artist[0][0], type='artist', method='TopTracks', mbid=True)
             else:
-                lastfm_resp = query_lastfm(query=artist_name, type='artist', method='TopTracks', mbid=False)
+                lastfm_resp = query_lastfm(q=artist_name, type='artist', method='TopTracks', mbid=False)
 
             if lastfm_resp:
                 beets_results = [flask.g.lib.items(f"""title:{t.get('name', '').replace("'", "")}""")
@@ -262,9 +262,9 @@ def get_similar_songs():
     if app.config['lastfm_api_key']:
         # Query last.fm for similar artists and parse the response
         if mbid_artist:
-            lastfm_resp = query_lastfm(query=mbid_artist[0][0], type='artist', method='similar', mbid=True)
+            lastfm_resp = query_lastfm(q=mbid_artist[0][0], type='artist', method='similar', mbid=True)
         else:
-            lastfm_resp = query_lastfm(query=artist_name, type='artist', method='similar', mbid=False)
+            lastfm_resp = query_lastfm(q=artist_name, type='artist', method='similar', mbid=False)
 
         if lastfm_resp:
 

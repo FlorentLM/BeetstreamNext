@@ -1,5 +1,6 @@
 import subprocess
 import os
+from functools import lru_cache
 from typing import Union
 import requests
 from io import BytesIO
@@ -45,6 +46,22 @@ def extract_cover(path) -> Union[BytesIO, None]:
     return BytesIO(img_bytes) if img_bytes else None
 
 
+@lru_cache(maxsize=1024)
+def fetch_coverartarchive(mbid: str) -> bytes:
+    """Fetch image from CAA and cache the bytes. Returns b'' if not found to avoid retries."""
+    if not mbid:
+        return b''
+
+    art_url = f'https://coverartarchive.org/release/{mbid}/front'
+    try:
+        response = requests.get(art_url, timeout=5)
+        if response.ok:
+            return response.content
+    except requests.RequestException:
+        pass
+    return b''
+
+
 def resize_image(data: BytesIO, size: int) -> BytesIO:
     img = Image.open(data)
     img.thumbnail((size, size))
@@ -84,30 +101,23 @@ def send_album_art(album_id, size=None):
     # Proxy from CoverArtArchive
     mbid = album.get('mb_albumid')
     if mbid:
-        art_url = f'https://coverartarchive.org/release/{mbid}/front'
-        try:
-            response = requests.get(art_url, timeout=5)
-            if response.ok:
-                image_bytes = response.content
+        image_bytes = fetch_coverartarchive(mbid)
 
-                if app.config.get('save_album_art', False) and album_dir:
-                    try:
-                        save_path = os.path.join(album_dir, b'cover.jpg')
-                        if not os.path.exists(save_path):
-                            with open(save_path, 'wb') as f:
-                                f.write(image_bytes)
+        if image_bytes:
+            if app.config.get('save_album_art', False) and album_dir:
+                try:
+                    save_path = os.path.join(album_dir, b'cover.jpg')
+                    if not os.path.exists(save_path):
+                        with open(save_path, 'wb') as f:
+                            f.write(image_bytes)
+                except (OSError, Exception) as e:
+                    app.logger.warning(f"Could not save cover art locally for album {album_id}: {e}")
 
-                    except (OSError, Exception) as e:
-                        app.logger.warning(f"Could not save cover art locally for album {album_id}: {e}")
+            if size:
+                cover = resize_image(BytesIO(image_bytes), size)
+                return flask.send_file(cover, mimetype='image/jpeg')
 
-                if size:
-                    cover = resize_image(BytesIO(image_bytes), size)
-                    return flask.send_file(cover, mimetype='image/jpeg')
-
-                return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
-
-        except requests.RequestException:
-            pass
+            return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     return None
 

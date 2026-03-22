@@ -106,7 +106,7 @@ def artistInfo2():
     short_bio = ''
 
     if app.config['lastfm_api_key']:
-        data_lastfm = query_lastfm(artist_mbid, 'artist')
+        data_lastfm = query_lastfm(q=artist_mbid, type='artist', method='info', mbid=True)
         lastfm_bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
 
         if lastfm_bio:

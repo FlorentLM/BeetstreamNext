@@ -17,6 +17,7 @@ import importlib
 from functools import partial
 import requests
 import urllib.parse
+from functools import lru_cache
 
 from beetsplug.beetstreamnext import app
 
@@ -681,6 +682,7 @@ def creation_date(filepath):
                 return stat.st_mtime
 
 
+@lru_cache(maxsize=512)
 def query_musicbrainz(mbid: str, type: str):
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
@@ -696,6 +698,7 @@ def query_musicbrainz(mbid: str, type: str):
     return response.json() if response.ok else {}
 
 
+@lru_cache(maxsize=512)
 def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> Dict:
 
     if artist:
@@ -728,6 +731,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     return {}
 
 
+@lru_cache(maxsize=512)
 def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
     if not app.config['lastfm_api_key']:
         return {}
@@ -753,6 +757,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
     return response.json() if response.ok else {}
 
 
+@lru_cache(maxsize=512)
 def query_wikipedia(q: str) -> Optional[str]:
     if not WIKI_API:
         return None

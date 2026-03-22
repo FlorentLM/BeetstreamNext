@@ -696,7 +696,7 @@ def query_musicbrainz(mbid: str, type: str):
     if types_mb[type] == 'artist':
         params['inc'] = 'annotation'
 
-    response = requests.get(endpoint, headers=headers, params=params)
+    response = requests.get(endpoint, headers=headers, params=params, timeout=3)
     return response.json() if response.ok else {}
 
 
@@ -724,7 +724,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
 
-    response = requests.get(search_endpoint, headers=headers)
+    response = requests.get(search_endpoint, headers=headers, timeout=3)
     if response.ok:
         data = response.json().get('data', {})
         if data:
@@ -754,7 +754,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
 
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
-    response = requests.get(endpoint, headers=headers, params=params)
+    response = requests.get(endpoint, headers=headers, params=params, timeout=3)
 
     return response.json() if response.ok else {}
 
@@ -769,7 +769,7 @@ def query_wikipedia(q: str) -> Optional[str]:
         return None
 
     user_agent = f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'
-    wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language='en')
+    wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language='en', timeout=3)
     page = wiki.page(q)
 
     if page.exists():

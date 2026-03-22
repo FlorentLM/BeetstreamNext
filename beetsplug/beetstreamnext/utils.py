@@ -128,7 +128,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
         # 'version': 'Deluxe Edition',   # TODO - Use the 'media' field maybe?
         'coverArt': subsonic_album_id,
 
-        'userRating': flask.g.get('ratings', {}).get(subsonic_album_id, 0),
+        'userRating': cached_user_ratings().get(subsonic_album_id, 0),
 
         # 'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
         'isCompilation': bool(album.get('comp', False)),
@@ -190,7 +190,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
     subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
     # (the above returns 0 when partial album which is corrrect, averageRating is only really useful on a full album)
 
-    liked_at = flask.g.get('liked', {}).get(subsonic_album_id)
+    liked_at = cached_user_likes().get(subsonic_album_id)
     if liked_at:
         subsonic_album['starred'] = timestamp_to_iso(liked_at)
 
@@ -231,7 +231,7 @@ def map_song(song_object):
 
         'played': '',
         'playCount': 0,
-        'userRating': flask.g.get('ratings', {}).get(song_id, 0),
+        'userRating': cached_user_ratings().get(song_id, 0),
 
         'duration': round(song.get('length') or 0),
         'bpm': song.get('bpm') or 0,
@@ -275,13 +275,13 @@ def map_song(song_object):
 
     subsonic_song['contentType'] = get_mimetype(song_filepath or suffix)
 
-    stats = flask.g.get('play_stats', {}).get(song.get('id'))
+    stats = cached_user_play_stats().get(song.get('id'))
     if stats:
         subsonic_song['playCount'] = stats['play_count']
         if stats['last_played']:
             subsonic_song['played'] = timestamp_to_iso(stats['last_played'])
 
-    liked_at = flask.g.get('liked', {}).get(subsonic_song['id'])
+    liked_at = cached_user_likes().get(subsonic_song['id'])
     if liked_at:
         subsonic_song['starred'] = timestamp_to_iso(liked_at)
 
@@ -297,7 +297,7 @@ def map_artist(artist_name, with_albums=True):
         'sortName': artist_name,
         'title': artist_name,
         'coverArt': subsonic_artist_id,
-        'userRating': flask.g.get('ratings', {}).get(subsonic_artist_id, 0),
+        'userRating': cached_user_ratings().get(subsonic_artist_id, 0),
 
         # "roles": [
         #     "artist",
@@ -322,7 +322,7 @@ def map_artist(artist_name, with_albums=True):
     else:
         with flask.g.lib.transaction() as tx:
             rows = tx.query(
-                "SELECT COUNT(*), mb_albumartistid FROM albums WHERE albumartist = ? GROUP BY albumartist",
+                """SELECT COUNT(*), mb_albumartistid FROM albums WHERE albumartist = ? GROUP BY albumartist""",
                 (artist_name,)
             )
         if rows:
@@ -331,7 +331,7 @@ def map_artist(artist_name, with_albums=True):
         else:
             subsonic_artist['albumCount'] = 0
 
-    liked_at = flask.g.get('liked', {}).get(subsonic_artist_id)
+    liked_at = cached_user_likes().get(subsonic_artist_id)
     if liked_at:
         subsonic_artist['starred'] = timestamp_to_iso(liked_at)
 
@@ -566,6 +566,19 @@ def stringlist_splitter(delimiter_separated_string: str):
     return [customstrip(p) for p in parts if customstrip(p)]
 
 
+def trim_text(text, char_limit=300):
+    if len(text) <= char_limit:
+        return text
+
+    snippet = text[:char_limit]
+    period_index = text.find(".", char_limit)
+
+    if period_index != -1:
+        snippet = text[:period_index + 1]
+
+    return snippet
+
+
 def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
         return ''
@@ -758,14 +771,22 @@ def query_wikipedia(q: str) -> Optional[str]:
     return None
 
 
-def trim_text(text, char_limit=300):
-    if len(text) <= char_limit:
-        return text
+def cached_user_likes():
+    if 'liked' not in flask.g:
+        from beetsplug.beetstreamnext.users import load_user_likes
+        flask.g.liked = load_user_likes(flask.g.username)
+    return flask.g.liked
 
-    snippet = text[:char_limit]
-    period_index = text.find(".", char_limit)
 
-    if period_index != -1:
-        snippet = text[:period_index + 1]
+def cached_user_ratings():
+    if 'ratings' not in flask.g:
+        from beetsplug.beetstreamnext.users import load_user_ratings
+        flask.g.ratings = load_user_ratings(flask.g.username)
+    return flask.g.ratings
 
-    return snippet
+
+def cached_user_play_stats():
+    if 'play_stats' not in flask.g:
+        from beetsplug.beetstreamnext.users import load_user_play_stats
+        flask.g.play_stats = load_user_play_stats(flask.g.username)
+    return flask.g.play_stats

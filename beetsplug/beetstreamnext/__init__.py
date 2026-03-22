@@ -33,15 +33,14 @@ _nb_items_lock = threading.Lock()
 
 @app.before_request
 def before_request():
-    g.lib = app.config['lib']
 
     if flask.request.path == '/':
         return
 
-    from beetsplug.beetstreamnext.users import (
-        load_user_roles, load_user_likes, load_user_play_stats, load_user_ratings, authenticate
-    )
+    from beetsplug.beetstreamnext.users import load_user_roles, authenticate
     from beetsplug.beetstreamnext.utils import subsonic_error
+
+    g.lib = app.config['lib']
 
     ok, error_code, username = authenticate(flask.request.values)
     if not ok:
@@ -50,9 +49,6 @@ def before_request():
 
     g.username = username
     g.user_data = load_user_roles(username)
-    g.liked = load_user_likes(username)
-    g.ratings = load_user_ratings(username)
-    g.play_stats = load_user_play_stats(username)
     g.playlist_provider = app.config['playlist_provider']
 
 

@@ -107,7 +107,7 @@ BeetstreamNext is tested and working with:
 - [Symfonium](https://symfonium.app/)
 - [Tempo](https://github.com/CappielloAntonio/tempo)
 - [SubTune](https://github.com/TaylorKunZhang/SubTune)
-- [substreamer](https://substreamerapp.com/)
+- [Substreamer](https://substreamerapp.com/)
 - [Ultrasonic](https://gitlab.com/ultrasonic/ultrasonic)
 
 #### Desktop
@@ -120,6 +120,9 @@ BeetstreamNext is tested and working with:
 - [ ] User management (create/delete) via the API (instead of CLI only)
 - [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists
 - [ ] Scrobbling to Last.fm and other similar services
+- [ ] Use of a persistent cache (dbm?) for external APIs responses
+- [ ] Move now_playing into the db as a volatile table
+
 
 ## Missing endpoints
 

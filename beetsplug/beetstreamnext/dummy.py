@@ -31,11 +31,11 @@ def token_info():
     if not api_key:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    from beetsplug.beetstreamnext.authentication import get_user
+    from beetsplug.beetstreamnext.users import get_username
     import hashlib
 
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
-    username = get_user(api_key_hash)
+    username = get_username(api_key_hash)
 
     if not username:
         return subsonic_error(40, resp_fmt=resp_fmt)

@@ -294,16 +294,13 @@ def get_similar_songs():
                 sub_conditions_outer.append("(" + " OR ".join(sub_conditions_inner) + ")")
             conditions.append("(" + " OR ".join(sub_conditions_outer) + ")")
 
-    # we also let SQL remove duplicate rows using DISTINCT, and apply the limit there directly
     query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"
     params.append(limit)
 
-    # Run the single big SQL query
     with flask.g.lib.transaction() as tx:
         beets_results = list(tx.query(query, params))
 
-    # and finally reply to the client
-    tag = 'similarSongs2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'similarSongs'
+    tag = 'similarSongs2' if 'similarSongs2' in flask.request.path else 'similarSongs'
     payload = {
         tag: {
             'song': list(map(map_song, beets_results))

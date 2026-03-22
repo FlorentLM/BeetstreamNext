@@ -117,7 +117,7 @@ def artistInfo2():
     if not short_bio:
         short_bio = f'wow. much artist. very {artist_name}'
 
-    tag = 'artistInfo2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'artistInfo'
+    tag = 'artistInfo2' if 'artistInfo2' in flask.request.path else 'artistInfo'
     payload = {
         tag: {
             'biography': short_bio,

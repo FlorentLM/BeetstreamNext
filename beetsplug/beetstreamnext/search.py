@@ -60,9 +60,9 @@ def search(ver=None):
     # TODO - do the sort in the SQL query instead?
     artists.sort(key=lambda name: remove_accents(name).upper())
 
-    if flask.request.path.rsplit('.', 1)[0][6:] == 'search2':
+    if 'search2' in flask.request.path:
         tag = 'searchResult2'
-    elif flask.request.path.rsplit('.', 1)[0][6:] == 'search3':
+    elif 'search3' in flask.request.path:
         tag = 'searchResult3'
     else:
         tag = 'searchResult'

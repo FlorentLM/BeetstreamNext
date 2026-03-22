@@ -88,7 +88,7 @@ def get_starred():
             artist_name = sub_to_beets_artist(item_id)
             artists.append(map_artist(artist_name, with_albums=False))
 
-    tag = 'starred2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'starred'
+    tag = 'starred2' if 'starred2' in flask.request.path else 'starred'
     payload = {
         tag: {
             'song':   songs,

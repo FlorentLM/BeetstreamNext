@@ -44,7 +44,7 @@ def get_album_info(ver=None):
     album_quot = urllib.parse.quote(album.get('album', ''))
     lastfm_url = f'https://www.last.fm/music/{artist_quot}/{album_quot}' if artist_quot and album_quot else ''
 
-    tag = 'albumInfo2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'albumInfo'
+    tag = 'albumInfo2' if 'albumInfo2' in flask.request.path else 'albumInfo'
     payload = {
         tag: {
         'musicBrainzId': album.get('mb_albumid', ''),
@@ -72,7 +72,7 @@ def get_album_list(ver=None):
     to_year = int(r.get('toYear', 3000))
     genre_filter = r.get('genre')
 
-    tag = 'albumList2' if flask.request.path.rsplit('.', 1)[0].endswith('2') else 'albumList'
+    tag = 'albumList2' if 'albumList2' in flask.request.path else 'albumList'
 
     # Starred filter needs data from the two dbs
     if sort_by == 'starred':

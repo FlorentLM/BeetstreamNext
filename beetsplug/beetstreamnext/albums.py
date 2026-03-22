@@ -109,10 +109,10 @@ def get_album_list(ver=None):
         paged_ids = sorted_ids[offset:offset + size]
 
         if paged_ids:
-            placeholders = ','.join('?' * len(paged_ids))
+            question_marks = ','.join('?' * len(paged_ids))
 
             with flask.g.lib.transaction() as tx:
-                rows = tx.query(f"SELECT * FROM albums WHERE id IN ({placeholders})", paged_ids)
+                rows = tx.query(f"""SELECT * FROM albums WHERE id IN ({question_marks})""", paged_ids)
 
             row_map = {row['id']: row for row in rows}
             albums = [row_map[aid] for aid in paged_ids if aid in row_map]
@@ -127,8 +127,61 @@ def get_album_list(ver=None):
         }
         return subsonic_response(payload, r.get('f', 'xml'))
 
+    if sort_by in ('frequent', 'highest'):
+
+        if sort_by == 'frequent':
+            play_stats = flask.g.play_stats
+            if not play_stats:
+                payload = {tag: {'album': []}}
+                return subsonic_response(payload, r.get('f', 'xml'))
+
+            song_ids = list(play_stats.keys())
+            question_marks = ','.join('?' * len(song_ids))
+
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(
+                    f"""SELECT id, album_id FROM items WHERE id IN ({question_marks})""", song_ids
+                )
+
+            album_counts = {}
+            for row in rows:
+                song_id, album_id = row['id'], row['album_id']
+                album_counts[album_id] = album_counts.get(album_id, 0) + play_stats[song_id]['play_count']
+
+            sorted_ids = sorted(album_counts, key=album_counts.get, reverse=True)
+
+        elif sort_by == 'highest':
+            ratings = flask.g.ratings
+
+            album_ratings = {
+                sub_to_beets_album(iid): rating
+                for iid, rating in ratings.items()
+                if iid.startswith(ALB_ID_PREF)
+            }
+            if not album_ratings:
+                payload = {tag: {'album': []}}
+                return subsonic_response(payload, r.get('f', 'xml'))
+
+            sorted_ids = sorted(album_ratings, key=album_ratings.get, reverse=True)
+
+        paged_ids = sorted_ids[offset:offset + size]
+        if paged_ids:
+
+            question_marks = ','.join('?' * len(paged_ids))
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(f"""SELECT * FROM albums WHERE id IN ({question_marks})""", paged_ids)
+
+            row_map = {row['id']: row for row in rows}
+            albums = [row_map[aid] for aid in paged_ids if aid in row_map]
+        else:
+            albums = []
+
+        counts = get_song_counts(albums)
+        payload = {tag: {'album': [map_album(a, with_songs=False, song_counts=counts) for a in albums]}}
+        return subsonic_response(payload, r.get('f', 'xml'))
+
     # All other sort types we can do in SQL directly
-    query = "SELECT * FROM albums"
+    query = """SELECT * FROM albums"""
     conditions = []
     params = []
 
@@ -170,8 +223,6 @@ def get_album_list(ver=None):
         query += f" ORDER BY year {sort_dir}, month {sort_dir}, day {sort_dir}"
     elif sort_by == 'random':
         query += " ORDER BY RANDOM()"
-
-    # TODO - sort_by: highest, frequent
 
     # LIMIT and OFFSET for pagination
     query += " LIMIT ? OFFSET ?"

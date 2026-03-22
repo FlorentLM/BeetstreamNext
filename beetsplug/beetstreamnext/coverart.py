@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
     get_mimetype, query_deezer,
     ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song)
+    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip)
 
 
 have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
@@ -112,13 +112,17 @@ def send_album_art(album_id, size=None):
     return None
 
 
-def send_artist_image(artist_id, size=None):
+def send_artist_image(artist, size=None):
 
     # TODO - Maybe make a separate plugin to save deezer data permanently to disk / beets db?
 
-    artist_name = sub_to_beets_artist(artist_id)
+    artist = customstrip(artist)
+    artist_name = sub_to_beets_artist(artist) if artist.startswith(ART_ID_PREF) else artist
 
     local_folder = app.config['root_directory'] / artist_name
+    if not local_folder.is_dir():
+        return None
+
     local_image_path = local_folder / f'{artist_name}.jpg'
 
     # Fetch and save if enabled
@@ -210,13 +214,13 @@ def get_cover_art():
                 return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     # artist requests
-    elif req_id.startswith(ART_ID_PREF):
+    else:
         response = send_artist_image(req_id, size=size)
         if response is not None:
             return response
 
     # root folder ID or name: serve BeetstreamNext's logo
-    elif req_id == app.config['root_directory'].name or req_id == 'm-0':
+    if req_id == app.config['root_directory'].name or req_id == 'm-0':
         module_dir = os.path.dirname(os.path.abspath(__file__))
         beetstreamnext_icon = os.path.join(module_dir, '../../beetstreamnext.png')
         return flask.send_file(beetstreamnext_icon, mimetype=get_mimetype(beetstreamnext_icon))

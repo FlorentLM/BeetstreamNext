@@ -196,8 +196,23 @@ def get_top_songs():
                     }
                 }
         else:
-            # TODO - Use the local play_count in this case
-            pass
+            # Fallback to local play stats
+            artist_items = flask.g.lib.items(f'albumartist:{artist_name}')
+            play_stats = flask.g.play_stats
+
+            scored = sorted(
+                artist_items,
+                key=lambda item: play_stats.get(item.id, {}).get('play_count', 0),
+                reverse=True
+            )
+            count = int(r.get('count', 50))
+            top_tracks_available = [t for t in scored if play_stats.get(t.id, {}).get('play_count', 0) > 0][:count]
+
+            payload = {
+                'topSongs': {
+                    'song': list(map(map_song, top_tracks_available))
+                }
+            }
 
     return subsonic_response(payload, r.get('f', 'xml'))
 

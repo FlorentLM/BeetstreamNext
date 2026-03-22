@@ -26,6 +26,9 @@ from flask_cors import CORS
 
 # Flask setup
 app = flask.Flask(__name__)
+
+_now_playing = {}  # {username: {'song_id', 'started_at', 'player_name'}}
+_now_playing_lock = threading.Lock()
 _nb_items_lock = threading.Lock()
 
 @app.before_request

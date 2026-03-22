@@ -2,11 +2,12 @@ import sqlite3
 import time
 import flask
 
-from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song
-
+from beetsplug.beetstreamnext import app, _now_playing, _now_playing_lock
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song
 
 # TODO: Lastfm optional integration?
+
+_NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 
 
 @app.route('/rest/scrobble', methods=['GET', 'POST'])
@@ -22,13 +23,22 @@ def scrobble():
 
     # only record if submission=true (does false basically mean 'now playing'?)
     submission = r.get('submission', 'true').lower() != 'false'
+    username = flask.g.username
+    client = r.get('c') or ''
+    now = time.time()
+
     if not submission:
+        # "Now playing" -> only update in-memory store
+        beets_id = sub_to_beets_song(song_ids[0])
+        with _now_playing_lock:
+            _now_playing[username] = {
+                'song_id': beets_id,
+                'started_at': now,
+                'player_name': client,
+            }
         return subsonic_response({}, resp_fmt)
 
     times_ms = r.getlist('time')
-    username = flask.g.username
-    now = time.time()
-
     db_path = flask.current_app.config['DB_PATH']
 
     with sqlite3.connect(db_path) as conn:
@@ -52,3 +62,32 @@ def scrobble():
                 (username, beets_id, played_at)
             )
     return subsonic_response({}, resp_fmt)
+
+
+@app.route('/rest/getNowPlaying', methods=['GET', 'POST'])
+@app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
+def get_now_playing():
+    r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
+
+    now = time.time()
+    entries = []
+
+    with _now_playing_lock:
+        stale = [u for u, v in _now_playing.items() if now - v['started_at'] > _NOW_PLAYING_TIMEOUT]
+        for u in stale:
+            del _now_playing[u]
+        snapshot = list(_now_playing.items())
+
+    for username, info in snapshot:
+        item = flask.g.lib.get_item(info['song_id'])
+        if not item:
+            continue
+
+        entry = map_song(item)
+        entry['username'] = username
+        entry['minutesAgo'] = int((now - info['started_at']) / 60)
+        entry['playerName'] = info['player_name']
+        entries.append(entry)
+
+    return subsonic_response({'nowPlaying': {'entry': entries}}, resp_fmt)

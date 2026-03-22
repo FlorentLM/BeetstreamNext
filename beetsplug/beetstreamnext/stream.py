@@ -14,28 +14,41 @@ def direct(file_path):
         return None
 
 
-def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128):
+def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
+
+    format_map = {
+        'mp3': {'f': 'mp3', 'c': 'libmp3lame', 'mime': 'audio/mpeg'},
+        'ogg': {'f': 'ogg', 'c': 'libvorbis', 'mime': 'audio/ogg'},
+        'opus': {'f': 'ogg', 'c': 'libopus', 'mime': 'audio/ogg'},
+        'aac': {'f': 'adts', 'c': 'aac', 'mime': 'audio/aac'},
+        'm4a': {'f': 'adts', 'c': 'aac', 'mime': 'audio/aac'},
+        'flac': {'f': 'flac', 'c': 'flac', 'mime': 'audio/flac'}
+    }
+
+    target = format_map.get(req_format.lower() if req_format else 'mp3', format_map['mp3'])
+
     if FFMPEG_PYTHON:
-        input_stream = ffmpeg.input(file_path, ss=start_at) if start_at else ffmpeg.input(file_path)
+        input_stream = ffmpeg.input(file_path, ss=start_at) if start_at > 0 else ffmpeg.input(file_path)
 
         output_stream = (
             input_stream
             .audio
-            .output('pipe:', format="mp3", audio_bitrate=max_bitrate * 1000)
+            .output('pipe:', format=target['f'], acodec=target['c'], audio_bitrate=f'{max_bitrate}k')
             .run_async(pipe_stdout=True, quiet=True)
         )
     elif FFMPEG_BIN:
-        command = ["ffmpeg"]
+        command = ['ffmpeg', '-hide_banner', '-loglevel', 'error']
 
         if start_at > 0:
             command.extend(["-ss", f"{start_at:.2f}"])
 
         command.extend([
-            "-i", file_path,
-            "-vn",
-            "-f", "mp3",
-            "-b:a", f"{max_bitrate}k",
-            "pipe:1"
+            '-i', file_path,
+            '-vn',  # strip cover art, otherwise many clients just crash
+            '-f', target['f'],
+            '-c:a', target['c'],
+            '-b:a', f'{max_bitrate}k',
+            'pipe:1'
         ])
         output_stream = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     else:
@@ -55,11 +68,11 @@ def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128):
             except Exception:
                 pass
 
-    return flask.Response(generate(), mimetype='audio/mpeg')
+    return flask.Response(generate(), mimetype=target['mime'])
 
 
-def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128):
+def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
     if have_ffmpeg:
-        return transcode(file_path, start_at, max_bitrate)
+        return transcode(file_path, start_at, max_bitrate, req_format)
     else:
         return direct(file_path)

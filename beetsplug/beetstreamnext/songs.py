@@ -112,7 +112,7 @@ def stream_song():
         return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
 
     max_bitrate = int(r.get('maxBitRate', 0))
-    req_format = r.get('format')
+    req_format = r.get('format') or 'mp3'
     time_offset = float(r.get('timeOffset', 0.0))
     estimate_content_length = r.get('estimateContentLength', 'false').lower() == 'true'
 
@@ -138,7 +138,12 @@ def stream_song():
         else:
             target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
-            response = stream.try_transcode(song_path, start_at=time_offset, max_bitrate=target_bitrate)
+            response = stream.try_transcode(
+                song_path,
+                start_at=time_offset,
+                max_bitrate=target_bitrate,
+                req_format=req_format
+            )
 
             remaining_time = max(0, song.get('length', 0) - time_offset)
             est_size = int(((target_bitrate * 1000) / 8) * remaining_time)

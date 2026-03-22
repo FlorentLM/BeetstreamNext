@@ -111,7 +111,7 @@ def map_media(beets_object: Union[dict, library.LibModel]):
     return subsonic_media
 
 
-def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict:
+def map_album(album_object: Union[dict, library.Album], with_songs=True, song_counts: dict = None) -> dict:
     album = dict(album_object)
 
     subsonic_album = map_media(album)
@@ -160,26 +160,32 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True) -> dict
             for d in range(nb_discs)
         ]
 
-    # Songs should be included when part of either:
-    # - an AlbumID3WithSongs response
-    # - a directory response (in which case the 'song' key needs to be renamed to 'child')
+    # Songs should be included when in:
+    # - AlbumID3WithSongs response
+    # - directory response (in which case the 'song' key needs to be renamed to 'child')
 
-    # Even if not including songs in the response, we still need to have their count and duration...
-    if not isinstance(album_object, library.Album):
-        # ...so in case album_object comes from a direct SQL transaction, we need to query once more
-        songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
-    else:
-        # ...if it is a beets.library.Album object, we already have them
+    if isinstance(album_object, library.Album):
         songs = list(album_object.items())
+        subsonic_album['songCount'] = len(songs)
+        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
+    elif song_counts and beets_album_id in song_counts:
+        songs = []
+        subsonic_album['songCount'], subsonic_album['duration'] = song_counts[beets_album_id]
+    else:
+        songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
+        subsonic_album['songCount'] = len(songs)
+        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
 
     if with_songs:
-        songs.sort(key=lambda s: s.track)  # TODO - is it really necessary to sort them?
+        if not songs:
+            songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
+        
+        songs.sort(key=lambda s: s.track)
         subsonic_album['song'] = list(map(map_song, songs))
 
     subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
     subsonic_album['songCount'] = len(songs)
 
-    # Optional field
     songs_ratings = [s.get('userRating', 0) for s in subsonic_album.get('song', []) if s.get('userRating', 0)]
     subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
     # (the above returns 0 when partial album which is corrrect, averageRating is only really useful on a full album)

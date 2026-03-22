@@ -2,6 +2,7 @@ from functools import partial
 import flask
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.utils import (
     subsonic_error, subsonic_response,
     remove_accents,
@@ -60,6 +61,8 @@ def search(ver=None):
     # TODO - do the sort in the SQL query instead?
     artists.sort(key=lambda name: remove_accents(name).upper())
 
+    song_counts = get_song_counts(albums)
+
     if 'search2' in flask.request.path:
         tag = 'searchResult2'
     elif 'search3' in flask.request.path:
@@ -69,7 +72,7 @@ def search(ver=None):
     payload = {
         tag: {
             'artist': list(map(partial(map_artist, with_albums=False), artists)),  # no need to include albums twice
-            'album': list(map(partial(map_album, with_songs=False), albums)), # no need to include songs twice
+            'album': list(map(partial(map_album, with_songs=False, song_counts=song_counts), albums)), # no need to include songs twice
             'song': list(map(map_song, songs))
         }
     }

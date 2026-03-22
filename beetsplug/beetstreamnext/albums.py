@@ -22,6 +22,26 @@ def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
     }
     return payload
 
+
+def get_song_counts(albums: List[Dict]) -> Dict:
+    """Get song counts for a list of albums in a single db query."""
+    album_ids = [row['id'] for row in albums]
+    if album_ids:
+        question_marks = ','.join('?' * len(album_ids))
+
+        with flask.g.lib.transaction() as tx:
+            count_rows = tx.query(
+                f"SELECT album_id, COUNT(*), CAST(SUM(length) AS INTEGER) "
+                f"FROM items WHERE album_id IN ({question_marks}) GROUP BY album_id",
+                album_ids
+            )
+        counts = {row[0]: (row[1], row[2] or 0) for row in count_rows}
+    else:
+        counts = {}
+
+    return counts
+
+
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def get_album():
@@ -99,7 +119,12 @@ def get_album_list(ver=None):
         else:
             albums = []
 
-        payload = {tag: {"album": list(map(partial(map_album, with_songs=False), albums))}}
+        song_counts = get_song_counts(albums)
+        payload = {
+            tag: {
+                "album": list(map(partial(map_album, with_songs=False, song_counts=song_counts), albums))
+            }
+        }
         return subsonic_response(payload, r.get('f', 'xml'))
 
     # All other sort types we can do in SQL directly
@@ -148,16 +173,17 @@ def get_album_list(ver=None):
 
     # TODO - sort_by: highest, frequent
 
-    # Add LIMIT and OFFSET for pagination
+    # LIMIT and OFFSET for pagination
     query += " LIMIT ? OFFSET ?"
     params.extend([size, offset])
 
     with flask.g.lib.transaction() as tx:
         albums = tx.query(query, params)
 
+    song_counts = get_song_counts(albums)
     payload = {
         tag: {
-            "album": list(map(partial(map_album, with_songs=False), albums))
+            "album": [map_album(a, with_songs=False, song_counts=song_counts) for a in albums]
         }
     }
     return subsonic_response(payload, r.get('f', 'xml'))

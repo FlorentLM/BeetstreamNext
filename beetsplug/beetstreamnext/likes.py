@@ -2,6 +2,7 @@ import sqlite3
 import flask
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
@@ -94,7 +95,8 @@ def get_starred():
         with flask.g.lib.transaction() as tx:
             album_rows = tx.query(f"SELECT * FROM albums WHERE id IN ({question_marks})", album_ids)
 
-        albums = [map_album(row, with_songs=False) for row in album_rows]
+        song_counts = get_song_counts(album_rows)
+        albums = [map_album(row, with_songs=False, song_counts=song_counts) for row in album_rows]
 
     if artist_ids:
         artists = [map_artist(name, with_albums=False) for name in artist_ids]

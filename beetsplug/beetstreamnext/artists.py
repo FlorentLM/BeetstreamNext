@@ -5,6 +5,7 @@ from functools import partial
 import flask
 
 from beetsplug.beetstreamnext import app, _nb_items_lock
+from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.utils import (
     subsonic_response,
     sub_to_beets_artist,
@@ -27,9 +28,11 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
     # When part of a directory response or a ArtistWithAlbumsID3 response
     if with_albums:
-        albums = flask.g.lib.albums(f'albumartist:{artist_name}')
-                                     # I don't think there is any endpoint that returns an artist with albums AND songs?
-        payload['artist']['album'] = list(map(partial(map_album, with_songs=False), albums))
+        albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+        # I don't think there is any endpoint that returns an artist with albums AND songs?
+        song_counts = get_song_counts(albums)
+
+        payload['artist']['album'] = list(map(partial(map_album, with_songs=False, song_counts=song_counts), albums))
 
     return payload
 

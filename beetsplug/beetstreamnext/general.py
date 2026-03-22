@@ -36,6 +36,10 @@ def get_open_subsonic_extensions():
                 'name': 'transcodeOffset',
                 'versions': [1]
             },
+            {
+                'name': 'playQueue',
+                'versions': [1]
+            }
         ]
     }
     return subsonic_response(payload, r.get('f', 'xml'))

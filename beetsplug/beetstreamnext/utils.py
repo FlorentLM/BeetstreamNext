@@ -343,15 +343,17 @@ def map_playlist(playlist):
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
-        'songCount': len(playlist.songs),
+        'songCount': playlist.song_count,
         'duration': playlist.duration,
         'created': timestamp_to_iso(playlist.ctime),
         'changed': timestamp_to_iso(playlist.mtime),
-        'entry': playlist.songs
 
         # 'owner': 'userA',     # TODO
         # 'public': True,
     }
+    if playlist.songs:
+        subsonic_playlist['entry'] = playlist.songs
+
     return subsonic_playlist
 
 

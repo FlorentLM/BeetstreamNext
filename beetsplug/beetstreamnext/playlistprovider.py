@@ -19,6 +19,28 @@ class Playlist:
         self.mtime = self.path.stat().st_mtime
         self.songs = []
         self.duration = 0
+        self.song_count = 0
+        self._parse_metadata()
+
+    def _parse_metadata(self):
+        """Quickly parse M3U for duration and song count."""
+        if not self.path.exists():
+            return
+        try:
+            with self.path.open('r', encoding='UTF-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('#EXTINF:'):
+                        try:
+                            runtime = int(line[8:].split(',', 1)[0].split()[0].strip())
+                            if runtime > 0:
+                                self.duration += runtime
+                        except (ValueError, IndexError):
+                            pass
+                    elif line and not line.startswith('#'):
+                        self.song_count += 1
+        except OSError:
+            pass
 
     def load_songs(self):
         """Resolve all songs in the M3U in a minimal number of DB queries."""
@@ -77,6 +99,8 @@ class Playlist:
             row = results[idx]
             self.songs.append(map_song(row))
             self.duration += int(row['length'] or 0)
+
+        self.song_count = len(self.songs)
 
     def rename(self, name=None):
         if name and name != self.name:
@@ -304,8 +328,6 @@ class PlaylistProvider:
 
     def getall(self) -> List[Playlist]:
         """Return all cached playlists."""
-        for playlist in self._playlists.values():
-            playlist.load_songs()
         return list(self._playlists.values())
 
     def register(self, playlist: Playlist) -> None:

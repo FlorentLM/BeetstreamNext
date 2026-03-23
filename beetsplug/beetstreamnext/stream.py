@@ -61,6 +61,8 @@ def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_form
                 if not chunk:
                     break
                 yield chunk
+        except OSError:
+            pass
         finally:
             try:
                 output_stream.kill()

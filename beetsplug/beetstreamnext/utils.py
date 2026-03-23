@@ -16,6 +16,8 @@ import shutil
 import importlib
 from functools import partial
 import requests
+import requests_cache
+from datetime import timedelta
 import urllib.parse
 from functools import lru_cache
 
@@ -48,6 +50,18 @@ except ImportError:
 
 
 GENRE_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\␀', '\x00']))
+
+
+cache_path = Path(app.config.get('DB_PATH', '.')).parent / 'beetstreamnext_http_cache'
+
+http_session = requests_cache.CachedSession(
+    str(cache_path),
+    backend='sqlite',
+    expire_after=timedelta(days=30),
+    allowable_codes=[200],
+    stale_if_error=True         # serve expired cached version if remote server goes down
+)
+
 
 # BeetstreamNext internal IDs: they are sent to the client once (when it accesses endpoints such as getArtists
 # or getAlbumList) and the client will then use them to access a specific item via endpoints that need an ID
@@ -686,7 +700,6 @@ def creation_date(filepath):
                 return stat.st_mtime
 
 
-@lru_cache(maxsize=512)
 def query_musicbrainz(mbid: str, type: str):
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
@@ -699,14 +712,15 @@ def query_musicbrainz(mbid: str, type: str):
         params['inc'] = 'annotation'
 
     try:
-        response = requests.get(endpoint, headers=headers, params=params, timeout=8)
-    except requests.exceptions.ReadTimeout:
+        response = http_session.get(endpoint, headers=headers, params=params, timeout=8)
+        if response.from_cache:
+            app.logger.debug(f"Cache hit for MusicBrainz: {mbid}")
+        return response.json() if response.ok else {}
+
+    except requests.exceptions.RequestException:
         return {}
 
-    return response.json() if response.ok else {}
 
-
-@lru_cache(maxsize=512)
 def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> Dict:
 
     if artist:
@@ -731,19 +745,19 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
 
     try:
-        response = requests.get(search_endpoint, headers=headers, timeout=8)
-    except requests.exceptions.ReadTimeout:
+        response = http_session.get(search_endpoint, headers=headers, timeout=8)
+        if response.from_cache:
+            app.logger.debug(f"Cache hit for Deezer: {artist}")
+        if response.ok:
+            data = response.json().get('data', {})
+            if data:
+                return data[0]
+    except requests.exceptions.RequestException:
         return {}
-
-    if response.ok:
-        data = response.json().get('data', {})
-        if data:
-            return data[0]
 
     return {}
 
 
-@lru_cache(maxsize=512)
 def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
     if not app.config['lastfm_api_key']:
         return {}
@@ -765,11 +779,13 @@ def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
     try:
-        response = requests.get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
-    except requests.exceptions.ReadTimeout:
-        return {}
+        response = http_session.get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
+        if response.from_cache:
+            app.logger.debug(f"Cache hit for Last.fm: {q}")
+        return response.json() if response.ok else {}
 
-    return response.json() if response.ok else {}
+    except requests.exceptions.RequestException:
+        return {}
 
 
 @lru_cache(maxsize=512)

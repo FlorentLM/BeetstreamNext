@@ -330,6 +330,7 @@ def map_artist(artist_name, with_albums=True):
         'title': artist_name,
         'coverArt': subsonic_artist_id,
         'userRating': cached_user_ratings().get(subsonic_artist_id, 0),
+        'artistImageUrl': imageart_url(subsonic_artist_id),
 
         # "roles": [
         #     "artist",
@@ -340,10 +341,6 @@ def map_artist(artist_name, with_albums=True):
         # This is only needed when part of a Child response
         'mediaType': 'artist'
     }
-
-    # dz_data = query_deezer(artist_name, 'artist')
-    # if dz_data:
-    #     subsonic_artist['artistImageUrl'] = dz_data.get('picture_big', '')
 
     if with_albums:
         albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
@@ -441,6 +438,12 @@ def jsonpify(format: str, data: dict):
         return f"{callback}({json.dumps(data)});"
     else:
         return flask.jsonify(data)
+
+
+def imageart_url(item_id: str, size: Optional[int] = None) -> str:
+    if not item_id:
+        return ''
+    return flask.url_for('get_cover_art', id=item_id, size=size, _external=True)
 
 
 def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):

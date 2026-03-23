@@ -280,7 +280,7 @@ def get_cover_art():
                 return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     # artist requests
-    else:
+    else:  # some clients ask with artist ID, others ask with artist name, so this catches both
         response = send_artist_image(req_id, size=size)
         if response is not None:
             return response

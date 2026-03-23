@@ -9,9 +9,9 @@ from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.utils import (
     subsonic_response,
     sub_to_beets_artist,
-    map_artist, map_album,
-    query_deezer, query_lastfm,
-    trim_text, remove_accents, query_wikipedia, WIKI_API
+    map_artist, map_album, imageart_url,
+    query_lastfm, query_wikipedia, WIKI_API,
+    trim_text, remove_accents
 )
 
 
@@ -111,7 +111,8 @@ def artistInfo2():
 
     r = flask.request.values
 
-    artist_name = sub_to_beets_artist(r.get('id'))
+    artist_id = r.get('id')
+    artist_name = sub_to_beets_artist(artist_id)
     first_item = flask.g.lib.items(f'albumartist:{artist_name}')[0]
     artist_mbid = first_item.get('mb_albumartistid', '')
 
@@ -138,16 +139,10 @@ def artistInfo2():
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
             'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
+            'smallImageUrl': imageart_url(artist_id, size=250),
+            'mediumImageUrl': imageart_url(artist_id, size=500),
+            'largeImageUrl': imageart_url(artist_id, size=1200)
         }
     }
-
-    if app.config['fetch_artists_images']:
-        # TODO - this is not fetching the actual images, maybe we keep it as always on?
-        dz_data = query_deezer(artist=artist_name)
-
-        if dz_data and dz_data.get('type', '') == 'artist':
-            payload[tag]['smallImageUrl'] = dz_data.get('picture_medium', ''),
-            payload[tag]['mediumImageUrl'] = dz_data.get('picture_big', ''),
-            payload[tag]['largeImageUrl'] = dz_data.get('picture_xl', '')
 
     return subsonic_response(payload, r.get('f', 'xml'))

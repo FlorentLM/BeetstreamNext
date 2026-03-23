@@ -5,7 +5,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import connect_dual
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query
+    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url
 )
 
 def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
@@ -71,9 +71,9 @@ def get_album_info(ver=None):
         tag: {
         'musicBrainzId': album.get('mb_albumid', ''),
         'lastFmUrl': lastfm_url,
-        'largeImageUrl': flask.url_for('get_cover_art', id=album_id, size=1200, _external=False),
-        'mediumImageUrl': flask.url_for('get_cover_art', id=album_id, size=500, _external=False),
-        'smallImageUrl': flask.url_for('get_cover_art', id=album_id, size=250, _external=False)
+        'smallImageUrl': imageart_url(req_id, size=250),
+        'mediumImageUrl': imageart_url(req_id, size=500),
+        'largeImageUrl': imageart_url(req_id, size=1200)
         }
     }
     return subsonic_response(payload, r.get('f', 'xml'))

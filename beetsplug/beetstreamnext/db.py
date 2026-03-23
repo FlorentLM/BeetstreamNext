@@ -207,3 +207,13 @@ def initialise_db():
             "BEETSTREAMNEXT_KEY has changed since the database was initialised. Stored passwords are unrecoverable with the current key. "
             f"\nRestore the original key, or delete the database (`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
         )
+
+
+def connect_dual():
+    from beetsplug.beetstreamnext import app
+
+    conn = sqlite3.connect(app.config['DB_PATH'])
+    conn.execute(f"ATTACH DATABASE '{str(app.config['BEETS_DB_PATH'])}' AS beets")
+
+    conn.row_factory = sqlite3.Row
+    return conn

@@ -1,25 +1,26 @@
-import unicodedata
-from datetime import datetime
+from typing import TYPE_CHECKING, Union, Optional, Dict, List
+import os
+import shutil
 import platform
+import importlib
 from pathlib import Path
-from typing import Union, Optional, Dict
-import flask
+from functools import partial, lru_cache
+from datetime import datetime, timedelta
+import re
 import json
 import base64
 import mimetypes
-import os
-import re
-from beets import library
+import unicodedata
 import xml.etree.cElementTree as ET
 from xml.dom import minidom
-import shutil
-import importlib
-from functools import partial
 import requests
 import requests_cache
-from datetime import timedelta
 import urllib.parse
-from functools import lru_cache
+import flask
+
+from beets import library
+if TYPE_CHECKING:
+    from beets.dbcore.db import Transaction
 
 from beetsplug.beetstreamnext import app
 
@@ -84,6 +85,24 @@ def beets_to_sub_song(beet_song_id):
 
 def sub_to_beets_song(subsonic_song_id):
     return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
+
+
+def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):
+    """
+    tx: The beets transaction or sqlite connection
+    query_template: SQL string with a '{q}' placeholder for the IN clause
+    values: The list of values to query
+    """
+    results = []
+    for i in range(0, len(values), chunk_size):
+        chunk = values[i: i + chunk_size]
+        question_marks = ','.join(['?'] * len(chunk))
+
+        sql = query_template.replace('{q}', question_marks)
+
+        chunk_results = list(tx.query(sql, chunk))
+        results.extend(chunk_results)
+    return results
 
 
 # Mapping functions to translate Beets to OpenSubsonic dict-like structures

@@ -613,12 +613,14 @@ def get_mimetype(path):
     return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
 
 
+@lru_cache(maxsize=10)
 def get_beets_schema(table_name: str = 'items'):
     """Query beets database for column names."""
     with flask.g.lib.transaction() as tx:
         cursor = tx.query(f"PRAGMA table_info({table_name})")
         columns = [row[1] for row in cursor]
     return columns
+
 
 def genres_formatter(genres: Union[str, list, None]) -> list:
     """Additional cleaning for common genres formatting issues."""

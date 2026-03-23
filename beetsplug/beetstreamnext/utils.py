@@ -524,8 +524,8 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
         root.set("openSubsonic", 'true')
 
         xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
-        pretty_xml = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
-        xml_str = pretty_xml.decode('UTF-8')
+        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
+        xml_str = xml_bytes.decode('UTF-8')
 
         return flask.Response(xml_str, mimetype="text/xml")
 

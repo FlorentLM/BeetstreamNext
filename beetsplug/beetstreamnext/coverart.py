@@ -119,7 +119,7 @@ def send_album_art(album_id, size=None):
 
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
-    return None
+    return None # TODO - send a placeholder instead of 404ing
 
 
 def send_artist_image(artist, size=None):

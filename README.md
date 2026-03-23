@@ -106,14 +106,20 @@ BeetstreamNext is tested and working with:
 #### Android
 - [Symfonium](https://symfonium.app/)
 - [Tempo](https://github.com/CappielloAntonio/tempo)
+- [Tempus](https://github.com/eddyizm/tempus)
 - [SubTune](https://github.com/TaylorKunZhang/SubTune)
-- [Substreamer](https://substreamerapp.com/)
+- [GoSonic](https://play.google.com/store/apps/details?id=com.readysteadygosoftware.gosonic)
+- [K-19 Player](https://github.com/ulysg/k19-player)
 - [Ultrasonic](https://gitlab.com/ultrasonic/ultrasonic)
+- [Subtracks](https://github.com/austinried/subtracks)
 
-#### Desktop
+#### iOS/iPadOS/macOS
+- [Amperfy](https://github.com/BLeeEZ/amperfy)
 - [Submariner](https://github.com/SubmarinerApp/Submariner)
 - [Supersonic](https://github.com/dweymouth/supersonic)
 
+#### Linux / Windows
+- [Feishin](https://github.com/jeffvli/feishin)
 
 ## TODO
 - [ ] Docker image

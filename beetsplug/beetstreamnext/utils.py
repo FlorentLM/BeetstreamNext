@@ -12,7 +12,7 @@ import base64
 import mimetypes
 import unicodedata
 import xml.etree.cElementTree as ET
-from xml.dom import minidom
+# from xml.dom import minidom
 import requests
 import requests_cache
 import urllib.parse

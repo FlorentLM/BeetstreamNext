@@ -3,6 +3,7 @@ import time
 import flask
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.db import connect_dual
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     sub_to_beets_song, map_song, timestamp_to_iso
@@ -16,30 +17,26 @@ def get_bookmarks():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username
-    db_path = flask.current_app.config['DB_PATH']
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_dual() as conn:
         rows = conn.execute(
             """
-            SELECT song_id, position, comment, created, changed
-            FROM bookmarks WHERE username = ?
+            SELECT i.*, b.position, b.comment, b.created, b.changed
+            FROM bookmarks b 
+                     JOIN beets.items i ON b.song_id = i.id
+            WHERE b.username = ?
             """,
             (username,)
         ).fetchall()
 
     bookmarks = []
-    for beets_id, position, comment, created, changed in rows:
-
-        item = flask.g.lib.get_item(beets_id)
-        if not item:
-            continue
-
+    for row in rows:
         bookmarks.append({
-            'entry': map_song(item),
-            'position': int(position or 0),
-            'comment': comment or '',
-            'created': timestamp_to_iso(created) if created else '',
-            'changed': timestamp_to_iso(changed) if changed else '',
+            'entry': map_song(dict(row)),
+            'position': int(row['position'] or 0),
+            'comment': row['comment'] or '',
+            'created': timestamp_to_iso(row['created']) if row['created'] else '',
+            'changed': timestamp_to_iso(row['changed']) if row['changed'] else '',
             'username': username,
         })
 

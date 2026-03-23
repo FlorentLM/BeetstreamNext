@@ -1,14 +1,10 @@
 from typing import List, Dict
-
-import flask
 import urllib.parse
-from functools import partial
+import flask
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, ALB_ID_PREF,
-    cached_user_likes, cached_user_ratings, cached_user_play_stats
-)
+from beetsplug.beetstreamnext.db import connect_dual
+from beetsplug.beetstreamnext.utils import get_beets_schema, sub_to_beets_album, map_album, subsonic_response
 
 
 def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
@@ -97,88 +93,54 @@ def get_album_list(ver=None):
 
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 
-    # Starred filter needs data from the two dbs
-    if sort_by == 'starred':
-        starred = {
-            sub_to_beets_album(item_id): starred_at
-            for item_id, starred_at in cached_user_likes().items()
-            if item_id.startswith(ALB_ID_PREF)
-        }
+    if sort_by in ('starred', 'frequent', 'highest'):
+        with connect_dual() as conn:
+            if sort_by == 'starred':
+                album_rows = conn.execute(
+                    """
+                    SELECT a.*
+                    FROM likes l
+                             JOIN beets.albums a ON l.item_id = 'al-' || a.id
+                    WHERE l.username = ?
+                    ORDER BY l.starred_at DESC
+                    LIMIT ? OFFSET ?
+                    """, (flask.g.username, size, offset)
+                ).fetchall()
 
-        # Sort by starred_at descending then page
-        sorted_ids = sorted(starred, key=lambda aid: starred[aid], reverse=True)
-        paged_ids = sorted_ids[offset:offset + size]
+            elif sort_by == 'frequent':
+                album_rows = conn.execute(
+                    """
+                    SELECT a.*, SUM(ps.play_count) as total_plays
+                    FROM play_stats ps
+                             JOIN beets.items i ON ps.song_id = i.id
+                             JOIN beets.albums a ON i.album_id = a.id
+                    WHERE ps.username = ?
+                    GROUP BY a.id
+                    ORDER BY total_plays DESC
+                    LIMIT ? OFFSET ?
+                    """, (flask.g.username, size, offset)
+                ).fetchall()
 
-        if paged_ids:
-            question_marks = ','.join('?' * len(paged_ids))
+            elif sort_by == 'highest':
+                album_rows = conn.execute(
+                    """
+                    SELECT a.*
+                    FROM ratings r
+                             JOIN beets.albums a ON r.item_id = 'al-' || a.id
+                    WHERE r.username = ?
+                    ORDER BY r.rating DESC
+                    LIMIT ? OFFSET ?
+                    """, (flask.g.username, size, offset)
+                ).fetchall()
 
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(f"""SELECT * FROM albums WHERE id IN ({question_marks})""", paged_ids)
+        album_dicts = [dict(row) for row in album_rows]
+        counts = get_song_counts(album_dicts)
 
-            row_map = {row['id']: row for row in rows}
-            albums = [row_map[aid] for aid in paged_ids if aid in row_map]
-        else:
-            albums = []
-
-        song_counts = get_song_counts(albums)
         payload = {
             tag: {
-                "album": list(map(partial(map_album, with_songs=False, song_counts=song_counts), albums))
+                "album": [map_album(a, with_songs=False, song_counts=counts) for a in album_dicts]
             }
         }
-        return subsonic_response(payload, r.get('f', 'xml'))
-
-    if sort_by in ('frequent', 'highest'):
-
-        if sort_by == 'frequent':
-            play_stats = cached_user_play_stats()
-            if not play_stats:
-                payload = {tag: {'album': []}}
-                return subsonic_response(payload, r.get('f', 'xml'))
-
-            song_ids = list(play_stats.keys())
-            question_marks = ','.join('?' * len(song_ids))
-
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    f"""SELECT id, album_id FROM items WHERE id IN ({question_marks})""", song_ids
-                )
-
-            album_counts = {}
-            for row in rows:
-                song_id, album_id = row['id'], row['album_id']
-                album_counts[album_id] = album_counts.get(album_id, 0) + play_stats[song_id]['play_count']
-
-            sorted_ids = sorted(album_counts, key=album_counts.get, reverse=True)
-
-        elif sort_by == 'highest':
-            ratings = cached_user_ratings()
-
-            album_ratings = {
-                sub_to_beets_album(iid): rating
-                for iid, rating in ratings.items()
-                if iid.startswith(ALB_ID_PREF)
-            }
-            if not album_ratings:
-                payload = {tag: {'album': []}}
-                return subsonic_response(payload, r.get('f', 'xml'))
-
-            sorted_ids = sorted(album_ratings, key=album_ratings.get, reverse=True)
-
-        paged_ids = sorted_ids[offset:offset + size]
-        if paged_ids:
-
-            question_marks = ','.join('?' * len(paged_ids))
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(f"""SELECT * FROM albums WHERE id IN ({question_marks})""", paged_ids)
-
-            row_map = {row['id']: row for row in rows}
-            albums = [row_map[aid] for aid in paged_ids if aid in row_map]
-        else:
-            albums = []
-
-        counts = get_song_counts(albums)
-        payload = {tag: {'album': [map_album(a, with_songs=False, song_counts=counts) for a in albums]}}
         return subsonic_response(payload, r.get('f', 'xml'))
 
     # All other sort types we can do in SQL directly
@@ -230,7 +192,7 @@ def get_album_list(ver=None):
     params.extend([size, offset])
 
     with flask.g.lib.transaction() as tx:
-        albums = tx.query(query, params)
+        albums = list(tx.query(query, params))
 
     song_counts = get_song_counts(albums)
     payload = {

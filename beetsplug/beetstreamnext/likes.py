@@ -3,10 +3,11 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
+from beetsplug.beetstreamnext.db import connect_dual
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
-    sub_to_beets_song, sub_to_beets_album, sub_to_beets_artist, SNG_ID_PREF, ALB_ID_PREF, ART_ID_PREF
+    sub_to_beets_artist,
 )
 
 
@@ -65,41 +66,44 @@ def get_starred():
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username
 
-    db_path = flask.current_app.config['DB_PATH']
+    with connect_dual() as conn:
+        song_rows = conn.execute(
+            """
+            SELECT i.* 
+            FROM likes l
+            JOIN beets.items i ON l.item_id = 'sg-' || i.id
+            WHERE l.username = ?
+            ORDER BY l.starred_at DESC
+            """, (username,)
+        ).fetchall()
 
-    with sqlite3.connect(db_path) as conn:
-        rows = conn.execute("""
-            SELECT item_id, starred_at FROM likes WHERE username = ?
-        """, (username,)).fetchall()
+        album_rows = conn.execute(
+            """
+            SELECT a.* 
+            FROM likes l
+            JOIN beets.albums a ON l.item_id = 'al-' || a.id
+            WHERE l.username = ?
+            ORDER BY l.starred_at DESC
+            """, (username,)
+        ).fetchall()
 
-    song_ids, album_ids, artist_ids = [], [], []
-    for item_id, _ in rows:
-        if item_id.startswith(SNG_ID_PREF):
-            song_ids.append(sub_to_beets_song(item_id))
-        elif item_id.startswith(ALB_ID_PREF):
-            album_ids.append(sub_to_beets_album(item_id))
-        elif item_id.startswith(ART_ID_PREF):
-            artist_ids.append(sub_to_beets_artist(item_id))
+        artist_rows = conn.execute(
+            """
+            SELECT item_id 
+            FROM likes 
+            WHERE username = ? AND item_id LIKE 'ar-%' 
+            ORDER BY starred_at DESC
+            """, (username,)
+        ).fetchall()
 
-    songs, albums, artists = [], [], []
+    songs = [map_song(dict(row)) for row in song_rows]
 
-    if song_ids:
-        question_marks = ','.join('?' * len(song_ids))
-        with flask.g.lib.transaction() as tx:
-            song_rows = tx.query(f"SELECT * FROM items WHERE id IN ({question_marks})", song_ids)
+    album_dicts = [dict(row) for row in album_rows]
+    song_counts = get_song_counts(album_dicts)
+    albums = [map_album(row, with_songs=False, song_counts=song_counts) for row in album_dicts]
 
-        songs = [map_song(row) for row in song_rows]
-
-    if album_ids:
-        question_marks = ','.join('?' * len(album_ids))
-        with flask.g.lib.transaction() as tx:
-            album_rows = tx.query(f"SELECT * FROM albums WHERE id IN ({question_marks})", album_ids)
-
-        song_counts = get_song_counts(album_rows)
-        albums = [map_album(row, with_songs=False, song_counts=song_counts) for row in album_rows]
-
-    if artist_ids:
-        artists = [map_artist(name, with_albums=False) for name in artist_ids]
+    artist_ids = [row[0] for row in artist_rows]
+    artists = [map_artist(sub_to_beets_artist(aid), with_albums=False) for aid in artist_ids]
 
     tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {

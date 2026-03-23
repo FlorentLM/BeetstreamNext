@@ -3,6 +3,7 @@ import time
 import flask
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.db import connect_dual
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, sub_to_beets_song, beets_to_sub_song, map_song, timestamp_to_iso
 )
@@ -39,16 +40,22 @@ def get_play_queue():
             (username,)
         ).fetchall()
 
-    song_ids = [row[0] for row in entry_rows]
-    if not song_ids:
+    if not entry_rows:
         return subsonic_response({}, resp_fmt)
 
-    question_marks = ','.join('?' * len(song_ids))
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(f"""SELECT * FROM items WHERE id IN ({question_marks})""", song_ids)
+    with connect_dual() as conn:
+        rows = conn.execute(
+            """
+            SELECT i.* 
+            FROM play_queue_entries pq 
+            JOIN beets.items i ON pq.song_id = i.id
+            WHERE pq.username = ?
+            ORDER BY pq.position
+            """,
+            (username,)
+        ).fetchall()
 
-    row_map = {row['id']: row for row in rows}
-    songs = [map_song(row_map[sid]) for sid in song_ids if sid in row_map]
+    songs = [map_song(dict(row)) for row in rows]
 
     payload = {
         'playQueue': {

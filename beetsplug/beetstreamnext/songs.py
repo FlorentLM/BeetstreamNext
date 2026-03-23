@@ -5,11 +5,12 @@ import flask
 from beets.dbcore.query import MatchQuery
 
 from beetsplug.beetstreamnext import app, stream
+from beetsplug.beetstreamnext.db import connect_dual
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
     sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
-    map_song, query_lastfm, get_beets_schema, cached_user_play_stats
+    map_song, query_lastfm, get_beets_schema
 )
 
 
@@ -204,31 +205,37 @@ def get_top_songs():
                 if beets_results:
                     top_tracks_available.append(beets_results[0])
 
-            payload = {
-                'topSongs': {
-                    'song': list(map(map_song, top_tracks_available))
+            if top_tracks_available:
+                payload = {
+                    'topSongs': {
+                        'song': list(map(map_song, top_tracks_available))
+                    }
                 }
-            }
-    else:
-        # Fallback to local play stats
-        artist_items = flask.g.lib.items(f'albumartist:{artist_name}')
-        play_stats = cached_user_play_stats()
+                return subsonic_response(payload, r.get('f', 'xml'))
 
-        scored = sorted(
-            artist_items,
-            key=lambda item: play_stats.get(item.id, {}).get('play_count', 0),
-            reverse=True
-        )
-        count = int(r.get('count', 50))
-        top_tracks_available = [t for t in scored if play_stats.get(t.id, {}).get('play_count', 0) > 0][:count]
+    # Fallback to local play stats
+    count = int(r.get('count', 50))
+    with connect_dual() as conn:
+        rows = conn.execute(
+            """
+            SELECT i.* 
+            FROM beets.items i
+            JOIN play_stats ps ON ps.song_id = i.id
+            WHERE i.albumartist = ? AND ps.username = ? AND ps.play_count > 0
+            ORDER BY ps.play_count DESC 
+            LIMIT ?
+            """, (artist_name, flask.g.username, count)
+        ).fetchall()
 
-        payload = {
-            'topSongs': {
-                'song': list(map(map_song, top_tracks_available))
-            }
+    top_tracks_available = [dict(row) for row in rows]
+
+    payload = {
+        'topSongs': {
+            'song': list(map(map_song, top_tracks_available))
         }
-
+    }
     return subsonic_response(payload, r.get('f', 'xml'))
+
 
 
 

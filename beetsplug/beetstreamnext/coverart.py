@@ -1,6 +1,5 @@
 import subprocess
 import os
-from functools import lru_cache
 from typing import Union
 import requests
 from io import BytesIO
@@ -12,7 +11,8 @@ from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
     get_mimetype, query_deezer,
     ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip)
+    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, http_session
+)
 
 
 have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
@@ -46,7 +46,6 @@ def extract_cover(path) -> Union[BytesIO, None]:
     return BytesIO(img_bytes) if img_bytes else None
 
 
-@lru_cache(maxsize=1024)
 def fetch_coverartarchive(mbid: str) -> bytes:
     """Fetch image from CAA and cache the bytes. Returns b'' if not found to avoid retries."""
     if not mbid:
@@ -54,12 +53,13 @@ def fetch_coverartarchive(mbid: str) -> bytes:
 
     art_url = f'https://coverartarchive.org/release/{mbid}/front'
     try:
-        response = requests.get(art_url, timeout=5)
-        if response.ok:
-            return response.content
-    except requests.RequestException:
-        pass
-    return b''
+        response = http_session.get(art_url, timeout=8)
+        if response.from_cache:
+            app.logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
+        return response.json() if response.ok else {}
+
+    except requests.exceptions.RequestException:
+        return b''
 
 
 def resize_image(data: BytesIO, size: int) -> BytesIO:

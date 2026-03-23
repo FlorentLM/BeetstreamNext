@@ -52,10 +52,8 @@ except ImportError:
 GENRE_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\␀', '\x00']))
 
 
-cache_path = Path(app.config.get('DB_PATH', '.')).parent / 'beetstreamnext_http_cache'
-
 http_session = requests_cache.CachedSession(
-    str(cache_path),
+    str(app.config['HTTP_CACHE_PATH']),
     backend='sqlite',
     expire_after=timedelta(days=30),
     allowable_codes=[200],

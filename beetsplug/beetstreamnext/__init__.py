@@ -27,6 +27,11 @@ from flask_cors import CORS
 # Flask setup
 app = flask.Flask(__name__)
 
+app.config['BEETS_DB_PATH'] = Path(config['library'].get())
+app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
+app.config['HTTP_CACHE_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext_http_cache'
+
+# TODO: This might make its way into an ephemeral table in the db
 _now_playing = {}  # {username: {'song_id', 'started_at', 'player_name'}}
 _now_playing_lock = threading.Lock()
 
@@ -102,8 +107,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('-u', '--user', action='store_true', default=False, help='Create a new user')
 
         def func(lib, opts, args):
-
-            app.config['DB_PATH'] = Path(config['library'].get()).parent / 'beetstreamnext.db'
 
             if opts.user:
                 from beetsplug.beetstreamnext import db

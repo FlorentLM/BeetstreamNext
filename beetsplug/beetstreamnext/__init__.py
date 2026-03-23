@@ -14,9 +14,12 @@
 # included in all copies or substantial portions of the Software.
 
 """BeetstreamNext is a Beets.io plugin that exposes SubSonic API endpoints."""
-import getpass
+import os
+import platform
+import shutil
 from pathlib import Path
 import threading
+import getpass
 from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
@@ -27,13 +30,29 @@ from flask_cors import CORS
 # Flask setup
 app = flask.Flask(__name__)
 
-app.config['BEETS_DB_PATH'] = Path(config['library'].get())
-app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
-app.config['HTTP_CACHE_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext_http_cache'
-
 # TODO: This might make its way into an ephemeral table in the db
 _now_playing = {}  # {username: {'song_id', 'started_at', 'player_name'}}
 _now_playing_lock = threading.Lock()
+
+
+def cache_location() -> Path:
+    if platform.system() == "Windows":
+        cache_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    elif platform.system() == "Darwin":
+        cache_dir = Path.home() / "Library" / "Caches"
+    else:
+        cache_dir = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+
+    final_path = cache_dir / "beetstreamnext"
+    final_path.mkdir(parents=True, exist_ok=True)
+    return final_path
+
+
+app.config['BEETS_DB_PATH'] = Path(config['library'].get())
+app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
+app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.db'
+app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
+app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 
 
 @app.before_request
@@ -59,7 +78,9 @@ def before_request():
 
 @app.route('/')
 def home():
+    # TODO: A cute homepage
     return "BeetstreamNext server running"
+
 
 import beetsplug.beetstreamnext.albums
 import beetsplug.beetstreamnext.artists
@@ -105,8 +126,17 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd = ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
         cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='Debug mode')
         cmd.parser.add_option('-u', '--user', action='store_true', default=False, help='Create a new user')
+        cmd.parser.add_option('-l', '--clear_cache', action='store_true', default=False, help="Clear BeetstreamNext's cache")
 
         def func(lib, opts, args):
+            if opts.clear_cache:
+                shutil.rmtree(app.config['THUMBNAIL_CACHE_PATH'], ignore_errors=True)
+                try:
+                    os.remove(app.config['HTTP_CACHE_PATH'])
+                except OSError:
+                    pass
+                print("Thumbnail cache cleared.")
+                return
 
             if opts.user:
                 from beetsplug.beetstreamnext import db

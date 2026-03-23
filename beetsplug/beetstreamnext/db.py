@@ -68,6 +68,8 @@ def initialise_db():
     conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     cur = conn.cursor()
 
+    cur.execute("PRAGMA journal_mode = WAL;")
+    cur.execute("PRAGMA synchronous = NORMAL;")
     cur.execute("PRAGMA foreign_keys = ON;")
 
     cur.execute("""

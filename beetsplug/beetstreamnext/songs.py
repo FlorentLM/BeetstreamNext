@@ -275,7 +275,7 @@ def get_similar_songs():
         mbid_artist = [[album_object.get('mb_artistid', '')]]
 
     else:
-        flask.abort(404)    # just for now
+        return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
 
     similar_artists = {}
 

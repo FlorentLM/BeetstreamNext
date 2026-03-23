@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 import flask
 
-from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song
+from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song, \
+    chunked_query
 from beetsplug.beetstreamnext import app
 
 
@@ -59,11 +60,9 @@ class Playlist:
         if id_entries:
             beets_ids = [int(e['props']['id']) for _, e in id_entries]
 
-            question_marks = ','.join('?' * len(beets_ids))
-            id_query = f"SELECT * FROM items WHERE id IN ({question_marks})"
-
             with flask.g.lib.transaction() as tx:
-                rows = tx.query(id_query, beets_ids)
+                sql_query = 'SELECT * FROM items WHERE id IN ({q})'
+                rows = chunked_query(tx, sql_query, beets_ids)
 
             id_map = {row['id']: row for row in rows}
 
@@ -81,13 +80,12 @@ class Playlist:
                 full_path = (self.path.parent / uri).resolve()
                 absolute_paths_bytes.append(str(full_path).encode('utf-8'))
 
-            question_marks = ','.join('?' * len(absolute_paths_bytes))
-            path_query = f"SELECT * FROM items WHERE path IN ({question_marks})"
-
             with flask.g.lib.transaction() as tx:
-                rows = tx.query(path_query, absolute_paths_bytes)
+                sql_query = 'SELECT * FROM items WHERE path IN ({q})'
+                rows = chunked_query(tx, sql_query, absolute_paths_bytes)
 
             path_map = {row['path']: row for row in rows}
+
             for (idx, entry), path_bytes in zip(path_entries, absolute_paths_bytes):
                 row = path_map.get(path_bytes)
                 if row:

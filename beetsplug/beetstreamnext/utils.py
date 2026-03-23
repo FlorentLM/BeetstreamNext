@@ -215,8 +215,8 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
         songs.sort(key=lambda s: s.track)
         subsonic_album['song'] = list(map(map_song, songs))
 
-    subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
-    subsonic_album['songCount'] = len(songs)
+        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
+        subsonic_album['songCount'] = len(songs)
 
     songs_ratings = [s.get('userRating', 0) for s in subsonic_album.get('song', []) if s.get('userRating', 0)]
     subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0

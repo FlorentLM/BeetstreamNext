@@ -24,7 +24,7 @@ from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
 import flask
-from flask import g
+from flask import g, render_template_string
 from flask_cors import CORS
 
 # Flask setup
@@ -48,9 +48,13 @@ def cache_location() -> Path:
     return final_path
 
 
+PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
+INDEX_HTML_PATH = PROJECT_ROOT / 'index.html'
+
+app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
 app.config['BEETS_DB_PATH'] = Path(config['library'].get())
 app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
-app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.db'
+app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 
@@ -78,8 +82,20 @@ def before_request():
 
 @app.route('/')
 def home():
-    # TODO: A cute homepage
-    return "BeetstreamNext server running"
+    lib = app.config.get('lib')
+    stats = {
+        "songs": len(lib.items()) if lib else 0,
+        "albums": len(lib.albums()) if lib else 0,
+        "status": "Online"
+    }
+    template_content = INDEX_HTML_PATH.open().read()
+    try:
+        logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').open().read()
+    except Exception:
+        logo_svg = ''
+    # TODO - Add number of users?
+    # TODO - more colours for the indicator dot: http / https / unencrypted db -> orange / red
+    return render_template_string(template_content, stats=stats, logo_svg=logo_svg)
 
 
 import beetsplug.beetstreamnext.albums

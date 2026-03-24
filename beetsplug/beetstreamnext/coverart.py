@@ -286,7 +286,6 @@ def get_cover_art():
 
         # root folder ID or name: serve BeetstreamNext's logo
         if req_id == app.config['root_directory'].name or req_id == 'm-0':
-            logo_path = Path().cwd() / 'beetstreamnext_logo.png'
-            return flask.send_file(logo_path, mimetype='image/png')
+            return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg', mimetype='image/png')
 
     flask.abort(404)    # TODO - Return placeholders instead

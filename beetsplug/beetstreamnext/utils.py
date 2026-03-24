@@ -4,7 +4,7 @@ import shutil
 import platform
 import importlib
 from pathlib import Path
-from functools import partial, lru_cache
+from functools import lru_cache
 from datetime import datetime, timedelta
 import re
 import json
@@ -86,6 +86,20 @@ def beets_to_sub_song(beet_song_id):
 def sub_to_beets_song(subsonic_song_id):
     return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
 
+def standardise_datadict(obj: Union[dict, library.LibModel, any]) -> dict:
+    """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
+    if isinstance(obj, library.LibModel):
+        data = dict(obj)
+        data['id'] = obj.id
+        if hasattr(obj, 'path'):
+            data['path'] = obj.path
+        return data
+    if isinstance(obj, dict):
+        return obj
+    try:
+        return dict(obj)
+    except (ValueError, TypeError):
+        return {}
 
 def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):
     """
@@ -108,12 +122,12 @@ def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chu
 # Mapping functions to translate Beets to OpenSubsonic dict-like structures
 # TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/
 
-def map_media(beets_object: Union[dict, library.LibModel]):
-    beets_object = dict(beets_object)
+def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
 
-    artist_name = beets_object.get('albumartist') or ''
+    data = standardise_datadict(beets_object)
 
-    raw_genres = f"{beets_object.get('genres') or ''};{beets_object.get('genre') or ''}"
+    artist_name = data.get('albumartist') or data.get('artist') or ''
+    raw_genres = f"{data.get('genres') or ''};{data.get('genre') or ''}"
     formatted_genres = genres_formatter(raw_genres)
 
     main_genre = formatted_genres[0] if formatted_genres else ''
@@ -124,37 +138,38 @@ def map_media(beets_object: Union[dict, library.LibModel]):
         'artistId': beets_to_sub_artist(artist_name),
         'displayArtist': artist_name,
         'displayAlbumArtist': artist_name,
-        'album': beets_object.get('album') or '',
-        'year': beets_object.get('year') or 0,
+        'album': data.get('album') or '',
+        'year': data.get('year') or 0,
         'genre': main_genre,
         'genres': genres_list,
-        'created': timestamp_to_iso(beets_object.get('added')),
+        'created': timestamp_to_iso(data.get('added')),
         'originalReleaseDate': {
-            'year': beets_object.get('original_year') or beets_object.get('year') or 0,
-            'month': beets_object.get('original_month') or beets_object.get('month') or 0,
-            'day': beets_object.get('original_day') or beets_object.get('day') or 0
+            'year': data.get('original_year') or data.get('year') or 0,
+            'month': data.get('original_month') or data.get('month') or 0,
+            'day': data.get('original_day') or data.get('day') or 0
         },
         'releaseDate': {
-            'year': beets_object.get('year') or 0,
-            'month': beets_object.get('month') or 0,
-            'day': beets_object.get('day') or 0
+            'year': data.get('year') or 0,
+            'month': data.get('month') or 0,
+            'day': data.get('day') or 0
         },
     }
     return subsonic_media
 
 
-def map_album(album_object: Union[dict, library.Album], with_songs=True, song_counts: dict = None) -> dict:
-    album = dict(album_object)
+def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
 
-    subsonic_album = map_media(album)
+    data = standardise_datadict(album_object)
 
-    beets_album_id = album.get('id', 0)
+    beets_album_id = data.get('id', 0)
     subsonic_album_id = beets_to_sub_album(beets_album_id)
-    album_name = album.get('album', '')
+    album_name = data.get('album', '')
+
+    subsonic_album = map_media(data)
 
     album_specific = {
         'id': subsonic_album_id,
-        'musicBrainzId': album.get('mb_albumid', ''),
+        'musicBrainzId': data.get('mb_albumid', ''),
         'name': album_name,
         'sortName': album_name,
         # 'version': 'Deluxe Edition',   # TODO - Use the 'media' field maybe?
@@ -163,7 +178,7 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
         'userRating': cached_user_ratings().get(subsonic_album_id, 0),
 
         # 'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
-        'isCompilation': bool(album.get('comp', False)),
+        'isCompilation': bool(data.get('comp', False)),
 
         # These are only needed when part of a directory response
         'isDir': True,
@@ -178,17 +193,14 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
     subsonic_album.update(album_specific)
 
     # Add release types if possible
-    release_types = album.get('albumtypes', '') or album.get('albumtype', '')
-    if isinstance(release_types, str):
-        subsonic_album['releaseTypes'] = stringlist_splitter(release_types)
-    else:
-        subsonic_album['releaseTypes'] = [r.strip().title() for r in release_types]
+    rt = data.get('albumtypes', '') or data.get('albumtype', '')
+    subsonic_album['releaseTypes'] = stringlist_splitter(rt) if isinstance(rt, str) else [r.strip().title() for r in rt]
 
     # Add multi-disc info if needed
-    nb_discs = album.get('disctotal', 1)
+    nb_discs = data.get('disctotal', 1)
     if nb_discs > 1:
         subsonic_album["discTitles"] = [
-            {'disc': d, 'title': ' - '.join(filter(None, [album.get('album', None), f'Disc {d + 1}']))}
+            {'disc': d, 'title': ' - '.join(filter(None, [data.get('album', None), f'Disc {d + 1}']))}
             for d in range(nb_discs)
         ]
 
@@ -211,12 +223,11 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
     if with_songs:
         if not songs:
             songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
-        
-        songs.sort(key=lambda s: s.track)
-        subsonic_album['song'] = list(map(map_song, songs))
 
-        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
-        subsonic_album['songCount'] = len(songs)
+        songs.sort(key=lambda s: s.track)
+        # songs.sort(key=lambda s: getattr(s, 'track', 0) if hasattr(s, 'track') else s.get('track', 0))
+
+        subsonic_album['song'] = [map_song(s) for s in songs]
 
     songs_ratings = [s.get('userRating', 0) for s in subsonic_album.get('song', []) if s.get('userRating', 0)]
     subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
@@ -229,50 +240,44 @@ def map_album(album_object: Union[dict, library.Album], with_songs=True, song_co
     return subsonic_album
 
 
-def map_song(song_object):
-    song = dict(song_object)
+def map_song(song_object: Union[Dict, library.Item]) -> Dict:
 
-    subsonic_song = map_media(song)
+    data = standardise_datadict(song_object)
 
-    song_id = beets_to_sub_song(song.get('id', 0))
-    song_name = song.get('title') or ''
+    beets_song_id = data.get('id', 0)
+    song_id = beets_to_sub_song(beets_song_id)
+    song_title = data.get('title') or ''
 
-    filepath_beets = song.get('path')
-    if isinstance(filepath_beets, bytes):
-        try:
-            song_filepath = filepath_beets.decode('utf-8')
-        except UnicodeDecodeError:
-            song_filepath = ''
-    elif isinstance(filepath_beets, str):
-        song_filepath = filepath_beets
-    else:
-        song_filepath = ''
+    subsonic_song = map_media(data)
 
-    album_id = beets_to_sub_album(song.get('album_id', 0))
+    path = data.get('path', b'')
+    song_filepath = path.decode('utf-8', 'replace') if isinstance(path, bytes) else str(path)
+
+    album_id = beets_to_sub_album(data.get('album_id', 0))
 
     song_specific = {
         'id': song_id,
-        'musicBrainzId': song.get('mb_albumid') or '',
-        'name': song_name,
-        'sortName': song_name,
+        'musicBrainzId': data.get('mb_albumid') or '',
+        'name': song_title,
+        'sortName': song_title,
         'albumId': album_id,
         'coverArt': album_id or song_id,
 
-        'track': song.get('track') or 1,
+        'track': data.get('track') or 1,
         'path': song_filepath,
 
         'played': '',
         'playCount': 0,
         'userRating': cached_user_ratings().get(song_id, 0),
 
-        'duration': round(song.get('length') or 0),
-        'bpm': song.get('bpm') or 0,
-        'bitRate': round((song.get('bitrate') or 0) / 1000),
-        'bitDepth': song.get('bitdepth') or 0,
-        'samplingRate': song.get('samplerate') or 0,
-        'channelCount': song.get('channels') or 2,
-        'discNumber': song.get('disc') or 1,
-        'comment': song.get('comment') or '',
+        'duration': round(data.get('length') or 0),
+        'bpm': data.get('bpm') or 0,
+        'bitRate': round((data.get('bitrate') or 0) / 1000),
+        'bitDepth': data.get('bitdepth') or 0,
+        'samplingRate': data.get('samplerate') or 0,
+        'channelCount': data.get('channels') or 2,
+        'discNumber': data.get('disc') or 1,
+        'comment': data.get('comment') or '',
 
         # These are only needed when part of a directory response
         'isDir': False,
@@ -283,7 +288,7 @@ def map_song(song_object):
         'type': 'music',
 
         # Title field is required for Child responses
-        'title': song_name,
+        'title': song_title,
 
         # This is only needed when part of a Child response
         'mediaType': 'song'
@@ -297,17 +302,18 @@ def map_song(song_object):
     #         'albumPeak': song.get('rg_album_peak', 0)
     # }
 
-    suffix = (song.get('format') or '').lower()
+    suffix = (data.get('format') or '').lower()
     if not suffix and song_filepath:
         suffix = song_filepath.rsplit('.', 1)[-1].lower()
     subsonic_song['suffix'] = suffix or 'mp3'
-
-    subsonic_song['size'] = ((os.path.getsize(subsonic_song['path']) if subsonic_song['path'] else 0)
-                             or round(song.get('bitrate', 0) * song.get('length', 0) / 8))
-
     subsonic_song['contentType'] = get_mimetype(song_filepath or suffix)
 
-    stats = cached_user_play_stats().get(song.get('id'))
+    try:
+        subsonic_song['size'] = os.path.getsize(song_filepath)
+    except Exception:
+        subsonic_song['size'] = round(data.get('bitrate', 0) * data.get('length', 0) / 8)
+
+    stats = cached_user_play_stats().get(beets_song_id)
     if stats:
         subsonic_song['playCount'] = stats['play_count']
         if stats['last_played']:
@@ -320,7 +326,8 @@ def map_song(song_object):
     return subsonic_song
 
 
-def map_artist(artist_name, with_albums=True):
+def map_artist(artist_name: str, with_albums: bool = True) -> Dict:
+
     subsonic_artist_id = beets_to_sub_artist(artist_name)
 
     subsonic_artist = {
@@ -347,12 +354,13 @@ def map_artist(artist_name, with_albums=True):
         subsonic_artist['albumCount'] = len(albums)
         if albums:
             subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
-        subsonic_artist['album'] = list(map(partial(map_album, with_songs=False), albums))
+        subsonic_artist['album'] = [map_album(alb, with_songs=False) for alb in albums]
     else:
         with flask.g.lib.transaction() as tx:
             rows = tx.query(
-                """SELECT COUNT(*), mb_albumartistid FROM albums WHERE albumartist = ? GROUP BY albumartist""",
-                (artist_name,)
+                """
+                SELECT COUNT(*), mb_albumartistid FROM albums WHERE albumartist = ? GROUP BY albumartist
+                """, (artist_name,)
             )
         if rows:
             subsonic_artist['albumCount'] = rows[0][0]

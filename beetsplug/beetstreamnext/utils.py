@@ -443,7 +443,17 @@ def jsonpify(format: str, data: dict):
 def imageart_url(item_id: str, size: Optional[int] = None) -> str:
     if not item_id:
         return ''
-    return flask.url_for('get_cover_art', id=item_id, size=size, _external=True)
+
+    params = {}
+    for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v']:
+        val = flask.request.values.get(k)
+        if val:
+            params[k] = val
+    params['id'] = item_id
+    if size:
+        params['size'] = size
+
+    return flask.url_for('get_cover_art', _external=True, **params)
 
 
 def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):

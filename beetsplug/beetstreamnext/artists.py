@@ -139,9 +139,9 @@ def artistInfo2():
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
             'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
-            'smallImageUrl': imageart_url(artist_id, size=250),
+            'largeImageUrl': imageart_url(artist_id, size=1200),
             'mediumImageUrl': imageart_url(artist_id, size=500),
-            'largeImageUrl': imageart_url(artist_id, size=1200)
+            'smallImageUrl': imageart_url(artist_id, size=250)
         }
     }
 

@@ -36,6 +36,9 @@ Personally, I use Beets to manage my music library but I don't like to write met
     - Can fetch artist info (like biographies, top tracks, similar artists, etc) from Last.fm
     - Fallback to Wikipedia for artists biographies if not from Last.fm
     - Serves internal Beets lyrics or fetches them on-the-fly via the Beets `lyrics` plugin
+- **Complex queries**: Beets' advanced queries are supported in the search function. Use regex, fuzzy match, complex filters, etc., directly from your client!
+    - Just use the `beets:` (or `b:`) prefix followed by your query: for instance`beet:length:..3:30` will return all songs shorter than 3 minutes 30.
+    - See Beet's [Queries reference](https://beets.readthedocs.io/en/stable/reference/query.html) for more examples.
 
 ## Installation
 

@@ -245,52 +245,51 @@ def send_artist_image(artist, size=None):
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def get_cover_art():
     r = flask.request.values
-
     req_id = r.get('id')
-    size = int(r.get('size')) if r.get('size') else None
 
-    # album requests
-    if req_id.startswith(ALB_ID_PREF):
-        album_id = sub_to_beets_album(req_id)
-        response = send_album_art(album_id, size)
-        if response is not None:
-            return response
+    if req_id:
+        size = int(r.get('size')) if r.get('size') else None
 
-    # song requests
-    elif req_id.startswith(SNG_ID_PREF):
-        item_id = sub_to_beets_song(req_id)
-        item = flask.g.lib.get_item(item_id)
-        if not item:
-            flask.abort(404)
-
-        album_id = item.get('album_id')
-        if album_id:
+        # album requests
+        if req_id.startswith(ALB_ID_PREF):
+            album_id = sub_to_beets_album(req_id)
             response = send_album_art(album_id, size)
             if response is not None:
                 return response
 
-        # Fallback: try to extract cover from the song file
-        if have_ffmpeg:
-            cover_io = extract_cover(item.path)
-            if cover_io is not None:
-                image_bytes = cover_io.getvalue()
-                if size:
-                    cover_io = resize_image(BytesIO(image_bytes), size)
-                    return flask.send_file(cover_io, mimetype='image/jpeg')
-                return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+        # song requests
+        elif req_id.startswith(SNG_ID_PREF):
+            item_id = sub_to_beets_song(req_id)
+            item = flask.g.lib.get_item(item_id)
+            if not item:
+                flask.abort(404)
 
-    # artist requests
-    else:  # some clients ask with artist ID, others ask with artist name, so this catches both
-        response = send_artist_image(req_id, size=size)
-        if response is not None:
-            return response
+            album_id = item.get('album_id')
+            if album_id:
+                response = send_album_art(album_id, size)
+                if response is not None:
+                    return response
 
-    # root folder ID or name: serve BeetstreamNext's logo
-    if req_id == app.config['root_directory'].name or req_id == 'm-0':
-        module_dir = os.path.dirname(os.path.abspath(__file__))
-        beetstreamnext_icon = os.path.join(module_dir, '../../beetstreamnext.png')
-        return flask.send_file(beetstreamnext_icon, mimetype=get_mimetype(beetstreamnext_icon))
+            # Fallback: try to extract cover from the song file
+            if have_ffmpeg:
+                cover_io = extract_cover(item.path)
+                if cover_io is not None:
+                    image_bytes = cover_io.getvalue()
+                    if size:
+                        cover_io = resize_image(BytesIO(image_bytes), size)
+                        return flask.send_file(cover_io, mimetype='image/jpeg')
+                    return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
-    # TODO - We mighe want to serve artists images when a client requests an artist folder by name (for instance Tempo does this)
+        # artist requests
+        else:  # some clients ask with artist ID, others ask with artist name, so this catches both
+            response = send_artist_image(req_id, size=size)
+            if response is not None:
+                return response
 
-    flask.abort(404)
+        # root folder ID or name: serve BeetstreamNext's logo
+        if req_id == app.config['root_directory'].name or req_id == 'm-0':
+            logo_path = Path().cwd() / 'beetstreamnext_logo.png'
+            logo = BytesIO(logo_path.open('rb').read())
+            return flask.send_file(logo, mimetype='image/png')
+
+    flask.abort(404)    # TODO - Return placeholders instead

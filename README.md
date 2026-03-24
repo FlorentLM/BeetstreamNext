@@ -3,7 +3,7 @@
 <div align="center">
 
   <a href="https://github.com/FlorentLM/BeetstreamNext">
-    <img src="beetstreamnext.svg" alt="Logo" width="128" height="128">
+    <img src="beetstreamnext_logo.svg" alt="Logo" width="128" height="128">
   </a>
 
 <h3 align="center">BeetstreamNext</h3>

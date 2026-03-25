@@ -310,8 +310,9 @@ class PlaylistProvider:
             playlist = self._playlists[playlist_id]
 
             if playlist.path.is_file():
-                playlist.load_songs()
-                return self._load_playlist(playlist.dir_id, playlist.path)
+                loaded = self._load_playlist(playlist.dir_id, playlist.path)
+                loaded.load_songs()
+                return loaded
 
         dir_key, file_name = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
         dir_id = int(dir_key)

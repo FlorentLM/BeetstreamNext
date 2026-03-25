@@ -2,10 +2,12 @@ import sqlite3
 import os
 import base64
 import hashlib
+from cryptography.fernet import Fernet
 from pathlib import Path
 from typing import Union
+
 import flask
-from cryptography.fernet import Fernet
+from flask import g, current_app
 
 
 def load_env_file(filepath: Union[Path, str] = ".env") -> None:
@@ -211,6 +213,8 @@ def initialise_db():
         )
 
 
+##
+
 def connect_dual():
     from beetsplug.beetstreamnext import app
 
@@ -219,3 +223,31 @@ def connect_dual():
 
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def database():
+    """Get internal database connection."""
+    if 'db' not in g:
+        g.db = sqlite3.connect(current_app.config['DB_PATH'])
+        g.db.execute("PRAGMA foreign_keys = ON;")
+        g.db.execute("PRAGMA journal_mode = WAL;")
+        g.db.execute("PRAGMA synchronous = NORMAL;")
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+def dual_database():
+    """Get internal database with the Beets library attached."""
+    db = database()
+    if not getattr(g, 'beets_attached', False):
+        beets_path = str(current_app.config['BEETS_DB_PATH'])
+        db.execute(f"ATTACH DATABASE '{beets_path}' AS beets")
+        g.beets_attached = True
+    return db
+
+
+def close_database(e=None):
+    """Closes the database at the end of the request."""
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()

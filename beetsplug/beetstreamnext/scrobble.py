@@ -39,7 +39,6 @@ def scrobble():
         return subsonic_response({}, resp_fmt)
 
     times_ms = r.getlist('time')
-    db_path = flask.current_app.config['DB_PATH']
 
     with database() as db:
         for i, song_id in enumerate(song_ids):

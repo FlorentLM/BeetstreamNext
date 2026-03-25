@@ -66,11 +66,12 @@ http_session = requests_cache.CachedSession(
 ##
 # Main response and error payloads
 
-def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
+def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml'):
     """
     Wraps json-like dict with the subsonic response data and
     outputs the appropriate format (json or xml).
     """
+    data = data or {}
 
     if resp_fmt.startswith('json'):
         wrapped = {

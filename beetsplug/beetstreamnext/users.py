@@ -109,17 +109,17 @@ def _store_userdata(user_dict):
 
     columns = ['username']
     placeholders = ['?']
-    updates = []
     values = [username]
+    updates = []
 
     for key, val in filtered_dict.items():
         columns.append(key)
         placeholders.append('?')
-        updates.append(f"{key} = excluded.{key}")
         values.append(val)
+        updates.append(f"{key} = excluded.{key}")
 
     columns_str = ', '.join(columns)
-    placeholders_str = ', '.join(['?'] * len(columns))
+    placeholders_str = ', '.join(placeholders)
     updates_str = ', '.join(updates)
 
     with database() as db:

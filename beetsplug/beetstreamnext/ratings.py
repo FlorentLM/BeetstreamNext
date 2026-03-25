@@ -1,8 +1,8 @@
-import sqlite3
 import time
 import flask
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 
 
@@ -27,19 +27,23 @@ def set_rating():
 
     username = flask.g.username
 
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
+    with database() as db:
         if rating == 0:
-            conn.execute(
-                "DELETE FROM ratings WHERE username = ? AND item_id = ?",
-                (username, req_id)
+            db.execute(
+                """
+                DELETE FROM ratings 
+                WHERE username = ? AND item_id = ?
+                """, (username, req_id)
             )
         else:
-            conn.execute("""
+            db.execute(
+                """
                 INSERT INTO ratings (username, item_id, rating, rated_at)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT (username, item_id) DO UPDATE SET
                                                               rating   = excluded.rating,
                                                               rated_at = excluded.rated_at
-            """, (username, req_id, rating, time.time()))
+                """, (username, req_id, rating, time.time())
+            )
 
     return subsonic_response({}, resp_fmt)

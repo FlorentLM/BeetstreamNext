@@ -55,10 +55,9 @@ def get_key_hash() -> Union[str, None]:
 
 
 def verify_key():
-    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
-    cur = conn.cursor()
-    result = cur.execute("SELECT value FROM encryption WHERE key = 'key_hash'").fetchone()
-    conn.close()
+
+    with database() as db:
+        result = db.execute("""SELECT value FROM encryption WHERE key = 'key_hash'""").fetchone()
 
     stored_hash = result[0] if result else None
     current_hash = get_key_hash()
@@ -74,133 +73,158 @@ def initialise_db():
     cur.execute("PRAGMA synchronous = NORMAL;")
     cur.execute("PRAGMA foreign_keys = ON;")
 
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS encryption (
             key TEXT PRIMARY KEY,
             value TEXT)
-        """)
+        """
+    )
 
     cipher = get_cipher()
 
     if cipher is not None:
         key_hash = get_key_hash()
 
-        cur.execute("""
-                    INSERT OR IGNORE INTO encryption (key, value)
-                    VALUES ('enabled', 'true');
-                    """)
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO encryption (key, value)
+            VALUES ('enabled', 'true');
+            """
+        )
 
-        cur.execute("""
-                        INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
-                    """, ('key_hash', key_hash))
+        cur.execute(
+            """
+            INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
+            """, ('key_hash', key_hash)
+        )
+
     else:
-        cur.execute("""
-                    INSERT OR IGNORE INTO encryption (key, value)
-                    VALUES ('enabled', 'false');
-                    """)
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO encryption (key, value)
+            VALUES ('enabled', 'false');
+            """
+        )
 
-        cur.execute("""
-                        INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
-                    """, ('key_hash', None))
+        cur.execute(
+            """
+            INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
+            """, ('key_hash', None)
+        )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS users
-                (
-                    username            TEXT PRIMARY KEY,
-                    password            BLOB NOT NULL,
-                    api_key_hash        TEXT UNIQUE,
-                    email               TEXT,
-                    avatar              BLOB,
-                    avatarLastChanged   REAL,
-                    scrobblingEnabled   INTEGER DEFAULT 0,
-                    adminRole           INTEGER DEFAULT 0,
-                    settingsRole        INTEGER DEFAULT 1,
-                    streamRole          INTEGER DEFAULT 1,
-                    jukeboxRole         INTEGER DEFAULT 0,
-                    downloadRole        INTEGER DEFAULT 0,
-                    uploadRole          INTEGER DEFAULT 0,
-                    coverArtRole        INTEGER DEFAULT 0,
-                    playlistRole        INTEGER DEFAULT 1,
-                    commentRole         INTEGER DEFAULT 1,
-                    podcastRole         INTEGER DEFAULT 0,
-                    shareRole           INTEGER DEFAULT 0,
-                    videoConversionRole INTEGER DEFAULT 0,
-                    folder              INTEGER DEFAULT 0,
-                    maxBitRate          INTEGER DEFAULT 0  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users
+        (
+            username            TEXT PRIMARY KEY,
+            password            BLOB NOT NULL,
+            api_key_hash        TEXT UNIQUE,
+            email               TEXT,
+            avatar              BLOB,
+            avatarLastChanged   REAL,
+            scrobblingEnabled   INTEGER DEFAULT 0,
+            adminRole           INTEGER DEFAULT 0,
+            settingsRole        INTEGER DEFAULT 1,
+            streamRole          INTEGER DEFAULT 1,
+            jukeboxRole         INTEGER DEFAULT 0,
+            downloadRole        INTEGER DEFAULT 0,
+            uploadRole          INTEGER DEFAULT 0,
+            coverArtRole        INTEGER DEFAULT 0,
+            playlistRole        INTEGER DEFAULT 1,
+            commentRole         INTEGER DEFAULT 1,
+            podcastRole         INTEGER DEFAULT 0,
+            shareRole           INTEGER DEFAULT 0,
+            videoConversionRole INTEGER DEFAULT 0,
+            folder              INTEGER DEFAULT 0,
+            maxBitRate          INTEGER DEFAULT 0  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
+        )
+        """
+    )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS likes
-                (
-                    username   TEXT    NOT NULL,
-                    item_id    TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
-                    starred_at REAL    NOT NULL DEFAULT (unixepoch()),
-                    PRIMARY KEY (username, item_id),
-                    FOREIGN KEY (username) REFERENCES users (username)
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS likes
+        (
+            username   TEXT    NOT NULL,
+            item_id    TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
+            starred_at REAL    NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (username, item_id),
+            FOREIGN KEY (username) REFERENCES users (username)
+        )
+        """
+    )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS bookmarks
-                (
-                    username TEXT    NOT NULL,
-                    song_id  INTEGER NOT NULL,
-                    position REAL    NOT NULL DEFAULT 0, -- playback offset (milliseconds)
-                    comment  TEXT,
-                    created  REAL    NOT NULL DEFAULT (unixepoch()),
-                    changed  REAL    NOT NULL DEFAULT (unixepoch()),
-                    PRIMARY KEY (username, song_id),
-                    FOREIGN KEY (username) REFERENCES users (username)
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bookmarks
+        (
+            username TEXT    NOT NULL,
+            song_id  INTEGER NOT NULL,
+            position REAL    NOT NULL DEFAULT 0, -- playback offset (milliseconds)
+            comment  TEXT,
+            created  REAL    NOT NULL DEFAULT (unixepoch()),
+            changed  REAL    NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (username, song_id),
+            FOREIGN KEY (username) REFERENCES users (username)
+        )
+        """
+    )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS ratings
-                (
-                    username  TEXT    NOT NULL,
-                    item_id   TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
-                    rating    INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-                    rated_at  REAL    NOT NULL DEFAULT (unixepoch()),
-                    PRIMARY KEY (username, item_id),
-                    FOREIGN KEY (username) REFERENCES users (username)
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ratings
+        (
+            username  TEXT    NOT NULL,
+            item_id   TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
+            rating    INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            rated_at  REAL    NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (username, item_id),
+            FOREIGN KEY (username) REFERENCES users (username)
+        )
+        """
+    )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS play_queue
-                (
-                    username   TEXT PRIMARY KEY,
-                    current    INTEGER,        -- song_id currently queued up
-                    position   REAL DEFAULT 0, -- offset in the song (ms)
-                    changed    REAL,           -- last save timestamp
-                    changed_by TEXT,           -- Subsonic client name that saved the queue
-                    FOREIGN KEY (username) REFERENCES users (username)
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS play_queue
+        (
+            username   TEXT PRIMARY KEY,
+            current    INTEGER,        -- song_id currently queued up
+            position   REAL DEFAULT 0, -- offset in the song (ms)
+            changed    REAL,           -- last save timestamp
+            changed_by TEXT,           -- Subsonic client name that saved the queue
+            FOREIGN KEY (username) REFERENCES users (username)
+        )
+        """
+    )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS play_queue_entries
-                (
-                    username TEXT    NOT NULL,
-                    position INTEGER NOT NULL,
-                    song_id  INTEGER NOT NULL,
-                    PRIMARY KEY (username, position),
-                    FOREIGN KEY (username) REFERENCES play_queue (username)
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS play_queue_entries
+        (
+            username TEXT    NOT NULL,
+            position INTEGER NOT NULL,
+            song_id  INTEGER NOT NULL,
+            PRIMARY KEY (username, position),
+            FOREIGN KEY (username) REFERENCES play_queue (username)
+        )
+        """
+    )
 
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS play_stats
-                (
-                    username    TEXT    NOT NULL,
-                    song_id     INTEGER NOT NULL,
-                    play_count  INTEGER NOT NULL DEFAULT 0,
-                    last_played REAL, -- timestamp of most recent play
-                    PRIMARY KEY (username, song_id),
-                    FOREIGN KEY (username) REFERENCES users (username)
-                )
-                """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS play_stats
+        (
+            username    TEXT    NOT NULL,
+            song_id     INTEGER NOT NULL,
+            play_count  INTEGER NOT NULL DEFAULT 0,
+            last_played REAL, -- timestamp of most recent play
+            PRIMARY KEY (username, song_id),
+            FOREIGN KEY (username) REFERENCES users (username)
+        )
+        """
+    )
 
     conn.commit()
     conn.close()
@@ -214,16 +238,6 @@ def initialise_db():
 
 
 ##
-
-def connect_dual():
-    from beetsplug.beetstreamnext import app
-
-    conn = sqlite3.connect(app.config['DB_PATH'])
-    conn.execute(f"ATTACH DATABASE '{str(app.config['BEETS_DB_PATH'])}' AS beets")
-
-    conn.row_factory = sqlite3.Row
-    return conn
-
 
 def database():
     """Get internal database connection."""

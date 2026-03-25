@@ -73,19 +73,31 @@ def search(ver=None):
             pattern = f"%{query_str.lower()}%"
 
         with flask.g.lib.transaction() as tx:
+
             songs = list(tx.query(
-                "SELECT * FROM items WHERE lower(title) LIKE ? ORDER BY title LIMIT ? OFFSET ?",
-                (pattern, song_count, song_offset)
+                """
+                SELECT * FROM items 
+                WHERE lower(title) LIKE ? 
+                ORDER BY title 
+                LIMIT ? OFFSET ?
+                """, (pattern, song_count, song_offset)
             ))
+
             albums = list(tx.query(
-                "SELECT * FROM albums WHERE lower(album) LIKE ? ORDER BY album LIMIT ? OFFSET ?",
-                (pattern, album_count, album_offset)
+                """
+                SELECT * FROM albums 
+                WHERE lower(album) LIKE ? 
+                ORDER BY album 
+                LIMIT ? OFFSET ?
+                """, (pattern, album_count, album_offset)
             ))
+
             artists = [row[0] for row in tx.query(
-                """SELECT DISTINCT albumartist
-                   FROM albums
-                   WHERE lower(albumartist) LIKE ? AND albumartist IS NOT NULL
-                   LIMIT ? OFFSET ?
+                """
+                SELECT DISTINCT albumartist
+                FROM albums
+                WHERE lower(albumartist) LIKE ? AND albumartist IS NOT NULL
+                LIMIT ? OFFSET ?
                 """, (pattern, artist_count, artist_offset)
             )]
 

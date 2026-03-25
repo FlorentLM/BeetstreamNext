@@ -3,7 +3,7 @@ import urllib.parse
 import flask
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.db import connect_dual
+from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
     get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url
 )
@@ -50,6 +50,7 @@ def get_album():
     payload = album_payload(album_id, with_songs=True)
     return subsonic_response(payload, r.get('f', 'xml'))
 
+
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
 
@@ -78,6 +79,7 @@ def get_album_info(ver=None):
     }
     return subsonic_response(payload, r.get('f', 'xml'))
 
+
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
 
@@ -97,9 +99,10 @@ def get_album_list(ver=None):
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 
     if sort_by in ('starred', 'frequent', 'highest'):
-        with connect_dual() as conn:
+        with dual_database() as db:
+
             if sort_by == 'starred':
-                album_rows = conn.execute(
+                album_rows = db.execute(
                     """
                     SELECT a.*
                     FROM likes l
@@ -111,7 +114,7 @@ def get_album_list(ver=None):
                 ).fetchall()
 
             elif sort_by == 'frequent':
-                album_rows = conn.execute(
+                album_rows = db.execute(
                     """
                     SELECT a.*, SUM(ps.play_count) as total_plays
                     FROM play_stats ps
@@ -125,7 +128,7 @@ def get_album_list(ver=None):
                 ).fetchall()
 
             elif sort_by == 'highest':
-                album_rows = conn.execute(
+                album_rows = db.execute(
                     """
                     SELECT a.*
                     FROM ratings r
@@ -160,6 +163,7 @@ def get_album_list(ver=None):
         cols = get_beets_schema('albums')
         genre_conditions = []
         pattern = f"%{genre_filter.strip().lower()}%"
+
         if 'genres' in cols:
             genre_conditions.append("lower(genres) LIKE ?")
             params.append(pattern)

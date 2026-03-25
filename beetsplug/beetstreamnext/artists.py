@@ -67,11 +67,15 @@ def get_artists_or_indexes():
             pass  # Client sent malformed timestamp, ignore and continue to full sync
 
     with flask.g.lib.transaction() as tx:
-        artists = [row[0] for row in tx.query("""
-                                              SELECT DISTINCT albumartist 
-                                              FROM albums 
-                                              WHERE albumartist is NOT NULL
-                                              """)]
+        artists = [
+            row[0] for row in tx.query(
+                """
+                SELECT DISTINCT albumartist 
+                FROM albums 
+                WHERE albumartist is NOT NULL
+                """
+            )
+        ]
 
     alphanum_dict = defaultdict(list)
     for artist in artists:
@@ -92,6 +96,7 @@ def get_artists_or_indexes():
 
     return subsonic_response(payload, r.get('f', 'xml'))
 
+
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
 def get_artist():
@@ -101,6 +106,7 @@ def get_artist():
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
 
     return subsonic_response(payload, r.get('f', 'xml'))
+
 
 @app.route('/rest/getArtistInfo', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo.view', methods=["GET", "POST"])

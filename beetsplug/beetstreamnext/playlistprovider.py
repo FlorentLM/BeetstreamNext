@@ -4,8 +4,9 @@ import os
 from pathlib import Path
 import flask
 
-from beetsplug.beetstreamnext.utils import PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song, \
-    chunked_query
+from beetsplug.beetstreamnext.utils import (
+    PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song, chunked_query
+)
 from beetsplug.beetstreamnext import app
 
 

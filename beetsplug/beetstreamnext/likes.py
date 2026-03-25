@@ -1,9 +1,8 @@
-import sqlite3
 import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
-from beetsplug.beetstreamnext.db import connect_dual
+from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
@@ -13,23 +12,25 @@ from beetsplug.beetstreamnext.utils import (
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:
 
-    db_path = flask.current_app.config['DB_PATH']
-
-    with sqlite3.connect(db_path) as conn:
+    with database() as db:
         if liked:
-            conn.execute("""
-                         INSERT INTO likes (username, item_id)
-                         VALUES (?, ?)
-                         ON CONFLICT (username, item_id)
-                             DO UPDATE SET starred_at = unixepoch()
-                         """, (username, item_id))
+            db.execute(
+                """
+                INSERT INTO likes (username, item_id)
+                VALUES (?, ?)
+                ON CONFLICT (username, item_id)
+                    DO UPDATE SET starred_at = unixepoch()
+                """, (username, item_id)
+            )
         else:
-            conn.execute("""
-                         DELETE
-                         FROM likes
-                         WHERE username = ?
-                           AND item_id = ?
-                         """, (username, item_id))
+            db.execute(
+                """
+                DELETE
+                FROM likes
+                WHERE username = ?
+                  AND item_id = ?
+                """, (username, item_id)
+            )
 
 @app.route('/rest/star', methods=['GET', 'POST'])
 @app.route('/rest/star.view', methods=['GET', 'POST'])
@@ -66,8 +67,8 @@ def get_starred():
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username
 
-    with connect_dual() as conn:
-        song_rows = conn.execute(
+    with dual_database() as db:
+        song_rows = db.execute(
             """
             SELECT i.* 
             FROM likes l
@@ -77,7 +78,7 @@ def get_starred():
             """, (username,)
         ).fetchall()
 
-        album_rows = conn.execute(
+        album_rows = db.execute(
             """
             SELECT a.* 
             FROM likes l
@@ -87,7 +88,7 @@ def get_starred():
             """, (username,)
         ).fetchall()
 
-        artist_rows = conn.execute(
+        artist_rows = db.execute(
             """
             SELECT item_id 
             FROM likes 

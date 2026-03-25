@@ -27,8 +27,11 @@ import flask
 from flask import g, render_template_string
 from flask_cors import CORS
 
+from beetsplug.beetstreamnext.db import close_database
+
 # Flask setup
 app = flask.Flask(__name__)
+app.teardown_appcontext(close_database)
 
 # TODO: This might make its way into an ephemeral table in the db
 _now_playing = {}  # {username: {'song_id', 'started_at', 'player_name'}}

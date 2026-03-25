@@ -1,14 +1,14 @@
 import hashlib
 import hmac
 import secrets
-import sqlite3
+from sqlite3 import IntegrityError
 from typing import Union, Sequence, Optional, Dict
 from urllib.parse import unquote
 
 import flask
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.db import get_cipher
+from beetsplug.beetstreamnext.db import get_cipher, database
 from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response
 
 
@@ -92,12 +92,14 @@ def create_user(username, password, admin=False):
     encrypted_pw = cipher.encrypt(password.encode('utf-8')) if cipher else password.encode('utf-8')
 
     try:
-        with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-            conn.execute("""
-                         INSERT INTO users (username, password, api_key_hash, adminRole, playlistRole, settingsRole)
-                         VALUES (?, ?, ?, ?, 1, 1)
-                         """, (username, encrypted_pw, api_key_hash, 1 if admin else 0))
-    except sqlite3.IntegrityError as e:
+        with database() as db:
+            db.execute(
+                """
+                INSERT INTO users (username, password, api_key_hash, adminRole, playlistRole, settingsRole)
+                VALUES (?, ?, ?, ?, 1, 1)
+                """, (username, encrypted_pw, api_key_hash, 1 if admin else 0)
+            )
+    except IntegrityError as e:
         if 'UNIQUE' in str(e):
             raise ValueError(f"Username '{username}' already exists.") from e
         raise
@@ -108,10 +110,7 @@ def create_user(username, password, admin=False):
 ##
 
 def get_username(api_key_hash: str) -> str:
-    db_path = flask.current_app.config.get('DB_PATH')
-    conn = sqlite3.connect(db_path)
-    row = conn.execute("SELECT username FROM users WHERE api_key_hash = ?", (api_key_hash,)).fetchone()
-    conn.close()
+    row = database().execute("""SELECT username FROM users WHERE api_key_hash = ?""", (api_key_hash,)).fetchone()
     return row[0] if row else None
 
 
@@ -121,8 +120,8 @@ def load_all_users() -> list[dict]:
     columns = ['username'] + fields
     columns_str = ', '.join(columns)
 
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-        rows = conn.execute(f"SELECT {columns_str} FROM users").fetchall()
+    with database() as db:
+        rows = db.execute(f"""SELECT {columns_str} FROM users""").fetchall()
 
     return [dict(zip(columns, row)) for row in rows]
 
@@ -135,12 +134,15 @@ def load_user_roles(username: str) -> Union[dict, None]:
 def load_user_likes(username: str) -> dict:
     """Load all likes for a user as {subsonic_id: starred_at}."""
 
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-        rows = conn.execute("""
-                            SELECT item_id, starred_at
-                            FROM likes
-                            WHERE username = ?
-                            """, (username,)).fetchall()
+    with database() as db:
+        rows = db.execute(
+            """
+            SELECT item_id, starred_at
+            FROM likes
+            WHERE username = ?
+            """, (username,)
+        ).fetchall()
+
     likes = {item_id: starred_at for item_id, starred_at in rows}
     return likes
 
@@ -148,12 +150,15 @@ def load_user_likes(username: str) -> dict:
 def load_user_ratings(username: str) -> dict:
     """Load all ratings for a user as {subsonic_id: starred_at}."""
 
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-        rows = conn.execute("""
-                                SELECT item_id, rating
-                                FROM ratings
-                                WHERE username = ?
-                                """, (username,)).fetchall()
+    with database() as db:
+        rows = db.execute(
+            """
+            SELECT item_id, rating
+            FROM ratings
+            WHERE username = ?
+            """, (username,)
+        ).fetchall()
+
     ratings = {item_id: rating for item_id, rating in rows}
     return ratings
 
@@ -161,16 +166,20 @@ def load_user_ratings(username: str) -> dict:
 def load_user_play_stats(username: str) -> dict:
     """Load play stats for a user as {beets_song_id: {'play_count': N, 'last_played': ts}}."""
 
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-        rows = conn.execute("""
-                            SELECT song_id, play_count, last_played
-                            FROM play_stats
-                            WHERE username = ?
-                            """, (username,)).fetchall()
+    with database() as db:
+        rows = db.execute(
+            """
+            SELECT song_id, play_count, last_played
+            FROM play_stats
+            WHERE username = ?
+            """, (username,)
+        ).fetchall()
+
     play_stats = {
         song_id: {'play_count': play_count, 'last_played': last_played}
         for song_id, play_count, last_played in rows
     }
+
     return play_stats
 
 
@@ -190,12 +199,14 @@ def load_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = N
     column_names = ['username'] + safe_fields
     columns_str = ', '.join(column_names)
 
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-        row = conn.execute(f"""
-                SELECT {columns_str}
-                  FROM users
-                 WHERE username = ?
-            """, (username,)).fetchone()
+    with database() as db:
+        row = db.execute(
+            f"""
+            SELECT {columns_str}
+            FROM users
+            WHERE username = ?
+            """, (username,)
+        ).fetchone()
 
     if not row:
         return None
@@ -249,16 +260,15 @@ def store_userdata(user_dict):
     placeholders_str = ', '.join(['?'] * len(columns))
     updates_str = ', '.join(updates)
 
-    sql = f"""
-        INSERT INTO users ({columns_str})
-        VALUES ({placeholders_str})
-        ON CONFLICT (username)
-        DO UPDATE SET
-            {updates_str}
-        """
-
-    with sqlite3.connect(flask.current_app.config['DB_PATH']) as conn:
-        conn.execute(sql, values)
+    with database() as db:
+        db.execute(
+            f"""
+            INSERT INTO users ({columns_str})
+            VALUES ({placeholders_str})
+            ON CONFLICT (username)
+            DO UPDATE SET {updates_str}
+            """, values
+        )
 
 
 def authenticate(req_values):

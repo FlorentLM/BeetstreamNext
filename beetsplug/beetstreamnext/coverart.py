@@ -212,6 +212,7 @@ def send_artist_image(artist, size=None):
             if size:
                 resized = cached_resize(local_image_path, size)
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+
             return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
 
     # No local folder/file: proxy from Deezer (without saving) if local save is off
@@ -235,7 +236,6 @@ def send_artist_image(artist, size=None):
 
                 except requests.RequestException:
                     pass
-
     return None
 
 

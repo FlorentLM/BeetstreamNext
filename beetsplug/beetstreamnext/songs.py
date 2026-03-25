@@ -5,7 +5,7 @@ import flask
 from beets.dbcore.query import MatchQuery
 
 from beetsplug.beetstreamnext import app, stream
-from beetsplug.beetstreamnext.db import connect_dual
+from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
@@ -66,7 +66,7 @@ def songs_by_genre():
 
     songs = []
     if conditions:
-        sql = f"SELECT * FROM items WHERE ({' OR '.join(conditions)}) ORDER BY title LIMIT ? OFFSET ?"
+        sql = f"""SELECT * FROM items WHERE ({' OR '.join(conditions)}) ORDER BY title LIMIT ? OFFSET ?"""
         params.extend([count, offset])
 
         with flask.g.lib.transaction() as tx:
@@ -90,9 +90,9 @@ def get_random_songs():
     with flask.g.lib.transaction() as tx:
         # Advance the SQL random generator state
         _ = list(tx.query("SELECT RANDOM()"))
-        # Now fetch the random songs
+
         songs = list(tx.query(
-            "SELECT * FROM items ORDER BY RANDOM() LIMIT ?",
+            """SELECT * FROM items ORDER BY RANDOM() LIMIT ?""",
             (size,)
         ))
 
@@ -126,9 +126,11 @@ def stream_song():
 
         needs_transcode = False
         if not app.config['never_transcode'] and req_format != 'raw':
+
             # Transcode if bitrate too high
             if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
                 needs_transcode = True
+
             # or if client wants different format
             elif req_format and req_format != song_ext:
                 needs_transcode = True
@@ -215,8 +217,9 @@ def get_top_songs():
 
     # Fallback to local play stats
     count = int(r.get('count', 50))
-    with connect_dual() as conn:
-        rows = conn.execute(
+
+    with dual_database() as db:
+        rows = db.execute(
             """
             SELECT i.* 
             FROM beets.items i
@@ -253,24 +256,28 @@ def get_similar_songs():
 
     if req_id.startswith(ART_ID_PREF):
         artist_name = sub_to_beets_artist(req_id)
-        # grab the artist's mbid
+
         with flask.g.lib.transaction() as tx:
-            mbid_artist = tx.query("SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1", (artist_name,))
+            mbid_artist = tx.query("""SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1""", (artist_name,))
 
     elif req_id.startswith(SNG_ID_PREF):
         # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?
         beets_song_id = sub_to_beets_song(req_id)
         song_item = flask.g.lib.get_item(beets_song_id)
+
         if not song_item:
-            flask.abort(404)
+            subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+
         artist_name = song_item.get('albumartist', '')
         mbid_artist = [[song_item.get('mb_artistid', '')]]
 
     elif req_id.startswith(ALB_ID_PREF):
         beets_album_id = sub_to_beets_album(req_id)
         album_object = flask.g.lib.get_album(beets_album_id)
+
         if not album_object:
-            flask.abort(404)
+            subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+
         artist_name = album_object.get('albumartist', '')
         mbid_artist = [[album_object.get('mb_artistid', '')]]
 

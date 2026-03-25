@@ -38,12 +38,12 @@ def get_lyrics():
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     with flask.g.lib.transaction() as tx:
-        rows = tx.query("""
-                        SELECT id 
-                        FROM items 
-                        WHERE lower(artist) = lower(?) AND lower(title) = lower(?) LIMIT 1
-                        """,
-            (artist, title)
+        rows = tx.query(
+            """
+            SELECT id 
+            FROM items 
+            WHERE lower(artist) = lower(?) AND lower(title) = lower(?) LIMIT 1
+            """, (artist, title)
         )
 
     if not rows:

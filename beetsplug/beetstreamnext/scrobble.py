@@ -1,8 +1,8 @@
-import sqlite3
 import time
 import flask
 
 from beetsplug.beetstreamnext import app, _now_playing, _now_playing_lock
+from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song
 
 # TODO: Lastfm optional integration?
@@ -41,7 +41,7 @@ def scrobble():
     times_ms = r.getlist('time')
     db_path = flask.current_app.config['DB_PATH']
 
-    with sqlite3.connect(db_path) as conn:
+    with database() as db:
         for i, song_id in enumerate(song_ids):
             beets_id = sub_to_beets_song(song_id)
 
@@ -50,7 +50,7 @@ def scrobble():
             except (IndexError, ValueError):
                 played_at = now
 
-            conn.execute(
+            db.execute(
                 """
                 INSERT INTO play_stats (username, song_id, play_count, last_played)
                 VALUES (?, ?, 1, ?)
@@ -58,9 +58,9 @@ def scrobble():
                 DO UPDATE SET
                     play_count  = play_count + 1,
                     last_played = excluded.last_played
-                """,
-                (username, beets_id, played_at)
+                """, (username, beets_id, played_at)
             )
+
     return subsonic_response({}, resp_fmt)
 
 

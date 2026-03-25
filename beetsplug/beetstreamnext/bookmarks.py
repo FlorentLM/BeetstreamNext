@@ -1,9 +1,8 @@
-import sqlite3
 import time
 import flask
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.db import connect_dual
+from beetsplug.beetstreamnext.db import dual_database, database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     sub_to_beets_song, map_song, timestamp_to_iso
@@ -18,15 +17,14 @@ def get_bookmarks():
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username
 
-    with connect_dual() as conn:
-        rows = conn.execute(
+    with dual_database() as db:
+        rows = db.execute(
             """
             SELECT i.*, b.position, b.comment, b.created, b.changed
             FROM bookmarks b 
                      JOIN beets.items i ON b.song_id = i.id
             WHERE b.username = ?
-            """,
-            (username,)
+            """, (username,)
         ).fetchall()
 
     bookmarks = []
@@ -64,17 +62,15 @@ def create_bookmark():
     username = flask.g.username
     now = time.time()
 
-    db_path = flask.current_app.config['DB_PATH']
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
+    with database() as db:
+        db.execute(
             """
             INSERT INTO bookmarks (username, song_id, position, comment, created, changed) 
             VALUES (?, ?, ?, ?, ?, ?) 
             ON CONFLICT (username, song_id) DO UPDATE SET position = excluded.position,
                                                           comment  = excluded.comment,
                                                           changed  = excluded.changed
-            """,
-            (username, beets_id, position, comment, now, now)
+            """, (username, beets_id, position, comment, now, now)
             )
 
     return subsonic_response({}, resp_fmt)
@@ -92,15 +88,14 @@ def delete_bookmark():
 
     beets_id = sub_to_beets_song(song_sub_id)
     username = flask.g.username
-    db_path = flask.current_app.config['DB_PATH']
 
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("""
-                     DELETE 
-                     FROM bookmarks 
-                     WHERE username = ? AND song_id = ?
-                     """,
-            (username, beets_id)
+    with database() as db:
+        db.execute(
+            """
+            DELETE 
+            FROM bookmarks 
+            WHERE username = ? AND song_id = ?
+            """, (username, beets_id)
         )
 
     return subsonic_response({}, resp_fmt)

@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import secrets
 import sqlite3
-from typing import Union, List, Tuple, Set
+from typing import Union, Sequence, Optional, Dict
 from urllib.parse import unquote
 
 import flask
@@ -174,15 +174,15 @@ def load_user_play_stats(username: str) -> dict:
     return play_stats
 
 
-def load_userdata(username: str, fields: Union[List[str], Tuple[str], Set[str], str, None] = None) -> Union[dict, None]:
+def load_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = None) -> Optional[Dict]:
 
     if fields is None:
         # return all safe fields
-        safe_fields = list(_ALL_USER_FIELDS)
+        safe_fields = sorted(list(_ALL_USER_FIELDS))
     elif isinstance(fields, str):
         safe_fields = [fields] if fields in _ALL_USER_FIELDS else []
     else:
-        safe_fields = list(set(fields).intersection(_ALL_USER_FIELDS))
+        safe_fields = sorted(list(set(fields).intersection(_ALL_USER_FIELDS)))
 
     if not safe_fields:
         return None

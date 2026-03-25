@@ -226,6 +226,18 @@ def initialise_db():
         """
     )
 
+    # Indices for per-user queries (most common accesses)
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username       ON likes(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_username  ON play_stats(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_bookmarks_username   ON bookmarks(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_username     ON ratings(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_queue_username  ON play_queue_entries(username);""")
+
+    # These are or JOIN queries in albums (starred, frequent, highest sort)
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_item_id        ON likes(item_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_item_id      ON ratings(item_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_song_id   ON play_stats(song_id);""")
+
     conn.commit()
     conn.close()
 

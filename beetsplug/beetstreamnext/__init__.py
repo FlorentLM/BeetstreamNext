@@ -143,11 +143,25 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
     def commands(self):
         cmd = ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
-        cmd.parser.add_option('-d', '--debug', action='store_true', default=False, help='Debug mode')
-        cmd.parser.add_option('-u', '--user', action='store_true', default=False, help='Create a new user')
-        cmd.parser.add_option('-l', '--clear_cache', action='store_true', default=False, help="Clear BeetstreamNext's cache")
+
+        # Server options
+        cmd.parser.add_option('--debug', dest='debug', action='store_true', default=False, help='Run server in debug mode')
+        cmd.parser.add_option('--port', dest='port', type='int', help='Port to listen on')
+        cmd.parser.add_option('--host', dest='host', help='Host to listen on')
+
+        # User management
+        cmd.parser.add_option('-c', '--create-user', action='store_true', default=False, help='Create a new user')
+        cmd.parser.add_option('-u', '--update-user', dest='update_user', metavar='USERNAME', help='Update roles for a user')
+        cmd.parser.add_option('-d', '--delete-user', dest='delete_user', metavar='USERNAME', help='Delete a user')
+        cmd.parser.add_option('-p', '--password', dest='passwd_user', metavar='USERNAME', help='Change password for a user')
+        cmd.parser.add_option('--list-users', action='store_true',  default=False, help='List all registered users')
+
+        # Maintenance
+        cmd.parser.add_option('--clear-cache', action='store_true', help="Clear thumbnail and HTTP cache")
 
         def func(lib, opts, args):
+
+            # Cache clearing
             if opts.clear_cache:
                 shutil.rmtree(app.config['THUMBNAIL_CACHE_PATH'], ignore_errors=True)
                 try:
@@ -157,7 +171,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 print("Thumbnail cache cleared.")
                 return
 
-            if opts.user:
+            # Create user
+            if opts.create_user:
                 from beetsplug.beetstreamnext import db
 
                 with app.app_context():
@@ -188,11 +203,50 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
                 return
 
-            args = ui.decargs(args)
-            if args:
-                self.config['host'] = args.pop(0)
-            if args:
-                self.config['port'] = int(args.pop(0))
+            # Delete user
+            if opts.delete_user:
+                with app.app_context():
+
+                    username = opts.delete_user
+                    confirm = input(f"Are you sure you want to delete '{username}'? [y/N]: ")
+                    if confirm.lower() == 'y':
+                        if users.delete_user(username):
+                            print(f"User '{username}' deleted.")
+                        else:
+                            print("User not found.")
+                    return
+
+            # List users
+            if opts.list_users:
+                with app.app_context():
+                    all_users = users.load_all_users()
+                    header = f"{'Username':<15} | {'Admin':<12} | {'Can stream':<12} | {'Can download':<12}"
+                    print(header)
+                    print("-" * len(header))
+                    for u in all_users:
+                        print(
+                            f"{u['username']:<15} |"
+                            f" {bool(u['adminRole']):<12} |"
+                            f" {bool(u['streamRole']):<12} |"
+                            f" {bool(u['downloadRole']):<12}"
+                        )
+                    return
+
+            # Update password
+            if opts.passwd_user:
+                with app.app_context():
+                    username = opts.passwd_user
+                    new_pw = getpass.getpass(f"New password for '{username}': ")
+                    try:
+                        users.update_user(username, password=new_pw)
+                        print("Password updated successfully.")
+                    except ValueError as e:
+                        print(f"Error: {e}")
+                    return
+
+            host = opts.host or self.config['host'].as_str()
+            port = opts.port or self.config['port'].get(int)
+            debug = opts.debug
 
             app.config['lib'] = lib
             app.config['root_directory'] = Path(config['directory'].get())
@@ -202,6 +256,21 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(bool)
             app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
             app.config['save_album_art'] = self.config['save_album_art'].get(bool)
+
+            if debug and host not in ['127.0.0.1', 'localhost']:
+                print(f"[ERROR] Debug mode cannot be used with host {host}. "
+                      "The Werkzeug debugger allows arbitrary remote code execution. "
+                      "Use 127.0.0.1 for local debugging.")
+                return
+
+            if app.config['legacy_auth'] and not self.config['reverse_proxy']:
+                if host not in ['127.0.0.1', 'localhost']:
+                    print(
+                        "[WARNING] Legacy authentication is enabled and the server is listening on "
+                        f"{host}:{port} without a reverse proxy. Passwords from legacy "
+                        "clients may be transmitted in cleartext over HTTP. "
+                        "Use a reverse proxy with TLS or disable legacy_auth."
+                    )
 
             possible_paths = [
                 (0, self.config['playlist_dir'].get(None)),  # BeetstreamNext's own
@@ -222,16 +291,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
             # Enable CORS if required
             if self.config['cors']:
                 self._log.info(f'Enabling CORS with origin: {self.config["cors"]}')
+
                 app.config['CORS_ALLOW_HEADERS'] = "Content-Type"
-                app.config['CORS_RESOURCES'] = {
-                    r"/*": {"origins": self.config['cors'].get(str)}
-                }
-                CORS(
-                    app,
-                    supports_credentials=self.config[
-                        'cors_supports_credentials'
-                    ].get(bool)
-                )
+                app.config['CORS_RESOURCES'] = {r"/*": {"origins": self.config['cors'].get(str)}}
+                CORS(app, supports_credentials=self.config['cors_supports_credentials'].get(bool))
 
             # Allow serving behind a reverse proxy
             if self.config['reverse_proxy']:
@@ -242,25 +305,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
                 db.initialise_db()
                 app.config['playlist_provider'] = PlaylistProvider()
-
-            host = self.config['host'].as_str()
-            port = self.config['port'].get(int)
-            debug = opts.debug
-
-            if debug and host not in ['127.0.0.1', 'localhost']:
-                print(f"[ERROR] Debug mode cannot be used with host {host}. "
-                      "The Werkzeug debugger allows arbitrary remote code execution. "
-                      "Use 127.0.0.1 for local debugging.")
-                return
-
-            if app.config['legacy_auth'] and not self.config['reverse_proxy']:
-                if host not in ['127.0.0.1', 'localhost']:
-                    print(
-                        "[WARNING] Legacy authentication is enabled and the server is listening on "
-                        f"{host}:{port} without a reverse proxy. Passwords from legacy "
-                        "clients may be transmitted in cleartext over HTTP. "
-                        "Use a reverse proxy with TLS or disable legacy_auth."
-                    )
 
             app.run(
                 host=host,

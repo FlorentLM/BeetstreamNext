@@ -150,7 +150,7 @@ def initialise_db():
             item_id    TEXT    NOT NULL, -- subsonic ID (can be anything, sg-1, al-2, ar-xxx, etc)
             starred_at REAL    NOT NULL DEFAULT (unixepoch()),
             PRIMARY KEY (username, item_id),
-            FOREIGN KEY (username) REFERENCES users (username)
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """
     )
@@ -166,7 +166,7 @@ def initialise_db():
             created  REAL    NOT NULL DEFAULT (unixepoch()),
             changed  REAL    NOT NULL DEFAULT (unixepoch()),
             PRIMARY KEY (username, song_id),
-            FOREIGN KEY (username) REFERENCES users (username)
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """
     )
@@ -180,7 +180,7 @@ def initialise_db():
             rating    INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
             rated_at  REAL    NOT NULL DEFAULT (unixepoch()),
             PRIMARY KEY (username, item_id),
-            FOREIGN KEY (username) REFERENCES users (username)
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """
     )
@@ -194,7 +194,7 @@ def initialise_db():
             position   REAL DEFAULT 0, -- offset in the song (ms)
             changed    REAL,           -- last save timestamp
             changed_by TEXT,           -- Subsonic client name that saved the queue
-            FOREIGN KEY (username) REFERENCES users (username)
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """
     )
@@ -221,7 +221,7 @@ def initialise_db():
             play_count  INTEGER NOT NULL DEFAULT 0,
             last_played REAL, -- timestamp of most recent play
             PRIMARY KEY (username, song_id),
-            FOREIGN KEY (username) REFERENCES users (username)
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """
     )

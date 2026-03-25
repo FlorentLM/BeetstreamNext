@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import secrets
-from sqlite3 import IntegrityError
 from typing import Union, Sequence, Optional, Dict
 from urllib.parse import unquote
 
@@ -9,7 +8,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import get_cipher, database
-from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response
+from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string
 
 
 def _user_payload(user_data: dict) -> dict:
@@ -42,9 +41,165 @@ _ALL_USER_FIELDS = frozenset({
 })
 
 
+##
+# Internal helpers to this module
+
+
+def _get_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = None) -> Optional[Dict]:
+
+    if fields is None:
+        # return all safe fields
+        safe_fields = sorted(list(_ALL_USER_FIELDS))
+    elif isinstance(fields, str):
+        safe_fields = [fields] if fields in _ALL_USER_FIELDS else []
+    else:
+        safe_fields = sorted(list(set(fields).intersection(_ALL_USER_FIELDS)))
+
+    if not safe_fields:
+        return None
+
+    column_names = ['username'] + safe_fields
+    columns_str = ', '.join(column_names)
+
+    with database() as db:
+        row = db.execute(
+            f"""
+            SELECT {columns_str}
+            FROM users
+            WHERE username = ?
+            """, (username,)
+        ).fetchone()
+
+    if not row:
+        return None
+
+    user_dict = dict(zip(column_names, row))
+
+    cipher = get_cipher()
+
+    if 'password' in user_dict.keys():
+        password = user_dict.pop('password')
+
+        if cipher:
+            user_dict['password'] = cipher.decrypt(password).decode("utf-8")
+        else:
+            user_dict['password'] = password.decode('utf-8')
+
+    return user_dict
+
+
+def _store_userdata(user_dict):
+
+    user_dict = user_dict.copy()
+    username = user_dict.pop("username", None)
+    if not username:
+        raise ValueError('User dict must have the "username" key!')
+
+    safe_fields = {
+        'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled',
+        'adminRole', 'settingsRole', 'streamRole', 'jukeboxRole', 'downloadRole',
+        'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole', 'podcastRole',
+        'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
+    }
+    filtered_dict = {k: v for k, v in user_dict.items() if k in safe_fields}
+
+    cipher = get_cipher()
+    if 'password' in filtered_dict and cipher:
+        filtered_dict['password'] = cipher.encrypt(filtered_dict['password'].encode("utf-8"))
+
+    columns = ['username']
+    placeholders = ['?']
+    updates = []
+    values = [username]
+
+    for key, val in filtered_dict.items():
+        columns.append(key)
+        placeholders.append('?')
+        updates.append(f"{key} = excluded.{key}")
+        values.append(val)
+
+    columns_str = ', '.join(columns)
+    placeholders_str = ', '.join(['?'] * len(columns))
+    updates_str = ', '.join(updates)
+
+    with database() as db:
+        db.execute(
+            f"""
+            INSERT INTO users ({columns_str})
+            VALUES ({placeholders_str})
+            ON CONFLICT (username)
+            DO UPDATE SET {updates_str}
+            """, values
+        )
+
+##
+# Core logic used by endpoints and CLI
+
+def create_user(username, password, admin=False, **kwargs):
+    """Core logic to create a user. Returns the raw API key."""
+
+    if _get_userdata(username, fields=['adminRole']):   # any field, doesnt matter
+        raise ValueError(f"Username '{username}' already exists.")
+
+    filtered_roles = {
+        k: v for k, v in kwargs.items()
+        if k in _ALL_USER_FIELDS and k != 'password'  # 'username' and 'password' are handled explicitly
+    }
+
+    raw_api_key = secrets.token_urlsafe(32)
+    api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
+
+    user_data = {
+        'username': username,
+        'password': password,  # store_userdata handles the encryption
+        'adminRole': int(admin),
+        'playlistRole': 1,
+        'settingsRole': 1,
+        'streamRole': 1,
+    }
+    user_data.update(filtered_roles)
+
+    _store_userdata(user_data)
+
+    # Manually set api_key_hash because store_userdata excludes it for safety
+    with database() as db:
+        db.execute(
+            """
+            UPDATE users
+            SET api_key_hash = ?
+            WHERE username = ?""", (api_key_hash, username)
+        )
+
+    return raw_api_key
+
+
+def update_user(username: str, **updates):
+    """Core logic to update an existing user. """
+
+    if not _get_userdata(username, fields=['adminRole']):   # any field, doesnt matter
+        raise ValueError(f"User '{username}' does not exist.")
+
+    filtered_updates = {k: v for k, v in updates.items() if k in _ALL_USER_FIELDS}
+    filtered_updates['username'] = username
+
+    _store_userdata(filtered_updates)
+
+
+def delete_user(username: str) -> bool:
+    """Core logic to delete a user and related data."""
+    with database() as db:
+        cursor = db.execute("""DELETE
+                               FROM users
+                               WHERE username = ?""", (username,))
+        return cursor.rowcount > 0
+
+
+##
+# Endpoints
+
 @app.route('/rest/getUser', methods=["GET", "POST"])
 @app.route('/rest/getUser.view', methods=["GET", "POST"])
-def get_user():
+def endpoint_get_user():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 
@@ -58,7 +213,7 @@ def get_user():
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if requested_username != flask.g.username:
-        target_data = load_userdata(requested_username)
+        target_data = _get_userdata(requested_username)
         if not target_data:
             return subsonic_error(70, resp_fmt=resp_fmt)
     else:
@@ -70,7 +225,7 @@ def get_user():
 
 @app.route('/rest/getUsers', methods=["GET", "POST"])
 @app.route('/rest/getUsers.view', methods=["GET", "POST"])
-def get_users():
+def endpoint_get_users():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 
@@ -82,34 +237,102 @@ def get_users():
     return subsonic_response(payload, resp_fmt)
 
 
-def create_user(username, password, admin=False):
-    """Creates a user, hashes new API key, returns API key."""
-    raw_api_key = secrets.token_urlsafe(32)
-    api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
+@app.route('/rest/createUser', methods=["GET", "POST"])
+@app.route('/rest/createUser.view', methods=["GET", "POST"])
+def endpoint_create_user():
+    r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
 
-    # Encrypt password for legacy Subsonic MD5 support
-    cipher = get_cipher()
-    encrypted_pw = cipher.encrypt(password.encode('utf-8')) if cipher else password.encode('utf-8')
+    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    username, password = r.get('username'), r.get('password')
+    if not username or not password:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
-        with database() as db:
-            db.execute(
-                """
-                INSERT INTO users (username, password, api_key_hash, adminRole, playlistRole, settingsRole)
-                VALUES (?, ?, ?, ?, 1, 1)
-                """, (username, encrypted_pw, api_key_hash, 1 if admin else 0)
-            )
-    except IntegrityError as e:
-        if 'UNIQUE' in str(e):
-            raise ValueError(f"Username '{username}' already exists.") from e
-        raise
+        params = {k: pythonize_string(v) for k, v in r.items() if k in _ALL_USER_FIELDS}
 
-    return raw_api_key
+        # check if the request explicitly set adminRole, otherwise use False
+        is_admin = params.pop('adminRole', False)
+        create_user(username, password, admin=is_admin, **params)
+        return subsonic_response({}, resp_fmt)
+
+    except ValueError as e:
+        return subsonic_error(70, str(e), resp_fmt=resp_fmt)
+
+
+@app.route('/rest/updateUser', methods=["GET", "POST"])
+@app.route('/rest/updateUser.view', methods=["GET", "POST"])
+def endpoint_update_user():
+    r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
+
+    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    username = r.get('username')
+    try:
+        updates = {k: pythonize_string(v) for k, v in r.items() if k in _ALL_USER_FIELDS}
+
+        if r.get('password'):
+            updates['password'] = r.get('password')
+
+        update_user(username, **updates)
+        return subsonic_response({}, resp_fmt)
+    except ValueError as e:
+        return subsonic_error(70, str(e), resp_fmt=resp_fmt)
+
+
+@app.route('/rest/deleteUser', methods=["GET", "POST"])
+@app.route('/rest/deleteUser.view', methods=["GET", "POST"])
+def endpoint_delete_user():
+    r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
+
+    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    target = r.get('username')
+    if target == flask.g.username:
+        return subsonic_error(50, "Admin cannot delete their own account via this endpoint.", resp_fmt=resp_fmt)
+
+    if delete_user(target):
+        return subsonic_response({}, resp_fmt)
+    return subsonic_error(70, "User not found.", resp_fmt=resp_fmt)
+
+
+@app.route('/rest/changePassword', methods=["GET", "POST"])
+@app.route('/rest/changePassword.view', methods=["GET", "POST"])
+def endpoint_change_password():
+    r = flask.request.values
+    resp_fmt = r.get('f', 'xml')
+
+    target_username = r.get('username', flask.g.username)
+    new_password = r.get('password')
+
+    if not new_password:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    # User can change their own password, admin can change anyone's
+    is_self = (target_username == flask.g.username)
+    is_admin = flask.g.user_data.get('adminRole', False)
+
+    if not is_self and not is_admin:
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    try:
+        update_user(target_username, password=new_password)
+        return subsonic_response({}, resp_fmt)
+    except ValueError:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
 
 ##
+# Public functions used by other modules
 
-def get_username(api_key_hash: str) -> str:
+
+def load_username(api_key_hash: str) -> str:
     row = database().execute("""SELECT username FROM users WHERE api_key_hash = ?""", (api_key_hash,)).fetchone()
     return row[0] if row else None
 
@@ -128,7 +351,7 @@ def load_all_users() -> list[dict]:
 
 def load_user_roles(username: str) -> Union[dict, None]:
     """Load all user fields except password, safe to cache in g."""
-    return load_userdata(username, fields=set(_ALL_USER_FIELDS - {'password'}))
+    return _get_userdata(username, fields=set(_ALL_USER_FIELDS - {'password'}))
 
 
 def load_user_likes(username: str) -> dict:
@@ -183,93 +406,7 @@ def load_user_play_stats(username: str) -> dict:
     return play_stats
 
 
-def load_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = None) -> Optional[Dict]:
-
-    if fields is None:
-        # return all safe fields
-        safe_fields = sorted(list(_ALL_USER_FIELDS))
-    elif isinstance(fields, str):
-        safe_fields = [fields] if fields in _ALL_USER_FIELDS else []
-    else:
-        safe_fields = sorted(list(set(fields).intersection(_ALL_USER_FIELDS)))
-
-    if not safe_fields:
-        return None
-
-    column_names = ['username'] + safe_fields
-    columns_str = ', '.join(column_names)
-
-    with database() as db:
-        row = db.execute(
-            f"""
-            SELECT {columns_str}
-            FROM users
-            WHERE username = ?
-            """, (username,)
-        ).fetchone()
-
-    if not row:
-        return None
-
-    user_dict = dict(zip(column_names, row))
-
-    cipher = get_cipher()
-
-    if 'password' in user_dict.keys():
-        password = user_dict.pop('password')
-
-        if cipher:
-            user_dict['password'] = cipher.decrypt(password).decode("utf-8")
-        else:
-            user_dict['password'] = password.decode('utf-8')
-
-    return user_dict
-
-
-def store_userdata(user_dict):
-    user_dict = user_dict.copy()
-    username = user_dict.pop("username", None)
-    if not username:
-        raise ValueError('User dict must have the "username" key!')
-
-    safe_fields = {
-        'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled',
-        'adminRole', 'settingsRole', 'streamRole', 'jukeboxRole', 'downloadRole',
-        'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole', 'podcastRole',
-        'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
-    }
-    filtered_dict = {k: v for k, v in user_dict.items() if k in safe_fields}
-
-
-    cipher = get_cipher()
-    if 'password' in filtered_dict and cipher:
-        filtered_dict['password'] = cipher.encrypt(filtered_dict['password'].encode("utf-8"))
-
-    columns = ['username']
-    placeholders = ['?']
-    updates = []
-    values = [username]
-
-    for key, val in filtered_dict.items():
-        columns.append(key)
-        placeholders.append('?')
-        updates.append(f"{key} = excluded.{key}")
-        values.append(val)
-
-    columns_str = ', '.join(columns)
-    placeholders_str = ', '.join(['?'] * len(columns))
-    updates_str = ', '.join(updates)
-
-    with database() as db:
-        db.execute(
-            f"""
-            INSERT INTO users ({columns_str})
-            VALUES ({placeholders_str})
-            ON CONFLICT (username)
-            DO UPDATE SET {updates_str}
-            """, values
-        )
-
+##
 
 def authenticate(req_values):
     api_key = unquote(req_values.get('apiKey', ''))
@@ -286,7 +423,7 @@ def authenticate(req_values):
             return False, 43, None
 
         api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
-        found_user = get_username(api_key_hash)
+        found_user = load_username(api_key_hash)
         if found_user:
             return True, 0, found_user
         return False, 40, None
@@ -298,10 +435,10 @@ def authenticate(req_values):
     if not user:
         return False, 10, None
 
-    user_data = load_userdata(user, fields=['password'])
+    user_data = _get_userdata(user, fields=['password'])
     if not user_data:
         # Dummy query + dummy comparison to keep response time constant regardless if username exists or not
-        load_userdata('', fields=['password'])
+        _get_userdata('', fields=['password'])
         hmac.compare_digest('dummy', 'comparison')
         return False, 40, None
 
@@ -324,3 +461,4 @@ def authenticate(req_values):
             return True, 0, user
 
     return False, 40, None
+

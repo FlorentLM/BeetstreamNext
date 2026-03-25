@@ -19,6 +19,7 @@ import urllib.parse
 import flask
 
 from beets import library
+
 if TYPE_CHECKING:
     from beets.dbcore.db import Transaction
 
@@ -62,8 +63,117 @@ http_session = requests_cache.CachedSession(
 )
 
 
-# BeetstreamNext internal IDs: they are sent to the client once (when it accesses endpoints such as getArtists
-# or getAlbumList) and the client will then use them to access a specific item via endpoints that need an ID
+##
+# Main response and error payloads
+
+def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
+    """
+    Wraps json-like dict with the subsonic response data and
+    outputs the appropriate format (json or xml).
+    """
+
+    if resp_fmt.startswith('json'):
+        wrapped = {
+            'subsonic-response': {
+                'status': 'ok',
+                'version': API_VERSION,
+                'type': 'BeetstreamNext',
+                'serverVersion': BEETSTREAMNEXT_VERSION,
+                'openSubsonic': True,
+                **data
+            }
+        }
+        return jsonpify(resp_fmt, wrapped)
+
+    else:
+        root = dict_to_xml("subsonic-response", data)
+        root.set("xmlns", "http://subsonic.org/restapi")
+        root.set("status", 'ok')
+        root.set("version", API_VERSION)
+        root.set("type", 'BeetstreamNext')
+        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
+        root.set("openSubsonic", 'true')
+
+        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
+        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
+        xml_str = xml_bytes.decode('UTF-8')
+
+        return flask.Response(xml_str, mimetype="text/xml")
+
+
+def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
+
+    subsonic_errors = {
+        0: 'A generic error.',
+        10: 'Required parameter is missing.',
+        20: 'Incompatible Subsonic REST protocol version. Client must upgrade.',
+        30: 'Incompatible Subsonic REST protocol version. Server must upgrade.',
+        40: 'Wrong username or password.',
+        41: 'Token authentication not supported.',
+        42: 'Provided authentication mechanism not supported.',
+        43: 'Multiple conflicting authentication mechanisms provided.',
+        44: 'Invalid API key.',
+        50: 'User is not authorized for the given operation.',
+        # 60: 'The trial period for the Subsonic server is over.',
+        70: 'The requested data was not found.'
+    }
+
+    err_payload = {
+        'error': {
+            'code': code,
+            'message': message if message else subsonic_errors[code],
+            # 'helpUrl': ''
+        }
+    }
+
+    if resp_fmt.startswith('json'):
+        wrapped = {
+            'subsonic-response': {
+                'status': 'failed',
+                'version': API_VERSION,
+                'type': 'BeetstreamNext',
+                'serverVersion': BEETSTREAMNEXT_VERSION,
+                'openSubsonic': True,
+                **err_payload
+            }
+        }
+        return jsonpify(resp_fmt, wrapped)
+
+    else:
+        root = dict_to_xml("subsonic-response", err_payload)
+        root.set("xmlns", "http://subsonic.org/restapi")
+        root.set("status", 'failed')
+        root.set("version", API_VERSION)
+        root.set("type", 'BeetstreamNext')
+        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
+        root.set("openSubsonic", 'true')
+
+        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
+        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
+        xml_str = xml_bytes.decode('UTF-8')
+
+        return flask.Response(xml_str, mimetype="text/xml")
+
+
+def imageart_url(item_id: str, size: Optional[int] = None) -> str:
+    if not item_id:
+        return ''
+
+    params = {}
+    for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v']:
+        val = flask.request.values.get(k)
+        if val:
+            params[k] = val
+    params['id'] = item_id
+    if size:
+        params['size'] = size
+
+    return flask.url_for('get_cover_art', _external=True, **params)
+
+
+##
+# BeetstreamNext internal IDs mappers
+# TODO: Maybe use the mbid with fallback to filepath instead of artist name?
 
 def beets_to_sub_artist(beet_artist_name):
     base64_name = base64.urlsafe_b64encode(str(beet_artist_name).encode('utf-8'))
@@ -86,6 +196,35 @@ def beets_to_sub_song(beet_song_id):
 def sub_to_beets_song(subsonic_song_id):
     return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
 
+
+##
+# Caching user data in g
+
+def cached_user_likes():
+    if 'liked' not in flask.g:
+        from beetsplug.beetstreamnext.users import load_user_likes
+        flask.g.liked = load_user_likes(flask.g.username)
+    return flask.g.liked
+
+
+def cached_user_ratings():
+    if 'ratings' not in flask.g:
+        from beetsplug.beetstreamnext.users import load_user_ratings
+        flask.g.ratings = load_user_ratings(flask.g.username)
+    return flask.g.ratings
+
+
+def cached_user_play_stats():
+    if 'play_stats' not in flask.g:
+        from beetsplug.beetstreamnext.users import load_user_play_stats
+        flask.g.play_stats = load_user_play_stats(flask.g.username)
+    return flask.g.play_stats
+
+
+##
+# Mapping functions to translate Beets to OpenSubsonic dict-like structures
+# TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/
+
 def standardise_datadict(obj: Union[dict, library.LibModel, any]) -> dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
     if isinstance(obj, library.LibModel):
@@ -101,26 +240,6 @@ def standardise_datadict(obj: Union[dict, library.LibModel, any]) -> dict:
     except (ValueError, TypeError):
         return {}
 
-def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):
-    """
-    tx: The beets transaction or sqlite connection
-    query_template: SQL string with a '{q}' placeholder for the IN clause
-    values: The list of values to query
-    """
-    results = []
-    for i in range(0, len(values), chunk_size):
-        chunk = values[i: i + chunk_size]
-        question_marks = ','.join(['?'] * len(chunk))
-
-        sql = query_template.replace('{q}', question_marks)
-
-        chunk_results = list(tx.query(sql, chunk))
-        results.extend(chunk_results)
-    return results
-
-
-# Mapping functions to translate Beets to OpenSubsonic dict-like structures
-# TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/
 
 def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
 
@@ -393,6 +512,8 @@ def map_playlist(playlist):
     return subsonic_playlist
 
 
+## Requests format conversions
+
 def dict_to_xml(tag: str, data):
     """
     Converts a json-like dict to an XML tree.
@@ -448,110 +569,8 @@ def jsonpify(format: str, data: dict):
         return flask.jsonify(data)
 
 
-def imageart_url(item_id: str, size: Optional[int] = None) -> str:
-    if not item_id:
-        return ''
-
-    params = {}
-    for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v']:
-        val = flask.request.values.get(k)
-        if val:
-            params[k] = val
-    params['id'] = item_id
-    if size:
-        params['size'] = size
-
-    return flask.url_for('get_cover_art', _external=True, **params)
-
-
-def subsonic_response(data: dict = {}, resp_fmt: str = 'xml'):
-    """Wrap any json-like dict with the subsonic response elements
-     and output the appropriate 'format' (json or xml)."""
-
-    if resp_fmt.startswith('json'):
-        wrapped = {
-            'subsonic-response': {
-                'status': 'ok',
-                'version': API_VERSION,
-                'type': 'BeetstreamNext',
-                'serverVersion': BEETSTREAMNEXT_VERSION,
-                'openSubsonic': True,
-                **data
-            }
-        }
-        return jsonpify(resp_fmt, wrapped)
-
-    else:
-        root = dict_to_xml("subsonic-response", data)
-        root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'ok')
-        root.set("version", API_VERSION)
-        root.set("type", 'BeetstreamNext')
-        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
-        root.set("openSubsonic", 'true')
-
-        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
-        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
-        xml_str = xml_bytes.decode('UTF-8')
-
-        return flask.Response(xml_str, mimetype="text/xml")
-
-
-def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
-
-    subsonic_errors = {
-        0: 'A generic error.',
-        10: 'Required parameter is missing.',
-        20: 'Incompatible Subsonic REST protocol version. Client must upgrade.',
-        30: 'Incompatible Subsonic REST protocol version. Server must upgrade.',
-        40: 'Wrong username or password.',
-        41: 'Token authentication not supported.',
-        42: 'Provided authentication mechanism not supported.',
-        43: 'Multiple conflicting authentication mechanisms provided.',
-        44: 'Invalid API key.',
-        50: 'User is not authorized for the given operation.',
-        # 60: 'The trial period for the Subsonic server is over.',
-        70: 'The requested data was not found.'
-    }
-
-    err_payload = {
-        'error': {
-            'code': code,
-            'message': message if message else subsonic_errors[code],
-            # 'helpUrl': ''
-        }
-    }
-
-    if resp_fmt.startswith('json'):
-        wrapped = {
-            'subsonic-response': {
-                'status': 'failed',
-                'version': API_VERSION,
-                'type': 'BeetstreamNext',
-                'serverVersion': BEETSTREAMNEXT_VERSION,
-                'openSubsonic': True,
-                **err_payload
-            }
-        }
-        return jsonpify(resp_fmt, wrapped)
-
-    else:
-        root = dict_to_xml("subsonic-response", err_payload)
-        root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'failed')
-        root.set("version", API_VERSION)
-        root.set("type", 'BeetstreamNext')
-        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
-        root.set("openSubsonic", 'true')
-
-        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
-        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
-        xml_str = xml_bytes.decode('UTF-8')
-
-        return flask.Response(xml_str, mimetype="text/xml")
-
-
-# Other utility functions
+##
+# Text utilities
 
 def remove_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
@@ -634,6 +653,9 @@ def trim_text(text, char_limit=300):
     return snippet
 
 
+##
+# Various parsers / converters / formatters
+
 def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
         return ''
@@ -641,37 +663,6 @@ def timestamp_to_iso(timestamp) -> str:
         return datetime.fromtimestamp(float(timestamp)).isoformat()
     except (ValueError, TypeError):
         return ''
-
-
-def get_mimetype(path):
-
-    if isinstance(path, (bytes, bytearray)):
-        path = path.decode('utf-8')
-    elif isinstance(path, Path):
-        path = path.as_posix()
-    if not '.' in path:     # Assume the passed arg is just an extension
-        path = f'file.{path}'
-
-    mimetype_fallback = {
-        '.aac': 'audio/aac',
-        '.flac': 'audio/flac',
-        '.mp3': 'audio/mpeg',
-        '.mp4': 'audio/mp4',
-        '.m4a': 'audio/mp4',
-        '.ogg': 'audio/ogg',
-        '.opus': 'audio/opus',
-        None: 'application/octet-stream'
-    }
-    return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
-
-
-@lru_cache(maxsize=10)
-def get_beets_schema(table_name: str = 'items'):
-    """Query beets database for column names."""
-    with flask.g.lib.transaction() as tx:
-        cursor = tx.query(f"PRAGMA table_info({table_name})")
-        columns = [row[1] for row in cursor]
-    return columns
 
 
 def genres_formatter(genres: Union[str, list, None]) -> list:
@@ -707,6 +698,33 @@ def genres_formatter(genres: Union[str, list, None]) -> list:
     return list(set(cleaned))
 
 
+def pythonize_string(s: str) -> Union[str, bool, int, float, None, datetime]:
+    if not isinstance(s, str):
+        return s
+
+    sl = s.lower()
+    if sl == 'true':
+        return True
+    if sl == 'false':
+        return False
+    if sl in ('none', 'null', ''):
+        return None
+
+    try:
+        return datetime.fromisoformat(s)
+    except (ValueError, TypeError):
+        pass
+
+    try:
+        f = float(s)
+        return int(f) if f.is_integer() else f
+    except ValueError:
+        return s
+
+
+##
+# File access and format detection utilities
+
 def creation_date(filepath):
     """
     Get a file's creation date.
@@ -737,6 +755,31 @@ def creation_date(filepath):
                 # If that did not work, settle for last modification time
                 return stat.st_mtime
 
+
+def get_mimetype(path):
+
+    if isinstance(path, (bytes, bytearray)):
+        path = path.decode('utf-8')
+    elif isinstance(path, Path):
+        path = path.as_posix()
+    if not '.' in path:     # Assume the passed arg is just an extension
+        path = f'file.{path}'
+
+    mimetype_fallback = {
+        '.aac': 'audio/aac',
+        '.flac': 'audio/flac',
+        '.mp3': 'audio/mpeg',
+        '.mp4': 'audio/mp4',
+        '.m4a': 'audio/mp4',
+        '.ogg': 'audio/ogg',
+        '.opus': 'audio/opus',
+        None: 'application/octet-stream'
+    }
+    return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
+
+
+##
+# External APIs querying
 
 def query_musicbrainz(mbid: str, type: str):
 
@@ -845,22 +888,31 @@ def query_wikipedia(q: str) -> Optional[str]:
     return None
 
 
-def cached_user_likes():
-    if 'liked' not in flask.g:
-        from beetsplug.beetstreamnext.users import load_user_likes
-        flask.g.liked = load_user_likes(flask.g.username)
-    return flask.g.liked
+##
+# Beets' database access utilities
+
+@lru_cache(maxsize=10)
+def get_beets_schema(table_name: str = 'items'):
+    """Query beets database for column names."""
+    with flask.g.lib.transaction() as tx:
+        cursor = tx.query(f"PRAGMA table_info({table_name})")
+        columns = [row[1] for row in cursor]
+    return columns
 
 
-def cached_user_ratings():
-    if 'ratings' not in flask.g:
-        from beetsplug.beetstreamnext.users import load_user_ratings
-        flask.g.ratings = load_user_ratings(flask.g.username)
-    return flask.g.ratings
+def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):
+    """
+    tx: The beets transaction or sqlite connection
+    query_template: SQL string with a '{q}' placeholder for the IN clause
+    values: The list of values to query
+    """
+    results = []
+    for i in range(0, len(values), chunk_size):
+        chunk = values[i: i + chunk_size]
+        question_marks = ','.join(['?'] * len(chunk))
 
+        sql = query_template.replace('{q}', question_marks)
 
-def cached_user_play_stats():
-    if 'play_stats' not in flask.g:
-        from beetsplug.beetstreamnext.users import load_user_play_stats
-        flask.g.play_stats = load_user_play_stats(flask.g.username)
-    return flask.g.play_stats
+        chunk_results = list(tx.query(sql, chunk))
+        results.extend(chunk_results)
+    return results

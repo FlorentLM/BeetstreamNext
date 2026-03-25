@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.utils import (
     get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url
 )
 
+
 def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
 
     beets_album_id = sub_to_beets_album(subsonic_album_id)

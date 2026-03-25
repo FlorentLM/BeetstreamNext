@@ -147,7 +147,8 @@ def send_album_art(album_id, size=None):
     art_path = album.get('artpath', b'')
     if art_path and os.path.isfile(art_path):
         if size:
-            return flask.send_file(resize_image(BytesIO(open(art_path, 'rb').read()), size), mimetype='image/jpeg')
+            with open(art_path, 'rb') as f:
+                return flask.send_file(resize_image(BytesIO(f.read()), size), mimetype='image/jpeg')
         return flask.send_file(art_path.decode('utf-8'), mimetype=get_mimetype(art_path.decode('utf-8')))
 
     # Check disk

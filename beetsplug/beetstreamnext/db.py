@@ -254,8 +254,11 @@ def dual_database():
     """Get internal database with the Beets library attached."""
     db = database()
     if not getattr(g, 'beets_attached', False):
-        beets_path = str(current_app.config['BEETS_DB_PATH'])
-        db.execute(f"ATTACH DATABASE '{beets_path}' AS beets")
+        beets_path = Path(current_app.config['BEETS_DB_PATH'])
+        if not beets_path.is_file():
+            raise RuntimeError(f"Beets database not found at '{beets_path}'")
+
+        db.execute(f"ATTACH DATABASE '{str(beets_path).replace(chr(39), chr(39) * 2)}' AS beets")
         g.beets_attached = True
     return db
 

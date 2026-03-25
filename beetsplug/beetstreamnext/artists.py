@@ -119,9 +119,9 @@ def artistInfo2():
 
     artist_id = r.get('id')
     artist_name = sub_to_beets_artist(artist_id)
-    first_item = flask.g.lib.items(f'albumartist:{artist_name}')[0]
-    artist_mbid = first_item.get('mb_albumartistid', '')
+    items = flask.g.lib.items(f'albumartist:{artist_name}')
 
+    artist_mbid = items[0].get('mb_albumartistid', '') if items else ''
     short_bio = ''
 
     if app.config['lastfm_api_key']:

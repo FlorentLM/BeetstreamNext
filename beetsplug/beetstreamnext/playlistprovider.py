@@ -153,7 +153,7 @@ class Playlist:
             raise FileExistsError(err)
 
         instance.dir_id = 0
-        instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.name}'
+        instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.name.lower()}'
         instance.ctime = None
         instance.mtime = None
         instance.songs = [map_song(song) for song in songs]

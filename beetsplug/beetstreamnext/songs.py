@@ -266,7 +266,7 @@ def get_similar_songs():
         song_item = flask.g.lib.get_item(beets_song_id)
 
         if not song_item:
-            subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+            return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
 
         artist_name = song_item.get('albumartist', '')
         mbid_artist = [[song_item.get('mb_artistid', '')]]
@@ -276,7 +276,7 @@ def get_similar_songs():
         album_object = flask.g.lib.get_album(beets_album_id)
 
         if not album_object:
-            subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+            return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
 
         artist_name = album_object.get('albumartist', '')
         mbid_artist = [[album_object.get('mb_artistid', '')]]

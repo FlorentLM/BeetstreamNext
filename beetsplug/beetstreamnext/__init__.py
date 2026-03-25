@@ -84,16 +84,16 @@ def before_request():
 def home():
     lib = app.config.get('lib')
     stats = {
-        "songs": len(lib.items()) if lib else 0,
+        "artists": 0,   # TODO
         "albums": len(lib.albums()) if lib else 0,
+        "songs": len(lib.items()) if lib else 0,
         "status": "Online"
     }
-    template_content = INDEX_HTML_PATH.open().read()
+    template_content = (PROJECT_ROOT / 'index.html' ).open().read()
     try:
         logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').open().read()
     except Exception:
         logo_svg = ''
-    # TODO - Add number of users?
     # TODO - more colours for the indicator dot: http / https / unencrypted db -> orange / red
     return render_template_string(template_content, stats=stats, logo_svg=logo_svg)
 

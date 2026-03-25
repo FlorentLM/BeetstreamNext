@@ -70,7 +70,7 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 1rem;
             margin-bottom: 2.5rem;
         }
@@ -151,12 +151,16 @@
 
         <div class="stats-grid">
             <div class="stat-card">
-                <span class="stat-value">{{ stats.songs }}</span>
-                <span class="stat-label">Tracks</span>
+                <span class="stat-value">{{ stats.artists }}</span>
+                <span class="stat-label">{{ 'Artists' if stats.artists > 1 else 'Artist' }}</span>
             </div>
             <div class="stat-card">
                 <span class="stat-value">{{ stats.albums }}</span>
-                <span class="stat-label">Albums</span>
+                <span class="stat-label">{{ 'Albums' if stats.albums > 1 else 'Album' }}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.songs }}</span>
+                <span class="stat-label">{{ 'Songs' if stats.songs > 1 else 'Song' }}</span>
             </div>
         </div>
 

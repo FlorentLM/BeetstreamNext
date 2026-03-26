@@ -160,16 +160,21 @@ def imageart_url(item_id: str, size: Optional[int] = None) -> str:
     if not item_id:
         return ''
 
-    params = {}
-    for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v']:
-        val = flask.request.values.get(k)
-        if val:
-            params[k] = val
-    params['id'] = item_id
-    if size:
-        params['size'] = size
+    # check if the base URL is already built for the current request, if not, build it
+    base_url = getattr(flask.g, '_art_base_url', None)
+    if not base_url:
+        params = {
+            k: flask.request.values.get(k)
+            for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if flask.request.values.get(k)
+        }
+        base_url = flask.url_for('get_cover_art', _external=True, **params)
+        flask.g._art_base_url = base_url
 
-    return flask.url_for('get_cover_art', _external=True, **params)
+    sep = '&' if '?' in base_url else '?'
+    url = f"{base_url}{sep}id={item_id}"
+    if size:
+        url += f"&size={size}"
+    return url
 
 
 ##
@@ -678,6 +683,7 @@ def timestamp_to_iso(timestamp) -> str:
         return ''
 
 
+@lru_cache(maxsize=1024)
 def genres_formatter(genres: Union[str, list, None]) -> list:
     """Additional cleaning for common genres formatting issues."""
     if not genres:

@@ -71,16 +71,26 @@ def before_request():
     from beetsplug.beetstreamnext.users import load_user_roles, authenticate
     from beetsplug.beetstreamnext.utils import subsonic_error
 
-    g.lib = app.config['lib']
-
-    ok, error_code, username = authenticate(flask.request.values)
+    ok, error_code, username = beetsplug.beetstreamnext.users.authenticate(flask.request.values)
     if not ok:
         resp_fmt = flask.request.values.get('f', 'xml')
-        return subsonic_error(error_code, resp_fmt=resp_fmt)
+        return beetsplug.beetstreamnext.utils.subsonic_error(error_code, resp_fmt=resp_fmt)
 
+    g.lib = app.config['lib']
     g.username = username
-    g.user_data = load_user_roles(username)
+    g.user_data = beetsplug.beetstreamnext.users.load_user_roles(username)
     g.playlist_provider = app.config['playlist_provider']
+
+    # Pre-build base URL for images so all mapping functions use it in the current request
+    r = flask.request.values
+    params = {k: r.get(k) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if r.get(k)}
+    g._art_base_url = flask.url_for('get_cover_art', _external=True, **params)
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
 
 
 @app.route('/')
@@ -303,6 +313,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             with app.app_context():
                 from beetsplug.beetstreamnext import db
                 from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
+
                 db.initialise_db()
                 app.config['playlist_provider'] = PlaylistProvider()
 

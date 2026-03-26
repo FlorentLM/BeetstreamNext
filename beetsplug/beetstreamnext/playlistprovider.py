@@ -113,7 +113,7 @@ class Playlist:
                     raise ValueError("Invalid rename target.")
 
                 if new_path.exists():
-                    raise FileExistsError(f"A playlist named {new_path.name} already exists.")
+                    raise FileExistsError(f"A playlist file named {new_path.name} already exists.")
 
                 self.path.rename(new_path)
                 self.path = new_path

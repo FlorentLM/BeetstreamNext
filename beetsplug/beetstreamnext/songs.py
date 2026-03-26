@@ -66,7 +66,11 @@ def endpoint_songs_by_genre():
 
     songs = []
     if conditions:
-        sql = f"""SELECT * FROM items WHERE ({' OR '.join(conditions)}) ORDER BY title LIMIT ? OFFSET ?"""
+        sql = f"""
+        SELECT * FROM items 
+        WHERE ({' OR '.join(conditions)}) 
+        ORDER BY title LIMIT ? OFFSET ?
+        """
         params.extend([count, offset])
 
         with flask.g.lib.transaction() as tx:

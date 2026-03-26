@@ -54,15 +54,15 @@ def endpoint_get_genres():
 
     item_cols = get_beets_schema('items')
     if 'genres' in item_cols:
-        queries.append("SELECT genres AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genres")
+        queries.append("""SELECT genres AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genres""")
     if 'genre' in item_cols:
-        queries.append("SELECT genre AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genre")
+        queries.append("""SELECT genre AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genre""")
 
     alb_cols = get_beets_schema('albums')
     if 'genres' in alb_cols:
-        queries.append("SELECT genres AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genres")
+        queries.append("""SELECT genres AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genres""")
     if 'genre' in alb_cols:
-        queries.append("SELECT genre AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genre")
+        queries.append("""SELECT genre AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genre""")
 
     if not queries:
         return subsonic_response({"genres": {"genre": []}}, r.get('f', 'xml'))
@@ -126,12 +126,12 @@ def endpoint_get_music_directory():
     req_id = r.get('id')
 
     if req_id.startswith(ART_ID_PREF):
-        payload = artist_payload(req_id, with_albums=True)  # make sure to include albums
+        payload = artist_payload(req_id, with_albums=True)
         payload['directory'] = payload.pop('artist')
         payload['directory']['child'] = payload['directory'].pop('album')
 
     elif req_id.startswith(ALB_ID_PREF):
-        payload = album_payload(req_id, with_songs=True)    # make sure to include songs
+        payload = album_payload(req_id, with_songs=True)
         payload['directory'] = payload.pop('album')
         payload['directory']['child'] = payload['directory'].pop('song')
 

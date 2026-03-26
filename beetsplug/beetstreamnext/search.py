@@ -39,6 +39,8 @@ def endpoint_search():
     if query_str.startswith('"') and query_str.endswith('"'):
         query_str = query_str[1:-1]
 
+    query_str = query_str[:256]
+
     artist_prefetch = {}
 
     # Beets query

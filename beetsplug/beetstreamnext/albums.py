@@ -95,7 +95,7 @@ def endpoint_get_album_list(ver=None):
     offset = int(r.get('offset', 0))
     from_year = int(r.get('fromYear', 0))
     to_year = int(r.get('toYear', 3000))
-    genre_filter = r.get('genre')
+    genre_filter = (r.get('genre') or '')[:64] or None
 
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 

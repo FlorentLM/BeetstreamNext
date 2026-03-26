@@ -62,6 +62,8 @@ def endpoint_create_bookmark():
     username = flask.g.username
     now = time.time()
 
+    comment = comment[:1024]
+
     with database() as db:
         db.execute(
             """

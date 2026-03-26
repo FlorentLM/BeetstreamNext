@@ -50,7 +50,7 @@ def endpoint_songs_by_genre():
     count = int(r.get('count') or 10)
     offset = int(r.get('offset') or 0)
 
-    genre = r.get('genre')
+    genre = (r.get('genre') or '')[:64]
     genre_pattern = f"%{genre}%"
 
     cols = get_beets_schema('items')

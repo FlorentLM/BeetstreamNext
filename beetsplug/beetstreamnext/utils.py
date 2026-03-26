@@ -711,7 +711,7 @@ def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
         return ''
     try:
-        return datetime.fromtimestamp(float(timestamp)).isoformat()
+        return datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat()
     except (ValueError, TypeError):
         return ''
 

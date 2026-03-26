@@ -294,7 +294,7 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
 
     album_specific = {
         'id': subsonic_album_id,
-        'musicBrainzId': data.get('mb_albumid', ''),
+        'musicBrainzId': data.get('mb_albumid') or '',
         'name': album_name,
         'sortName': album_name,
         # 'version': 'Deluxe Edition',   # TODO - Use the 'media' field maybe?
@@ -406,11 +406,13 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
 
     song_specific = {
         'id': song_id,
-        'musicBrainzId': data.get('mb_albumid') or '',
+        'musicBrainzId': data.get('mb_releasetrackid') or data.get('mb_trackid') or '',
+        'isrc': data.get('isrc') or '',
         'name': song_title,
         'sortName': song_title,
         'albumId': album_id,
         'coverArt': album_id or song_id,
+        'language': data.get('language') or '',
 
         'track': data.get('track') or 1,
         'path': song_filepath,

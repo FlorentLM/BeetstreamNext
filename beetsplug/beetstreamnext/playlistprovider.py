@@ -105,15 +105,19 @@ class Playlist:
     def rename(self, name=None):
         with self._lock:
             if name and name != self.name:
-                name = str(name).rstrip('/').rsplit('.', 1)[0]
-                new_path = self.path.with_name(name).with_suffix('.m3u')
+                safe_name = os.path.basename(str(name)).rsplit('.', 1)[0]
+
+                base_dir = self.path.parent.resolve()
+                new_path = (base_dir / f"{safe_name}.m3u").resolve()
+                if not str(new_path).startswith(str(base_dir)):
+                    raise ValueError("Invalid rename target.")
 
                 if new_path.exists():
                     raise FileExistsError(f"A playlist named {new_path.name} already exists.")
 
                 self.path.rename(new_path)
                 self.path = new_path
-                self.name = self.path.stem
+                self.name = safe_name
                 self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
                 self.mtime = self.path.stat().st_mtime
 
@@ -144,7 +148,19 @@ class Playlist:
         """
         instance = cls.__new__(cls)
 
-        instance.name = name.rsplit(".", 1)[0]
+        safe_name = os.path.basename(name).rsplit(".", 1)[0]
+        base_dir = Path(flask.g.playlist_provider.playlist_dirs[0]).resolve()
+        instance.path = (base_dir / f'{safe_name}.m3u').resolve()
+
+        if not str(instance.path).startswith(str(base_dir)):
+            raise ValueError("Invalid playlist name.")
+
+        if instance.path.is_file():
+            err = f"Playlist {instance.path.name} already exists!"
+            app.logger.warning(err)
+            raise FileExistsError(err)
+
+        instance.name = safe_name
         instance.path = Path(flask.g.playlist_provider.playlist_dirs[0]) / f'{instance.name}.m3u'
 
         if instance.path.is_file():
@@ -324,16 +340,26 @@ class PlaylistProvider:
                     loaded.load_songs()
                     return loaded
 
-            dir_key, file_name = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
-            dir_id = int(dir_key)
+            try:
+                parts = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
+                if len(parts) < 2:
+                    return None
+                dir_id = int(parts[0])
+                file_name = parts[1]
+            except ValueError:
+                return None
 
             dir_path = self.playlist_dirs.get(dir_id)
             if not dir_path:
                 return None
 
-            filepath = Path(dir_path) / file_name
+            safe_file_name = os.path.basename(file_name)
+            base_path = Path(dir_path).resolve()
+            filepath = (base_path / safe_file_name).resolve()
+            if not str(filepath).startswith(str(base_path)):
+                return None
 
-            if filepath.is_file():
+            if filepath.is_file() and filepath.suffix.lower() in ('.m3u', '.m3u8'):
                 playlist = self._load_playlist(dir_id, filepath)
                 playlist.load_songs()
                 return playlist

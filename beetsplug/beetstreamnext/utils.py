@@ -66,7 +66,7 @@ http_session = requests_cache.CachedSession(
 ##
 # Main response and error payloads
 
-def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml'):
+def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed: bool = False):
     """
     Wraps json-like dict with the subsonic response data and
     outputs the appropriate format (json or xml).
@@ -76,7 +76,7 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml'):
     if resp_fmt.startswith('json'):
         wrapped = {
             'subsonic-response': {
-                'status': 'ok',
+                'status': 'failed' if failed else 'ok',
                 'version': API_VERSION,
                 'type': 'BeetstreamNext',
                 'serverVersion': BEETSTREAMNEXT_VERSION,
@@ -89,7 +89,7 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml'):
     else:
         root = dict_to_xml("subsonic-response", data)
         root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'ok')
+        root.set("status", 'failed' if failed else 'ok')
         root.set("version", API_VERSION)
         root.set("type", 'BeetstreamNext')
         root.set("serverVersion", BEETSTREAMNEXT_VERSION)
@@ -127,33 +127,7 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
         }
     }
 
-    if resp_fmt.startswith('json'):
-        wrapped = {
-            'subsonic-response': {
-                'status': 'failed',
-                'version': API_VERSION,
-                'type': 'BeetstreamNext',
-                'serverVersion': BEETSTREAMNEXT_VERSION,
-                'openSubsonic': True,
-                **err_payload
-            }
-        }
-        return jsonpify(resp_fmt, wrapped)
-
-    else:
-        root = dict_to_xml("subsonic-response", err_payload)
-        root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'failed')
-        root.set("version", API_VERSION)
-        root.set("type", 'BeetstreamNext')
-        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
-        root.set("openSubsonic", 'true')
-
-        xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
-        # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
-        xml_str = xml_bytes.decode('UTF-8')
-
-        return flask.Response(xml_str, mimetype="text/xml")
+    return subsonic_response(err_payload, resp_fmt=resp_fmt, failed=True)
 
 
 def imageart_url(item_id: str, size: Optional[int] = None) -> str:

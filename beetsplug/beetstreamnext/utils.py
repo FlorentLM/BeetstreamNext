@@ -331,35 +331,57 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
 
     # Songs should be included when in:
     # - AlbumID3WithSongs response
-    # - directory response (in which case the 'song' key needs to be renamed to 'child')
+    # - directory response ('song' key needs to be renamed to 'child')
 
-    if isinstance(album_object, library.Album):
-        songs = list(album_object.items())
-        subsonic_album['songCount'] = len(songs)
-        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
+    songs = []
 
-    elif song_counts and beets_album_id in song_counts:
-        songs = []
+    # Song counts and durations
+    if song_counts and beets_album_id in song_counts:
         subsonic_album['songCount'], subsonic_album['duration'] = song_counts[beets_album_id]
-
     else:
-        songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
-        subsonic_album['songCount'] = len(songs)
-        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
-
-    if with_songs:
-        if not songs:
+        # pre-fetched counts, need to load items
+        if isinstance(album_object, library.Album):
+            songs = list(album_object.items())
+        else:
             songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
 
-        songs.sort(key=lambda s: s.track)
-        # songs.sort(key=lambda s: getattr(s, 'track', 0) if hasattr(s, 'track') else s.get('track', 0))
+        subsonic_album['songCount'] = len(songs)
+        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
 
-        subsonic_album['song'] = [map_song(s) for s in songs]
+    # Map songs
+    if with_songs:
+        # If not fetched above, fetch now
+        if not songs:
+            if isinstance(album_object, library.Album):
+                songs = list(album_object.items())
+            else:
+                songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
 
-    songs_ratings = [s.get('userRating', 0) for s in subsonic_album.get('song', []) if s.get('userRating', 0)]
-    subsonic_album['averageRating'] = sum(songs_ratings) / len(songs_ratings) if songs_ratings else 0
-    # (the above returns 0 when partial album which is corrrect, averageRating is only really useful on a full album)
+        song_filesizes = {}
+        if songs:
+            try:
+                first_path = songs[0].path
+                album_dir = os.path.dirname(first_path.decode('utf-8')
+                                            if isinstance(first_path, bytes) else str(first_path))
 
+                with os.scandir(album_dir) as it:
+                    for entry in it:
+                        if entry.is_file():
+                            song_filesizes[entry.path] = entry.stat().st_size
+            except Exception:
+                pass
+
+        songs.sort(key=lambda s: (s.disc, s.track))
+        subsonic_album['song'] = [map_song(s, prefetched_sizes=song_filesizes) for s in songs]
+
+    # Average rating
+    if subsonic_album.get('song'):
+        ratings = [s.get('userRating', 0) for s in subsonic_album['song'] if s.get('userRating', 0)]
+        subsonic_album['averageRating'] = sum(ratings) / len(ratings) if ratings else 0
+    else:
+        subsonic_album['averageRating'] = 0
+
+    # Starred status
     liked_at = cached_user_likes().get(subsonic_album_id)
     if liked_at:
         subsonic_album['starred'] = timestamp_to_iso(liked_at)
@@ -367,7 +389,7 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
     return subsonic_album
 
 
-def map_song(song_object: Union[Dict, library.Item]) -> Dict:
+def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
 
     data = standardise_datadict(song_object)
 
@@ -435,10 +457,19 @@ def map_song(song_object: Union[Dict, library.Item]) -> Dict:
     subsonic_song['suffix'] = suffix or 'mp3'
     subsonic_song['contentType'] = get_mimetype(song_filepath or suffix)
 
-    try:
-        subsonic_song['size'] = os.path.getsize(song_filepath)
-    except Exception:
-        subsonic_song['size'] = round(data.get('bitrate', 0) * data.get('length', 0) / 8)
+    if prefetched_sizes and song_filepath in prefetched_sizes:
+        subsonic_song['size'] = prefetched_sizes[song_filepath]
+    else:
+        bitrate = data.get('bitrate') or 0
+        length = data.get('length') or 0
+        subsonic_song['size'] = round((bitrate * length) / 8)
+
+        # only hit the disk if bitrate/length missing
+        if subsonic_song['size'] == 0:
+            try:
+                subsonic_song['size'] = os.path.getsize(song_filepath)
+            except Exception:
+                pass
 
     stats = cached_user_play_stats().get(beets_song_id)
     if stats:

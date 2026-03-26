@@ -263,7 +263,7 @@ class Playlist:
 
 class PlaylistProvider:
     def __init__(self):
-
+        self._lock = threading.RLock()
         self.playlist_dirs = app.config.get('playlist_dirs', {})
         self._playlists = {}
 
@@ -300,57 +300,62 @@ class PlaylistProvider:
     def get(self, playlist_id: str) -> Union[Playlist, None]:
         """Get a playlist by its id, reloading from disk if file changed."""
 
-        if not playlist_id.startswith(PLY_ID_PREF):
+        with self._lock:
+            if not playlist_id.startswith(PLY_ID_PREF):
+                return None
+
+            playlist_id = playlist_id.lower()
+
+            # try cache first
+            if playlist_id in self._playlists:
+                playlist = self._playlists[playlist_id]
+
+                if playlist.path.is_file():
+                    loaded = self._load_playlist(playlist.dir_id, playlist.path)
+                    loaded.load_songs()
+                    return loaded
+
+            dir_key, file_name = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
+            dir_id = int(dir_key)
+
+            dir_path = self.playlist_dirs.get(dir_id)
+            if not dir_path:
+                return None
+
+            filepath = Path(dir_path) / file_name
+
+            if filepath.is_file():
+                playlist = self._load_playlist(dir_id, filepath)
+                playlist.load_songs()
+                return playlist
+
             return None
-
-        playlist_id = playlist_id.lower()
-
-        # try cache first
-        if playlist_id in self._playlists:
-            playlist = self._playlists[playlist_id]
-
-            if playlist.path.is_file():
-                loaded = self._load_playlist(playlist.dir_id, playlist.path)
-                loaded.load_songs()
-                return loaded
-
-        dir_key, file_name = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
-        dir_id = int(dir_key)
-
-        dir_path = self.playlist_dirs.get(dir_id)
-        if not dir_path:
-            return None
-
-        filepath = Path(dir_path) / file_name
-
-        if filepath.is_file():
-            playlist = self._load_playlist(dir_id, filepath)
-            playlist.load_songs()
-            return playlist
-
-        return None
 
     def getall(self) -> List[Playlist]:
         """Return all cached playlists."""
-        return list(self._playlists.values())
+        with self._lock:
+            return list(self._playlists.values())
 
     def register(self, playlist: Playlist) -> None:
-        self._playlists[playlist.id] = playlist
+        with self._lock:
+            self._playlists[playlist.id] = playlist
 
     def deregister(self, playlist_id: str):
-        self._playlists.pop(playlist_id, None)
+        with self._lock:
+            self._playlists.pop(playlist_id, None)
 
     def delete(self, playlist_id: str) -> None:
-        playlist = self._playlists.get(playlist_id)
-        if not playlist:
-            raise FileNotFoundError(f"Playlist '{playlist_id}' not found.")
+        with self._lock:
+            playlist = self._playlists.get(playlist_id)
+            if not playlist:
+                raise FileNotFoundError(f"Playlist '{playlist_id}' not found.")
 
-        path = Path(playlist.path)
-        try:
-            os.remove(path)
-        except FileNotFoundError:
-            err = f"Playlist {path.name} does not exist in {path.parent}."
-            app.logger.warning(err)
-            raise FileNotFoundError(err)
-        finally:
-            self.deregister(playlist_id) # always remove from cache
+            path = Path(playlist.path)
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                err = f"Playlist {path.name} does not exist in {path.parent}."
+                app.logger.warning(err)
+                raise FileNotFoundError(err)
+            finally:
+                self.deregister(playlist_id) # always remove from cache

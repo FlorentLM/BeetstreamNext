@@ -52,7 +52,6 @@ def cache_location() -> Path:
 
 
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
-INDEX_HTML_PATH = PROJECT_ROOT / 'index.html'
 
 app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
 app.config['BEETS_DB_PATH'] = Path(config['library'].get())

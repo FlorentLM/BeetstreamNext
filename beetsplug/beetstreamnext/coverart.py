@@ -3,6 +3,7 @@ import re
 import subprocess
 import os
 from pathlib import Path
+from time import time
 from typing import Union, Optional
 import requests
 from io import BytesIO
@@ -25,9 +26,89 @@ ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
+ALLOWED_THUMBNAIL_SIZES = [120, 250, 500, 1000, 1200]
 
 
-def find_art_file(album_dir: Path) -> Optional[Path]:
+def tidyup_cache(days: int = 30):
+    """Deletes old cached thumbnails."""
+    cache_dir = app.config['THUMBNAIL_CACHE_PATH']
+    if not cache_dir.exists():
+        return
+
+    max_age_seconds = days * 86400
+    now = time()
+    try:
+        for f in cache_dir.glob('*.jpg'):
+            if now - f.stat().st_mtime > max_age_seconds:
+                f.unlink(missing_ok=True)
+    except Exception as e:
+        app.logger.error(f"Error cleaning thumbnail cache: {e}")
+
+
+def _thumbnail_path(original_path: Union[Path, str, bytes], size: int) -> Path:
+    """Generates unique path for a cached thumbnail."""
+
+    mtime = os.path.getmtime(original_path)
+    path_str = original_path.decode('utf-8') if isinstance(original_path, bytes) else str(original_path)
+    file_hash = hashlib.md5(f"{path_str}_{size}_{mtime}".encode()).hexdigest()
+
+    return app.config['THUMBNAIL_CACHE_PATH'] / f'{file_hash}.jpg'
+
+
+##
+# Resizing
+
+def _round_size(requested_size: Optional[int]) -> Optional[int]:
+    """Rounds requested image size up to nearest allowed size to limit cache bloat."""
+    if not requested_size:
+        return None
+
+    for size in ALLOWED_THUMBNAIL_SIZES:
+        if requested_size <= size:
+            return size
+
+    return ALLOWED_THUMBNAIL_SIZES[-1]   # max size if client asks for something huge
+
+
+def _resize_image(data: BytesIO, size: int) -> BytesIO:
+    img = Image.open(data)
+    img.thumbnail((size, size))
+    buf = BytesIO()
+    img.save(buf, format='JPEG')
+    buf.seek(0)
+    return buf
+
+
+def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -> Union[str, BytesIO]:
+
+    if isinstance(original_path, BytesIO):
+        # cant have mtime for FFMPEG extraction # TODO: Use the song file's mtime?
+        return _resize_image(original_path, size)
+
+    full_path = Path(original_path.decode('utf-8') if isinstance(original_path, bytes) else original_path)
+    if not full_path.is_file():
+        return None
+
+    thumb_path = _thumbnail_path(full_path, size)
+    if thumb_path.is_file():
+        return str(thumb_path)
+
+    try:  # Generate and save thumbnail
+        with open(full_path, 'rb') as f:
+            resized_buffer = _resize_image(BytesIO(f.read()), size)
+            with open(thumb_path, 'wb') as tf:
+                tf.write(resized_buffer.getbuffer())
+
+        return str(thumb_path)
+    except Exception as e:
+        app.logger.error(f"Failed to create thumbnail for {full_path}: {e}")
+        return None
+
+
+##
+# Image fetching
+
+def _image_from_folder(album_dir: Path) -> Optional[Path]:
     if not album_dir.exists() or not album_dir.is_dir():
         return None
 
@@ -44,43 +125,7 @@ def find_art_file(album_dir: Path) -> Optional[Path]:
     return images[0]
 
 
-def thumbnail_path(original_path: Union[Path, str, bytes], size: int) -> Path:
-    """Generates unique path for a cached thumbnail."""
-
-    mtime = os.path.getmtime(original_path)
-    path_str = original_path.decode('utf-8') if isinstance(original_path, bytes) else str(original_path)
-    file_hash = hashlib.md5(f"{path_str}_{size}_{mtime}".encode()).hexdigest()
-
-    return app.config['THUMBNAIL_CACHE_PATH'] / f'{file_hash}.jpg'
-
-
-def cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -> Union[str, BytesIO]:
-
-    if isinstance(original_path, BytesIO):
-        # cant have mtime for FFMPEG extraction # TODO: Use the song file's mtime?
-        return resize_image(original_path, size)
-
-    full_path = Path(original_path.decode('utf-8') if isinstance(original_path, bytes) else original_path)
-    if not full_path.is_file():
-        return None
-
-    thumb_path = thumbnail_path(full_path, size)
-    if thumb_path.is_file():
-        return str(thumb_path)
-
-    try:  # Generate and save thumbnail
-        with open(full_path, 'rb') as f:
-            resized_buffer = resize_image(BytesIO(f.read()), size)
-            with open(thumb_path, 'wb') as tf:
-                tf.write(resized_buffer.getbuffer())
-
-        return str(thumb_path)
-    except Exception as e:
-        app.logger.error(f"Failed to create thumbnail for {full_path}: {e}")
-        return None
-
-
-def extract_cover(path) -> Union[BytesIO, None]:
+def _image_from_song(path) -> Union[BytesIO, None]:
 
     if FFMPEG_PYTHON:
         img_bytes, _ = (
@@ -108,7 +153,7 @@ def extract_cover(path) -> Union[BytesIO, None]:
     return BytesIO(img_bytes) if img_bytes else None
 
 
-def fetch_coverartarchive(mbid: str) -> bytes:
+def query_coverartarchive(mbid: str) -> bytes:
     """Fetch image from CAA and cache the bytes. Returns b'' if not found to avoid retries."""
     if not mbid:
         return b''
@@ -124,14 +169,8 @@ def fetch_coverartarchive(mbid: str) -> bytes:
         return b''
 
 
-def resize_image(data: BytesIO, size: int) -> BytesIO:
-    img = Image.open(data)
-    img.thumbnail((size, size))
-    buf = BytesIO()
-    img.save(buf, format='JPEG')
-    buf.seek(0)
-    return buf
-
+##
+# Main logic for album art and for artist images
 
 def send_album_art(album_id, size=None):
     """
@@ -148,21 +187,21 @@ def send_album_art(album_id, size=None):
     if art_path and os.path.isfile(art_path):
         if size:
             with open(art_path, 'rb') as f:
-                return flask.send_file(resize_image(BytesIO(f.read()), size), mimetype='image/jpeg')
+                return flask.send_file(_resize_image(BytesIO(f.read()), size), mimetype='image/jpeg')
         return flask.send_file(art_path.decode('utf-8'), mimetype=get_mimetype(art_path.decode('utf-8')))
 
     # Check disk
     album_dir_bytes = album.item_dir()
     if album_dir_bytes:
         album_dir = Path(album_dir_bytes.decode('utf-8'))
-        found_art = find_art_file(album_dir)
+        found_art = _image_from_folder(album_dir)
 
         if found_art:
             if size:
-                resized = cached_resize(found_art, size)
+                resized = _cached_resize(found_art, size)
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
             if found_art.suffix.lower() in ['.tiff', '.tif']:
-                resized = cached_resize(found_art, size=1200)
+                resized = _cached_resize(found_art, size=1200)
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
             return flask.send_file(found_art, mimetype=get_mimetype(found_art))
@@ -170,10 +209,10 @@ def send_album_art(album_id, size=None):
     # Proxy from CoverArtArchive
     mbid = album.get('mb_albumid')
     if mbid:
-        image_bytes = fetch_coverartarchive(mbid)
+        image_bytes = query_coverartarchive(mbid)
         if image_bytes:
             if size:
-                return flask.send_file(resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
+                return flask.send_file(_resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     return None # TODO - send a placeholder instead of 404ing
@@ -211,7 +250,7 @@ def send_artist_image(artist, size=None):
         # Serve local if it exists now
         if os.path.isfile(local_image_path):
             if size:
-                resized = cached_resize(local_image_path, size)
+                resized = _cached_resize(local_image_path, size)
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
             return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
@@ -230,7 +269,7 @@ def send_artist_image(artist, size=None):
                     response = requests.get(artist_image_url, timeout=5)
                     if response.ok:
                         if size and size != target_size:
-                            cover = resize_image(BytesIO(response.content), size)
+                            cover = _resize_image(BytesIO(response.content), size)
                             return flask.send_file(cover, mimetype='image/jpeg')
 
                         return flask.send_file(BytesIO(response.content), mimetype='image/jpeg')
@@ -239,15 +278,17 @@ def send_artist_image(artist, size=None):
                     pass
     return None
 
+##
+# Endpoints
 
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
-def get_cover_art():
+def endpoint_get_cover_art():
     r = flask.request.values
     req_id = r.get('id')
 
     if req_id:
-        size = int(r.get('size')) if r.get('size') else None
+        size = _round_size(int(r.get('size'))) if r.get('size') else None
 
         # album requests
         if req_id.startswith(ALB_ID_PREF):
@@ -271,11 +312,11 @@ def get_cover_art():
 
             # Fallback: try to extract cover from the song file
             if have_ffmpeg:
-                cover_io = extract_cover(item.path)
+                cover_io = _image_from_song(item.path)
                 if cover_io is not None:
                     image_bytes = cover_io.getvalue()
                     if size:
-                        cover_io = resize_image(BytesIO(image_bytes), size)
+                        cover_io = _resize_image(BytesIO(image_bytes), size)
                         return flask.send_file(cover_io, mimetype='image/jpeg')
                     return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 

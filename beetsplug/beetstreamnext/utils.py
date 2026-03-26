@@ -167,7 +167,7 @@ def imageart_url(item_id: str, size: Optional[int] = None) -> str:
             k: flask.request.values.get(k)
             for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if flask.request.values.get(k)
         }
-        base_url = flask.url_for('get_cover_art', _external=True, **params)
+        base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
         flask.g._art_base_url = base_url
 
     sep = '&' if '?' in base_url else '?'
@@ -187,7 +187,7 @@ def beets_to_sub_artist(beet_artist_name):
 
 def sub_to_beets_artist(subsonic_artist_id):
     subsonic_artist_id = str(subsonic_artist_id)[len(ART_ID_PREF):]
-    padding = 4 - (len(subsonic_artist_id) % 4)
+    padding = (4 - (len(subsonic_artist_id) % 4)) % 4
     return base64.urlsafe_b64decode(subsonic_artist_id + ('=' * padding)).decode('utf-8')
 
 def beets_to_sub_album(beet_album_id):

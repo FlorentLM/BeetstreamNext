@@ -81,7 +81,7 @@ def before_request():
     # Pre-build base URL for images so all mapping functions use it in the current request
     r = flask.request.values
     params = {k: r.get(k) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if r.get(k)}
-    g._art_base_url = flask.url_for('get_cover_art', _external=True, **params)
+    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
 
 
 @app.after_request
@@ -310,9 +310,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
             with app.app_context():
                 from beetsplug.beetstreamnext import db
                 from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
+                from beetsplug.beetstreamnext.coverart import tidyup_cache
 
                 db.initialise_db()
                 app.config['playlist_provider'] = PlaylistProvider()
+
+                threading.Thread(target=tidyup_cache, args=(30,), daemon=True).start()
 
             app.run(
                 host=host,

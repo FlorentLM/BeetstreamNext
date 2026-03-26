@@ -36,7 +36,7 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 @app.route('/rest/star.view', methods=['GET', 'POST'])
 @app.route('/rest/unstar', methods=['GET', 'POST'])
 @app.route('/rest/unstar.view', methods=['GET', 'POST'])
-def star_or_unstar():
+def endpoint_star_or_unstar():
     r = flask.request.values
 
     resp_fmt = r.get('f', 'xml')
@@ -55,6 +55,8 @@ def star_or_unstar():
     for id_ in to_like:
         _set_liked(username, id_,  liked)
 
+    # TODO: Maybe allow committing to Beets for single user setups?
+
     return subsonic_response({}, resp_fmt)
 
 
@@ -62,7 +64,7 @@ def star_or_unstar():
 @app.route('/rest/getStarred.view', methods=['GET', 'POST'])
 @app.route('/rest/getStarred2', methods=['GET', 'POST'])
 @app.route('/rest/getStarred2.view', methods=['GET', 'POST'])
-def get_starred():
+def endpoint_get_starred():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username

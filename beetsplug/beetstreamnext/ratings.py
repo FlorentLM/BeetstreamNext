@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 
 @app.route('/rest/setRating', methods=['GET', 'POST'])
 @app.route('/rest/setRating.view', methods=['GET', 'POST'])
-def set_rating():
+def endpoint_set_rating():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 
@@ -45,5 +45,7 @@ def set_rating():
                                                               rated_at = excluded.rated_at
                 """, (username, req_id, rating, time.time())
             )
+
+    # TODO: Maybe allow committing to Beets for single user setups?
 
     return subsonic_response({}, resp_fmt)

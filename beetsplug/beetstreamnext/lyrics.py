@@ -5,7 +5,7 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song
 
 
-def fetch_lyrics(item):
+def _fetch_lyrics(item):
 
     if not item:
         return None
@@ -27,7 +27,7 @@ def fetch_lyrics(item):
 
 @app.route('/rest/getLyrics', methods=["GET", "POST"])
 @app.route('/rest/getLyrics.view', methods=["GET", "POST"])
-def get_lyrics():
+def endpoint_get_lyrics():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 
@@ -42,21 +42,22 @@ def get_lyrics():
             """
             SELECT id 
             FROM items 
-            WHERE lower(artist) = lower(?) AND lower(title) = lower(?) LIMIT 1
+            WHERE lower(albumartist) = lower(?) AND lower(title) = lower(?) LIMIT 1
             """, (artist, title)
         )
+    print(artist, title)
 
     if not rows:
         return subsonic_error(70, message="Song not found", resp_fmt=resp_fmt)
 
     item = flask.g.lib.get_item(rows[0][0])
-    lyrics_text = fetch_lyrics(item)
+    lyrics_text = _fetch_lyrics(item)
 
     payload = {
         'lyrics': {
             'artist': artist,
             'title': title,
-            'value': lyrics_text or ""
+            'value': lyrics_text or ''
         }
     }
     return subsonic_response(payload, resp_fmt)
@@ -64,7 +65,7 @@ def get_lyrics():
 
 @app.route('/rest/getLyricsBySongId', methods=["GET", "POST"])
 @app.route('/rest/getLyricsBySongId.view', methods=["GET", "POST"])
-def get_lyrics_by_song_id():
+def endpoint_get_lyrics_by_song_id():
 
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
@@ -79,14 +80,16 @@ def get_lyrics_by_song_id():
     if not item:
         return subsonic_error(70, message="Song not found", resp_fmt=resp_fmt)
 
-    lyrics_text = fetch_lyrics(item)
+    lyrics_text = _fetch_lyrics(item)
 
     lines = [{'value': line} for line in lyrics_text.split('\n')] if lyrics_text else []
     payload = {
         'lyricsList': {
             'structuredLyrics': [
                 {
-                    'lang': 'xxx',  # OpenSubsonic's fallback for unknown language
+                    'displayArtist': item.get('artist') or '',
+                    'displayTitle': item.get('title') or '',
+                    'lang': item.get('language') or 'xxx',  # OpenSubsonic's fallback for unknown language is xxx
                     'synced': False,
                     'line': lines
                 }

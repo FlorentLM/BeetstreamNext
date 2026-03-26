@@ -55,8 +55,7 @@ def get_artists_or_indexes():
     modified_since = r.get('ifModifiedSince')
     if modified_since:
         try:
-            modified_since_ms = int(modified_since)
-            if latest_mtime <= modified_since_ms:
+            if latest_mtime <= int(modified_since):
                 # library hasn't changed: return empty payload
                 empty_payload = {tag: {}}
                 if tag == 'indexes':
@@ -67,15 +66,21 @@ def get_artists_or_indexes():
             pass  # Client sent malformed timestamp, ignore and continue to full sync
 
     with flask.g.lib.transaction() as tx:
-        artists = [
-            row[0] for row in tx.query(
-                """
-                SELECT DISTINCT albumartist 
-                FROM albums 
-                WHERE albumartist is NOT NULL
-                """
-            )
-        ]
+        rows = tx.query(
+            """
+            SELECT albumartist, COUNT(*) as album_count, mb_albumartistid
+            FROM albums
+            WHERE albumartist IS NOT NULL
+            GROUP BY albumartist
+            """
+        )
+
+    artist_prefetch = {}
+    artists = []
+    for row in rows:
+        name, count, mbid = row[0], row[1], row[2]
+        artists.append(name)
+        artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 
     alphanum_dict = defaultdict(list)
     for artist in artists:
@@ -85,7 +90,10 @@ def get_artists_or_indexes():
         tag: {
             'ignoredArticles': '',      # TODO - include config from 'the' plugin??
             'index': [
-                {'name': char, 'artist': list(map(map_artist, artists))}
+                {
+                    'name': char,
+                    'artist': [map_artist(a, with_albums=False, prefetched=artist_prefetch) for a in artists]
+                }
                 for char, artists in sorted(alphanum_dict.items())
             ]
         }

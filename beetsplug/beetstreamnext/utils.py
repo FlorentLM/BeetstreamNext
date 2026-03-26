@@ -332,9 +332,11 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
         songs = list(album_object.items())
         subsonic_album['songCount'] = len(songs)
         subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
+
     elif song_counts and beets_album_id in song_counts:
         songs = []
         subsonic_album['songCount'], subsonic_album['duration'] = song_counts[beets_album_id]
+
     else:
         songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
         subsonic_album['songCount'] = len(songs)
@@ -446,7 +448,7 @@ def map_song(song_object: Union[Dict, library.Item]) -> Dict:
     return subsonic_song
 
 
-def map_artist(artist_name: str, with_albums: bool = True) -> Dict:
+def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> Dict:
 
     subsonic_artist_id = beets_to_sub_artist(artist_name)
 
@@ -472,21 +474,31 @@ def map_artist(artist_name: str, with_albums: bool = True) -> Dict:
     if with_albums:
         albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
         subsonic_artist['albumCount'] = len(albums)
+
         if albums:
             subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
+
         subsonic_artist['album'] = [map_album(alb, with_songs=False) for alb in albums]
+
     else:
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                """
-                SELECT COUNT(*), mb_albumartistid FROM albums WHERE albumartist = ? GROUP BY albumartist
-                """, (artist_name,)
-            )
-        if rows:
-            subsonic_artist['albumCount'] = rows[0][0]
-            subsonic_artist['musicBrainzId'] = rows[0][1] or ''
+        if prefetched and artist_name in prefetched:
+            subsonic_artist['albumCount'] = prefetched[artist_name]['album_count']
+            subsonic_artist['musicBrainzId'] = prefetched[artist_name]['mbid'] or ''
         else:
-            subsonic_artist['albumCount'] = 0
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(
+                    """
+                    SELECT COUNT(*), mb_albumartistid 
+                    FROM albums 
+                    WHERE albumartist = ? 
+                    GROUP BY albumartist
+                    """, (artist_name,)
+                )
+            if rows:
+                subsonic_artist['albumCount'] = rows[0][0]
+                subsonic_artist['musicBrainzId'] = rows[0][1] or ''
+            else:
+                subsonic_artist['albumCount'] = 0
 
     liked_at = cached_user_likes().get(subsonic_artist_id)
     if liked_at:

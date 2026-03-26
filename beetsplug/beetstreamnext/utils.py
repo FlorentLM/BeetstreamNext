@@ -743,34 +743,18 @@ def pythonize_string(s: str) -> Union[str, bool, int, float, None, datetime]:
 # File access and format detection utilities
 
 def creation_date(filepath):
-    """
-    Get a file's creation date.
-    (see: https://stackoverflow.com/a/39501288/1709587)
-    """
+    """Get a file's creation date."""
+
     if platform.system() == 'Windows':
         return os.path.getctime(filepath)
-    elif platform.system() == 'Darwin':
-        stat = os.stat(filepath)
+
+    stat = os.stat(filepath)
+
+    if platform.system() == 'Darwin':
         return stat.st_birthtime
-    else:
-        stat = os.stat(filepath)
-        try:
-            # On some Unix systems, st_birthtime is available so try it
-            return stat.st_birthtime
-        except AttributeError:
-            try:
-                # Run stat twice because it's faster and easier than parsing the %W format...
-                ret = subprocess.run(['stat', '--format=%W', filepath], stdout=subprocess.PIPE)
-                timestamp = ret.stdout.decode('utf-8').strip()
 
-                # ...but we still want millisecond precision :)
-                ret = subprocess.run(['stat', '--format=%w', filepath], stdout=subprocess.PIPE)
-                millis = ret.stdout.decode('utf-8').rsplit('.', 1)[1].split()[0].strip()
-
-                return float(f'{timestamp}.{millis}')
-            except:
-                # If that did not work, settle for last modification time
-                return stat.st_mtime
+    # Linux: fall back to mtime
+    return getattr(stat, 'st_birthtime', stat.st_mtime)
 
 
 def get_mimetype(path):

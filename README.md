@@ -125,9 +125,9 @@ BeetstreamNext is tested and working with:
 - [Feishin](https://github.com/jeffvli/feishin)
 
 ## TODO
+- [x] Maybe provide a direct `smartplaylist` query support for virtual playlists
 - [ ] Docker image
 - [ ] User management (create/delete) via the API (instead of CLI only)
-- [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists
 - [ ] Scrobbling to Last.fm and other similar services
 - [ ] Move now_playing into the db as a volatile table
 

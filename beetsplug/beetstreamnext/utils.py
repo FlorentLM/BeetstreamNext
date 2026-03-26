@@ -310,27 +310,23 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
     songs = []
 
     # Song counts and durations
-    if song_counts and beets_album_id in song_counts:
-        subsonic_album['songCount'], subsonic_album['duration'] = song_counts[beets_album_id]
-    else:
-        # pre-fetched counts, need to load items
+    need_songs = not (song_counts and beets_album_id in song_counts)
+    if need_songs or with_songs:
+
         if isinstance(album_object, library.Album):
             songs = list(album_object.items())
         else:
             songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
 
+    # Song count and duration
+    if song_counts and beets_album_id in song_counts:
+        subsonic_album['songCount'], subsonic_album['duration'] = song_counts[beets_album_id]
+    else:
         subsonic_album['songCount'] = len(songs)
         subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
 
     # Map songs
     if with_songs:
-        # If not fetched above, fetch now
-        if not songs:
-            if isinstance(album_object, library.Album):
-                songs = list(album_object.items())
-            else:
-                songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
-
         song_filesizes = {}
         if songs:
             try:

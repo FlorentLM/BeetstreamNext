@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subs
 
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
-def get_playlists():
+def endpoint_get_playlists():
 
     r = flask.request.values
 
@@ -23,7 +23,7 @@ def get_playlists():
 
 @app.route('/rest/getPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
-def get_playlist():
+def endpoint_get_playlist():
     r = flask.request.values
 
     playlist_id = r.get('id')
@@ -42,7 +42,7 @@ def get_playlist():
 
 @app.route('/rest/createPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
-def create_playlist():
+def endpoint_create_playlist():
 
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
@@ -71,7 +71,7 @@ def create_playlist():
 
 @app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/deletePlaylist.view', methods=['GET', 'POST'])
-def delete_playlist():
+def endpoint_delete_playlist():
 
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
@@ -90,7 +90,7 @@ def delete_playlist():
 
 @app.route('/rest/updatePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
-def update_playlist():
+def endpoint_update_playlist():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 

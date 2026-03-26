@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.utils import (
 
 @app.route('/rest/getPlayQueue', methods=['GET', 'POST'])
 @app.route('/rest/getPlayQueue.view', methods=['GET', 'POST'])
-def get_play_queue():
+def endpoint_get_play_queue():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username
@@ -68,7 +68,7 @@ def get_play_queue():
 
 @app.route('/rest/savePlayQueue', methods=['GET', 'POST'])
 @app.route('/rest/savePlayQueue.view', methods=['GET', 'POST'])
-def save_play_queue():
+def endpoint_save_play_queue():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
     username = flask.g.username

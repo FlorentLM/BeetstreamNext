@@ -17,7 +17,7 @@ from beetsplug.beetstreamnext.utils import (
 
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
-def search():
+def endpoint_search():
     r = flask.request.values
     query_str = r.get('query') or ''
     resp_fmt = r.get('f', 'xml')

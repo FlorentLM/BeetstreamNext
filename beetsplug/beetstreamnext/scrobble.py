@@ -12,7 +12,7 @@ _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 
 @app.route('/rest/scrobble', methods=['GET', 'POST'])
 @app.route('/rest/scrobble.view', methods=['GET', 'POST'])
-def scrobble():
+def endpoint_scrobble():
 
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
@@ -65,7 +65,7 @@ def scrobble():
 
 @app.route('/rest/getNowPlaying', methods=['GET', 'POST'])
 @app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
-def get_now_playing():
+def endpoint_get_now_playing():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 

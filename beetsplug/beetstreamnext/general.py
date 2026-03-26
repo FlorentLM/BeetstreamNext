@@ -27,7 +27,7 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -
 
 @app.route('/rest/getOpenSubsonicExtensions', methods=["GET", "POST"])
 @app.route('/rest/getOpenSubsonicExtensions.view', methods=["GET", "POST"])
-def get_open_subsonic_extensions():
+def endpoint_get_open_subsonic_extensions():
     r = flask.request.values
 
     payload = {
@@ -47,7 +47,7 @@ def get_open_subsonic_extensions():
 
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
-def get_genres():
+def endpoint_get_genres():
     r = flask.request.values
 
     queries = []
@@ -96,7 +96,7 @@ def get_genres():
 
 @app.route('/rest/getLicense', methods=["GET", "POST"])
 @app.route('/rest/getLicense.view', methods=["GET", "POST"])
-def get_license():
+def endpoint_get_license():
     r = flask.request.values
 
     payload = {
@@ -108,7 +108,7 @@ def get_license():
 
 @app.route('/rest/getMusicFolders', methods=["GET", "POST"])
 @app.route('/rest/getMusicFolders.view', methods=["GET", "POST"])
-def get_music_folders():
+def endpoint_get_music_folders():
     r = flask.request.values
 
     payload = musicdirectory_payload(subsonic_musicdirectory_id='m-0', with_artists=False)
@@ -118,7 +118,7 @@ def get_music_folders():
 
 @app.route('/rest/getMusicDirectory', methods=["GET", "POST"])
 @app.route('/rest/getMusicDirectory.view', methods=["GET", "POST"])
-def get_music_directory():
+def endpoint_get_music_directory():
     # Works pretty much like a file system
     # Usually Artist first, then Album, then Songs
     r = flask.request.values

@@ -45,7 +45,7 @@ def get_song_counts(albums: List[Dict]) -> Dict:
 
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
-def get_album():
+def endpoint_get_album():
     r = flask.request.values
     album_id = r.get('id')
     payload = album_payload(album_id, with_songs=True)
@@ -57,7 +57,7 @@ def get_album():
 
 @app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
-def get_album_info(ver=None):
+def endpoint_get_album_info(ver=None):
     r = flask.request.values
 
     req_id = r.get('id')
@@ -86,7 +86,7 @@ def get_album_info(ver=None):
 
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
-def get_album_list(ver=None):
+def endpoint_get_album_list(ver=None):
 
     r = flask.request.values
 

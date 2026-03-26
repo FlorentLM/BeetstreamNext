@@ -6,14 +6,14 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 
 @app.route('/rest/ping', methods=["GET", "POST"])
 @app.route('/rest/ping.view', methods=["GET", "POST"])
-def ping():
+def endpoint_ping():
     r = flask.request.values
     return subsonic_response({}, r.get('f', 'xml'))
 
 
 @app.route('/rest/startScan', methods=["GET", "POST"])
 @app.route('/rest/startScan.view', methods=["GET", "POST"])
-def start_scan():
+def endpoint_start_scan():
     r = flask.request.values
 
     # TODO: maybe trigger a refresh of BeetstreamNext's data (album covers, etc)?
@@ -23,7 +23,7 @@ def start_scan():
 
 @app.route('/rest/tokenInfo', methods=["GET", "POST"])
 @app.route('/rest/tokenInfo.view', methods=["GET", "POST"])
-def token_info():
+def endpoint_token_info():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 

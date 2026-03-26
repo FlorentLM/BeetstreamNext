@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.utils import (
 
 @app.route('/rest/getBookmarks', methods=['GET', 'POST'])
 @app.route('/rest/getBookmarks.view', methods=['GET', 'POST'])
-def get_bookmarks():
+def endpoint_get_bookmarks():
 
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
@@ -48,7 +48,7 @@ def get_bookmarks():
 
 @app.route('/rest/createBookmark', methods=['GET', 'POST'])
 @app.route('/rest/createBookmark.view', methods=['GET', 'POST'])
-def create_bookmark():
+def endpoint_create_bookmark():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 
@@ -78,7 +78,7 @@ def create_bookmark():
 
 @app.route('/rest/deleteBookmark', methods=['GET', 'POST'])
 @app.route('/rest/deleteBookmark.view', methods=['GET', 'POST'])
-def delete_bookmark():
+def endpoint_delete_bookmark():
     r = flask.request.values
     resp_fmt = r.get('f', 'xml')
 

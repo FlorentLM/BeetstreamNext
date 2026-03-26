@@ -42,7 +42,7 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
 @app.route('/rest/getIndexes', methods=["GET", "POST"])
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
-def get_artists_or_indexes():
+def endpoint_get_artists_or_indexes():
     r = flask.request.values
     tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
 
@@ -107,7 +107,7 @@ def get_artists_or_indexes():
 
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
-def get_artist():
+def endpoint_get_artist():
     r = flask.request.values
 
     artist_id = r.get('id')
@@ -121,7 +121,7 @@ def get_artist():
 
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
-def artistInfo2():
+def endpoint_artist_info():
 
     r = flask.request.values
 

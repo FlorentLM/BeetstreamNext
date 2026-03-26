@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union, Optional, Dict, List
+from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple
 import os
 import shutil
 import platform
@@ -717,17 +717,12 @@ def timestamp_to_iso(timestamp) -> str:
 
 
 @lru_cache(maxsize=1024)
-def genres_formatter(genres: Union[str, list, None]) -> list:
+def genres_formatter(genres: Optional[str]) -> List:
     """Additional cleaning for common genres formatting issues."""
     if not genres:
         return []
 
-    raw_list = []
-    if isinstance(genres, list):
-        for item in genres:
-            raw_list.extend(stringlist_splitter(item))
-    else:
-        raw_list = stringlist_splitter(genres)
+    raw_list = stringlist_splitter(genres)
 
     cleaned = []
     for g in raw_list:

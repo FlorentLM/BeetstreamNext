@@ -192,15 +192,17 @@ def send_album_art(album_id, size=None):
 
     # Check disk
     album_dir_bytes = album.item_dir()
-    if album_dir_bytes:
-        album_dir = Path(album_dir_bytes.decode('utf-8'))
+    album_dir = Path(album_dir_bytes.decode('utf-8')) if album_dir_bytes else None
+
+    if album_dir:
         found_art = _image_from_folder(album_dir)
 
         if found_art:
             if size:
                 resized = _cached_resize(found_art, size)
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
-            if found_art.suffix.lower() in ['.tiff', '.tif']:
+
+            if found_art.suffix.lower() in ('.tiff', '.tif'):
                 resized = _cached_resize(found_art, size=1200)
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
@@ -211,6 +213,17 @@ def send_album_art(album_id, size=None):
     if mbid:
         image_bytes = query_coverartarchive(mbid)
         if image_bytes:
+            # Persist to disk if enabled
+            if app.config.get('save_album_art') and album_dir:
+                save_path = album_dir / 'cover.jpg'
+                if not save_path.exists():
+                    try:
+                        img = Image.open(BytesIO(image_bytes))
+                        img.save(save_path, format='JPEG')
+                        app.logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
+                    except Exception as e:
+                        app.logger.warning(f"Could not save album art to {save_path}: {e}")
+
             if size:
                 return flask.send_file(_resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')

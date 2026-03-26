@@ -86,7 +86,8 @@ beetstreamnext:
   
   # Artist images
   fetch_artists_images: True    # Fetch artist photos from Deezer when a client requests them
-  save_artists_images: True     # Save fetched artist photos to their respective folders
+  save_artists_images: True     # Save fetched artist photos to their respective folders (if they don't exist yet)
+  save_album_art: True          # Save fetched album art images to their respective folders (if they don't exist yet)
   
   # Playlists configuration
   playlist_dirs:                # A list of directories to scan for .m3u playlists.

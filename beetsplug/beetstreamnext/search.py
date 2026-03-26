@@ -17,9 +17,10 @@ from beetsplug.beetstreamnext.utils import (
 
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
-def search(ver=None):
+def search():
     r = flask.request.values
     query_str = r.get('query') or ''
+    resp_fmt = r.get('f', 'xml')
 
     song_count = int(r.get('songCount', 20))
     song_offset = int(r.get('songOffset', 0))
@@ -38,34 +39,36 @@ def search(ver=None):
     if query_str.startswith('"') and query_str.endswith('"'):
         query_str = query_str[1:-1]
 
-    if query_str.startswith('b:') or query_str.startswith('beets:'):
+    artist_prefetch = {}
+
+    # Beets query
+    if query_str.startswith(('b:', 'beets:')):
         clean_query = query_str.split(':', 1)[1].strip()
 
         try:
             beets_albums = list(flask.g.lib.albums(clean_query))
             beets_songs = list(flask.g.lib.items(clean_query))
 
-            artist_names = set()
-            for a in beets_albums:
-                if a.albumartist: artist_names.add(a.albumartist)
-            for s in beets_songs:
-                if s.artist: artist_names.add(s.artist)
+            # Dedup artists (from albums and songs)
+            a_artists = {a.albumartist for a in beets_albums if a.albumartist}
+            s_artists = {s.artist for s in beets_songs if s.artist}
+            artist_names = a_artists.union(s_artists)
 
-            artists = sorted(list(artist_names))
+            sorted_artists = sorted(list(artist_names), key=lambda x: remove_accents(x).lower())
 
             songs = beets_songs[song_offset: song_offset + song_count]
             albums = beets_albums[album_offset: album_offset + album_count]
-            artists = artists[artist_offset: artist_offset + artist_count]
+            artists = sorted_artists[artist_offset: artist_offset + artist_count]
 
         except Exception:
-            return subsonic_error(70, r.get('f', 'xml'))
+            return subsonic_error(70, resp_fmt=resp_fmt)
 
+    # Normal SQL search
     else:
         if not query_str:
-            if ver == 2 or tag == 'searchResult2':
+            if tag == 'searchResult2':
                 # search2 does not support empty queries: return an empty response
-                return subsonic_error(10, r.get('f', 'xml'))
-
+                return subsonic_error(10, resp_fmt=resp_fmt)
             # search3 "must support an empty query and return all the data"
             # https://opensubsonic.netlify.app/docs/endpoints/search3/
             pattern = "%"
@@ -73,12 +76,11 @@ def search(ver=None):
             pattern = f"%{query_str.lower()}%"
 
         with flask.g.lib.transaction() as tx:
-
             songs = list(tx.query(
                 """
                 SELECT * FROM items 
                 WHERE lower(title) LIKE ? 
-                ORDER BY title 
+                ORDER BY title COLLATE NOCASE 
                 LIMIT ? OFFSET ?
                 """, (pattern, song_count, song_offset)
             ))
@@ -87,30 +89,36 @@ def search(ver=None):
                 """
                 SELECT * FROM albums 
                 WHERE lower(album) LIKE ? 
-                ORDER BY album 
+                ORDER BY album COLLATE NOCASE 
                 LIMIT ? OFFSET ?
                 """, (pattern, album_count, album_offset)
             ))
 
-            artists = [row[0] for row in tx.query(
+            artist_rows = list(tx.query(
                 """
-                SELECT DISTINCT albumartist
+                SELECT albumartist, COUNT(*), mb_albumartistid
                 FROM albums
-                WHERE lower(albumartist) LIKE ? AND albumartist IS NOT NULL
+                WHERE lower(albumartist) LIKE ?
+                  AND albumartist IS NOT NULL
+                GROUP BY albumartist
+                ORDER BY albumartist COLLATE NOCASE
                 LIMIT ? OFFSET ?
                 """, (pattern, artist_count, artist_offset)
-            )]
+            ))
 
-        # TODO - do the sort in the SQL query instead?
-        artists.sort(key=lambda name: remove_accents(name).upper())
+            artists = []
+            for row in artist_rows:
+                name, count, mbid = row[0], row[1], row[2]
+                artists.append(name)
+                artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 
     song_counts = get_song_counts(albums)
 
     payload = {
         tag: {
-            'artist': [map_artist(name, with_albums=False) for name in artists],
+            'artist': [map_artist(name, with_albums=False, prefetched=artist_prefetch) for name in artists],
             'album': [map_album(alb, with_songs=False, song_counts=song_counts) for alb in albums],
             'song': [map_song(s) for s in songs]
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt)

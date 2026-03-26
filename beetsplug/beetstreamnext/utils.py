@@ -892,13 +892,29 @@ def query_wikipedia(q: str) -> Optional[str]:
 ##
 # Beets' database access utilities
 
-@lru_cache(maxsize=10)
-def get_beets_schema(table_name: str = 'items'):
-    """Query beets database for column names."""
-    with flask.g.lib.transaction() as tx:
-        cursor = tx.query(f"PRAGMA table_info({table_name})")
-        columns = [row[1] for row in cursor]
-    return columns
+def get_beets_schema(table_name: str = 'items') -> List[str]:
+    """Return column names for a beets table, invalidating the cache if the db has changed."""
+
+    lib_path = flask.g.lib.path
+    if isinstance(lib_path, bytes):
+        lib_path = lib_path.decode('utf-8')
+    current_mtime = os.path.getmtime(lib_path)
+
+    cached_mtime = app.config.get('_beets_schema_mtime')
+
+    # Invalidate the schema cache if beets' db file has been modified
+    if cached_mtime != current_mtime:
+        app.config['_beets_schema_mtime'] = current_mtime
+        for t in ('items', 'albums'):
+            app.config.pop(f'_beets_schema_{t}', None)
+
+    cache_key = f'_beets_schema_{table_name}'
+    if cache_key not in app.config:
+        with flask.g.lib.transaction() as tx:
+            cursor = tx.query(f"PRAGMA table_info({table_name})")
+            app.config[cache_key] = [row[1] for row in cursor]
+
+    return app.config[cache_key]
 
 
 def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):

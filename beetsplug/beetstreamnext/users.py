@@ -83,7 +83,7 @@ def _get_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = N
         if cipher:
             user_dict['password'] = cipher.decrypt(password).decode("utf-8")
         else:
-            user_dict['password'] = password.decode('utf-8')
+            user_dict['password'] = password.decode('utf-8') if isinstance(password, bytes) else password
 
     return user_dict
 

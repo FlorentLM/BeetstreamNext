@@ -26,7 +26,7 @@ ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
-ALLOWED_THUMBNAIL_SIZES = [120, 250, 500, 1000, 1200]
+ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
 
 
 def tidyup_cache(days: int = 30):
@@ -260,8 +260,8 @@ def send_artist_image(artist, size=None):
         dz_data = query_deezer(artist=artist_name)
 
         if dz_data and dz_data.get('type', '') == 'artist':
-            available_sizes = [56, 120, 250, 500, 1000]
-            target_size = next((s for s in sorted(available_sizes) if size and s >= size), 1000)
+            deezer_avail_sizes = [56, 120, 250, 500, 1000]
+            target_size = next((s for s in sorted(deezer_avail_sizes) if size and s >= size), 1000)
             artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')
 
             if artist_image_url:

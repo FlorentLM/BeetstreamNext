@@ -1,10 +1,9 @@
-import os
 import re
 import flask
 
 from beets.dbcore.query import MatchQuery
 
-from beetsplug.beetstreamnext import app, stream
+from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
@@ -12,7 +11,6 @@ from beetsplug.beetstreamnext.utils import (
     sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
     map_song, query_lastfm, get_beets_schema
 )
-
 
 
 artists_separators = re.compile(r', | & ')
@@ -28,9 +26,12 @@ def song_payload(subsonic_song_id: str) -> dict:
     return payload
 
 
+##
+# Endpoints
+
 @app.route('/rest/getSong', methods=["GET", "POST"])
 @app.route('/rest/getSong.view', methods=["GET", "POST"])
-def get_song():
+def endpoint_get_song():
     r = flask.request.values
     song_id = r.get('id')
 
@@ -43,7 +44,7 @@ def get_song():
 
 @app.route('/rest/getSongsByGenre', methods=["GET", "POST"])
 @app.route('/rest/getSongsByGenre.view', methods=["GET", "POST"])
-def songs_by_genre():
+def endpoint_songs_by_genre():
     r = flask.request.values
 
     count = int(r.get('count') or 10)
@@ -82,7 +83,7 @@ def songs_by_genre():
 
 @app.route('/rest/getRandomSongs', methods=["GET", "POST"])
 @app.route('/rest/getRandomSongs.view', methods=["GET", "POST"])
-def get_random_songs():
+def endpoint_get_random_songs():
     r = flask.request.values
 
     size = int(r.get('size') or 10)
@@ -104,77 +105,9 @@ def get_random_songs():
     return subsonic_response(payload, r.get('f', 'xml'))
 
 
-@app.route('/rest/stream', methods=["GET", "POST"])
-@app.route('/rest/stream.view', methods=["GET", "POST"])
-def stream_song():
-    r = flask.request.values
-
-    if not bool(flask.g.user_data.get('streamRole')):
-        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
-
-    max_bitrate = int(r.get('maxBitRate', 0))
-    req_format = r.get('format') or 'mp3'
-    time_offset = float(r.get('timeOffset', 0.0))
-    estimate_content_length = r.get('estimateContentLength', 'false').lower() == 'true'
-
-    song_id = sub_to_beets_song(r.get('id'))
-    song = flask.g.lib.get_item(song_id)
-    song_path = song.get('path', b'').decode('utf-8') if song else ''
-
-    if song_path:
-        song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
-
-        needs_transcode = False
-        if not app.config['never_transcode'] and req_format != 'raw':
-
-            # Transcode if bitrate too high
-            if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
-                needs_transcode = True
-
-            # or if client wants different format
-            elif req_format and req_format != song_ext:
-                needs_transcode = True
-
-        if not needs_transcode:
-            response = stream.direct(song_path)
-            est_size = os.path.getsize(song_path) or round(song.get('bitrate', 0) * song.get('length', 0) / 8)
-        else:
-            target_bitrate = max_bitrate if max_bitrate > 0 else 320
-
-            response = stream.try_transcode(
-                song_path,
-                start_at=time_offset,
-                max_bitrate=target_bitrate,
-                req_format=req_format
-            )
-
-            remaining_time = max(0, song.get('length', 0) - time_offset)
-            est_size = int(((target_bitrate * 1000) / 8) * remaining_time)
-
-        if response is not None:
-            if estimate_content_length and est_size:
-                response.headers['Content-Length'] = est_size
-            return response
-
-    return subsonic_error(70, message="Song not found.", resp_fmt=r.get('f', 'xml'))
-
-@app.route('/rest/download', methods=["GET", "POST"])
-@app.route('/rest/download.view', methods=["GET", "POST"])
-def download_song():
-    r = flask.request.values
-
-    if not bool(flask.g.user_data.get('downloadRole')):
-        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
-
-    song_id = sub_to_beets_song(r.get('id'))
-    item = flask.g.lib.get_item(song_id)
-
-    return stream.direct(item.path.decode('utf-8'))
-
-
 @app.route('/rest/getTopSongs', methods=["GET", "POST"])
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
-def get_top_songs():
+def endpoint_get_top_songs():
 
     r = flask.request.values
 
@@ -240,14 +173,12 @@ def get_top_songs():
     return subsonic_response(payload, r.get('f', 'xml'))
 
 
-
-
 @app.route('/rest/getSimilarSongs', methods=["GET", "POST"])
 @app.route('/rest/getSimilarSongs.view', methods=["GET", "POST"])
 
 @app.route('/rest/getSimilarSongs2', methods=["GET", "POST"])
 @app.route('/rest/getSimilarSongs2.view', methods=["GET", "POST"])
-def get_similar_songs():
+def endpoint_get_similar_songs():
 
     r = flask.request.values
 

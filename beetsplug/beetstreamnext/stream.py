@@ -1,20 +1,20 @@
-import os
 import subprocess
 import flask
 
-from beetsplug.beetstreamnext.utils import FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype
+from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.utils import (
+    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song
+)
 
-have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
 
-
-def direct(file_path):
-    if os.path.isfile(file_path):
+def _send_direct(file_path):
+    try:
         return flask.send_file(file_path, mimetype=get_mimetype(file_path))
-    else:
+    except OSError:
         return None
 
 
-def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
+def _send_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
 
     format_map = {
         'mp3': {'f': 'mp3', 'c': 'libmp3lame', 'mime': 'audio/mpeg'},
@@ -70,11 +70,83 @@ def transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_form
             except Exception:
                 pass
 
-    return flask.Response(generate(), mimetype=target['mime'])
+    response = flask.Response(flask.stream_with_context(generate()), mimetype=target['mime'])
+
+    # # Not sure if it's important to tell clients they cant seek with HTTP range headers
+    # response.headers['Accept-Ranges'] = 'none'
+    # response.headers['Cache-Control'] = 'no-cache'
+
+    return response
 
 
 def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
-    if have_ffmpeg:
-        return transcode(file_path, start_at, max_bitrate, req_format)
+    if FFMPEG_PYTHON or FFMPEG_BIN:
+        return _send_transcode(file_path, start_at, max_bitrate, req_format)
     else:
-        return direct(file_path)
+        return _send_direct(file_path)
+
+
+##
+# Endpoints
+
+@app.route('/rest/stream', methods=["GET", "POST"])
+@app.route('/rest/stream.view', methods=["GET", "POST"])
+def endpoint_stream_song():
+    r = flask.request.values
+
+    if not bool(flask.g.user_data.get('streamRole')):
+        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
+
+    max_bitrate = int(r.get('maxBitRate', 0))
+    req_format = r.get('format') or 'mp3'
+    time_offset = float(r.get('timeOffset', 0.0))
+
+    song_id = sub_to_beets_song(r.get('id'))
+    song = flask.g.lib.get_item(song_id)
+    song_path = song.get('path', b'').decode('utf-8') if song else ''
+
+    if song_path:
+        song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
+
+        needs_transcode = False
+        if not app.config['never_transcode'] and req_format != 'raw':
+
+            # Transcode if bitrate too high
+            if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
+                needs_transcode = True
+
+            # or if client wants different format
+            elif req_format and req_format != song_ext:
+                needs_transcode = True
+
+        if not needs_transcode:
+            # send_file handles HTTP 206 Partial Content (Range requests) perfectly
+            response = _send_direct(song_path)
+        else:
+            target_bitrate = max_bitrate if max_bitrate > 0 else 320
+
+            response = try_transcode(
+                song_path,
+                start_at=time_offset,
+                max_bitrate=target_bitrate,
+                req_format=req_format
+            )
+
+        if response is not None:
+            return response
+
+    return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+
+
+@app.route('/rest/download', methods=["GET", "POST"])
+@app.route('/rest/download.view', methods=["GET", "POST"])
+def endpoint_download_song():
+    r = flask.request.values
+
+    if not bool(flask.g.user_data.get('downloadRole')):
+        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
+
+    song_id = sub_to_beets_song(r.get('id'))
+    item = flask.g.lib.get_item(song_id)
+
+    return _send_direct(item.path.decode('utf-8'))

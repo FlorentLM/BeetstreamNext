@@ -119,6 +119,7 @@ import beetsplug.beetstreamnext.playqueue
 import beetsplug.beetstreamnext.bookmarks
 import beetsplug.beetstreamnext.search
 import beetsplug.beetstreamnext.songs
+import beetsplug.beetstreamnext.stream
 import beetsplug.beetstreamnext.scrobble
 import beetsplug.beetstreamnext.lyrics
 import beetsplug.beetstreamnext.users

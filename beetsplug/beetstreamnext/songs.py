@@ -64,7 +64,6 @@ def endpoint_songs_by_genre():
         conditions.append("lower(genre) LIKE lower(?)")
         params.append(genre_pattern)
 
-
     songs = []
     if conditions:
         sql = f"""SELECT * FROM items WHERE ({' OR '.join(conditions)}) ORDER BY title LIMIT ? OFFSET ?"""
@@ -118,11 +117,16 @@ def endpoint_get_top_songs():
     else:
         artist_name = req_artist
 
-    payload = {'topSongs': {'song': []}}
-
     # grab the artist's mbid
     with flask.g.lib.transaction() as tx:
-        mbid_artist = tx.query("""SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1""", (artist_name,))
+        mbid_artist = tx.query(
+            """
+            SELECT mb_artistid 
+            FROM items 
+            WHERE albumartist LIKE ? 
+            LIMIT 1
+            """, (artist_name,)
+        )
 
     if app.config['lastfm_api_key']:
         # Query last.fm for top tracks for this artist and parse the response
@@ -189,7 +193,14 @@ def endpoint_get_similar_songs():
         artist_name = sub_to_beets_artist(req_id)
 
         with flask.g.lib.transaction() as tx:
-            mbid_artist = tx.query("""SELECT mb_artistid FROM items WHERE albumartist LIKE ? LIMIT 1""", (artist_name,))
+            mbid_artist = tx.query(
+                """
+                SELECT mb_artistid 
+                FROM items 
+                WHERE albumartist LIKE ? 
+                LIMIT 1
+                """, (artist_name,)
+            )
 
     elif req_id.startswith(SNG_ID_PREF):
         # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?

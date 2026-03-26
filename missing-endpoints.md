@@ -1,7 +1,7 @@
 # OpenSubsonic API
 
 ## Recent additions
-- `getUsers` / `getUser`
+- `getUsers` / `getUser` / `createUser` / `updateUser` / `deleteUser` / `changePassword`
 - `star` / `unstar` / `getStarred`
 - `setRating`
 - `getBookmarks` / `createBookmark` / `deleteBookmark`
@@ -14,10 +14,6 @@
 ## Missing
 
 ### User management via API
-- `createUser` (currently CLI only via `--user`)
-- `updateUser`
-- `deleteUser`
-- `changePassword`
 - `getAvatar`
 
 ### Social stuff

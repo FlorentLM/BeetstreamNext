@@ -38,7 +38,7 @@ def search(ver=None):
     if query_str.startswith('"') and query_str.endswith('"'):
         query_str = query_str[1:-1]
 
-    if query_str.startswith('b:') or query_str.startswith('beet:'):
+    if query_str.startswith('b:') or query_str.startswith('beets:'):
         clean_query = query_str.split(':', 1)[1].strip()
 
         try:

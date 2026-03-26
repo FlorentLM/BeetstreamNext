@@ -68,9 +68,6 @@ def before_request():
     if flask.request.path == '/':
         return
 
-    from beetsplug.beetstreamnext.users import load_user_roles, authenticate
-    from beetsplug.beetstreamnext.utils import subsonic_error
-
     ok, error_code, username = beetsplug.beetstreamnext.users.authenticate(flask.request.values)
     if not ok:
         resp_fmt = flask.request.values.get('f', 'xml')

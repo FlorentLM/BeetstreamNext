@@ -184,12 +184,21 @@ class Playlist:
                     continue
 
                 if line.startswith('#EXTINF:'):
-                    left_part, info = line[8:].split(",", 1)
-                    duration_and_props = left_part.split()
-                    curr_entry['info'] = info.strip()
-                    curr_entry['runtime'] = int(duration_and_props[0].strip())
-                    curr_entry['props'] = {k.strip(): v.strip('"').strip()
-                                           for k, v in (p.split('=', 1) for p in duration_and_props[1:])}
+                    try:
+                        parts = line[8:].split(",", 1)
+                        left_part = parts[0]
+                        info = parts[1].strip() if len(parts) > 1 else ''
+                        duration_and_props = left_part.split()
+                        curr_entry['info'] = info
+                        curr_entry['runtime'] = int(duration_and_props[0].strip())
+                        curr_entry['props'] = {
+                            k.strip(): v.strip('"').strip()
+                            for p in duration_and_props[1:]
+                            if '=' in p
+                            for k, v in [p.split('=', 1)]
+                        }
+                    except (ValueError, IndexError):
+                        pass
 
                 elif line.startswith('#PLAYLIST:'):
                     curr_entry['name'] = line[10:].strip()
@@ -332,7 +341,30 @@ class PlaylistProvider:
             return None
 
     def getall(self) -> List[Playlist]:
-        """Return all cached playlists."""
+        """Return all playlists, rescanning directories for changes."""
+        for dir_id, dir_path in self.playlist_dirs.items():
+            if dir_path is None:
+                continue
+
+            dir_path = Path(dir_path)
+            current_files = {f.name.lower() for f in dir_path.glob('*.m3u*')}
+
+            with self._lock:
+                # Remove playlists whose files have been deleted
+                stale = [
+                    pid for pid, pl in self._playlists.items()
+                    if pl.dir_id == dir_id and pl.path.name.lower() not in current_files
+                ]
+                for pid in stale:
+                    self._playlists.pop(pid)
+
+            # Register new files and reload modified ones
+            for path in dir_path.glob('*.m3u*'):
+                try:
+                    self._load_playlist(dir_id, path)
+                except Exception as e:
+                    app.logger.error(f"Failed to load playlist {path.name}: {e}")
+
         with self._lock:
             return list(self._playlists.values())
 

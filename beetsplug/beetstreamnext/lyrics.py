@@ -45,7 +45,6 @@ def endpoint_get_lyrics():
             WHERE lower(albumartist) = lower(?) AND lower(title) = lower(?) LIMIT 1
             """, (artist, title)
         )
-    print(artist, title)
 
     if not rows:
         return subsonic_error(70, message="Song not found", resp_fmt=resp_fmt)

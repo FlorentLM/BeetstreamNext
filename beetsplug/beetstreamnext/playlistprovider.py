@@ -16,8 +16,8 @@ class Playlist:
         self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
-        self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
-        self.name = self.path.stem
+        self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.stem[:200].lower()}{self.path.suffix.lower()}"
+        self.name = self.path.stem[:200]
         self.ctime = creation_date(self.path)
         self.mtime = self.path.stat().st_mtime
         self.songs = []
@@ -104,8 +104,9 @@ class Playlist:
 
     def rename(self, name=None):
         with self._lock:
-            if name and name != self.name:
+            if name and name[:200] != self.name:
                 safe_name = os.path.basename(str(name)).rsplit('.', 1)[0]
+                safe_name = safe_name[:200]
 
                 base_dir = self.path.parent.resolve()
                 new_path = (base_dir / f"{safe_name}.m3u").resolve()
@@ -117,8 +118,8 @@ class Playlist:
 
                 self.path.rename(new_path)
                 self.path = new_path
-                self.name = safe_name
-                self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.name.lower()}"
+                self.name = safe_name[:200]
+                self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
                 self.mtime = self.path.stat().st_mtime
 
     def remove_songs(self, indices: List[Any]):
@@ -160,7 +161,7 @@ class Playlist:
             app.logger.warning(err)
             raise FileExistsError(err)
 
-        instance.name = safe_name
+        instance.name = safe_name[:200]
         instance.path = Path(flask.g.playlist_provider.playlist_dirs[0]) / f'{instance.name}.m3u'
 
         if instance.path.is_file():
@@ -169,7 +170,7 @@ class Playlist:
             raise FileExistsError(err)
 
         instance.dir_id = 0
-        instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.name.lower()}'
+        instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.stem.lower()[:200]}{instance.path.suffix.lower()}'
         instance.ctime = None
         instance.mtime = None
         instance.songs = [map_song(song) for song in songs]
@@ -312,7 +313,7 @@ class PlaylistProvider:
         """Load playlist data from a file, or return the cached version if still current."""
 
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.name.lower()}"
+        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.stem.lower()[:200]}{filepath.suffix.lower()}"
 
         # check cache
         playlist = self._playlists.get(playlist_id)

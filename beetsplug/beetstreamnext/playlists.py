@@ -48,8 +48,8 @@ def endpoint_create_playlist():
     resp_fmt = r.get('f', 'xml')
 
     playlist_id = r.get('playlistId')
-    name = r.get('name')
     songs_ids = r.getlist('songId')
+    name = (r.get('name') or '')[:200] or None
 
     if playlist_id:
         # Update mode: API documentation is unclear so we just return an error; probably better to use updatePlaylist
@@ -95,7 +95,7 @@ def endpoint_update_playlist():
     resp_fmt = r.get('f', 'xml')
 
     plid = r.get('playlistId')
-    new_name = r.get('name')
+    new_name = (r.get('name') or '')[:200] or None
 
     to_add = r.getlist('songIdToAdd')
     to_remove = r.getlist('songIndexToRemove')

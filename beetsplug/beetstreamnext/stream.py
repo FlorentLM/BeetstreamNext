@@ -150,7 +150,7 @@ def endpoint_download_song():
     song_id = sub_to_beets_song(r.get('id'))
     item = flask.g.lib.get_item(song_id)
 
-    song_path = os.fsdecode(item.get('path', b'')) if song else ''
+    song_path = os.fsdecode(item.get('path', b'')) if item else ''
     if not song_path:
         return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
 

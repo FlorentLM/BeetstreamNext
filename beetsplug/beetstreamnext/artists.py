@@ -48,9 +48,7 @@ def endpoint_get_artists_or_indexes():
 
     # Beets db modification time
     lib_path = flask.g.lib.path
-    if isinstance(lib_path, bytes):
-        lib_path = lib_path.decode('utf-8')
-    latest_mtime = int(os.path.getmtime(lib_path) * 1000)
+    latest_mtime = int(os.path.getmtime(os.fsdecode(lib_path)) * 1000)
 
     modified_since = r.get('ifModifiedSince')
     if modified_since:

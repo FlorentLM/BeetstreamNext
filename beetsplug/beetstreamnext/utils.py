@@ -105,7 +105,7 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
 def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
 
     subsonic_errors = {
-        0: 'A generic error.',
+        0:  'A generic error.',
         10: 'Required parameter is missing.',
         20: 'Incompatible Subsonic REST protocol version. Client must upgrade.',
         30: 'Incompatible Subsonic REST protocol version. Server must upgrade.',

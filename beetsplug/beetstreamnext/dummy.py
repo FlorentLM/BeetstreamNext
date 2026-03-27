@@ -55,3 +55,15 @@ def endpoint_token_info():
         return subsonic_error(40, resp_fmt=resp_fmt)
 
     return subsonic_response({'tokenInfo': {'username': username}}, resp_fmt)
+
+
+@app.route('/rest/getPodcasts', methods=["GET", "POST"])
+@app.route('/rest/getPodcasts.view', methods=["GET", "POST"])
+def endpoint_get_podcasts():
+    return subsonic_error(0, message='Feature not supported.', resp_fmt=flask.request.values.get('f', 'xml'))
+
+
+@app.route('/rest/getInternetRadioStations', methods=["GET", "POST"])
+@app.route('/rest/getInternetRadioStations.view', methods=["GET", "POST"])
+def endpoint_get_radios():
+    return subsonic_error(0, message='Feature not supported.', resp_fmt=flask.request.values.get('f', 'xml'))

@@ -128,13 +128,16 @@ def _image_from_folder(album_dir: Path) -> Optional[Path]:
 def _image_from_song(path) -> Union[BytesIO, None]:
 
     if FFMPEG_PYTHON:
-        img_bytes, _ = (
-            ffmpeg
-            .input(path)
-            # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
-            .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
-            .run(capture_stdout=True, capture_stderr=False, quiet=True)
-        )
+        try:
+            img_bytes, _ = (
+                ffmpeg
+                .input(path)
+                # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
+                .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
+                .run(capture_stdout=True, capture_stderr=False, quiet=True)
+            )
+        except ffmpeg.Error:
+            img_bytes = b''
 
     elif FFMPEG_BIN:
         command = [
@@ -145,8 +148,12 @@ def _image_from_song(path) -> Union[BytesIO, None]:
             'pipe:1'
         ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        img_bytes, _ = process.communicate()
-
+        try:
+            img_bytes, _ = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate() # flush buffers to avoid zombies
+            img_bytes = b''
     else:
         img_bytes = b''
 

@@ -54,8 +54,6 @@ def cache_location() -> Path:
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
 app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
-app.config['BEETS_DB_PATH'] = Path(config['library'].get())
-app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
 app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
@@ -167,6 +165,9 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('--clear-cache', action='store_true', help="Clear thumbnail and HTTP cache")
 
         def func(lib, opts, args):
+
+            app.config['BEETS_DB_PATH'] = Path(config['library'].get())
+            app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
 
             # Cache clearing
             if opts.clear_cache:

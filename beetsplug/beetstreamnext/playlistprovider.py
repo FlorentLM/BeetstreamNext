@@ -109,7 +109,7 @@ class Playlist:
 
                 base_dir = self.path.parent.resolve()
                 new_path = (base_dir / f"{safe_name}.m3u").resolve()
-                if not str(new_path).startswith(str(base_dir)):
+                if not new_path.is_relative_to(base_dir):
                     raise ValueError("Invalid rename target.")
 
                 if new_path.exists():
@@ -278,7 +278,11 @@ class Playlist:
                     albuminfo += f' ({year})' if year else ''
                     content.append(albuminfo)
 
-                content.append(Path(path).relative_to(app.config['root_directory']).as_posix())
+                try:
+                    path_str = Path(path).relative_to(app.config['root_directory']).as_posix()
+                except ValueError:
+                    path_str = Path(path).as_posix()
+                content.append(path_str)
 
             with open(self.path.with_suffix('.m3u'), 'w', encoding='UTF-8') as f:
                 f.write('\n'.join(content))

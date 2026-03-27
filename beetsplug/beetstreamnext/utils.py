@@ -477,13 +477,16 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     }
 
     if with_albums:
+        from beetsplug.beetstreamnext.albums import get_song_counts
+
         albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
         subsonic_artist['albumCount'] = len(albums)
 
         if albums:
             subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
 
-        subsonic_artist['album'] = [map_album(alb, with_songs=False) for alb in albums]
+        song_counts = get_song_counts(albums)
+        subsonic_artist['album'] = [map_album(alb, with_songs=False, song_counts=song_counts) for alb in albums]
 
     else:
         if prefetched and artist_name in prefetched:

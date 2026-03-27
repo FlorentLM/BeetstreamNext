@@ -230,7 +230,7 @@ class Playlist:
                     curr_entry['artist'] = line[8:].strip()
 
                 elif line.startswith('#EXTGENRE:'):
-                    curr_entry['genres'] = genres_formatter(line[10:])
+                    curr_entry['genres'] = list(genres_formatter(line[10:]))
 
                 elif line.startswith('#EXTM3A'):
                     curr_entry['m3a'] = True

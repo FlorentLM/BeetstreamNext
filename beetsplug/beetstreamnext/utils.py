@@ -1,9 +1,8 @@
-from typing import TYPE_CHECKING, Union, Optional, Dict, List
+from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple
 import os
 import shutil
 import platform
 import importlib
-from pathlib import Path
 from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 import re
@@ -684,7 +683,7 @@ def timestamp_to_iso(timestamp) -> str:
 
 
 @lru_cache(maxsize=1024)
-def genres_formatter(genres: Optional[str]) -> List:
+def genres_formatter(genres: Optional[str]) -> Tuple[str]:
     """Additional cleaning for common genres formatting issues."""
     if not genres:
         return []
@@ -709,7 +708,7 @@ def genres_formatter(genres: Optional[str]) -> List:
         if final_tag:
             cleaned.append(final_tag)
 
-    return list(set(cleaned))
+    return tuple(set(cleaned))
 
 
 def pythonize_string(s: str) -> Union[str, bool, int, float, None, datetime]:

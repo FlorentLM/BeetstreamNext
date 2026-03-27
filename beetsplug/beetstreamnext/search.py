@@ -1,3 +1,4 @@
+import concurrent.futures
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -77,42 +78,58 @@ def endpoint_search():
         else:
             pattern = f"%{query_str.lower()}%"
 
-        with flask.g.lib.transaction() as tx:
-            songs = list(tx.query(
-                """
-                SELECT * FROM items 
-                WHERE lower(title) LIKE ? 
-                ORDER BY title COLLATE NOCASE 
-                LIMIT ? OFFSET ?
-                """, (pattern, song_count, song_offset)
-            ))
+        lib = app.config.get('lib')
 
-            albums = list(tx.query(
-                """
-                SELECT * FROM albums 
-                WHERE lower(album) LIKE ? 
-                ORDER BY album COLLATE NOCASE 
-                LIMIT ? OFFSET ?
-                """, (pattern, album_count, album_offset)
-            ))
+        def search_songs():
+            with lib.transaction() as tx:
+                return list(tx.query(
+                    """
+                    SELECT * FROM items 
+                    WHERE lower(title) LIKE ? 
+                    ORDER BY title COLLATE NOCASE 
+                    LIMIT ? OFFSET ?
+                    """, (pattern, song_count, song_offset)
+                ))
 
-            artist_rows = list(tx.query(
-                """
-                SELECT albumartist, COUNT(*), mb_albumartistid
-                FROM albums
-                WHERE lower(albumartist) LIKE ?
-                  AND albumartist IS NOT NULL
-                GROUP BY albumartist
-                ORDER BY albumartist COLLATE NOCASE
-                LIMIT ? OFFSET ?
-                """, (pattern, artist_count, artist_offset)
-            ))
+        def search_albums():
+            with lib.transaction() as tx:
+                return list(tx.query(
+                    """
+                    SELECT * FROM albums 
+                    WHERE lower(album) LIKE ? 
+                    ORDER BY album COLLATE NOCASE 
+                    LIMIT ? OFFSET ?
+                    """, (pattern, album_count, album_offset)
+                ))
 
-            artists = []
-            for row in artist_rows:
-                name, count, mbid = row[0], row[1], row[2]
-                artists.append(name)
-                artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
+        def search_artists():
+            with lib.transaction() as tx:
+                return list(tx.query(
+                    """
+                    SELECT albumartist, COUNT(*), mb_albumartistid
+                    FROM albums
+                    WHERE lower(albumartist) LIKE ?
+                      AND albumartist IS NOT NULL
+                    GROUP BY albumartist
+                    ORDER BY albumartist COLLATE NOCASE
+                    LIMIT ? OFFSET ?
+                    """, (pattern, artist_count, artist_offset)
+                ))
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            future_songs = executor.submit(search_songs)
+            future_albums = executor.submit(search_albums)
+            future_artists = executor.submit(search_artists)
+
+            songs = future_songs.result()
+            albums = future_albums.result()
+            artist_rows = future_artists.result()
+
+        artists = []
+        for row in artist_rows:
+            name, count, mbid = row[0], row[1], row[2]
+            artists.append(name)
+            artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 
     song_counts = get_song_counts(albums)
 

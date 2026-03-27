@@ -21,6 +21,20 @@ def endpoint_start_scan():
     return subsonic_response({}, r.get('f', 'xml'))
 
 
+@app.route('/rest/getScanStatus', methods=["GET", "POST"])
+@app.route('/rest/getScanStatus.view', methods=["GET", "POST"])
+def endpoint_get_scan_status():
+    r = flask.request.values
+
+    payload = {
+        'scanStatus': {
+            "scanning": False,
+            "count": len(flask.g.lib.items())
+        }
+    }
+    return subsonic_response(payload, r.get('f', 'xml'))
+
+
 @app.route('/rest/tokenInfo', methods=["GET", "POST"])
 @app.route('/rest/tokenInfo.view', methods=["GET", "POST"])
 def endpoint_token_info():

@@ -2,6 +2,7 @@ import sqlite3
 import os
 import base64
 import hashlib
+from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from pathlib import Path
 from typing import Union
@@ -10,28 +11,16 @@ import flask
 from flask import g, current_app
 
 
-def load_env_file(filepath: Union[Path, str] = ".env") -> None:
-    env_file = Path(filepath)
-
-    if not env_file.is_file():
-        return
-
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
-
-        if not line or line.startswith("#") or '=' not in line:
-            continue
-
-        var, value = line.split('=', 1)
-        os.environ[var.strip()] = value.strip().strip('"').strip("'")
-
-
 def _load_env():
     try:
         db_dir = Path(flask.current_app.config['DB_PATH']).parent
-        load_env_file(db_dir / '.env')
-    except RuntimeError:
-        load_env_file()
+        env_path = db_dir / '.env'
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+        else:
+            load_dotenv()
+    except (RuntimeError, KeyError):
+        load_dotenv()
 
 
 def get_cipher() -> Union[Fernet, None]:
@@ -266,7 +255,7 @@ def dual_database():
     """Get internal database with the Beets library attached."""
     db = database()
     if not getattr(g, 'beets_attached', False):
-        beets_path = Path(current_app.config['BEETS_DB_PATH'])
+        beets_path = Path(os.fsdecode(current_app.config['BEETS_DB_PATH']))
         if not beets_path.is_file():
             raise RuntimeError(f"Beets database not found at '{beets_path}'")
 

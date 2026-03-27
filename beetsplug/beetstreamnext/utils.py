@@ -838,10 +838,10 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
 
 
 def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
+
     if not app.config['lastfm_api_key']:
         return {}
 
-    q = q.replace(' ', '+')
     endpoint = 'https://ws.audioscrobbler.com/2.0/'
 
     params = {
@@ -851,10 +851,10 @@ def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
         }
 
     if mbid:
+        q = q.replace(' ', '+')
         params['mbid'] = q
     elif q and type != 'user':
         params[type] = q
-
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
     try:

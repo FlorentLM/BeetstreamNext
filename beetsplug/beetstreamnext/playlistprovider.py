@@ -27,23 +27,24 @@ class Playlist:
 
     def _parse_metadata(self):
         """Quickly parse M3U for duration and song count."""
-        if not self.path.exists():
-            return
-        try:
-            with self.path.open('r', encoding='UTF-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith('#EXTINF:'):
-                        try:
-                            runtime = int(line[8:].split(',', 1)[0].split()[0].strip())
-                            if runtime > 0:
-                                self.duration += runtime
-                        except (ValueError, IndexError):
-                            pass
-                    elif line and not line.startswith('#'):
-                        self.song_count += 1
-        except OSError:
-            pass
+        with self._lock:
+            if not self.path.exists():
+                return
+            try:
+                with self.path.open('r', encoding='UTF-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith('#EXTINF:'):
+                            try:
+                                runtime = int(line[8:].split(',', 1)[0].split()[0].strip())
+                                if runtime > 0:
+                                    self.duration += runtime
+                            except (ValueError, IndexError):
+                                pass
+                        elif line and not line.startswith('#'):
+                            self.song_count += 1
+            except OSError:
+                pass
 
     def load_songs(self):
         """Resolve all songs in the M3U in a minimal number of DB queries."""

@@ -1,3 +1,4 @@
+import os
 import subprocess
 import flask
 
@@ -103,7 +104,7 @@ def endpoint_stream_song():
 
     song_id = sub_to_beets_song(r.get('id'))
     song = flask.g.lib.get_item(song_id)
-    song_path = song.get('path', b'').decode('utf-8') if song else ''
+    song_path = os.fsdecode(song.get('path', b'')) if song else ''
 
     if song_path:
         song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
@@ -149,4 +150,8 @@ def endpoint_download_song():
     song_id = sub_to_beets_song(r.get('id'))
     item = flask.g.lib.get_item(song_id)
 
-    return _send_direct(item.path.decode('utf-8'))
+    song_path = os.fsdecode(item.get('path', b'')) if song else ''
+    if not song_path:
+        return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+
+    return _send_direct(song_path)

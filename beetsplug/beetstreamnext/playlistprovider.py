@@ -252,11 +252,9 @@ class Playlist:
 
             for song in self.songs:
                 path = song.get('path')
-
-                if isinstance(path, bytes):
-                    path = path.decode('utf-8')
                 if not path:
                     continue
+                path = os.fsdecode(path)
 
                 song_id = sub_to_beets_song(song.get('id', ''))
                 length = song.get('duration') or song.get('length', 0)

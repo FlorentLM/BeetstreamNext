@@ -331,8 +331,7 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
         if songs:
             try:
                 first_path = songs[0].path
-                album_dir = os.path.dirname(first_path.decode('utf-8')
-                                            if isinstance(first_path, bytes) else str(first_path))
+                album_dir = os.path.dirname(os.fsdecode(first_path))
 
                 with os.scandir(album_dir) as it:
                     for entry in it:
@@ -369,9 +368,7 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
 
     subsonic_song = map_media(data)
 
-    path = data.get('path', b'')
-    song_filepath = path.decode('utf-8', 'replace') if isinstance(path, bytes) else str(path)
-
+    song_filepath = os.fsdecode(data.get('path', b''))
     album_id = beets_to_sub_album(data.get('album_id', 0))
 
     song_specific = {
@@ -759,11 +756,12 @@ def creation_date(filepath):
 
 def get_mimetype(path):
 
-    if isinstance(path, (bytes, bytearray)):
-        path = path.decode('utf-8')
-    elif isinstance(path, Path):
-        path = path.as_posix()
-    if not '.' in path:     # Assume the passed arg is just an extension
+    if not path:
+        return 'application/octet-stream'
+
+    path = os.fsdecode(path)
+    if not '.' in path or path.startswith('.'):
+        # Assume the passed arg is just an extension
         path = f'file.{path}'
 
     mimetype_fallback = {
@@ -896,9 +894,7 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
     """Return column names for a beets table, invalidating the cache if the db has changed."""
 
     lib_path = flask.g.lib.path
-    if isinstance(lib_path, bytes):
-        lib_path = lib_path.decode('utf-8')
-    current_mtime = os.path.getmtime(lib_path)
+    current_mtime = os.path.getmtime(os.fsdecode(lib_path))
 
     cached_mtime = app.config.get('_beets_schema_mtime')
 

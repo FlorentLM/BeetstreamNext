@@ -291,6 +291,7 @@ def send_artist_image(artist, size=None):
                     pass
     return None
 
+
 ##
 # Endpoints
 
@@ -332,6 +333,8 @@ def endpoint_get_cover_art():
                         cover_io = _resize_image(BytesIO(image_bytes), size)
                         return flask.send_file(cover_io, mimetype='image/jpeg')
                     return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+
+        # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
 
         # artist requests
         else:  # some clients ask with artist ID, others ask with artist name, so this catches both

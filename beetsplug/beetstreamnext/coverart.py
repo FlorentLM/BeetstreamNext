@@ -192,10 +192,13 @@ def send_album_art(album_id, size=None):
     # Check Beets db
     art_path = album.get('artpath', b'')
     if art_path and os.path.isfile(art_path):
-        if size:
-            with open(art_path, 'rb') as f:
-                return flask.send_file(_resize_image(BytesIO(f.read()), size), mimetype='image/jpeg')
-        return flask.send_file(art_path.decode('utf-8'), mimetype=get_mimetype(art_path.decode('utf-8')))
+        try:
+            if size:
+                with open(art_path, 'rb') as f:
+                    return flask.send_file(_resize_image(BytesIO(f.read()), size), mimetype='image/jpeg')
+            return flask.send_file(art_path.decode('utf-8'), mimetype=get_mimetype(art_path.decode('utf-8')))
+        except Exception as e:
+            app.logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
 
     # Check disk
     album_dir_bytes = album.item_dir()
@@ -205,15 +208,18 @@ def send_album_art(album_id, size=None):
         found_art = _image_from_folder(album_dir)
 
         if found_art:
-            if size:
-                resized = _cached_resize(found_art, size)
-                return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+            try:
+                if size:
+                    resized = _cached_resize(found_art, size)
+                    return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
-            if found_art.suffix.lower() in ('.tiff', '.tif'):
-                resized = _cached_resize(found_art, size=1200)
-                return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+                if found_art.suffix.lower() in ('.tiff', '.tif'):
+                    resized = _cached_resize(found_art, size=1200)
+                    return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
-            return flask.send_file(found_art, mimetype=get_mimetype(found_art))
+                return flask.send_file(found_art, mimetype=get_mimetype(found_art))
+            except Exception as e:
+                app.logger.warning(f"Failed to serve folder art for album {album_id} ({found_art}): {e}")
 
     # Proxy from CoverArtArchive
     mbid = album.get('mb_albumid')
@@ -264,8 +270,8 @@ def send_artist_image(artist, size=None):
                         if response.ok and app.config['save_artists_images']:
                             img = Image.open(BytesIO(response.content))
                             img.save(local_image_path)
-                    except requests.RequestException:
-                        pass
+                    except Exception as e:
+                        app.logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
 
         # Serve local if it exists now
         if os.path.isfile(local_image_path):

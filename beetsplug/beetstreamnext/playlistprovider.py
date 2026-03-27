@@ -153,7 +153,7 @@ class Playlist:
         base_dir = Path(flask.g.playlist_provider.playlist_dirs[0]).resolve()
         instance.path = (base_dir / f'{safe_name}.m3u').resolve()
 
-        if not str(instance.path).is_relative_to(base_dir):
+        if not instance.path.is_relative_to(base_dir):
             raise ValueError("Invalid playlist name.")
 
         if instance.path.is_file():

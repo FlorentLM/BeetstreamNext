@@ -33,10 +33,6 @@ from beetsplug.beetstreamnext.db import close_database
 app = flask.Flask(__name__)
 app.teardown_appcontext(close_database)
 
-# TODO: This might make its way into an ephemeral table in the db
-_now_playing = {}  # {username: {'song_id', 'started_at', 'player_name'}}
-_now_playing_lock = threading.Lock()
-
 
 def cache_location() -> Path:
     if platform.system() == "Windows":

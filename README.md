@@ -133,7 +133,7 @@ BeetstreamNext is tested and working with:
 - [ ] Docker image
 - [ ] Add scrobbling to Last.fm and other similar services
 - [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists
-- [ ] Move now_playing into the db as a volatile table
+- [x] Move now_playing into the db as a volatile table
 
 
 ## Missing endpoints

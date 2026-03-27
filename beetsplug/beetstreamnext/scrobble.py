@@ -1,7 +1,7 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext import app, _now_playing, _now_playing_lock
+from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song
 
@@ -30,12 +30,17 @@ def endpoint_scrobble():
     if not submission:
         # "Now playing" -> only update in-memory store
         beets_id = sub_to_beets_song(song_ids[0])
-        with _now_playing_lock:
-            _now_playing[username] = {
-                'song_id': beets_id,
-                'started_at': now,
-                'player_name': client,
-            }
+        with database() as db:
+            db.execute(
+                """
+                INSERT INTO now_playing (username, song_id, started_at, player_name)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (username) DO UPDATE SET
+                    song_id     = excluded.song_id,
+                    started_at  = excluded.started_at,
+                    player_name = excluded.player_name
+                """, (username, beets_id, now, client)
+            )
         return subsonic_response({}, resp_fmt)
 
     times_ms = r.getlist('time')
@@ -72,21 +77,35 @@ def endpoint_get_now_playing():
     now = time.time()
     entries = []
 
-    with _now_playing_lock:
-        stale = [u for u, v in _now_playing.items() if now - v['started_at'] > _NOW_PLAYING_TIMEOUT]
-        for u in stale:
-            del _now_playing[u]
-        snapshot = list(_now_playing.items())
+    with database() as db:
+        db.execute(
+            "DELETE FROM now_playing WHERE ? - started_at > ?",
+            (now, _NOW_PLAYING_TIMEOUT)
+        )
+        rows = db.execute(
+            """
+            SELECT username, song_id, started_at, player_name 
+            FROM now_playing
+            """
+        ).fetchall()
 
-    for username, info in snapshot:
-        item = flask.g.lib.get_item(info['song_id'])
+    for row in rows:
+        username, song_id, started_at, player_name = row
+        item = flask.g.lib.get_item(song_id)
         if not item:
             continue
 
         entry = map_song(item)
         entry['username'] = username
-        entry['minutesAgo'] = int((now - info['started_at']) / 60)
-        entry['playerName'] = info['player_name']
+        entry['minutesAgo'] = int((now - started_at) / 60)
+        entry['playerName'] = player_name
+        entry['playerId'] = 0   # this is a required field
         entries.append(entry)
 
-    return subsonic_response({'nowPlaying': {'entry': entries}}, resp_fmt)
+    payload = {
+        'nowPlaying': {
+            'entry': entries
+        }
+    }
+
+    return subsonic_response(payload, resp_fmt=resp_fmt)

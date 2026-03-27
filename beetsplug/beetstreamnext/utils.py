@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple
+from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple, Any
+import threading
 import os
 import shutil
 import platform
@@ -889,27 +890,36 @@ def query_wikipedia(q: str) -> Optional[str]:
 ##
 # Beets' database access utilities
 
+_schema_cache: Dict[str, Any] = {}
+_schema_lock = threading.Lock()
+
+
 def get_beets_schema(table_name: str = 'items') -> List[str]:
-    """Return column names for a beets table, invalidating the cache if the db has changed."""
+    """Returns column names for the beets db, invalidating the cache if the beets db has changed."""
 
     lib_path = flask.g.lib.path
     current_mtime = os.path.getmtime(os.fsdecode(lib_path))
+    cache_key = f'schema_{table_name}'
 
-    cached_mtime = app.config.get('_beets_schema_mtime')
+    with _schema_lock:
+        if _schema_cache.get('_mtime') != current_mtime:
+            _schema_cache.clear()
+            _schema_cache['_mtime'] = current_mtime
 
-    # Invalidate the schema cache if beets' db file has been modified
-    if cached_mtime != current_mtime:
-        app.config['_beets_schema_mtime'] = current_mtime
-        for t in ('items', 'albums'):
-            app.config.pop(f'_beets_schema_{t}', None)
+        if cache_key in _schema_cache:
+            return _schema_cache[cache_key]
 
-    cache_key = f'_beets_schema_{table_name}'
-    if cache_key not in app.config:
-        with flask.g.lib.transaction() as tx:
-            cursor = tx.query(f"PRAGMA table_info({table_name})")
-            app.config[cache_key] = [row[1] for row in cursor]
+    # Query outside lock to avoid holding during IO
+    with flask.g.lib.transaction() as tx:
+        cursor = tx.query(f"PRAGMA table_info({table_name})")
+        columns = [row[1] for row in cursor]
 
-    return app.config[cache_key]
+    with _schema_lock:
+        # cache only if mtime hasn't changed while querying
+        if _schema_cache.get('_mtime') == current_mtime:
+            _schema_cache[cache_key] = columns
+
+    return columns
 
 
 def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):

@@ -215,6 +215,21 @@ def initialise_db():
         """
     )
 
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS now_playing
+        (
+            username    TEXT PRIMARY KEY,
+            song_id     INTEGER NOT NULL,
+            started_at  REAL    NOT NULL,
+            player_name TEXT    NOT NULL DEFAULT '',
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+    # ephemeral: clears on startup
+    cur.execute("DELETE FROM now_playing")
+
     # Indices for per-user queries (most common accesses)
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username       ON likes(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_username  ON play_stats(username);""")

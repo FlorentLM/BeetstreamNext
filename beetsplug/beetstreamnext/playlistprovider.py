@@ -370,14 +370,14 @@ class PlaylistProvider:
 
     def getall(self) -> List[Playlist]:
         """Return all playlists, rescanning directories for changes."""
-        for dir_id, dir_path in self.playlist_dirs.items():
-            if dir_path is None:
-                continue
+        with self._lock:
+            for dir_id, dir_path in self.playlist_dirs.items():
+                if dir_path is None:
+                    continue
 
-            dir_path = Path(dir_path)
-            current_files = {f.name.lower() for f in dir_path.glob('*.m3u*')}
+                dir_path = Path(dir_path)
+                current_files = {f.name.lower() for f in dir_path.glob('*.m3u*')}
 
-            with self._lock:
                 # Remove playlists whose files have been deleted
                 stale = [
                     pid for pid, pl in self._playlists.items()
@@ -386,14 +386,13 @@ class PlaylistProvider:
                 for pid in stale:
                     self._playlists.pop(pid)
 
-            # Register new files and reload modified ones
-            for path in dir_path.glob('*.m3u*'):
-                try:
-                    self._load_playlist(dir_id, path)
-                except Exception as e:
-                    app.logger.error(f"Failed to load playlist {path.name}: {e}")
+                # Register new files and reload modified ones
+                for path in dir_path.glob('*.m3u*'):
+                    try:
+                        self._load_playlist(dir_id, path)
+                    except Exception as e:
+                        app.logger.error(f"Failed to load playlist {path.name}: {e}")
 
-        with self._lock:
             return list(self._playlists.values())
 
     def register(self, playlist: Playlist) -> None:

@@ -72,7 +72,8 @@ def _round_size(requested_size: Optional[int]) -> Optional[int]:
 
 def _resize_image(data: BytesIO, size: int) -> BytesIO:
     img = Image.open(data)
-    img.convert('RGB').thumbnail((size, size))
+    img = img.convert('RGB')
+    img.thumbnail((size, size))
     buf = BytesIO()
     img.save(buf, format='JPEG')
     buf.seek(0)

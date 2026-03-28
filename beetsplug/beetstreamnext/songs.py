@@ -236,7 +236,7 @@ def endpoint_get_similar_songs():
     if app.config['lastfm_api_key']:
         # Query last.fm for similar artists and parse the response
         if req_artist_mbid:
-            lastfm_resp = query_lastfm(q=req_artist_mbid[0][0], type='artist', method='similar', mbid=True)
+            lastfm_resp = query_lastfm(q=req_artist_mbid, type='artist', method='similar', mbid=True)
         else:
             lastfm_resp = query_lastfm(q=req_artist_name, type='artist', method='similar', mbid=False)
 

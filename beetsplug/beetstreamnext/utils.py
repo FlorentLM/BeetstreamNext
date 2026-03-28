@@ -687,10 +687,10 @@ def timestamp_to_iso(timestamp) -> str:
 
 
 @lru_cache(maxsize=1024)
-def genres_formatter(genres: Optional[str]) -> Tuple[str]:
+def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     """Additional cleaning for common genres formatting issues."""
     if not genres:
-        return []
+        return ()
 
     raw_list = stringlist_splitter(genres)
 
@@ -896,9 +896,14 @@ def query_wikipedia(q: str) -> Optional[str]:
 _schema_cache: Dict[str, Any] = {}
 _schema_lock = threading.Lock()
 
+_beets_table_names = frozenset(['items', 'albums'])
+
 
 def get_beets_schema(table_name: str = 'items') -> List[str]:
     """Returns column names for the beets db, invalidating the cache if the beets db has changed."""
+
+    if table_name not in _beets_table_names:
+        raise AttributeError(f"Table {table_name} does not exist in Beets' db.")
 
     lib_path = flask.g.lib.path
     current_mtime = os.path.getmtime(os.fsdecode(lib_path))
@@ -914,7 +919,7 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
 
     # Query outside lock to avoid holding during IO
     with flask.g.lib.transaction() as tx:
-        cursor = tx.query(f"PRAGMA table_info({table_name})")
+        cursor = tx.query(f"PRAGMA table_info({table_name})")   # TODO: use '?' instead
         columns = [row[1] for row in cursor]
 
     with _schema_lock:

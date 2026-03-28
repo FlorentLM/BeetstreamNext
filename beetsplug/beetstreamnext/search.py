@@ -116,6 +116,7 @@ def endpoint_search():
                     """, (pattern, artist_count, artist_offset)
                 ))
 
+        # TODO: I am not sure this is worth it actually. Should bench it
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             future_songs = executor.submit(search_songs)
             future_albums = executor.submit(search_albums)

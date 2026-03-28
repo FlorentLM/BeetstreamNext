@@ -61,9 +61,11 @@ def before_request():
     if flask.request.path == '/':
         return
 
-    ok, error_code, username = beetsplug.beetstreamnext.users.authenticate(flask.request.values)
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+
+    ok, error_code, username = beetsplug.beetstreamnext.users.authenticate(r)
     if not ok:
-        resp_fmt = flask.request.values.get('f', 'xml')
         return beetsplug.beetstreamnext.utils.subsonic_error(error_code, resp_fmt=resp_fmt)
 
     g.lib = app.config['lib']
@@ -72,8 +74,7 @@ def before_request():
     g.playlist_provider = app.config['playlist_provider']
 
     # Pre-build base URL for images so all mapping functions use it in the current request
-    r = flask.request.values
-    params = {k: r.get(k) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if r.get(k)}
+    params = {k: r.get(k, default='', type=str) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if k in r}
     g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
 
 

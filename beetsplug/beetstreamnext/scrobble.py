@@ -3,7 +3,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song, api_bool
 
 # TODO: Lastfm optional integration?
 
@@ -13,22 +13,22 @@ _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 @app.route('/rest/scrobble', methods=['GET', 'POST'])
 @app.route('/rest/scrobble.view', methods=['GET', 'POST'])
 def endpoint_scrobble():
-
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    song_ids = r.getlist('id', type=str)
+    submission = r.get('submission', default=True, type=api_bool)
+    client = r.get('c', default='', type=str)
+    times_ms = r.getlist('time', type=int)
 
-    song_ids = r.getlist('id')
     if not song_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    # only record if submission=true (does false basically mean 'now playing'?)
-    submission = r.get('submission', 'true').lower() != 'false'
     username = flask.g.username
-    client = r.get('c') or ''
+
     now = time.time()
 
     if not submission:
-        # "Now playing" -> only update in-memory store
+        # if not submission it's just a "Now playing"
         beets_id = sub_to_beets_song(song_ids[0])
         with database() as db:
             db.execute(
@@ -41,16 +41,14 @@ def endpoint_scrobble():
                     player_name = excluded.player_name
                 """, (username, beets_id, now, client)
             )
-        return subsonic_response({}, resp_fmt)
-
-    times_ms = r.getlist('time')
+        return subsonic_response({}, resp_fmt=resp_fmt)
 
     with database() as db:
         for i, song_id in enumerate(song_ids):
             beets_id = sub_to_beets_song(song_id)
 
             try:
-                played_at = int(times_ms[i]) / 1000.0
+                played_at = times_ms[i] / 1000.0
             except (IndexError, ValueError):
                 played_at = now
 
@@ -65,14 +63,14 @@ def endpoint_scrobble():
                 """, (username, beets_id, played_at)
             )
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getNowPlaying', methods=['GET', 'POST'])
 @app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
 def endpoint_get_now_playing():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
 
     now = time.time()
     entries = []

@@ -38,13 +38,12 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 @app.route('/rest/unstar.view', methods=['GET', 'POST'])
 def endpoint_star_or_unstar():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    song_ids = r.getlist('id', type=str)
+    album_ids = r.getlist('albumId', type=str)
+    artist_ids = r.getlist('artistId', type=str)
 
-    resp_fmt = r.get('f', 'xml')
     liked = 'unstar' not in flask.request.path
-
-    song_ids = r.getlist('id')
-    album_ids = r.getlist('albumId')
-    artist_ids = r.getlist('artistId')
 
     if not any([song_ids, album_ids, artist_ids]):
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -57,7 +56,7 @@ def endpoint_star_or_unstar():
 
     # TODO: Maybe allow committing to Beets for single user setups?
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getStarred', methods=['GET', 'POST'])
@@ -66,7 +65,8 @@ def endpoint_star_or_unstar():
 @app.route('/rest/getStarred2.view', methods=['GET', 'POST'])
 def endpoint_get_starred():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+
     username = flask.g.username
 
     with dual_database() as db:
@@ -117,4 +117,4 @@ def endpoint_get_starred():
             'artist': artists,
         }
     }
-    return subsonic_response(payload, resp_fmt)
+    return subsonic_response(payload, resp_fmt=resp_fmt)

@@ -8,9 +8,8 @@ from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subs
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
 def endpoint_get_playlists():
-
     r = flask.request.values
-
+    resp_fmt = r.get('f', default='xml', type=str)
     playlists = flask.g.playlist_provider.getall()
 
     payload = {
@@ -18,38 +17,38 @@ def endpoint_get_playlists():
             'playlist': [map_playlist(p) for p in playlists]
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
 def endpoint_get_playlist():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    playlist_id = r.get('id', default='', type=str)
 
-    playlist_id = r.get('id')
     if not playlist_id:
-        return subsonic_error(10, resp_fmt=r.get('f', 'xml'))
+        return subsonic_error(10, )
 
     playlist = flask.g.playlist_provider.get(playlist_id)
 
     if playlist is None:
-        return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
         'playlist': map_playlist(playlist)
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 @app.route('/rest/createPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
 def endpoint_create_playlist():
 
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
-
-    playlist_id = r.get('playlistId')
-    songs_ids = r.getlist('songId')
-    name = (r.get('name') or '')[:200] or None
+    resp_fmt = r.get('f', default='xml', type=str)
+    playlist_id = r.get('playlistId', default='', type=str)
+    songs_ids = r.getlist('songId', type=str)
+    name = r.get('name', default='', type=str)[:200]
 
     if playlist_id:
         # Update mode: API documentation is unclear so we just return an error; probably better to use updatePlaylist
@@ -66,7 +65,11 @@ def endpoint_create_playlist():
         return subsonic_error(10, message=str(e), resp_fmt=resp_fmt)
 
     flask.g.playlist_provider.register(playlist)
-    return subsonic_response({'playlist': map_playlist(playlist)}, resp_fmt)
+
+    payload = {
+        'playlist': map_playlist(playlist)
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
@@ -74,9 +77,9 @@ def endpoint_create_playlist():
 def endpoint_delete_playlist():
 
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    playlist_id = r.get('id', default='', type=str)
 
-    playlist_id = r.get('id')
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -85,20 +88,18 @@ def endpoint_delete_playlist():
     except FileNotFoundError as e:
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/updatePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
 def endpoint_update_playlist():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
-
-    plid = r.get('playlistId')
-    new_name = (r.get('name') or '')[:200] or None
-
-    to_add = r.getlist('songIdToAdd')
-    to_remove = r.getlist('songIndexToRemove')
+    resp_fmt = r.get('f', default='xml', type=str)
+    plid = r.get('playlistId', default='', type=str)
+    new_name =  r.get('name', default='', type=str)[:200]
+    to_add = r.getlist('songIdToAdd', type=str)
+    to_remove = r.getlist('songIndexToRemove', type=int)
 
     if not plid:
         return subsonic_error(10, "playlistId is required", resp_fmt=resp_fmt)
@@ -132,6 +133,6 @@ def endpoint_update_playlist():
 
     except Exception as e:
         app.logger.error(f"Error updating playlist: {e}")
-        return subsonic_error(0, str(e), resp_fmt=resp_fmt)
+        return subsonic_error(0, message=str(e), resp_fmt=resp_fmt)
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)

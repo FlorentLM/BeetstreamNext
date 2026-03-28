@@ -1,5 +1,5 @@
 import threading
-from typing import Union, List, Any
+from typing import TYPE_CHECKING, Union, List, Any, Optional
 import os
 from pathlib import Path
 import flask
@@ -9,10 +9,13 @@ from beetsplug.beetstreamnext.utils import (
 )
 from beetsplug.beetstreamnext import app
 
+if TYPE_CHECKING:
+    from beets.library import Item
+
 
 class Playlist:
 
-    def __init__(self, dir_id, path):
+    def __init__(self, dir_id, path: Union[str, Path]):
         self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
@@ -103,7 +106,7 @@ class Playlist:
 
         self.song_count = len(self.songs)
 
-    def rename(self, name=None):
+    def rename(self, name : Optional[str] = None):
         with self._lock:
             if name and name[:200] != self.name:
                 safe_name = os.path.basename(str(name)).rsplit('.', 1)[0]
@@ -123,13 +126,11 @@ class Playlist:
                 self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
                 self.mtime = self.path.stat().st_mtime
 
-    def remove_songs(self, indices: List[Any]):
+    def remove_songs(self, indices: List[int]):
         with self._lock:
-            # need descending order so that removing an item doesn't shift other indices
-            indices = sorted([int(i) for i in indices], reverse=True)
-            for index in indices:
-                if 0 <= index < len(self.songs):
-                    self.songs.pop(index)
+            for i in sorted(indices, reverse=True):  # descending order so that removing an item doesn't shift other indices
+                if 0 <= i < len(self.songs):
+                    self.songs.pop(i)
             self._calc_duration()
             self.to_m3u()
 
@@ -144,7 +145,7 @@ class Playlist:
         self.duration = sum(int(s.get('duration', 0) or 0) for s in self.songs)
 
     @classmethod
-    def from_songs(cls, name, songs):
+    def from_songs(cls, name: str, songs: List['Item']):
         """
         Create a new playlist from a list of beets songs, write it to disk, and return Playlist instance.
         """

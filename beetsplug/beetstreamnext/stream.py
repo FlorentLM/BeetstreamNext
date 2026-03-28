@@ -94,16 +94,17 @@ def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_
 @app.route('/rest/stream.view', methods=["GET", "POST"])
 def endpoint_stream_song():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    song_id = r.get('id', default='', type=str)
+    max_bitrate = r.get('maxBitRate', default=0, type=int)
+    req_format = r.get('format', default='mp3', type=str)
+    time_offset = r.get('timeOffset', default=0.0, type=float)
 
     if not bool(flask.g.user_data.get('streamRole')):
-        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
+        return subsonic_error(50, resp_fmt=resp_fmt)
 
-    max_bitrate = int(r.get('maxBitRate', 0))
-    req_format = r.get('format') or 'mp3'
-    time_offset = float(r.get('timeOffset', 0.0))
-
-    song_id = sub_to_beets_song(r.get('id'))
-    song = flask.g.lib.get_item(song_id)
+    beets_song_id = sub_to_beets_song(song_id)
+    song = flask.g.lib.get_item(beets_song_id)
     song_path = os.fsdecode(song.get('path', b'')) if song else ''
 
     if song_path:
@@ -136,22 +137,24 @@ def endpoint_stream_song():
         if response is not None:
             return response
 
-    return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+    return subsonic_error(70, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])
 def endpoint_download_song():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    song_id = r.get('id', default='', type=str)
 
     if not bool(flask.g.user_data.get('downloadRole')):
-        return subsonic_error(50, resp_fmt=r.get('f', 'xml'))
+        return subsonic_error(50, resp_fmt=resp_fmt)
 
-    song_id = sub_to_beets_song(r.get('id'))
-    item = flask.g.lib.get_item(song_id)
+    beets_song_id = sub_to_beets_song(song_id)
+    item = flask.g.lib.get_item(beets_song_id)
 
     song_path = os.fsdecode(item.get('path', b'')) if item else ''
     if not song_path:
-        return subsonic_error(70, resp_fmt=r.get('f', 'xml'))
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     return _send_direct(song_path)

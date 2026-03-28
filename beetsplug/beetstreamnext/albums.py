@@ -47,9 +47,11 @@ def get_song_counts(albums: List[Dict]) -> Dict:
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def endpoint_get_album():
     r = flask.request.values
-    album_id = r.get('id')
+    resp_fmt = r.get('f', default='xml', type=str)
+    album_id = r.get('id', default='', type=str)
+
     payload = album_payload(album_id, with_songs=True)
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
@@ -59,8 +61,9 @@ def endpoint_get_album():
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
 def endpoint_get_album_info(ver=None):
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    req_id = r.get('id', default='', type=str)
 
-    req_id = r.get('id')
     album_id = sub_to_beets_album(req_id)
     album = flask.g.lib.get_album(album_id)
 
@@ -78,7 +81,7 @@ def endpoint_get_album_info(ver=None):
         'largeImageUrl': imageart_url(req_id, size=1200)
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
@@ -87,15 +90,15 @@ def endpoint_get_album_info(ver=None):
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
 def endpoint_get_album_list(ver=None):
-
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
-    sort_by = r.get('type', 'alphabeticalByName')
-    size = int(r.get('size', 10))
-    offset = int(r.get('offset', 0))
-    from_year = int(r.get('fromYear', 0))
-    to_year = int(r.get('toYear', 3000))
-    genre_filter = (r.get('genre') or '')[:64] or None
+    sort_by = r.get('type', default='alphabeticalByName', type=str)
+    size = r.get('size', default=10, type=int)
+    offset = r.get('offset', default=0, type=int)
+    from_year = r.get('fromYear', default=0, type=int)
+    to_year = r.get('toYear', default=3000, type=int)
+    genre_filter = r.get('genre', default='', type=str)[:64] or None
 
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 
@@ -148,7 +151,7 @@ def endpoint_get_album_list(ver=None):
                 "album": [map_album(a, with_songs=False, song_counts=counts) for a in album_dicts]
             }
         }
-        return subsonic_response(payload, r.get('f', 'xml'))
+        return subsonic_response(payload, resp_fmt=resp_fmt)
 
     # All other sort types we can do in SQL directly
     query = """SELECT * FROM albums"""
@@ -208,4 +211,4 @@ def endpoint_get_album_list(ver=None):
             "album": [map_album(a, with_songs=False, song_counts=song_counts) for a in albums]
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)

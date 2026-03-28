@@ -8,23 +8,26 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 @app.route('/rest/ping.view', methods=["GET", "POST"])
 def endpoint_ping():
     r = flask.request.values
-    return subsonic_response({}, r.get('f', 'xml'))
+    resp_fmt = r.get('f', default='xml', type=str)
+    return subsonic_response({}, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/startScan', methods=["GET", "POST"])
 @app.route('/rest/startScan.view', methods=["GET", "POST"])
 def endpoint_start_scan():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     # TODO: maybe trigger a refresh of BeetstreamNext's data (album covers, etc)?
 
-    return subsonic_response({}, r.get('f', 'xml'))
+    return subsonic_response({}, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getScanStatus', methods=["GET", "POST"])
 @app.route('/rest/getScanStatus.view', methods=["GET", "POST"])
 def endpoint_get_scan_status():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     payload = {
         'scanStatus': {
@@ -32,16 +35,16 @@ def endpoint_get_scan_status():
             "count": len(flask.g.lib.items())
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/tokenInfo', methods=["GET", "POST"])
 @app.route('/rest/tokenInfo.view', methods=["GET", "POST"])
 def endpoint_token_info():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    api_key = r.get('apiKey', default='', type=str)
 
-    api_key = r.get('apiKey', '')
     if not api_key:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -54,16 +57,25 @@ def endpoint_token_info():
     if not username:
         return subsonic_error(40, resp_fmt=resp_fmt)
 
-    return subsonic_response({'tokenInfo': {'username': username}}, resp_fmt)
+    payload = {
+        'tokenInfo': {
+            'username': username
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getPodcasts', methods=["GET", "POST"])
 @app.route('/rest/getPodcasts.view', methods=["GET", "POST"])
 def endpoint_get_podcasts():
-    return subsonic_error(0, message='Feature not supported.', resp_fmt=flask.request.values.get('f', 'xml'))
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    return subsonic_error(0, message='Podcast feature is not supported.', resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getInternetRadioStations', methods=["GET", "POST"])
 @app.route('/rest/getInternetRadioStations.view', methods=["GET", "POST"])
 def endpoint_get_radios():
-    return subsonic_error(0, message='Feature not supported.', resp_fmt=flask.request.values.get('f', 'xml'))
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    return subsonic_error(0, message='Radio feature is not supported.', resp_fmt=resp_fmt)

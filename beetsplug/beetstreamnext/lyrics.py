@@ -29,10 +29,9 @@ def _fetch_lyrics(item):
 @app.route('/rest/getLyrics.view', methods=["GET", "POST"])
 def endpoint_get_lyrics():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
-
-    artist = r.get('artist', '')
-    title = r.get('title', '')
+    resp_fmt = r.get('f', default='xml', type=str)
+    artist = r.get('artist', default='', type=str)
+    title = r.get('title', default='', type=str)
 
     if not artist or not title:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -67,9 +66,9 @@ def endpoint_get_lyrics():
 def endpoint_get_lyrics_by_song_id():
 
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    req_id = r.get('id', default='', type=str)
 
-    req_id = r.get('id')
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -95,4 +94,4 @@ def endpoint_get_lyrics_by_song_id():
             ]
         }
     }
-    return subsonic_response(payload, resp_fmt)
+    return subsonic_response(payload, resp_fmt=resp_fmt)

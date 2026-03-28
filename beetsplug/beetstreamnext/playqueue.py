@@ -12,7 +12,8 @@ from beetsplug.beetstreamnext.utils import (
 @app.route('/rest/getPlayQueue.view', methods=['GET', 'POST'])
 def endpoint_get_play_queue():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+
     username = flask.g.username
 
     with database() as db:
@@ -25,7 +26,7 @@ def endpoint_get_play_queue():
         ).fetchone()
 
         if not queue_row:
-            return subsonic_response({}, resp_fmt)
+            return subsonic_response({}, resp_fmt=resp_fmt)
 
         current_beets_id, position, changed, changed_by = queue_row
 
@@ -39,7 +40,7 @@ def endpoint_get_play_queue():
         ).fetchall()
 
     if not entry_rows:
-        return subsonic_response({}, resp_fmt)
+        return subsonic_response({}, resp_fmt=resp_fmt)
 
     with dual_database() as db:
         rows = db.execute(
@@ -63,22 +64,24 @@ def endpoint_get_play_queue():
             'changedBy': changed_by or '',
         }
     }
-    return subsonic_response(payload, resp_fmt)
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/savePlayQueue', methods=['GET', 'POST'])
 @app.route('/rest/savePlayQueue.view', methods=['GET', 'POST'])
 def endpoint_save_play_queue():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    current_sid = r.get('current', default='', type=str)
+    position = r.get('position', default=0.0, type=float)
+    client = r.get('c', default='', type=str)
+    song_ids = r.getlist('id', type=str)
+
     username = flask.g.username
 
-    song_ids = [sub_to_beets_song(sid) for sid in r.getlist('id') if sid]
-    current_sid = r.get('current')
+    beets_song_ids = [sub_to_beets_song(sid) for sid in song_ids if sid]
     current_beets_sid = sub_to_beets_song(current_sid) if current_sid else None
 
-    position = float(r.get('position', 0))
-    client = r.get('c') or ''
     now = time.time()
 
     with database() as db:
@@ -106,7 +109,7 @@ def endpoint_save_play_queue():
             INSERT INTO play_queue_entries (username, position, song_id) 
             VALUES (?, ?, ?)
             """,
-            [(username, i, sid) for i, sid in enumerate(song_ids)]
+            [(username, i, sid) for i, sid in enumerate(beets_song_ids)]
         )
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)

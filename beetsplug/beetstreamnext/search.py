@@ -20,15 +20,18 @@ from beetsplug.beetstreamnext.utils import (
 @app.route('/rest/search3.view', methods=["GET", "POST"])
 def endpoint_search():
     r = flask.request.values
-    query_str = r.get('query') or ''
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    song_count = r.get('songCount', default=20, type=int)
+    song_offset = r.get('songOffset', default=0, type=int)
+    album_count = r.get('albumCount', default=20, type=int)
+    album_offset = r.get('albumOffset', default=0, type=int)
+    artist_count = r.get('artistCount', default=20, type=int)
+    artist_offset = r.get('artistOffset', default=0, type=int)
 
-    song_count = int(r.get('songCount', 20))
-    song_offset = int(r.get('songOffset', 0))
-    album_count = int(r.get('albumCount', 20))
-    album_offset = int(r.get('albumOffset', 0))
-    artist_count = int(r.get('artistCount', 20))
-    artist_offset = int(r.get('artistOffset', 0))
+    query_untrunc = r.get('query', default='', type=str)
+    if query_untrunc.startswith('"') and query_untrunc.endswith('"'):
+        query_untrunc = query_untrunc[1:-1]
+    query = query_untrunc[:256]
 
     if 'search2' in flask.request.path:
         tag = 'searchResult2'
@@ -37,16 +40,11 @@ def endpoint_search():
     else:
         tag = 'searchResult'
 
-    if query_str.startswith('"') and query_str.endswith('"'):
-        query_str = query_str[1:-1]
-
-    query_str = query_str[:256]
-
     artist_prefetch = {}
 
     # Beets query
-    if query_str.startswith(('b:', 'beets:')):
-        clean_query = query_str.split(':', 1)[1].strip()
+    if query.startswith(('b:', 'beets:')):
+        clean_query = query.split(':', 1)[1].strip()
 
         try:
             beets_albums = list(flask.g.lib.albums(clean_query))
@@ -68,7 +66,7 @@ def endpoint_search():
 
     # Normal SQL search
     else:
-        if not query_str:
+        if not query:
             if tag == 'searchResult2':
                 # search2 does not support empty queries: return an empty response
                 return subsonic_error(10, resp_fmt=resp_fmt)
@@ -76,7 +74,7 @@ def endpoint_search():
             # https://opensubsonic.netlify.app/docs/endpoints/search3/
             pattern = "%"
         else:
-            pattern = f"%{query_str.lower()}%"
+            pattern = f"%{query.lower()}%"
 
         lib = app.config.get('lib')
 
@@ -141,4 +139,4 @@ def endpoint_search():
             'song': [map_song(s) for s in songs]
         }
     }
-    return subsonic_response(payload, resp_fmt)
+    return subsonic_response(payload, resp_fmt=resp_fmt)

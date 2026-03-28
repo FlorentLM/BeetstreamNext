@@ -79,7 +79,7 @@ def _resize_image(data: BytesIO, size: int) -> BytesIO:
     return buf
 
 
-def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -> Union[str, BytesIO]:
+def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -> Optional[Union[str, BytesIO]]:
 
     if isinstance(original_path, BytesIO):
         # cant have mtime for FFMPEG extraction # TODO: Use the song file's mtime?
@@ -312,10 +312,11 @@ def send_artist_image(artist, size=None):
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def endpoint_get_cover_art():
     r = flask.request.values
-    req_id = r.get('id')
+    req_id = r.get('id', default='', type=str)
+    size = r.get('size', default=0, type=int)
 
     if req_id:
-        size = _round_size(int(r.get('size'))) if r.get('size') else None
+        size = _round_size(size)
 
         # album requests
         if req_id.startswith(ALB_ID_PREF):

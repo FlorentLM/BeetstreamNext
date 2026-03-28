@@ -44,22 +44,26 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
 def endpoint_get_artists_or_indexes():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    modified_since = r.get('ifModifiedSince', default=0, type=int)
+
     tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
 
     # Beets db modification time
     lib_path = flask.g.lib.path
     latest_mtime = int(os.path.getmtime(os.fsdecode(lib_path)) * 1000)
 
-    modified_since = r.get('ifModifiedSince')
     if modified_since:
         try:
-            if latest_mtime <= int(modified_since):
+            if latest_mtime <= modified_since:
                 # library hasn't changed: return empty payload
-                empty_payload = {tag: {}}
+                empty_payload = {
+                    tag: {}
+                }
                 if tag == 'indexes':
                     empty_payload[tag]['lastModified'] = latest_mtime
+                return subsonic_response(empty_payload, resp_fmt=resp_fmt)
 
-                return subsonic_response(empty_payload, r.get('f', 'xml'))
         except ValueError:
             pass  # Client sent malformed timestamp, ignore and continue to full sync
 
@@ -100,18 +104,19 @@ def endpoint_get_artists_or_indexes():
     if tag == 'indexes':
         payload[tag]['lastModified'] = latest_mtime
 
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
 def endpoint_get_artist():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    artist_id = r.get('id', default='', type=str)
 
-    artist_id = r.get('id')
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
 
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getArtistInfo', methods=["GET", "POST"])
@@ -120,10 +125,10 @@ def endpoint_get_artist():
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
 def endpoint_artist_info():
-
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
+    artist_id = r.get('id', default='', type=str)
 
-    artist_id = r.get('id')
     artist_name = sub_to_beets_artist(artist_id)
     items = flask.g.lib.items(f'albumartist:{artist_name}')
 
@@ -157,4 +162,4 @@ def endpoint_artist_info():
         }
     }
 
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)

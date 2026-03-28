@@ -12,9 +12,9 @@ from beetsplug.beetstreamnext.utils import (
 @app.route('/rest/getBookmarks', methods=['GET', 'POST'])
 @app.route('/rest/getBookmarks.view', methods=['GET', 'POST'])
 def endpoint_get_bookmarks():
-
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+
     username = flask.g.username
 
     with dual_database() as db:
@@ -43,26 +43,26 @@ def endpoint_get_bookmarks():
             'bookmark': bookmarks
         }
     }
-    return subsonic_response(payload, resp_fmt)
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/createBookmark', methods=['GET', 'POST'])
 @app.route('/rest/createBookmark.view', methods=['GET', 'POST'])
 def endpoint_create_bookmark():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
-
+    resp_fmt = r.get('f', default='xml', type=str)
     song_sub_id = r.get('id')
+
     if not song_sub_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     beets_id = sub_to_beets_song(song_sub_id)
-    position = float(r.get('position', 0))
-    comment = r.get('comment', '')
+
+    position = r.get('position', default=0.0, type=float)
+    comment = r.get('comment', default='', type=str)[:1024]
+
     username = flask.g.username
     now = time.time()
-
-    comment = comment[:1024]
 
     with database() as db:
         db.execute(
@@ -75,16 +75,16 @@ def endpoint_create_bookmark():
             """, (username, beets_id, position, comment, now, now)
             )
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/deleteBookmark', methods=['GET', 'POST'])
 @app.route('/rest/deleteBookmark.view', methods=['GET', 'POST'])
 def endpoint_delete_bookmark():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    song_sub_id = r.get('id', default='', type=str)
 
-    song_sub_id = r.get('id')
     if not song_sub_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -100,4 +100,4 @@ def endpoint_delete_bookmark():
             """, (username, beets_id)
         )
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)

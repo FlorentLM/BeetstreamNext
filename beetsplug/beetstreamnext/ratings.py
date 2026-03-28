@@ -10,16 +10,11 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 @app.route('/rest/setRating.view', methods=['GET', 'POST'])
 def endpoint_set_rating():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    req_id = r.get('id', default='', type=str)
+    rating = r.get('rating', default=0, type=int)
 
-    req_id = r.get('id')
-    rating_str = r.get('rating')
-
-    if not req_id or rating_str is None:
-        return subsonic_error(10, resp_fmt=resp_fmt)
-    try:
-        rating = int(rating_str)
-    except ValueError:
+    if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     if rating not in range(0, 6):
@@ -48,4 +43,4 @@ def endpoint_set_rating():
 
     # TODO: Maybe allow committing to Beets for single user setups?
 
-    return subsonic_response({}, resp_fmt)
+    return subsonic_response({}, resp_fmt=resp_fmt)

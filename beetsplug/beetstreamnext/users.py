@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import secrets
-from typing import Union, Sequence, Optional, Dict
+from typing import TYPE_CHECKING, Union, Sequence, Optional, Dict
 from urllib.parse import unquote
 
 import flask
@@ -9,6 +9,9 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import get_cipher, database
 from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string
+
+if TYPE_CHECKING:
+    from werkzeug.datastructures import CombinedMultiDict
 
 
 def _user_payload(user_data: dict) -> dict:
@@ -188,10 +191,14 @@ def update_user(username: str, **updates):
 def delete_user(username: str) -> bool:
     """Core logic to delete a user and related data."""
     with database() as db:
-        cursor = db.execute("""DELETE
-                               FROM users
-                               WHERE username = ?""", (username,))
-        return cursor.rowcount > 0
+        cursor = db.execute(
+            """
+            DELETE
+            FROM users
+            WHERE username = ?
+            """, (username,)
+        )
+    return cursor.rowcount > 0
 
 
 ##
@@ -201,52 +208,61 @@ def delete_user(username: str) -> bool:
 @app.route('/rest/getUser.view', methods=["GET", "POST"])
 def endpoint_get_user():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    req_username = r.get('username', default=flask.g.username, type=str) # 'username' param lets an admin query any user
+    # (defaults to flask.g.username so non-admins can only query themselves)
+    req_username = unquote(req_username)
 
     requesting_user_data = flask.g.user_data
     if not requesting_user_data:
         return subsonic_error(40, resp_fmt=resp_fmt)
 
-    # 'username' param lets an admin query any user (non-admins can only query themselves)
-    requested_username = r.get('username', flask.g.username)
-    if requested_username != flask.g.username and not requesting_user_data.get('adminRole'):
+    if req_username != flask.g.username and not requesting_user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
-    if requested_username != flask.g.username:
-        target_data = _get_userdata(requested_username)
+    if req_username != flask.g.username:
+        target_data = _get_userdata(req_username)
         if not target_data:
             return subsonic_error(70, resp_fmt=resp_fmt)
     else:
         target_data = requesting_user_data
 
-    payload = {'user': _user_payload(target_data)}
-    return subsonic_response(payload, resp_fmt)
+    payload = {
+        'user': _user_payload(target_data)
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getUsers', methods=["GET", "POST"])
 @app.route('/rest/getUsers.view', methods=["GET", "POST"])
 def endpoint_get_users():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
-    users = [_user_payload(u) for u in load_all_users()]
-    payload = {'users': {'user': users}}
-    return subsonic_response(payload, resp_fmt)
+    payload = {
+        'users': {
+            'user': [_user_payload(u) for u in load_all_users()]
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/createUser', methods=["GET", "POST"])
 @app.route('/rest/createUser.view', methods=["GET", "POST"])
 def endpoint_create_user():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    username = r.get('username', default='', type=str)
+    password = r.get('password', default='', type=str)
+    username = unquote(username)
+    password = unquote(password)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
-    username, password = r.get('username'), r.get('password')
     if not username or not password:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -256,73 +272,83 @@ def endpoint_create_user():
         # check if the request explicitly set adminRole, otherwise use False
         is_admin = params.pop('adminRole', False)
         create_user(username, password, admin=is_admin, **params)
-        return subsonic_response({}, resp_fmt)
+        return subsonic_response({}, resp_fmt=resp_fmt)
 
     except ValueError as e:
-        return subsonic_error(70, str(e), resp_fmt=resp_fmt)
+        return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
 
 @app.route('/rest/updateUser', methods=["GET", "POST"])
 @app.route('/rest/updateUser.view', methods=["GET", "POST"])
 def endpoint_update_user():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    username = r.get('username', default='', type=str)
+    password = r.get('password', default='', type=str)
+    username = unquote(username)
+    password = unquote(password)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
-    username = r.get('username')
     try:
         updates = {k: pythonize_string(v) for k, v in r.items() if k in _ALL_USER_FIELDS}
 
-        if r.get('password'):
-            updates['password'] = r.get('password')
+        if password:
+            updates['password'] = password
 
         update_user(username, **updates)
         return subsonic_response({}, resp_fmt)
+
     except ValueError as e:
-        return subsonic_error(70, str(e), resp_fmt=resp_fmt)
+        return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
 
 @app.route('/rest/deleteUser', methods=["GET", "POST"])
 @app.route('/rest/deleteUser.view', methods=["GET", "POST"])
 def endpoint_delete_user():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
+    resp_fmt = r.get('f', default='xml', type=str)
+    target_user = r.get('username', default='', type=str)
+    target_user = unquote(target_user)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
-    target = r.get('username')
-    if target == flask.g.username:
-        return subsonic_error(50, "Admin cannot delete their own account via this endpoint.", resp_fmt=resp_fmt)
+    if not target_user:
+        return subsonic_error(10, message='Username to be deleted must be passed.', resp_fmt=resp_fmt)
 
-    if delete_user(target):
+    if target_user == flask.g.username:
+        return subsonic_error(50, message="Admins cannot delete their own account via this endpoint.", resp_fmt=resp_fmt)
+
+    if delete_user(target_user):
         return subsonic_response({}, resp_fmt)
-    return subsonic_error(70, "User not found.", resp_fmt=resp_fmt)
+
+    return subsonic_error(70, message="User not found.", resp_fmt=resp_fmt)
 
 
 @app.route('/rest/changePassword', methods=["GET", "POST"])
 @app.route('/rest/changePassword.view', methods=["GET", "POST"])
 def endpoint_change_password():
     r = flask.request.values
-    resp_fmt = r.get('f', 'xml')
-
-    target_username = r.get('username', flask.g.username)
-    new_password = r.get('password')
+    resp_fmt = r.get('f', default='xml', type=str)
+    target_user = r.get('username', default=flask.g.username, type=str)
+    new_password =  r.get('password', default='', type=str)
+    target_user = unquote(target_user)
+    new_password = unquote(new_password)
 
     if not new_password:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     # User can change their own password, admin can change anyone's
-    is_self = (target_username == flask.g.username)
+    is_self = (target_user == flask.g.username)
     is_admin = flask.g.user_data.get('adminRole', False)
 
     if not is_self and not is_admin:
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     try:
-        update_user(target_username, password=new_password)
+        update_user(target_user, password=new_password)
         return subsonic_response({}, resp_fmt)
     except ValueError:
         return subsonic_error(70, resp_fmt=resp_fmt)
@@ -420,12 +446,19 @@ def load_user_play_stats(username: str) -> dict:
 
 ##
 
-def authenticate(req_values):
-    api_key = unquote(req_values.get('apiKey', ''))
-    user = unquote(req_values.get('u', ''))
-    token = unquote(req_values.get('t', ''))
-    salt = unquote(req_values.get('s', ''))
-    clearpass = unquote(req_values.get('p', ''))
+def authenticate(flask_req_values: 'CombinedMultiDict'):
+    r = flask_req_values
+    api_key = r.get('apiKey', default='', type=str)
+    user = r.get('u', default='', type=str)
+    token = r.get('t', default='', type=str)
+    salt = r.get('s', default='', type=str)
+    clearpass = r.get('p', default='', type=str)
+
+    api_key = unquote(api_key)
+    user = unquote(user)
+    token = unquote(token)
+    salt = unquote(salt)
+    clearpass = unquote(clearpass)
 
     legacy_auth_enabled = app.config.get('legacy_auth', True)
 

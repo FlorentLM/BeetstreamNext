@@ -29,6 +29,7 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -
 @app.route('/rest/getOpenSubsonicExtensions.view', methods=["GET", "POST"])
 def endpoint_get_open_subsonic_extensions():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     payload = {
         'openSubsonicExtensions': [
@@ -42,13 +43,14 @@ def endpoint_get_open_subsonic_extensions():
             }
         ]
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def endpoint_get_genres():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     queries = []
 
@@ -65,7 +67,12 @@ def endpoint_get_genres():
         queries.append("""SELECT genre AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genre""")
 
     if not queries:
-        return subsonic_response({"genres": {"genre": []}}, r.get('f', 'xml'))
+        payload = {
+            "genres": {
+                "genre": []
+            }
+        }
+        return subsonic_response(payload, resp_fmt=resp_fmt)
 
     with flask.g.lib.transaction() as tx:
         mixed_genres = list(tx.query(" UNION ALL ".join(queries)))
@@ -91,29 +98,31 @@ def endpoint_get_genres():
             "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list]
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getLicense', methods=["GET", "POST"])
 @app.route('/rest/getLicense.view', methods=["GET", "POST"])
 def endpoint_get_license():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     payload = {
         'license': {
             "valid": True
         }
     }
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 @app.route('/rest/getMusicFolders', methods=["GET", "POST"])
 @app.route('/rest/getMusicFolders.view', methods=["GET", "POST"])
 def endpoint_get_music_folders():
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     payload = musicdirectory_payload(subsonic_musicdirectory_id='m-0', with_artists=False)
 
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 @app.route('/rest/getMusicDirectory', methods=["GET", "POST"])
@@ -122,8 +131,8 @@ def endpoint_get_music_directory():
     # Works pretty much like a file system
     # Usually Artist first, then Album, then Songs
     r = flask.request.values
-
-    req_id = r.get('id')
+    resp_fmt = r.get('f', default='xml', type=str)
+    req_id = r.get('id', default='', type=str)
 
     if req_id.startswith(ART_ID_PREF):
         payload = artist_payload(req_id, with_albums=True)
@@ -146,6 +155,6 @@ def endpoint_get_music_directory():
         # payload['directory'] = payload.pop('artist')
         # payload['directory']['child'] = payload['directory'].pop('album')
 
-    return subsonic_response(payload, r.get('f', 'xml'))
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 

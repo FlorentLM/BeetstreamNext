@@ -681,6 +681,9 @@ def trim_text(text, char_limit=300):
 ##
 # Various parsers / converters / formatters
 
+def api_bool(val: Any) -> bool:
+    return str(val).lower() not in ('false', '0', 'no', 'none')
+
 def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
         return ''

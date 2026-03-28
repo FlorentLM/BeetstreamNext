@@ -29,10 +29,13 @@ def endpoint_get_scan_status():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
 
+    with flask.g.lib.transaction() as tx:
+        items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
+
     payload = {
         'scanStatus': {
             "scanning": False,
-            "count": len(flask.g.lib.items())
+            "count": items_count
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

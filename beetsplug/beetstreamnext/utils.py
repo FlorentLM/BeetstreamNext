@@ -520,7 +520,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     return subsonic_artist
 
 
-def map_playlist(playlist):
+def map_playlist(playlist, with_songs=False):
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
@@ -532,7 +532,7 @@ def map_playlist(playlist):
         # 'owner': 'userA',     # TODO
         # 'public': True,
     }
-    if playlist.songs:
+    if with_songs and playlist.songs:
         subsonic_playlist['entry'] = playlist.songs
 
     return subsonic_playlist

@@ -36,7 +36,7 @@ def endpoint_get_playlist():
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
-        'playlist': map_playlist(playlist)
+        'playlist': map_playlist(playlist, with_songs=True)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -54,11 +54,10 @@ def endpoint_create_playlist():
         # Update mode: API documentation is unclear so we just return an error; probably better to use updatePlaylist
         return subsonic_error(0, resp_fmt=resp_fmt)
 
-    if not name or not songs_ids:
+    if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = [flask.g.lib.get_item(sub_to_beets_song(sid)) for sid in songs_ids]
-    songs = [s for s in songs if s]  # drop any that weren't found
+    songs = [flask.g.lib.get_item(sub_to_beets_song(sid)) for sid in songs_ids if sid]
     try:
         playlist = Playlist.from_songs(name, songs)
     except FileExistsError as e:
@@ -111,14 +110,6 @@ def endpoint_update_playlist():
         return subsonic_error(70, "Playlist not found", resp_fmt=resp_fmt)
 
     try:
-        if new_name:
-            old_id = playlist.id
-            playlist.rename(name=new_name)
-
-            # filename changed so ID changed. Update provider cache.
-            pp.deregister(old_id)
-            pp.register(playlist)
-
         if to_remove:
             playlist.remove_songs(to_remove)
 
@@ -130,6 +121,14 @@ def endpoint_update_playlist():
                 if item:
                     beets_items.append(item)
             playlist.add_songs(beets_items)
+
+        if new_name:
+            old_id = playlist.id
+            playlist.rename(name=new_name)
+
+            # filename changed so ID changed. Update provider cache.
+            pp.deregister(old_id)
+            pp.register(playlist)
 
     except Exception as e:
         app.logger.error(f"Error updating playlist: {e}")

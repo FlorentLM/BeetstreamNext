@@ -32,8 +32,12 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
                 """, (username, item_id)
             )
 
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/star/
 @app.route('/rest/star', methods=['GET', 'POST'])
 @app.route('/rest/star.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/unstar/
 @app.route('/rest/unstar', methods=['GET', 'POST'])
 @app.route('/rest/unstar.view', methods=['GET', 'POST'])
 def endpoint_star_or_unstar():
@@ -59,8 +63,11 @@ def endpoint_star_or_unstar():
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred/
 @app.route('/rest/getStarred', methods=['GET', 'POST'])
 @app.route('/rest/getStarred.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred2/
 @app.route('/rest/getStarred2', methods=['GET', 'POST'])
 @app.route('/rest/getStarred2.view', methods=['GET', 'POST'])
 def endpoint_get_starred():

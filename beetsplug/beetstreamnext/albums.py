@@ -43,6 +43,7 @@ def get_song_counts(albums: List[Dict]) -> Dict:
     return counts
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbum/
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def endpoint_get_album():
@@ -54,9 +55,11 @@ def endpoint_get_album():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo/
 @app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo2/
 @app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
 def endpoint_get_album_info(ver=None):
@@ -84,9 +87,11 @@ def endpoint_get_album_info(ver=None):
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList/
 @app.route('/rest/getAlbumList', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList2/
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
 def endpoint_get_album_list(ver=None):

@@ -10,12 +10,15 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
 @app.route('/rest/search', methods=["GET", "POST"])
 @app.route('/rest/search.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/search2/
 @app.route('/rest/search2', methods=["GET", "POST"])
 @app.route('/rest/search2.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/search3/
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
 def endpoint_search():

@@ -6,6 +6,7 @@ from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/
 @app.route('/rest/setRating', methods=['GET', 'POST'])
 @app.route('/rest/setRating.view', methods=['GET', 'POST'])
 def endpoint_set_rating():

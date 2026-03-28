@@ -90,6 +90,7 @@ def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_
 ##
 # Endpoints
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/stream/
 @app.route('/rest/stream', methods=["GET", "POST"])
 @app.route('/rest/stream.view', methods=["GET", "POST"])
 def endpoint_stream_song():
@@ -140,6 +141,7 @@ def endpoint_stream_song():
     return subsonic_error(70, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/download/
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])
 def endpoint_download_song():

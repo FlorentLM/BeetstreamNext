@@ -37,9 +37,11 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
     return payload
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtists/
 @app.route('/rest/getArtists', methods=["GET", "POST"])
 @app.route('/rest/getArtists.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getIndexes/
 @app.route('/rest/getIndexes', methods=["GET", "POST"])
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
 def endpoint_get_artists_or_indexes():
@@ -108,6 +110,7 @@ def endpoint_get_artists_or_indexes():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtist/
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
 def endpoint_get_artist():
@@ -120,9 +123,11 @@ def endpoint_get_artist():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtistInfo/
 @app.route('/rest/getArtistInfo', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtistInfo2/
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
 def endpoint_artist_info():

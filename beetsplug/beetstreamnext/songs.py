@@ -29,6 +29,7 @@ def song_payload(subsonic_song_id: str) -> dict:
 ##
 # Endpoints
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getSong/
 @app.route('/rest/getSong', methods=["GET", "POST"])
 @app.route('/rest/getSong.view', methods=["GET", "POST"])
 def endpoint_get_song():
@@ -43,6 +44,7 @@ def endpoint_get_song():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getSongsByGenre/
 @app.route('/rest/getSongsByGenre', methods=["GET", "POST"])
 @app.route('/rest/getSongsByGenre.view', methods=["GET", "POST"])
 def endpoint_songs_by_genre():
@@ -85,6 +87,7 @@ def endpoint_songs_by_genre():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getRandomSongs/
 @app.route('/rest/getRandomSongs', methods=["GET", "POST"])
 @app.route('/rest/getRandomSongs.view', methods=["GET", "POST"])
 def endpoint_get_random_songs():
@@ -134,6 +137,7 @@ def endpoint_get_random_songs():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getTopSongs/
 @app.route('/rest/getTopSongs', methods=["GET", "POST"])
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
 def endpoint_get_top_songs():
@@ -204,9 +208,11 @@ def endpoint_get_top_songs():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs/
 @app.route('/rest/getSimilarSongs', methods=["GET", "POST"])
 @app.route('/rest/getSimilarSongs.view', methods=["GET", "POST"])
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs2/
 @app.route('/rest/getSimilarSongs2', methods=["GET", "POST"])
 @app.route('/rest/getSimilarSongs2.view', methods=["GET", "POST"])
 def endpoint_get_similar_songs():

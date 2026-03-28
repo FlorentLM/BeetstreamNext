@@ -25,6 +25,7 @@ def _fetch_lyrics(item):
     return None
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyrics/
 @app.route('/rest/getLyrics', methods=["GET", "POST"])
 @app.route('/rest/getLyrics.view', methods=["GET", "POST"])
 def endpoint_get_lyrics():
@@ -63,6 +64,7 @@ def endpoint_get_lyrics():
     return subsonic_response(payload, resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyricsBySongId/
 @app.route('/rest/getLyricsBySongId', methods=["GET", "POST"])
 @app.route('/rest/getLyricsBySongId.view', methods=["GET", "POST"])
 def endpoint_get_lyrics_by_song_id():

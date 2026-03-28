@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
 @app.route('/rest/getBookmarks', methods=['GET', 'POST'])
 @app.route('/rest/getBookmarks.view', methods=['GET', 'POST'])
 def endpoint_get_bookmarks():
@@ -46,6 +47,7 @@ def endpoint_get_bookmarks():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/createBookmark/
 @app.route('/rest/createBookmark', methods=['GET', 'POST'])
 @app.route('/rest/createBookmark.view', methods=['GET', 'POST'])
 def endpoint_create_bookmark():
@@ -78,6 +80,7 @@ def endpoint_create_bookmark():
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteBookmark/
 @app.route('/rest/deleteBookmark', methods=['GET', 'POST'])
 @app.route('/rest/deleteBookmark.view', methods=['GET', 'POST'])
 def endpoint_delete_bookmark():

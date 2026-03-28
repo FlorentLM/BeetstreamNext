@@ -297,6 +297,7 @@ def send_artist_image(artist, size=None):
 ##
 # Endpoints
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def endpoint_get_cover_art():

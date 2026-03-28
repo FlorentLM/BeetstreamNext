@@ -4,6 +4,7 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/ping/
 @app.route('/rest/ping', methods=["GET", "POST"])
 @app.route('/rest/ping.view', methods=["GET", "POST"])
 def endpoint_ping():
@@ -12,6 +13,7 @@ def endpoint_ping():
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/startScan/
 @app.route('/rest/startScan', methods=["GET", "POST"])
 @app.route('/rest/startScan.view', methods=["GET", "POST"])
 def endpoint_start_scan():
@@ -23,6 +25,7 @@ def endpoint_start_scan():
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/
 @app.route('/rest/getScanStatus', methods=["GET", "POST"])
 @app.route('/rest/getScanStatus.view', methods=["GET", "POST"])
 def endpoint_get_scan_status():
@@ -41,6 +44,7 @@ def endpoint_get_scan_status():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/tokenInfo/
 @app.route('/rest/tokenInfo', methods=["GET", "POST"])
 @app.route('/rest/tokenInfo.view', methods=["GET", "POST"])
 def endpoint_token_info():
@@ -68,6 +72,7 @@ def endpoint_token_info():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getPodcasts/
 @app.route('/rest/getPodcasts', methods=["GET", "POST"])
 @app.route('/rest/getPodcasts.view', methods=["GET", "POST"])
 def endpoint_get_podcasts():
@@ -76,6 +81,7 @@ def endpoint_get_podcasts():
     return subsonic_error(0, message='Podcast feature is not supported.', resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getInternetRadioStations/
 @app.route('/rest/getInternetRadioStations', methods=["GET", "POST"])
 @app.route('/rest/getInternetRadioStations.view', methods=["GET", "POST"])
 def endpoint_get_radios():

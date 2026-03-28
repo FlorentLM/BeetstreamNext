@@ -5,6 +5,7 @@ from beetsplug.beetstreamnext.playlistprovider import Playlist
 from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subsonic_error, sub_to_beets_song
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
 def endpoint_get_playlists():
@@ -20,6 +21,7 @@ def endpoint_get_playlists():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylist/
 @app.route('/rest/getPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
 def endpoint_get_playlist():
@@ -40,6 +42,8 @@ def endpoint_get_playlist():
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/createPlaylist/
 @app.route('/rest/createPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
 def endpoint_create_playlist():
@@ -71,6 +75,7 @@ def endpoint_create_playlist():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/deletePlaylist/
 @app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/deletePlaylist.view', methods=['GET', 'POST'])
 def endpoint_delete_playlist():
@@ -90,6 +95,7 @@ def endpoint_delete_playlist():
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/updatePlaylist/
 @app.route('/rest/updatePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
 def endpoint_update_playlist():

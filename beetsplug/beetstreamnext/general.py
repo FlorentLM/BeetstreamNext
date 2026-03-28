@@ -25,6 +25,7 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -
     return payload
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getOpenSubsonicExtensions/
 @app.route('/rest/getOpenSubsonicExtensions', methods=["GET", "POST"])
 @app.route('/rest/getOpenSubsonicExtensions.view', methods=["GET", "POST"])
 def endpoint_get_open_subsonic_extensions():
@@ -46,6 +47,7 @@ def endpoint_get_open_subsonic_extensions():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getGenres/
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def endpoint_get_genres():
@@ -101,6 +103,7 @@ def endpoint_get_genres():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getLicense/
 @app.route('/rest/getLicense', methods=["GET", "POST"])
 @app.route('/rest/getLicense.view', methods=["GET", "POST"])
 def endpoint_get_license():
@@ -114,6 +117,8 @@ def endpoint_get_license():
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicFolders/
 @app.route('/rest/getMusicFolders', methods=["GET", "POST"])
 @app.route('/rest/getMusicFolders.view', methods=["GET", "POST"])
 def endpoint_get_music_folders():
@@ -125,6 +130,7 @@ def endpoint_get_music_folders():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicDirectory/
 @app.route('/rest/getMusicDirectory', methods=["GET", "POST"])
 @app.route('/rest/getMusicDirectory.view', methods=["GET", "POST"])
 def endpoint_get_music_directory():

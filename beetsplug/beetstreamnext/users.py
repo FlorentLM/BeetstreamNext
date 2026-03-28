@@ -208,6 +208,7 @@ def delete_user(username: str) -> bool:
 ##
 # Endpoints
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getUser/
 @app.route('/rest/getUser', methods=["GET", "POST"])
 @app.route('/rest/getUser.view', methods=["GET", "POST"])
 def endpoint_get_user():
@@ -237,6 +238,7 @@ def endpoint_get_user():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getUsers/
 @app.route('/rest/getUsers', methods=["GET", "POST"])
 @app.route('/rest/getUsers.view', methods=["GET", "POST"])
 def endpoint_get_users():
@@ -254,6 +256,7 @@ def endpoint_get_users():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/createUser/
 @app.route('/rest/createUser', methods=["GET", "POST"])
 @app.route('/rest/createUser.view', methods=["GET", "POST"])
 def endpoint_create_user():
@@ -282,6 +285,7 @@ def endpoint_create_user():
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/updateUser/
 @app.route('/rest/updateUser', methods=["GET", "POST"])
 @app.route('/rest/updateUser.view', methods=["GET", "POST"])
 def endpoint_update_user():
@@ -308,6 +312,7 @@ def endpoint_update_user():
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteUser/
 @app.route('/rest/deleteUser', methods=["GET", "POST"])
 @app.route('/rest/deleteUser.view', methods=["GET", "POST"])
 def endpoint_delete_user():
@@ -331,6 +336,7 @@ def endpoint_delete_user():
     return subsonic_error(70, message="User not found.", resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/changePassword/
 @app.route('/rest/changePassword', methods=["GET", "POST"])
 @app.route('/rest/changePassword.view', methods=["GET", "POST"])
 def endpoint_change_password():

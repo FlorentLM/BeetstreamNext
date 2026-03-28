@@ -10,6 +10,7 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, su
 _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @app.route('/rest/scrobble', methods=['GET', 'POST'])
 @app.route('/rest/scrobble.view', methods=['GET', 'POST'])
 def endpoint_scrobble():
@@ -66,6 +67,7 @@ def endpoint_scrobble():
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getNowPlaying/
 @app.route('/rest/getNowPlaying', methods=['GET', 'POST'])
 @app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
 def endpoint_get_now_playing():

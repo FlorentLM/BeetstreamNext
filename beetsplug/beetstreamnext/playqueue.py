@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
 @app.route('/rest/getPlayQueue', methods=['GET', 'POST'])
 @app.route('/rest/getPlayQueue.view', methods=['GET', 'POST'])
 def endpoint_get_play_queue():
@@ -58,6 +59,7 @@ def endpoint_get_play_queue():
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/savePlayQueue/
 @app.route('/rest/savePlayQueue', methods=['GET', 'POST'])
 @app.route('/rest/savePlayQueue.view', methods=['GET', 'POST'])
 def endpoint_save_play_queue():

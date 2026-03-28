@@ -384,7 +384,6 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
         'coverArt': album_id or song_id,
         'language': data.get('language') or '',
 
-        'track': data.get('track') or 1,
         'path': song_filepath,
 
         'played': '',
@@ -414,6 +413,10 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
         'mediaType': 'song'
     }
     subsonic_song.update(song_specific)
+
+    track_nb = data.get('track')
+    if track_nb:
+        subsonic_song['track'] = track_nb
 
     # subsonic_song['replayGain'] = {
     #         'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),

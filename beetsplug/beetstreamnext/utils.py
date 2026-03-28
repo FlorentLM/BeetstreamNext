@@ -404,7 +404,6 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
         'isDir': False,
         'parent': album_id or subsonic_song['artistId'],
 
-        # TODO - is there really no chance to have videos in beets' database?
         'isVideo': False,
         'type': 'music',
 

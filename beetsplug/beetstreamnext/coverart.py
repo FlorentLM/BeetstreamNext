@@ -4,10 +4,10 @@ import subprocess
 import os
 from pathlib import Path
 from typing import Union, Optional
-import requests
 from io import BytesIO
 from PIL import Image
 import flask
+from requests import RequestException
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
@@ -163,7 +163,7 @@ def query_coverartarchive(mbid: str) -> bytes:
             app.logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
         return response.content if response.ok else b''
 
-    except requests.exceptions.RequestException:
+    except RequestException:
         return b''
 
 
@@ -255,7 +255,7 @@ def send_artist_image(artist, size=None):
 
                 if artist_image_url:
                     try:
-                        response = requests.get(artist_image_url, timeout=5)
+                        response = http_session.get(artist_image_url, timeout=5)
                         if response.ok and app.config['save_artists_images']:
                             img = Image.open(BytesIO(response.content))
                             img.save(local_image_path)
@@ -281,7 +281,7 @@ def send_artist_image(artist, size=None):
 
             if artist_image_url:
                 try:
-                    response = requests.get(artist_image_url, timeout=5)
+                    response = http_session.get(artist_image_url, timeout=5)
                     if response.ok:
                         if size and size != target_size:
                             cover = _resize_image(BytesIO(response.content), size)
@@ -289,7 +289,7 @@ def send_artist_image(artist, size=None):
 
                         return flask.send_file(BytesIO(response.content), mimetype='image/jpeg')
 
-                except requests.RequestException:
+                except RequestException:
                     pass
     return None
 

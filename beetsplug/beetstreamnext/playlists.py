@@ -28,7 +28,7 @@ def endpoint_get_playlist():
     playlist_id = r.get('id', default='', type=str)
 
     if not playlist_id:
-        return subsonic_error(10, )
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     playlist = flask.g.playlist_provider.get(playlist_id)
 

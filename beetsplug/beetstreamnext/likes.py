@@ -106,7 +106,8 @@ def endpoint_get_starred():
     albums = [map_album(row, with_songs=False, song_counts=song_counts) for row in album_dicts]
 
     artist_ids = [row[0] for row in artist_rows]
-    artists = [map_artist(sub_to_beets_artist(aid), with_albums=False) for aid in artist_ids]
+
+    artists = [map_artist(sub_to_beets_artist(aid), with_albums=False) for aid in artist_ids] # TODO: N+1 query to fix here
 
     tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {

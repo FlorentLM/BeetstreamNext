@@ -180,6 +180,8 @@ def sub_to_beets_song(subsonic_song_id):
 ##
 # Caching user data in g
 
+# TODO: need to figure out something better than loading all likes at once
+
 def cached_user_likes():
     if 'liked' not in flask.g:
         from beetsplug.beetstreamnext.users import load_user_likes
@@ -311,8 +313,9 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
 
     # Song counts and durations
     need_songs = not (song_counts and beets_album_id in song_counts)
-    if need_songs or with_songs:
 
+    # Still need to load songs to get the count if song_counts is not passed   # TODO: Can this be avoided?
+    if need_songs or with_songs:
         if isinstance(album_object, library.Album):
             songs = list(album_object.items())
         else:
@@ -616,6 +619,8 @@ def standard_ascii(text: str) -> str:
 
     text = unicodedata.normalize('NFC', str(text))
 
+    # TODO: Use str.translate() here instead?
+
     replacements = {
         '\u2010': '-',
         '\u2011': '-',
@@ -763,7 +768,7 @@ def get_mimetype(path):
         return 'application/octet-stream'
 
     path = os.fsdecode(path)
-    if not '.' in path or path.startswith('.'):
+    if '.' not in path or path.startswith('.'):
         # Assume the passed arg is just an extension
         path = f'file.{path}'
 

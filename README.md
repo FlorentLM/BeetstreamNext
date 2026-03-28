@@ -128,6 +128,7 @@ BeetstreamNext is tested and working with:
 ## TODO
 - [x] User management (create/delete) via the API (instead of CLI only)
 - [ ] Implement rate limiting
+- [ ] Use MBID instead of artists names for internal ID mapping
 - [ ] Support multi-artists / contributors / producers / labels properly
 - [ ] Make an Admin WebUI panel to manage users
 - [ ] Docker image

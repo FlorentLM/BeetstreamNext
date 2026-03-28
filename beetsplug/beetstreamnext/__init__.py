@@ -58,15 +58,61 @@ app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 
+
+# Cache cleanup
+_cleanup_lock = threading.Lock()
+_last_cleanup: float = 0.0
+_CLEANUP_INTERVAL = 24 * 3600  # once per day
+_MAX_CACHE_AGE_DAYS = 30
+
+
+def try_tidyingup_cache():
+    """Deletes old cached thumbnails periodically."""
+
+    global _last_cleanup
+
+    now = time.time()
+    if now - _last_cleanup < _CLEANUP_INTERVAL:
+        return
+
+    if not _cleanup_lock.acquire(blocking=False):
+        return  # another thread already doing it
+
+    try:
+        # check inside the lock if another thread may have just finished
+        if now - _last_cleanup < _CLEANUP_INTERVAL:
+            return
+        _last_cleanup = now
+    finally:
+        _cleanup_lock.release()
+
+    def _tidyup_cache(days):
+        cache_dir = app.config['THUMBNAIL_CACHE_PATH']
+        if not cache_dir.exists():
+            return
+
+        max_age_seconds = days * 86400
+        now = time.time()
+        try:
+            app.logger.info(f"[{now}] Thumbnail cache cleanup triggered.")
+            for f in cache_dir.glob('*.jpg'):
+                if now - f.stat().st_mtime > max_age_seconds:
+                    f.unlink(missing_ok=True)
+        except Exception as e:
+            app.logger.error(f"Error cleaning thumbnail cache: {e}")
+
+    thread = threading.Thread(target=_tidyup_cache, kwargs={'days': _MAX_CACHE_AGE_DAYS}, daemon=True)
+    thread.start()
+
+
 # Rate-limit auth failures
-FAILED_AUTH_ATTEMPTS = defaultdict(list)    # dict of IP -> list of failed attempts timestamps
-# Block for 5 minutes after 5 failed attempts
-MAX_FAILURES = 5
-BLOCK_TIME_SECONDS = 300
+_FAILED_AUTH_ATTEMPTS = defaultdict(list)    # dict of IP -> list of failed attempts timestamps
+_MAX_AUTH_FAILURES = 5      # Block for 5 minutes
+_BLOCK_TIME_SECONDS = 300   # after 5 failed attempts
 
 
 @app.before_request
-def before_request():
+def _before_request():
 
     if flask.request.path == '/':
         return
@@ -80,24 +126,24 @@ def before_request():
     from beetsplug.beetstreamnext.utils import subsonic_error
     from beetsplug.beetstreamnext.users import authenticate, load_user_roles
 
-    if client_ip in FAILED_AUTH_ATTEMPTS:
+    if client_ip in _FAILED_AUTH_ATTEMPTS:
 
-        FAILED_AUTH_ATTEMPTS[client_ip] = [
-            t for t in FAILED_AUTH_ATTEMPTS[client_ip]
-            if now - t < BLOCK_TIME_SECONDS     # remove attempts older than BLOCK_TIME_SECONDS
+        _FAILED_AUTH_ATTEMPTS[client_ip] = [
+            t for t in _FAILED_AUTH_ATTEMPTS[client_ip]
+            if now - t < _BLOCK_TIME_SECONDS     # remove attempts older than BLOCK_TIME_SECONDS
         ]
 
         # If currently blocked, immediately reject
-        if len(FAILED_AUTH_ATTEMPTS[client_ip]) >= MAX_FAILURES:
+        if len(_FAILED_AUTH_ATTEMPTS[client_ip]) >= _MAX_AUTH_FAILURES:
             return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
 
     # Attempt authentication
     ok, error_code, username = authenticate(r)
     if not ok:
-        FAILED_AUTH_ATTEMPTS[client_ip].append(now)     # failed attempt : record it
+        _FAILED_AUTH_ATTEMPTS[client_ip].append(now)     # failed attempt : record it
         return subsonic_error(error_code, resp_fmt=resp_fmt)
 
-    FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
+    _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
 
     g.lib = app.config['lib']
     g.username = username
@@ -108,9 +154,11 @@ def before_request():
     params = {k: r.get(k, default='', type=str) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if k in r}
     g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
 
+    try_tidyingup_cache()
+
 
 @app.after_request
-def add_security_headers(response):
+def _add_security_headers(response):
     response.headers['Referrer-Policy'] = 'no-referrer'
     return response
 
@@ -316,7 +364,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     )
 
             possible_paths = [
-                (0, self.config['playlist_dir'].get(None)),  # BeetstreamNext's own
+                (0, self.config['playlist_dir'].as_path()),  # BeetstreamNext's own
                 (1, config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
                 (2, config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
             ]
@@ -346,12 +394,9 @@ class BeetstreamNextPlugin(BeetsPlugin):
             with app.app_context():
                 from beetsplug.beetstreamnext import db
                 from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
-                from beetsplug.beetstreamnext.coverart import tidyup_cache
 
                 db.initialise_db()
                 app.config['playlist_provider'] = PlaylistProvider()
-
-                threading.Thread(target=tidyup_cache, args=(30,), daemon=True).start()
 
             # if debug:
             #     app.run(host=host, port=port, debug=True, threaded=True)

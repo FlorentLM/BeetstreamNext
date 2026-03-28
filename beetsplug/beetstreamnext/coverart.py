@@ -3,7 +3,6 @@ import re
 import subprocess
 import os
 from pathlib import Path
-from time import time
 from typing import Union, Optional
 import requests
 from io import BytesIO
@@ -27,22 +26,6 @@ ART_PRIORITY = [
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
 ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
-
-
-def tidyup_cache(days: int = 30):
-    """Deletes old cached thumbnails."""
-    cache_dir = app.config['THUMBNAIL_CACHE_PATH']
-    if not cache_dir.exists():
-        return
-
-    max_age_seconds = days * 86400
-    now = time()
-    try:
-        for f in cache_dir.glob('*.jpg'):
-            if now - f.stat().st_mtime > max_age_seconds:
-                f.unlink(missing_ok=True)
-    except Exception as e:
-        app.logger.error(f"Error cleaning thumbnail cache: {e}")
 
 
 def _thumbnail_path(original_path: Union[Path, str, bytes], size: int) -> Path:

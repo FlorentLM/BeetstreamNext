@@ -62,7 +62,7 @@ def endpoint_get_album():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo2/
 @app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
-def endpoint_get_album_info(ver=None):
+def endpoint_get_album_info():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
     req_id = r.get('id', default='', type=str)
@@ -94,7 +94,7 @@ def endpoint_get_album_info(ver=None):
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList2/
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
-def endpoint_get_album_list(ver=None):
+def endpoint_get_album_list():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
 

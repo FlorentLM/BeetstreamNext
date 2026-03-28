@@ -333,7 +333,14 @@ def endpoint_change_password():
 
 
 def load_username(api_key_hash: str) -> str:
-    row = database().execute("""SELECT username FROM users WHERE api_key_hash = ?""", (api_key_hash,)).fetchone()
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT username 
+            FROM users 
+            WHERE api_key_hash = ?
+            """, (api_key_hash,)
+        ).fetchone()
     return row[0] if row else None
 
 
@@ -344,7 +351,12 @@ def load_all_users() -> list[dict]:
     columns_str = ', '.join(columns)
 
     with database() as db:
-        rows = db.execute(f"""SELECT {columns_str} FROM users""").fetchall()
+        rows = db.execute(
+            f"""
+            SELECT {columns_str} 
+            FROM users
+            """
+        ).fetchall()
 
     return [dict(zip(columns, row)) for row in rows]
 

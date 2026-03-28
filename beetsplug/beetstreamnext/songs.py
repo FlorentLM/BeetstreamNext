@@ -93,9 +93,6 @@ def endpoint_get_random_songs():
     size = r.get('size', default=10, type=int)
 
     with flask.g.lib.transaction() as tx:
-        # Advance the SQL random generator state
-        _ = list(tx.query("SELECT RANDOM()"))
-
         songs = list(tx.query(
             """
             SELECT * 

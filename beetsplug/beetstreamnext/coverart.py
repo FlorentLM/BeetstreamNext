@@ -72,7 +72,7 @@ def _round_size(requested_size: Optional[int]) -> Optional[int]:
 
 def _resize_image(data: BytesIO, size: int) -> BytesIO:
     img = Image.open(data)
-    img.thumbnail((size, size))
+    img.convert('RGB').thumbnail((size, size))
     buf = BytesIO()
     img.save(buf, format='JPEG')
     buf.seek(0)
@@ -131,7 +131,7 @@ def _image_from_song(path) -> Union[BytesIO, None]:
         try:
             img_bytes, _ = (
                 ffmpeg
-                .input(path)
+                .input(os.fsdecode(path))
                 # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
                 .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
                 .run(capture_stdout=True, capture_stderr=False, quiet=True)
@@ -142,7 +142,7 @@ def _image_from_song(path) -> Union[BytesIO, None]:
     elif FFMPEG_BIN:
         command = [
             'ffmpeg',
-            '-i', path,
+            '-i', os.fsdecode(path),
             # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
             '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
             'pipe:1'

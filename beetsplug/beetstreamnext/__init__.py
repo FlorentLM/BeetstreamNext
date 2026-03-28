@@ -398,14 +398,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 db.initialise_db()
                 app.config['playlist_provider'] = PlaylistProvider()
 
-            # if debug:
-            #     app.run(host=host, port=port, debug=True, threaded=True)
-            #
-            # else:
-            #     from waitress import serve
-            #     print(f"BeetstreamNext server running on {host}:{port}...")
-            #     serve(app, host=host, port=port, threads=8)
-            app.run(host=host, port=port, debug=debug, threaded=True)
+            if debug:
+                app.run(host=host, port=port, debug=True, threaded=True)
+
+            else:
+                from waitress import serve
+                print(f"BeetstreamNext server running on {host}:{port}...")
+                serve(app, host=host, port=port, threads=8)
 
         cmd.func = func
         return [cmd]

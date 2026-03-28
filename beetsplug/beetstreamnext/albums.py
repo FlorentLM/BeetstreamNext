@@ -5,7 +5,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url
+    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url, subsonic_error
 )
 
 
@@ -99,6 +99,15 @@ def endpoint_get_album_list(ver=None):
     from_year = r.get('fromYear', default=0, type=int)
     to_year = r.get('toYear', default=3000, type=int)
     genre_filter = r.get('genre', default='', type=str)[:64] or None
+
+    if not sort_by:
+        return subsonic_error(10, message="Sort type is required.", resp_fmt=resp_fmt)
+
+    if sort_by == 'byYear' and (not from_year or not to_year):
+        return subsonic_error(10, message="Parameters 'fromYear' and 'to_year' are required to sort by year.", resp_fmt=resp_fmt)
+
+    if sort_by == 'byGenre' and not genre_filter:
+        return subsonic_error(10, message="Parameter 'genre' is required to sort by genre.", resp_fmt=resp_fmt)
 
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 

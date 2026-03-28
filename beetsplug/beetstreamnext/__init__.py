@@ -129,6 +129,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'host': '0.0.0.0',
             'port': 8080,
             'cors': '*',
+            'debug': False,
+            'force_trust_host': False,
             'cors_supports_credentials': True,
             'reverse_proxy': False,
             'legacy_auth': True,
@@ -148,6 +150,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         # Server options
         cmd.parser.add_option('--debug', dest='debug', action='store_true', default=False, help='Run server in debug mode')
+        cmd.parser.add_option('--force_trust_host', dest='force_trust_host', action='store_true', default=False, help='Force debug mode on non-localhost')
         cmd.parser.add_option('--port', dest='port', type='int', help='Port to listen on')
         cmd.parser.add_option('--host', dest='host', help='Host to listen on')
 
@@ -251,7 +254,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             host = opts.host or self.config['host'].as_str()
             port = opts.port or self.config['port'].get(int)
-            debug = opts.debug
+            debug = opts.debug or self.config['debug'].get(bool)
+            force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
             app.config['lib'] = lib
             app.config['root_directory'] = Path(config['directory'].get())
@@ -263,10 +267,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['save_album_art'] = self.config['save_album_art'].get(bool)
 
             if debug and host not in ['127.0.0.1', 'localhost']:
-                print(f"[ERROR] Debug mode cannot be used with host {host}. "
-                      "The Werkzeug debugger allows arbitrary remote code execution. "
-                      "Use 127.0.0.1 for local debugging.")
-                return
+                if force_trust_host:
+                    print(f"[!!! SUPER IMPORTANT WARNING !!!] Debug mode is force-enabled on {host}. "
+                          "The Werkzeug debugger allows arbitrary remote code execution. "
+                          "I hope you know what you're doing!")
+                else:
+                    print(f"[ERROR] Debug mode can only be used on localhost "
+                          f"(the debugger allows arbitrary remote code execution).")
+                    return
 
             if app.config['legacy_auth'] and not self.config['reverse_proxy']:
                 if host not in ['127.0.0.1', 'localhost']:
@@ -274,7 +282,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         "[WARNING] Legacy authentication is enabled and the server is listening on "
                         f"{host}:{port} without a reverse proxy. Passwords from legacy "
                         "clients may be transmitted in cleartext over HTTP. "
-                        "Use a reverse proxy with TLS or disable legacy_auth."
                     )
 
             possible_paths = [
@@ -315,12 +322,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
                 threading.Thread(target=tidyup_cache, args=(30,), daemon=True).start()
 
-            app.run(
-                host=host,
-                port=port,
-                debug=debug,
-                threaded=True
-            )
+            if debug:
+                app.run(host=host, port=port, debug=True, threaded=True)
+
+            else:
+                from waitress import serve
+                print(f"BeetstreamNext server running on {host}:{port}...")
+                serve(app, host=host, port=port, threads=8)
 
         cmd.func = func
         return [cmd]

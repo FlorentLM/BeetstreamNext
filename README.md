@@ -42,7 +42,7 @@ Personally, I use Beets to manage my music library but I don't like to write met
 
 ## Installation
 
-Requires Python 3.9+ and an existing Beets library.
+Requires Python 3.10+ and an existing Beets library.
 
 > [!NOTE]
 > BeetstreamNext is not yet available on PyPI. Installation currently requires cloning the source code from GitHub.

@@ -719,10 +719,10 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
                .replace('.', ' '))
 
         final_tag = customstrip(tag)
-        if final_tag:
+        if final_tag and final_tag not in cleaned:
             cleaned.append(final_tag)
 
-    return tuple(set(cleaned))
+    return tuple(dict.fromkeys(cleaned).keys())
 
 
 def pythonize_string(s: str) -> Union[str, bool, int, float, None, datetime]:

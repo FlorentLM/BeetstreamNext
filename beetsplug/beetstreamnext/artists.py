@@ -86,7 +86,8 @@ def endpoint_get_artists_or_indexes():
 
     alphanum_dict = defaultdict(list)
     for artist in artists:
-        alphanum_dict[remove_accents(artist[0]).upper()].append(artist)
+        if artist:
+            alphanum_dict[remove_accents(artist[0]).upper()].append(artist)
 
     payload = {
         tag: {

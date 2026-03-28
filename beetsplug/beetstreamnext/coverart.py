@@ -161,7 +161,7 @@ def query_coverartarchive(mbid: str) -> bytes:
         response = http_session.get(art_url, timeout=8)
         if response.from_cache:
             app.logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
-        return response.content if response.ok else {}
+        return response.content if response.ok else b''
 
     except requests.exceptions.RequestException:
         return b''

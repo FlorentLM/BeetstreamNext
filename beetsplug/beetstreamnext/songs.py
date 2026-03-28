@@ -245,42 +245,51 @@ def endpoint_get_similar_songs():
             if artist_name and artist_mbid:
                 similar_artists[artist_name] = artist_mbid
 
-    # Add also the requested artist (will be the only fallback if no lastfm key available)
+    # Always include the requested artist as a fallback
     if req_artist_name and req_artist_mbid:
         similar_artists[req_artist_name] = req_artist_mbid
 
-    # Build up a humongous SQL query to get everything with related artists
-    mbid_fields = ['mb_artistid', 'mb_artistids']
-    name_fields = ['artist', 'artists', 'composer', 'lyricist']
+    # Filter to columns that actually exist in this beets install.
+    # mb_artistids, artists, composer, lyricist are all optional/plugin fields.
+    available_cols = set(get_beets_schema('items'))
+    mbid_fields = [f for f in ['mb_artistid', 'mb_artistids'] if f in available_cols]
+    name_fields = [f for f in ['artist', 'artists', 'composer', 'lyricist'] if f in available_cols]
+
     conditions = []
     params = []
-    for name, mbid in similar_artists.items():
-        if mbid:
-            # When we have an mbid, match against all relevant mbid fields
-            sub_conditions = []
 
-            # Check each mbid field for an exact match
+    for name, mbid in similar_artists.items():
+        sub_conditions = []
+
+        if mbid:
+            # Match the mbid exactly against any mbid field if possible
             for field in mbid_fields:
                 sub_conditions.append(f"{field} = ?")
                 params.append(mbid)
 
-            # Also check each name field with a LIKE condition
+            # Also match by name in case mbid fields are incomplete
             for field in name_fields:
                 sub_conditions.append(f"{field} LIKE ?")
                 params.append(f"%{name}%")
-            conditions.append("(" + " OR ".join(sub_conditions) + ")")
 
         else:
-            # no mbid: typically with lastfm responses that's bc the entry is several artists in a collab
-            parts = re.split(artists_separators, name)
-            sub_conditions_outer = []
-            for part in parts:
-                sub_conditions_inner = []
+            # no mbid: Last.fm returns this when it is a multi-artist collab,
+            # -> match each part against all name fields
+            for part in re.split(artists_separators, name):
                 for field in name_fields:
-                    sub_conditions_inner.append(f"{field} LIKE ?")
+                    sub_conditions.append(f"{field} LIKE ?")
                     params.append(f"%{part}%")
-                sub_conditions_outer.append("(" + " OR ".join(sub_conditions_inner) + ")")
-            conditions.append("(" + " OR ".join(sub_conditions_outer) + ")")
+
+        if sub_conditions:
+            conditions.append("(" + " OR ".join(sub_conditions) + ")")
+
+    tag = 'similarSongs2' if 'getSimilarSongs2' in flask.request.path else 'similarSongs'
+
+    if not conditions:
+        empty_payload = {
+            tag: {'song': []}
+        }
+        return subsonic_response(empty_payload, resp_fmt=resp_fmt)
 
     query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"
     params.append(limit)
@@ -288,7 +297,6 @@ def endpoint_get_similar_songs():
     with flask.g.lib.transaction() as tx:
         avail_similar_songs = list(tx.query(query, params))
 
-    tag = 'similarSongs2' if 'getSimilarSongs2' in flask.request.path else 'similarSongs'
     payload = {
         tag: {
             'song': [map_song(s) for s in avail_similar_songs]

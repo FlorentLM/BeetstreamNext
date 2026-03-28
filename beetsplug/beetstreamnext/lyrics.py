@@ -39,10 +39,12 @@ def endpoint_get_lyrics():
     with flask.g.lib.transaction() as tx:
         rows = tx.query(
             """
-            SELECT id 
-            FROM items 
-            WHERE lower(albumartist) = lower(?) AND lower(title) = lower(?) LIMIT 1
-            """, (artist, title)
+            SELECT id
+            FROM items
+            WHERE (lower(artist) = lower(?) AND lower(title) = lower(?))
+               OR (lower(albumartist) = lower(?) AND lower(title) = lower(?))
+            LIMIT 1
+            """, (artist, title, artist, title)
         )
 
     if not rows:

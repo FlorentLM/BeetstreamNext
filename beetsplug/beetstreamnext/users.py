@@ -43,6 +43,10 @@ _ALL_USER_FIELDS = frozenset({
     'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
 })
 
+# Dummies for constant-time comparison when username not found
+_DUMMY_SALT = 'beetstreamnext_dummy_salt'
+_DUMMY_TOKEN = hashlib.md5(f'beetstreamnext_dummy_password{_DUMMY_SALT}'.encode()).hexdigest()
+
 
 ##
 # Internal helpers to this module
@@ -482,9 +486,8 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
 
     user_data = _get_userdata(user, fields=['password'])
     if not user_data:
-        # Dummy query + dummy comparison to keep response time constant regardless if username exists or not
-        _get_userdata('', fields=['password'])
-        hmac.compare_digest('dummy', 'comparison')
+        _get_userdata('', fields=['password'])  # dummy DB round-trip for timing
+        hmac.compare_digest(token or '', _DUMMY_TOKEN)
         return False, 40, None
 
     stored_password = user_data['password']

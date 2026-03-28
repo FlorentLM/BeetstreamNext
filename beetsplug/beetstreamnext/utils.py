@@ -929,7 +929,8 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
 
     # Query outside lock to avoid holding during IO
     with flask.g.lib.transaction() as tx:
-        cursor = tx.query(f"PRAGMA table_info({table_name})")   # TODO: use '?' instead
+        # SQLite PRAGMA doesnt support bound parameters for table name
+        cursor = tx.query(f"PRAGMA table_info({table_name})")
         columns = [row[1] for row in cursor]
 
     with _schema_lock:

@@ -152,7 +152,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         # User management
         cmd.parser.add_option('-c', '--create-user', action='store_true', default=False, help='Create a new user')
-        cmd.parser.add_option('-u', '--update-user', dest='update_user', metavar='USERNAME', help='Update roles for a user')
+        # cmd.parser.add_option('-u', '--update-user', dest='update_user', metavar='USERNAME', help='Update roles for a user')  # TODO
         cmd.parser.add_option('-d', '--delete-user', dest='delete_user', metavar='USERNAME', help='Delete a user')
         cmd.parser.add_option('-p', '--password', dest='passwd_user', metavar='USERNAME', help='Change password for a user')
         cmd.parser.add_option('--list-users', action='store_true',  default=False, help='List all registered users')

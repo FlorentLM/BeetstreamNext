@@ -91,15 +91,40 @@ def endpoint_get_random_songs():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
     size = r.get('size', default=10, type=int)
+    from_year = r.get('fromYear', default=0, type=int)
+    to_year = r.get('toYear', default=0, type=int)
+    genre = r.get('genre', default='', type=str)[:64]
+
+    conditions = []
+    params = []
+
+    if from_year or to_year:
+        lo = min(from_year, to_year) if from_year and to_year else (from_year or to_year)
+        hi = max(from_year, to_year) if from_year and to_year else 3000
+        conditions.append("year BETWEEN ? AND ?")
+        params.extend([lo, hi])
+
+    if genre:
+        cols = get_beets_schema('items')
+        genre_conditions = []
+        pattern = f"%{genre.strip().lower()}%"
+        if 'genres' in cols:
+            genre_conditions.append("lower(genres) LIKE ?")
+            params.append(pattern)
+        if 'genre' in cols:
+            genre_conditions.append("lower(genre) LIKE ?")
+            params.append(pattern)
+        if genre_conditions:
+            conditions.append("(" + " OR ".join(genre_conditions) + ")")
+
+    sql = """SELECT * FROM items"""
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += " ORDER BY RANDOM() LIMIT ?"
+    params.append(size)
 
     with flask.g.lib.transaction() as tx:
-        songs = list(tx.query(
-            """
-            SELECT * 
-            FROM items 
-            ORDER BY RANDOM() 
-            LIMIT ?""", (size,)
-        ))
+        songs = list(tx.query(sql, params))
 
     payload = {
         "randomSongs": {

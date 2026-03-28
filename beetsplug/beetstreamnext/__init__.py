@@ -13,8 +13,12 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
-"""BeetstreamNext is a Beets.io plugin that exposes SubSonic API endpoints."""
+"""
+BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
+"""
 import os
+import time
+from collections import defaultdict
 import platform
 import shutil
 from pathlib import Path
@@ -54,6 +58,12 @@ app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 
+# Rate-limit auth failures
+FAILED_AUTH_ATTEMPTS = defaultdict(list)    # dict of IP -> list of failed attempts timestamps
+# Block for 5 minutes after 5 failed attempts
+MAX_FAILURES = 5
+BLOCK_TIME_SECONDS = 300
+
 
 @app.before_request
 def before_request():
@@ -64,13 +74,34 @@ def before_request():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
 
-    ok, error_code, username = beetsplug.beetstreamnext.users.authenticate(r)
+    client_ip = flask.request.remote_addr   # TODO: for reverse proxy: use the headers
+    now = time.time()
+
+    from beetsplug.beetstreamnext.utils import subsonic_error
+    from beetsplug.beetstreamnext.users import authenticate, load_user_roles
+
+    if client_ip in FAILED_AUTH_ATTEMPTS:
+
+        FAILED_AUTH_ATTEMPTS[client_ip] = [
+            t for t in FAILED_AUTH_ATTEMPTS[client_ip]
+            if now - t < BLOCK_TIME_SECONDS     # remove attempts older than BLOCK_TIME_SECONDS
+        ]
+
+        # If currently blocked, immediately reject
+        if len(FAILED_AUTH_ATTEMPTS[client_ip]) >= MAX_FAILURES:
+            return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
+
+    # Attempt authentication
+    ok, error_code, username = authenticate(r)
     if not ok:
-        return beetsplug.beetstreamnext.utils.subsonic_error(error_code, resp_fmt=resp_fmt)
+        FAILED_AUTH_ATTEMPTS[client_ip].append(now)     # failed attempt : record it
+        return subsonic_error(error_code, resp_fmt=resp_fmt)
+
+    FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
 
     g.lib = app.config['lib']
     g.username = username
-    g.user_data = beetsplug.beetstreamnext.users.load_user_roles(username)
+    g.user_data = load_user_roles(username)
     g.playlist_provider = app.config['playlist_provider']
 
     # Pre-build base URL for images so all mapping functions use it in the current request
@@ -322,13 +353,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
                 threading.Thread(target=tidyup_cache, args=(30,), daemon=True).start()
 
-            if debug:
-                app.run(host=host, port=port, debug=True, threaded=True)
-
-            else:
-                from waitress import serve
-                print(f"BeetstreamNext server running on {host}:{port}...")
-                serve(app, host=host, port=port, threads=8)
+            # if debug:
+            #     app.run(host=host, port=port, debug=True, threaded=True)
+            #
+            # else:
+            #     from waitress import serve
+            #     print(f"BeetstreamNext server running on {host}:{port}...")
+            #     serve(app, host=host, port=port, threads=8)
+            app.run(host=host, port=port, debug=debug, threaded=True)
 
         cmd.func = func
         return [cmd]

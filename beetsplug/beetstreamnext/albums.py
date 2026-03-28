@@ -102,7 +102,7 @@ def endpoint_get_album_list(ver=None):
 
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 
-    if sort_by in ('starred', 'frequent', 'highest'):
+    if sort_by in ('starred', 'frequent', 'highest', 'recent'):
         with dual_database() as db:
 
             if sort_by == 'starred':
@@ -139,6 +139,20 @@ def endpoint_get_album_list(ver=None):
                              JOIN beets.albums a ON r.item_id = 'al-' || a.id
                     WHERE r.username = ?
                     ORDER BY r.rating DESC
+                    LIMIT ? OFFSET ?
+                    """, (flask.g.username, size, offset)
+                ).fetchall()
+
+            elif sort_by == 'recent':
+                album_rows = db.execute(
+                    """
+                    SELECT a.*, MAX(ps.last_played) as latest_play
+                    FROM play_stats ps
+                             JOIN beets.items i ON ps.song_id = i.id
+                             JOIN beets.albums a ON i.album_id = a.id
+                    WHERE ps.username = ?
+                    GROUP BY a.id
+                    ORDER BY latest_play DESC
                     LIMIT ? OFFSET ?
                     """, (flask.g.username, size, offset)
                 ).fetchall()
@@ -189,8 +203,6 @@ def endpoint_get_album_list(ver=None):
         query += " ORDER BY album COLLATE NOCASE"
     elif sort_by == 'alphabeticalByArtist':
         query += " ORDER BY albumartist COLLATE NOCASE"
-    elif sort_by == 'recent':
-        query += " ORDER BY year DESC"
     elif sort_by == 'byYear':
         # Order by year, then by month and day
         sort_dir = 'ASC' if from_year <= to_year else 'DESC'

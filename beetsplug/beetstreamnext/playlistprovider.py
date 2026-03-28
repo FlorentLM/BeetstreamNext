@@ -151,20 +151,20 @@ class Playlist:
         """
         instance = cls.__new__(cls)
 
-        safe_name = os.path.basename(name).rsplit(".", 1)[0]
-        base_dir = Path(flask.g.playlist_provider.playlist_dirs[0]).resolve()
-        instance.path = (base_dir / f'{safe_name}.m3u').resolve()
+        safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
+        base_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs[0])).resolve()
+        path = (base_dir / f'{safe_name}.m3u').resolve()
 
-        if not instance.path.is_relative_to(base_dir):
-            raise ValueError("Invalid playlist name.")
+        if not path.is_relative_to(base_dir):
+            raise ValueError('Invalid playlist name.')
 
-        if instance.path.is_file():
-            err = f"Playlist {instance.path.name} already exists!"
+        if path.is_file():
+            err = f'Playlist {path.name} already exists!'
             app.logger.warning(err)
             raise FileExistsError(err)
 
-        instance.name = safe_name[:200]
-        instance.path = Path(flask.g.playlist_provider.playlist_dirs[0]) / f'{instance.name}.m3u'
+        instance.name = safe_name
+        instance.path = path
 
         if instance.path.is_file():
             err = f"Playlist {instance.name}.m3u already exists in BeetstreamNext's folder!"
@@ -361,7 +361,7 @@ class PlaylistProvider:
             safe_file_name = os.path.basename(file_name)
             base_path = Path(dir_path).resolve()
             filepath = (base_path / safe_file_name).resolve()
-            if not str(filepath).startswith(str(base_path)):
+            if not filepath.is_relative_to(base_path):
                 return None
 
             if filepath.is_file() and filepath.suffix.lower() in ('.m3u', '.m3u8'):

@@ -19,39 +19,30 @@ def endpoint_get_play_queue():
     with database() as db:
         queue_row = db.execute(
             """
-            SELECT current, position, changed, changed_by 
-            FROM play_queue 
+            SELECT current, position, changed, changed_by
+            FROM play_queue
             WHERE username = ?
             """, (username,)
         ).fetchone()
 
-        if not queue_row:
-            return subsonic_response({}, resp_fmt=resp_fmt)
-
-        current_beets_id, position, changed, changed_by = queue_row
-
-        entry_rows = db.execute(
-            """
-            SELECT song_id 
-            FROM play_queue_entries 
-            WHERE username = ? 
-            ORDER BY position
-            """, (username,)
-        ).fetchall()
-
-    if not entry_rows:
+    if not queue_row:
         return subsonic_response({}, resp_fmt=resp_fmt)
+
+    current_beets_id, position, changed, changed_by = queue_row
 
     with dual_database() as db:
         rows = db.execute(
             """
-            SELECT i.* 
-            FROM play_queue_entries pq 
+            SELECT i.*
+            FROM play_queue_entries pq
             JOIN beets.items i ON pq.song_id = i.id
             WHERE pq.username = ?
             ORDER BY pq.position
             """, (username,)
         ).fetchall()
+
+    if not rows:
+        return subsonic_response({}, resp_fmt=resp_fmt)
 
     songs = [map_song(dict(row)) for row in rows]
 

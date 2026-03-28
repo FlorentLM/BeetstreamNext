@@ -274,7 +274,7 @@ def dual_database():
         if not beets_path.is_file():
             raise RuntimeError(f"Beets database not found at '{beets_path}'")
 
-        db.execute(f"ATTACH DATABASE '{str(beets_path).replace(chr(39), chr(39) * 2)}' AS beets")
+        db.execute("ATTACH DATABASE ? AS beets", (str(beets_path),))
         g.beets_attached = True
     return db
 

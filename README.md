@@ -127,14 +127,14 @@ BeetstreamNext is tested and working with:
 
 ## TODO
 - [x] User management (create/delete) via the API (instead of CLI only)
-- [ ] Implement rate limiting
+- [x] Implement rate limiting
+- [x] Move now_playing into the db as a volatile table
 - [ ] Use MBID instead of artists names for internal ID mapping
 - [ ] Support multi-artists / contributors / producers / labels properly
 - [ ] Make an Admin WebUI panel to manage users
 - [ ] Docker image
 - [ ] Add scrobbling to Last.fm and other similar services
 - [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists
-- [x] Move now_playing into the db as a volatile table
 
 
 ## Missing endpoints

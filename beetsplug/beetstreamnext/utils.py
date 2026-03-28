@@ -351,7 +351,7 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
         ratings = [s.get('userRating', 0) for s in subsonic_album['song'] if s.get('userRating', 0)]
         subsonic_album['averageRating'] = sum(ratings) / len(ratings) if ratings else 0
     else:
-        subsonic_album['averageRating'] = 0
+        subsonic_album['averageRating'] = album_specific['userRating']
 
     # Starred status
     liked_at = cached_user_likes().get(subsonic_album_id)

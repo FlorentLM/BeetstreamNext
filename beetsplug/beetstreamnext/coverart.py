@@ -49,7 +49,7 @@ def _thumbnail_path(original_path: Union[Path, str, bytes], size: int) -> Path:
     """Generates unique path for a cached thumbnail."""
 
     mtime = os.path.getmtime(original_path)
-    path_str = original_path.decode('utf-8') if isinstance(original_path, bytes) else str(original_path)
+    path_str = os.fsdecode(original_path)
     file_hash = hashlib.md5(f"{path_str}_{size}_{mtime}".encode()).hexdigest()
 
     return app.config['THUMBNAIL_CACHE_PATH'] / f'{file_hash}.jpg'
@@ -82,11 +82,14 @@ def _resize_image(data: BytesIO, size: int) -> BytesIO:
 
 def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -> Optional[Union[str, BytesIO]]:
 
+    if not original_path:
+        return None
+
     if isinstance(original_path, BytesIO):
         # cant have mtime for FFMPEG extraction # TODO: Use the song file's mtime?
         return _resize_image(original_path, size)
 
-    full_path = Path(original_path.decode('utf-8') if isinstance(original_path, bytes) else original_path)
+    full_path = Path(os.fsdecode(original_path))
     if not full_path.is_file():
         return None
 
@@ -109,7 +112,11 @@ def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -
 ##
 # Image fetching
 
-def _image_from_folder(album_dir: Path) -> Optional[Path]:
+def _image_from_folder(album_dir: Union[str, Path]) -> Optional[Path]:
+    if not album_dir:
+        return None
+
+    album_dir = Path(album_dir)
     if not album_dir.exists() or not album_dir.is_dir():
         return None
 
@@ -191,20 +198,18 @@ def send_album_art(album_id, size=None):
         return None
 
     # Check Beets db
-    art_path = album.get('artpath', b'')
+    art_path = os.fsdecode(album.get('artpath', b''))
     if art_path and os.path.isfile(art_path):
         try:
             if size:
-                with open(art_path, 'rb') as f:
-                    return flask.send_file(_resize_image(BytesIO(f.read()), size), mimetype='image/jpeg')
-            return flask.send_file(art_path.decode('utf-8'), mimetype=get_mimetype(art_path.decode('utf-8')))
+                return flask.send_file(_cached_resize(art_path, size), mimetype='image/jpeg')
+
+            return flask.send_file(art_path, mimetype=get_mimetype(art_path))
         except Exception as e:
             app.logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
 
     # Check disk
-    album_dir_bytes = album.item_dir()
-    album_dir = Path(album_dir_bytes.decode('utf-8')) if album_dir_bytes else None
-
+    album_dir = os.fsdecode(album.item_dir())
     if album_dir:
         found_art = _image_from_folder(album_dir)
 

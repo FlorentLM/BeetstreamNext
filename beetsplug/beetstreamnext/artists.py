@@ -147,7 +147,11 @@ def endpoint_artist_info():
     short_bio = ''
 
     if app.config['lastfm_api_key']:
-        data_lastfm = query_lastfm(q=artist_mbid, type='artist', method='info', mbid=True)
+        if artist_mbid:
+            data_lastfm = query_lastfm(q=artist_mbid, type='artist', method='info', mbid=True)
+        else:
+            data_lastfm = query_lastfm(q=artist_name, type='artist', method='info', mbid=False)
+
         lastfm_bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
 
         if lastfm_bio:

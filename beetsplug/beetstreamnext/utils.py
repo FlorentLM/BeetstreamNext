@@ -593,7 +593,7 @@ def dict_to_xml(tag: str, data):
 def jsonpify(format: str, data: dict):
     if format == 'jsonp':
         callback = flask.request.values.get("callback")
-        return f"{callback}({json.dumps(data)});"
+        return flask.Response(f"{callback}({json.dumps(data)});", mimetype='application/javascript')
     else:
         return flask.jsonify(data)
 

@@ -290,6 +290,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             # Create user
             if opts.create_user:
                 from beetsplug.beetstreamnext import db
+                from beetsplug.beetstreamnext.utils import safe_str
 
                 with app.app_context():
                     db.initialise_db()

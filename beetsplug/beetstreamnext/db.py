@@ -112,7 +112,7 @@ def initialise_db():
             email               TEXT,
             avatar              BLOB,
             avatarLastChanged   REAL,
-            scrobblingEnabled   INTEGER DEFAULT 0,
+            scrobblingEnabled   INTEGER DEFAULT 1,
             adminRole           INTEGER DEFAULT 0,
             settingsRole        INTEGER DEFAULT 1,
             streamRole          INTEGER DEFAULT 1,

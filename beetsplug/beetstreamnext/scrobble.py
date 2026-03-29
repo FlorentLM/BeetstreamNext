@@ -6,7 +6,6 @@ from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song, api_bool, \
     safe_str
 
-# TODO: Lastfm optional integration?
 
 _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 
@@ -64,6 +63,10 @@ def endpoint_scrobble():
                 """, (username, beets_id, played_at)
             )
 
+    if app.config.get('lastfm_api_key') and flask.g.user_data.get('scrobblingEnabled'):
+        # TODO: Lastfm scrobble (optional)
+        pass
+
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
@@ -79,8 +82,9 @@ def endpoint_get_now_playing():
 
     with database() as db:
         db.execute(
-            "DELETE FROM now_playing WHERE ? - started_at > ?",
-            (now, _NOW_PLAYING_TIMEOUT)
+            """
+            DELETE FROM now_playing WHERE ? - started_at > ?
+            """, (now, _NOW_PLAYING_TIMEOUT)
         )
         rows = db.execute(
             """

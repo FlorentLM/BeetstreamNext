@@ -110,6 +110,10 @@ def endpoint_stream_song():
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
+    user_max_bitrate = flask.g.user_data.get('maxBitRate', 0)
+    if user_max_bitrate > 0:
+        max_bitrate = min(user_max_bitrate, max_bitrate) if max_bitrate > 0 else user_max_bitrate
+
     beets_song_id = sub_to_beets_song(song_id)
     song = flask.g.lib.get_item(beets_song_id)
     song_path = os.fsdecode(song.get('path', b'')) if song else ''
@@ -118,27 +122,25 @@ def endpoint_stream_song():
         song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
 
         needs_transcode = False
-        if not app.config['never_transcode'] and req_format != 'raw':
 
-            # Transcode if bitrate too high
-            if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
-                needs_transcode = True
+        # Transcode if bitrate too high
+        if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
+            needs_transcode = True
 
-            # or if client wants different format
-            elif req_format and req_format != song_ext:
-                needs_transcode = True
+        # or if client wants different format
+        elif req_format != 'raw' and req_format != song_ext and not app.config['never_transcode']:
+            needs_transcode = True
 
         if not needs_transcode:
-            # send_file handles HTTP 206 Partial Content (Range requests) perfectly
             response = _send_direct(song_path)
         else:
             target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
-            response = try_transcode(
+            return try_transcode(
                 song_path,
                 start_at=time_offset,
                 max_bitrate=target_bitrate,
-                req_format=req_format
+                req_format=req_format if req_format != 'raw' else 'mp3'
             )
 
         if response is not None:

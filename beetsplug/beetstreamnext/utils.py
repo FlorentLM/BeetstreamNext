@@ -677,10 +677,11 @@ def safe_str(val: Any) -> str:
     s = standard_ascii(s)
     return customstrip(s)
 
+
 def api_bool(val: Any) -> bool:
     if val is None:
         return False
-    return safe_str(val).lower() not in ('false', '0', 'no', 'none', '')
+    return safe_str(val).lower() not in ('false', '0', 'no', 'none', 'null', '')
 
 
 def timestamp_to_iso(timestamp) -> str:
@@ -720,30 +721,6 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
             cleaned.append(final_tag)
 
     return tuple(dict.fromkeys(cleaned).keys())
-
-
-def pythonize_string(s: str) -> Union[str, bool, int, float, None, datetime]:
-    if not isinstance(s, str):
-        return s
-
-    sl = s.lower()
-    if sl == 'true':
-        return True
-    if sl == 'false':
-        return False
-    if sl in ('none', 'null', ''):
-        return None
-
-    try:
-        return datetime.fromisoformat(s)
-    except (ValueError, TypeError):
-        pass
-
-    try:
-        f = float(s)
-        return int(f) if f.is_integer() else f
-    except ValueError:
-        return s
 
 
 ##

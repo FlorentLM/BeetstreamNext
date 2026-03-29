@@ -8,7 +8,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import get_cipher, database
-from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string, api_bool, safe_str
+from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, api_bool, safe_str
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
@@ -19,8 +19,8 @@ def _user_payload(user_data: dict) -> dict:
     return {
         'username':            user_data.get('username', ''),
         'email':               user_data.get('email', '') or '',
-        'scrobblingEnabled':   bool(user_data.get('scrobblingEnabled', False)),
-        'maxBitRate':          user_data.get('maxBitRate', 0),
+        'scrobblingEnabled':   bool(user_data.get('scrobblingEnabled', True)),
+        'maxBitRate':          int(user_data.get('maxBitRate', 0)),
         'adminRole':           bool(user_data.get('adminRole', False)),
         'settingsRole':        bool(user_data.get('settingsRole', True)),
         'downloadRole':        bool(user_data.get('downloadRole', False)),
@@ -33,15 +33,18 @@ def _user_payload(user_data: dict) -> dict:
         'jukeboxRole':         bool(user_data.get('jukeboxRole', False)),
         'shareRole':           bool(user_data.get('shareRole', False)),
         'videoConversionRole': bool(user_data.get('videoConversionRole', False)),
-        'folder':              [user_data.get('folder', 0)],
+        # 'avatarLastChanged':   '',  # TODO
+        'folder':              [0],     # Beets has only one 'folder'
     }
 
 
-_ALL_USER_FIELDS = frozenset({
+_ALLOWED_USER_FIELDS = frozenset({
     'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
     'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
     'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
 })
+
+_ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
 
 # Dummies for constant-time comparison when username not found
 _DUMMY_SALT = 'beetstreamnext_dummy_salt'
@@ -56,11 +59,11 @@ def _get_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = N
 
     if fields is None:
         # return all safe fields
-        safe_fields = sorted(list(_ALL_USER_FIELDS))
+        safe_fields = sorted(list(_ALLOWED_USER_FIELDS))
     elif isinstance(fields, str):
-        safe_fields = [fields] if fields in _ALL_USER_FIELDS else []
+        safe_fields = [fields] if fields in _ALLOWED_USER_FIELDS else []
     else:
-        safe_fields = sorted(list(set(fields).intersection(_ALL_USER_FIELDS)))
+        safe_fields = sorted(list(set(fields).intersection(_ALLOWED_USER_FIELDS)))
 
     if not safe_fields:
         return None
@@ -97,18 +100,11 @@ def _get_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = N
 
 def _store_userdata(user_dict):
 
-    user_dict = user_dict.copy()
-    username = user_dict.pop("username", None)
+    username = user_dict.pop('username', None)
     if not username:
-        raise ValueError('User dict must have the "username" key!')
+        raise ValueError("User dict must have the 'username' key!")
 
-    safe_fields = {
-        'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled',
-        'adminRole', 'settingsRole', 'streamRole', 'jukeboxRole', 'downloadRole',
-        'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole', 'podcastRole',
-        'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
-    }
-    filtered_dict = {k: v for k, v in user_dict.items() if k in safe_fields}
+    filtered_dict = {k: v for k, v in user_dict.items() if k in _ALLOWED_USER_FIELDS}
 
     cipher = get_cipher()
     if 'password' in filtered_dict and cipher:
@@ -150,7 +146,7 @@ def create_user(username, password, admin=False, **kwargs):
 
     filtered_roles = {
         k: v for k, v in kwargs.items()
-        if k in _ALL_USER_FIELDS and k != 'password'  # 'username' and 'password' are handled explicitly
+        if k in _ALLOWED_USER_FIELDS and k != 'password'  # 'username' and 'password' are handled explicitly
     }
 
     raw_api_key = secrets.token_urlsafe(32)
@@ -158,14 +154,21 @@ def create_user(username, password, admin=False, **kwargs):
 
     user_data = {
         'username': username,
-        'password': password,  # store_userdata handles the encryption
+        'password': password,   # store_userdata handles the encryption
         'adminRole': int(admin),
+    }
+    some_defaults = {
+        'scrobblingEnabled': 1,
         'playlistRole': 1,
         'settingsRole': 1,
         'streamRole': 1,
+        'commentRole': 1,
+        'maxBitRate': 0
     }
-    user_data.update(filtered_roles)
+    for k, v in some_defaults.items():
+        user_data.setdefault(k, v)
 
+    user_data.update(filtered_roles)
     _store_userdata(user_data)
 
     # Manually set api_key_hash because store_userdata excludes it for safety
@@ -186,7 +189,7 @@ def update_user(username: str, **updates):
     if not _get_userdata(username, fields=['adminRole']):   # any field, doesnt matter
         raise ValueError(f"User '{username}' does not exist.")
 
-    filtered_updates = {k: v for k, v in updates.items() if k in _ALL_USER_FIELDS}
+    filtered_updates = {k: v for k, v in updates.items() if k in _ALLOWED_USER_FIELDS}
     filtered_updates['username'] = username
 
     _store_userdata(filtered_updates)
@@ -262,24 +265,9 @@ def endpoint_get_users():
 def endpoint_create_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    username = r.get('username', default='', type=safe_str)      # Required
-    password = r.get('password', default='', type=str)      # Required
-    # email = r.get('email', default='', type=safe_str)            # Required??? uhhh no thanks
-    username = unquote(username)
-    password = unquote(password)
-
-    # ldap_authenticated = r.get('ldapAuthenticated', default=False, type=api_bool)
-    # is_admin = r.get('adminRole', default=False, type=api_bool)
-    # can_change_settings = r.get('settingsRole', default=True, type=api_bool)
-    # can_stream = r.get('streamRole', default=True, type=api_bool)
-    # can_download = r.get('downloadRole', default=False, type=api_bool)
-    # can_upload = r.get('uploadRole', default=False, type=api_bool)
-    # can_use_playlists = r.get('playlistRole', default=False, type=api_bool)
-    # can_edit_art = r.get('coverArtRole', default=False, type=api_bool)
-    # can_comment = r.get('commentRole', default=False, type=api_bool)
-    # # can_share = r.get('shareRole', default=False, type=api_bool)
-    # # can_use_podcast = r.get('podcastRole', default=False, type=api_bool)
-    # # can_use_jukebox = r.get('jukeboxRole', default=False, type=api_bool)
+    username = r.get('username', default='', type=safe_str)         # Required
+    password = unquote(r.get('password', default='', type=str))     # Required
+    # email = r.get('email', default='', type=safe_str)             # Required??? uhhh no thanks
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -288,11 +276,19 @@ def endpoint_create_user():
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
-        params = {k: pythonize_string(v) for k, v in r.items() if k in _ALL_USER_FIELDS}
+        params = {}
+        for field in _ALLOWED_USER_FIELDS:
+            if field in r:
+                if field == 'maxBitRate':
+                    val = r.get(field, default=0, type=int)
+                    params[field] = val if val in _ALLOWED_BITRATES else 0
+                else:
+                    params[field] = int(r.get(field, default=False, type=api_bool))
 
-        # check if the request explicitly set adminRole, otherwise use False
+        # Explicitly pull adminRole for create_user
         is_admin = params.pop('adminRole', False)
         create_user(username, password, admin=is_admin, **params)
+
         return subsonic_response({}, resp_fmt=resp_fmt)
 
     except ValueError as e:
@@ -305,37 +301,29 @@ def endpoint_create_user():
 def endpoint_update_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    username = r.get('username', default='', type=safe_str)      # Required
-    password = r.get('password', default='', type=str)
+    username = r.get('username', default='', type=safe_str)     # Required
+    password = unquote(r.get('password', default='', type=str))
     # email = r.get('email', default='', type=safe_str)
-    username = unquote(username)
-    password = unquote(password)
-
-    max_bitrate = r.get('maxBitRate', default=0, type=int)
-    # TODO: Add this (also in createUser even if spec does not have it)
-    #   allowed: 0 (no limit), 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320
-
-    # ldap_authenticated = r.get('ldapAuthenticated', default=False, type=api_bool)
-    # is_admin = r.get('adminRole', default=False, type=api_bool)
-    # can_change_settings = r.get('settingsRole', default=True, type=api_bool)
-    # can_stream = r.get('streamRole', default=True, type=api_bool)
-    # can_download = r.get('downloadRole', default=False, type=api_bool)
-    # can_upload = r.get('uploadRole', default=False, type=api_bool)
-    # can_use_playlists = r.get('playlistRole', default=False, type=api_bool)
-    # can_edit_art = r.get('coverArtRole', default=False, type=api_bool)
-    # can_comment = r.get('commentRole', default=False, type=api_bool)
-    # # can_share = r.get('shareRole', default=False, type=api_bool)
-    # # can_use_podcast = r.get('podcastRole', default=False, type=api_bool)
-    # # can_use_jukebox = r.get('jukeboxRole', default=False, type=api_bool)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
+    if not username:
+        return subsonic_error(10, message='Username is required.', resp_fmt=resp_fmt)
+
     try:
-        updates = {k: pythonize_string(v) for k, v in r.items() if k in _ALL_USER_FIELDS}
+        updates = {}
 
         if password:
             updates['password'] = password
+
+        if 'maxBitRate' in r:
+            br = r.get('maxBitRate', default=0, type=int)
+            updates['maxBitRate'] = br if br in _ALLOWED_BITRATES else 0
+
+        for field in _ALLOWED_USER_FIELDS:
+            if field in r and field not in ('password', 'maxBitRate'):
+                updates[field] = int(r.get(field, default=False, type=api_bool))
 
         update_user(username, **updates)
         return subsonic_response({}, resp_fmt)
@@ -414,7 +402,7 @@ def load_username(api_key_hash: str) -> str:
 
 def load_all_users() -> list[dict]:
     """Load roles/metadata for all users. Excludes password."""
-    fields = list(_ALL_USER_FIELDS - {'password'})
+    fields = list(_ALLOWED_USER_FIELDS - {'password'})
     columns = ['username'] + fields
     columns_str = ', '.join(columns)
 
@@ -431,7 +419,7 @@ def load_all_users() -> list[dict]:
 
 def load_user_roles(username: str) -> Union[dict, None]:
     """Load all user fields except password, safe to cache in g."""
-    return _get_userdata(username, fields=set(_ALL_USER_FIELDS - {'password'}))
+    return _get_userdata(username, fields=set(_ALLOWED_USER_FIELDS - {'password'}))
 
 
 def load_user_likes(username: str) -> dict:

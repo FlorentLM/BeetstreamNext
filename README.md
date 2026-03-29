@@ -79,15 +79,15 @@ beetstreamnext:
   host: 0.0.0.0
   port: 8080
   cors: '*'                     # Allow specific origins
-  reverse_proxy: False          # Enable if running behind Nginx/Caddy
+  reverse_proxy: false          # Enable if running behind Nginx/Caddy
 
-  legacy_auth: True             # Allow old MD5-based password auth (not recommended)
-  never_transcode: False        # Force direct stream only (never re-encode files, even if a client requests it)
+  legacy_auth: true             # Allow old MD5-based password auth (not recommended)
+  never_transcode: false        # Force direct stream only (never re-encode files, even if a client requests it)
   
   # Artist images
-  fetch_artists_images: True    # Fetch artist photos from Deezer when a client requests them
-  save_artists_images: True     # Save fetched artist photos to their respective folders (if they don't exist yet)
-  save_album_art: True          # Save fetched album art images to their respective folders (if they don't exist yet)
+  fetch_artists_images: true    # Fetch artist photos from Deezer when a client requests them
+  save_artists_images: true     # Save fetched artist photos to their respective folders (if they don't exist yet)
+  save_album_art: true          # Save fetched album art images to their respective folders (if they don't exist yet)
   
   # Playlists configuration
   playlist_dirs:                # A list of directories to scan for .m3u playlists.
@@ -103,9 +103,61 @@ You can place these in a `.env` file in the directory where you run the `beet` c
 - `BEETSTREAMNEXT_KEY`: Secret key used to encrypt legacy passwords at rest.
 - `LASTFM_API_KEY`: (Optional) to enable biographies, similar artist discovery, etc.
 
+## Using behind a reverse proxy
+
+BeetstreamNext uses modern standard HTTP headers to know the original client's IP, 
+so the configuration should be pretty straightforward.
+
+**Nginx** for instance would look like this:
+```
+location /beetstreamnext {
+    proxy_pass http://127.0.0.1:8080;
+    
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    
+    # If hosting in a subfolder, tell BeetstreamNext what the subfolder is!
+    proxy_set_header X-Forwarded-Prefix /beetstreamnext;
+}
+```
+
+**Caddy** (v2) passes all the required headers by default, so it's just:
+```
+example.com {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+### Web Clients and CORS
+
+By default, BeetstreamNext is configured with CORS (Cross-Origin Resource Sharing) disabled. 
+If you use native mobile or desktop apps, you probably do not need to change anything (native apps ignore CORS and will work out of the box).
+
+If you want to use a _web-based_ Subsonic player hosted on a different domain, 
+you must allow the web player's URL in your Beets config, otherwise your web browser will block the connection for security reasons.
+
+```yaml
+beetstreamnext:
+    cors: 'https://app.example.com' # also accepts a comma-separated list or a wildcard '*'
+```
+
+If you are using a SSO gateway (Authelia, Authentik, etc.), or if the web-based player is a bit quirky, you might also
+need to enable this:
+
+```yaml
+beetstreamnext:
+    cors_supports_credentials: true
+```
+
+**Warning:** DO NOT set `cors: '*'` alongside `cors_supports_credentials: yes`. 
+Doing so could allow *any* malicious website you visit to silently interact with your BeetstreamNext server in the background.
+
 ## Tested clients
 
-BeetstreamNext is tested and working with:
+BeetstreamNext should be compatible with virtually any Subsonic/OpenSubsonic client.
+I tested it and confirmed it working with:
 
 #### Android
 - [Symfonium](https://symfonium.app/)
@@ -117,13 +169,14 @@ BeetstreamNext is tested and working with:
 - [Ultrasonic](https://gitlab.com/ultrasonic/ultrasonic)
 - [Subtracks](https://github.com/austinried/subtracks)
 
-#### iOS/iPadOS/macOS
+#### iOS/iPadOS
 - [Amperfy](https://github.com/BLeeEZ/amperfy)
 - [Submariner](https://github.com/SubmarinerApp/Submariner)
 - [Supersonic](https://github.com/dweymouth/supersonic)
 
-#### Linux / Windows
+#### Desktop
 - [Feishin](https://github.com/jeffvli/feishin)
+- [Aonsoku](https://github.com/victoralvesf/aonsoku)
 
 ## TODO
 - [x] User management (create/delete) via the API (instead of CLI only)
@@ -135,7 +188,6 @@ BeetstreamNext is tested and working with:
 - [ ] Docker image
 - [ ] Add scrobbling to Last.fm and other similar services
 - [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists
-
 
 ## Missing endpoints
 

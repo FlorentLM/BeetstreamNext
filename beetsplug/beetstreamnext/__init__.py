@@ -113,12 +113,14 @@ _BLOCK_TIME_SECONDS = 300   # after 5 failed attempts
 
 @app.before_request
 def _before_request():
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=str)
 
     if flask.request.path == '/':
         return
 
-    r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    if 'getOpenSubsonicExtensions' in flask.request.path:
+        return
 
     client_ip = flask.request.remote_addr   # TODO: for reverse proxy: use the headers
     now = time.time()
@@ -364,7 +366,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     )
 
             possible_paths = [
-                (0, self.config['playlist_dir'].as_path()),  # BeetstreamNext's own
+                (0, self.config['playlist_dir'].as_str()),  # BeetstreamNext's own
                 (1, config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
                 (2, config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
             ]
@@ -373,7 +375,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             used_paths = set()
             for k, path in possible_paths:
                 if path and path not in used_paths:
-                    playlist_dirs[k] = Path(path)
+                    playlist_dirs[k] = Path(os.fsdecode(path))
                     used_paths.add(path)
                 else:
                     playlist_dirs[k] = None

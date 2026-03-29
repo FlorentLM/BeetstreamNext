@@ -21,6 +21,7 @@ import time
 from collections import defaultdict
 import platform
 import shutil
+from datetime import datetime
 from pathlib import Path
 import threading
 import getpass
@@ -94,10 +95,11 @@ def try_tidyingup_cache():
         max_age_seconds = days * 86400
         now = time.time()
         try:
-            app.logger.info(f"[{now}] Thumbnail cache cleanup triggered.")
-            for f in cache_dir.glob('*.jpg'):
-                if now - f.stat().st_mtime > max_age_seconds:
+            app.logger.info(f"[{datetime.fromtimestamp(now)}] Thumbnail cache cleanup triggered.")
+            for f in cache_dir.iterdir():
+                if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
                     f.unlink(missing_ok=True)
+
         except Exception as e:
             app.logger.error(f"Error cleaning thumbnail cache: {e}")
 

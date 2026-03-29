@@ -1,4 +1,6 @@
+import ctypes
 import hashlib
+import platform
 import re
 import subprocess
 import os
@@ -28,14 +30,24 @@ ART_PRIORITY = [
 ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
 
 
-def _thumbnail_path(original_path: Union[Path, str, bytes], size: int) -> Path:
+def _thumbnail_path(original_path: Union[Path, str, bytes], size: int, mtime: float = None) -> Path:
     """Generates unique path for a cached thumbnail."""
+    if mtime is None:
+        mtime = os.path.getmtime(original_path)
 
-    mtime = os.path.getmtime(original_path)
     path_str = os.fsdecode(original_path)
     file_hash = hashlib.md5(f"{path_str}_{size}_{mtime}".encode()).hexdigest()
 
-    return app.config['THUMBNAIL_CACHE_PATH'] / f'{file_hash}.jpg'
+    return app.config['THUMBNAIL_CACHE_PATH'] / f'.{file_hash}.jpg'
+
+
+def _make_hidden(filepath: Path):
+    """Marks a file as hidden on Windows."""
+    if platform.system() == "Windows":
+        try:
+            ctypes.windll.kernel32.SetFileAttributesW(str(filepath), 2)     # 2 is FILE_ATTRIBUTE_HIDDEN
+        except Exception as e:
+            app.logger.warning(f"Could not set file as hidden on Windows: {e}")
 
 
 ##
@@ -63,16 +75,15 @@ def _resize_image(data: BytesIO, size: int) -> BytesIO:
     return buf
 
 
-def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -> Optional[Union[str, BytesIO]]:
+def _cached_resize(source_file: Union[Path, str, bytes, BytesIO], size: int) -> Optional[Union[str, BytesIO]]:
 
-    if not original_path:
+    if not source_file:
         return None
 
-    if isinstance(original_path, BytesIO):
-        # cant have mtime for FFMPEG extraction # TODO: Use the song file's mtime?
-        return _resize_image(original_path, size)
+    if isinstance(source_file, BytesIO):
+        return _resize_image(source_file, size)
 
-    full_path = Path(os.fsdecode(original_path))
+    full_path = Path(os.fsdecode(source_file))
     if not full_path.is_file():
         return None
 
@@ -85,8 +96,9 @@ def _cached_resize(original_path: Union[Path, str, bytes, BytesIO], size: int) -
             resized_buffer = _resize_image(BytesIO(f.read()), size)
             with open(thumb_path, 'wb') as tf:
                 tf.write(resized_buffer.getbuffer())
-
+        _make_hidden(thumb_path)
         return str(thumb_path)
+
     except Exception as e:
         app.logger.error(f"Failed to create thumbnail for {full_path}: {e}")
         return None
@@ -335,13 +347,35 @@ def endpoint_get_cover_art():
 
         # Fallback: try to extract cover from the song file
         if have_ffmpeg:
-            cover_io = _image_from_song(item.path)
+            song_path = os.fsdecode(item.path)
+            try:
+                song_mtime = os.path.getmtime(song_path)
+            except OSError:
+                song_mtime = 0.0
+
+            thumb_path = _thumbnail_path(song_path, size or 0, mtime=song_mtime)
+            if thumb_path.is_file():
+                return flask.send_file(thumb_path, mimetype='image/jpeg')
+
+            cover_io = _image_from_song(song_path)
             if cover_io is not None:
                 image_bytes = cover_io.getvalue()
+
                 if size:
                     cover_io = _resize_image(BytesIO(image_bytes), size)
-                    return flask.send_file(cover_io, mimetype='image/jpeg')
-                return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+                    image_bytes = cover_io.getvalue()
+
+                # Save for next time
+                try:
+                    with open(thumb_path, 'wb') as f:
+                        f.write(image_bytes)
+                    _make_hidden(thumb_path)
+                    return flask.send_file(thumb_path, mimetype='image/jpeg')
+
+                except Exception as e:
+                    app.logger.warning(f"Failed to cache extracted ffmpeg art: {e}")
+                    # can still serve from memory if disk write failed
+                    return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
 

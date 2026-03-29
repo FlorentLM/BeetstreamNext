@@ -60,7 +60,7 @@ def endpoint_search():
     main_query = query or depr_any or ''
 
     if tag == 'searchResult2' and not any([main_query, depr_artist, depr_album, depr_song]):
-        return subsonic_error(10, message='You must specify a query.', resp_fmt=resp_fmt)
+        return subsonic_response({tag: {}}, resp_fmt=resp_fmt)
 
     artist_prefetch = {}
 

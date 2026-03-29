@@ -303,7 +303,18 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         if confirm.lower() != 'y':
                             return
 
-                    username = input('Username: ')
+                    unsername_ok = False
+                    while not unsername_ok:
+                        username = input('Username: ')
+                        username_cleaned = safe_str(username)
+                        if username_cleaned != username:
+                            invalid_chars = {c for c in username if c not in username_cleaned}
+                            message = 'invalid characters' if len(invalid_chars) > 1 else 'an invalid character'
+                            chars_print = "'" + "".join(invalid_chars) + "'"
+                            unsername_ok = input(f"Username starts or ends with {message}: {chars_print}\n"
+                                                 f"Use '{username_cleaned}' instead? [y/n]: ").lower() == 'y'
+                        else:
+                            unsername_ok = True
                     password = getpass.getpass('Password: ')
                     is_admin = input('Admin? [y/n]: ').lower() == 'y'
 

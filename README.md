@@ -78,10 +78,15 @@ Available options in your Beets `config.yaml`:
 beetstreamnext:
   host: 0.0.0.0
   port: 8080
-  cors: '*'                     # Allow specific origins
   reverse_proxy: false          # Enable if running behind Nginx/Caddy
-
-  legacy_auth: true             # Allow old MD5-based password auth (not recommended)
+  
+  ip_whitelist: ''              # List of IPs (space or comma-separated) to allow
+  ip_blacklist: ''              # List of IPs (space or comma-separated) to block
+  
+  debug: false                  # Enable to use debug mode (insecure)
+  force_trust_host: false       # Enable to allow any host to use debug mode (not recommended)
+  
+  legacy_auth: false            # Enable to allow old MD5-based password auth (not recommended)
   never_transcode: false        # Force direct stream only (never re-encode files, even if a client requests it)
   
   # Artist images

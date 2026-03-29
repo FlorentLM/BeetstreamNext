@@ -173,22 +173,25 @@ def endpoint_get_top_songs():
         else:
             lastfm_resp = query_lastfm(q=artist_name, type='artist', method='TopTracks', mbid=False)
 
-        if lastfm_resp:
-            top_tracks_available = []
+        lastfm_tracks = lastfm_resp.get('toptracks', {}).get('track', [])
+        lastfm_track_names = [t.get('name', '') for t in lastfm_tracks if t.get('name')]
 
-            for t in lastfm_resp.get('toptracks', {}).get('track', []):
-                query = MatchQuery('title', t.get('name', ''))
-                beets_results = list(flask.g.lib.items(query))
-                if beets_results:
-                    top_tracks_available.append(beets_results[0])
+        if lastfm_track_names:
+            placeholders = ','.join(['?'] * len(lastfm_track_names))
+            sql = f"""
+                   SELECT * FROM items 
+                   WHERE albumartist = ? AND title IN ({placeholders})
+                   """
+            with flask.g.lib.transaction() as tx:
+                top_tracks_available = list(tx.query(sql, [artist_name] + lastfm_track_names))
 
-            if top_tracks_available:
-                payload = {
-                    'topSongs': {
-                        'song': [map_song(s) for s in top_tracks_available]
-                    }
+        if top_tracks_available:
+            payload = {
+                'topSongs': {
+                    'song': [map_song(s) for s in top_tracks_available]
                 }
-                return subsonic_response(payload, resp_fmt=resp_fmt)
+            }
+            return subsonic_response(payload, resp_fmt=resp_fmt)
 
     # Fallback to local play stats
     with dual_database() as db:

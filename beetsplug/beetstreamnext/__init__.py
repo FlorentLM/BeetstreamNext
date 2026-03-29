@@ -125,7 +125,7 @@ def _before_request():
     if 'getOpenSubsonicExtensions' in flask.request.path:
         return
 
-    client_ip = flask.request.remote_addr   # TODO: for reverse proxy: use the headers
+    client_ip = flask.request.remote_addr
     now = time.time()
 
     from beetsplug.beetstreamnext.utils import subsonic_error

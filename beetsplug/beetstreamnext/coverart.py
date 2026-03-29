@@ -252,7 +252,10 @@ def send_artist_image(artist, size=None):
     artist = customstrip(artist)
     artist_name = sub_to_beets_artist(artist) if artist.startswith(ART_ID_PREF) else artist
 
-    local_folder = app.config['root_directory'] / artist_name
+    local_folder = (app.config['root_directory'] / artist_name).resolve()
+    if not local_folder.is_relative_to(app.config['root_directory']):
+        return None
+
     local_image_path = local_folder / f'{artist_name}.jpg'
 
     if local_folder.is_dir():

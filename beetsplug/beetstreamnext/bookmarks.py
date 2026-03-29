@@ -5,7 +5,7 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database, database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
-    sub_to_beets_song, map_song, timestamp_to_iso
+    sub_to_beets_song, map_song, timestamp_to_iso, safe_str
 )
 
 
@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.utils import (
 @app.route('/rest/getBookmarks.view', methods=['GET', 'POST'])
 def endpoint_get_bookmarks():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     username = flask.g.username
 
@@ -52,10 +52,10 @@ def endpoint_get_bookmarks():
 @app.route('/rest/createBookmark.view', methods=['GET', 'POST'])
 def endpoint_create_bookmark():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)             # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    song_id = r.get('id', default='', type=safe_str)             # Required
     position = r.get('position', default=0.0, type=float)   # Required
-    comment = r.get('comment', default='', type=str)[:1024]
+    comment = r.get('comment', default='', type=safe_str)[:1024]
 
     if not song_id or not position:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -83,8 +83,8 @@ def endpoint_create_bookmark():
 @app.route('/rest/deleteBookmark.view', methods=['GET', 'POST'])
 def endpoint_delete_bookmark():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)     # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    song_id = r.get('id', default='', type=safe_str)     # Required
 
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

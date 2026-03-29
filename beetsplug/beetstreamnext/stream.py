@@ -4,7 +4,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
-    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song, api_bool
+    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song, api_bool, safe_str
 )
 
 
@@ -95,10 +95,10 @@ def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_
 @app.route('/rest/stream.view', methods=["GET", "POST"])
 def endpoint_stream_song():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)             # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    song_id = r.get('id', default='', type=safe_str)             # Required
     max_bitrate = r.get('maxBitRate', default=0, type=int)
-    req_format = r.get('format', default='raw', type=str)
+    req_format = r.get('format', default='raw', type=safe_str)
     time_offset = r.get('timeOffset', default=0.0, type=float)
 
     # estimate_length = r.get('estimateContentLength', default=False, type=api_bool)
@@ -152,8 +152,8 @@ def endpoint_stream_song():
 @app.route('/rest/download.view', methods=["GET", "POST"])
 def endpoint_download_song():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)         # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    song_id = r.get('id', default='', type=safe_str)         # Required
 
     if not bool(flask.g.user_data.get('downloadRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)

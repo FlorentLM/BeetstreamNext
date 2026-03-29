@@ -5,7 +5,8 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url, subsonic_error
+    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url, subsonic_error,
+    safe_str
 )
 
 
@@ -48,8 +49,8 @@ def get_song_counts(albums: List[Dict]) -> Dict:
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
 def endpoint_get_album():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    album_id = r.get('id', default='', type=str)    # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    album_id = r.get('id', default='', type=safe_str)    # Required
 
     payload = album_payload(album_id, with_songs=True)
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -64,8 +65,8 @@ def endpoint_get_album():
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
 def endpoint_get_album_info():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
     # TODO: ID can be album or song
 
     album_id = sub_to_beets_album(req_id)
@@ -97,14 +98,14 @@ def endpoint_get_album_info():
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
 def endpoint_get_album_list():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    sort_by = r.get('type', default='alphabeticalByName', type=str)     # Required
+    sort_by = r.get('type', default='alphabeticalByName', type=safe_str)     # Required
     size = r.get('size', default=10, type=int)
     offset = r.get('offset', default=0, type=int)
     from_year = r.get('fromYear', default=0, type=int)          # Required if byYear
     to_year = r.get('toYear', default=3000, type=int)           # Required if byYear
-    genre_filter = r.get('genre', default='', type=str)[:64]    # Required if byGenre
+    genre_filter = r.get('genre', default='', type=safe_str)[:64]    # Required if byGenre
 
     if not sort_by:
         return subsonic_error(10, message="Sort type is required.", resp_fmt=resp_fmt)

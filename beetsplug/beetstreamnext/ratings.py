@@ -3,7 +3,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/
@@ -11,8 +11,8 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 @app.route('/rest/setRating.view', methods=['GET', 'POST'])
 def endpoint_set_rating():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
     rating = r.get('rating', default=0, type=int)   # Required
 
     if not req_id:

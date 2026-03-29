@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
     sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
-    map_song, query_lastfm, get_beets_schema
+    map_song, query_lastfm, get_beets_schema, safe_str
 )
 
 
@@ -34,8 +34,8 @@ def song_payload(subsonic_song_id: str) -> dict:
 @app.route('/rest/getSong.view', methods=["GET", "POST"])
 def endpoint_get_song():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)     # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    song_id = r.get('id', default='', type=safe_str)     # Required
 
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -49,10 +49,10 @@ def endpoint_get_song():
 @app.route('/rest/getSongsByGenre.view', methods=["GET", "POST"])
 def endpoint_songs_by_genre():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
     count = r.get('count', default=10, type=int)
     offset = r.get('offset', default=0, type=int)
-    genre = r.get('genre', default='', type=str)[:64]   # Required
+    genre = r.get('genre', default='', type=safe_str)[:64]   # Required
 
     if not genre:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -95,11 +95,11 @@ def endpoint_songs_by_genre():
 @app.route('/rest/getRandomSongs.view', methods=["GET", "POST"])
 def endpoint_get_random_songs():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
     size = r.get('size', default=10, type=int)
     from_year = r.get('fromYear', default=0, type=int)
     to_year = r.get('toYear', default=0, type=int)
-    genre = r.get('genre', default='', type=str)[:64]
+    genre = r.get('genre', default='', type=safe_str)[:64]
 
     conditions = []
     params = []
@@ -145,9 +145,9 @@ def endpoint_get_random_songs():
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
 def endpoint_get_top_songs():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_artist_id = r.get('id', default='', type=str)
-    req_artist_name = r.get('artist', default='', type=str)     # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_artist_id = r.get('id', default='', type=safe_str)
+    req_artist_name = r.get('artist', default='', type=safe_str)     # Required
     count = r.get('count', default=50, type=int)
 
     if req_artist_id and req_artist_id.startswith(ART_ID_PREF):
@@ -223,8 +223,8 @@ def endpoint_get_top_songs():
 @app.route('/rest/getSimilarSongs2.view', methods=["GET", "POST"])
 def endpoint_get_similar_songs():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
     limit = r.get('count', default=50, type=int)
 
     if not req_id:

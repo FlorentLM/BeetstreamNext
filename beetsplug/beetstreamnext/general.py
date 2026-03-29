@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.albums import album_payload
 from beetsplug.beetstreamnext.songs import song_payload
 from beetsplug.beetstreamnext.utils import (
     get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter, subsonic_error,
-    beets_to_sub_artist
+    beets_to_sub_artist, safe_str
 )
 
 
@@ -31,7 +31,7 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -
 @app.route('/rest/getOpenSubsonicExtensions.view', methods=["GET", "POST"])
 def endpoint_get_open_subsonic_extensions():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     payload = {
         'openSubsonicExtensions': [
@@ -53,7 +53,7 @@ def endpoint_get_open_subsonic_extensions():
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
 def endpoint_get_genres():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     queries = []
 
@@ -109,7 +109,7 @@ def endpoint_get_genres():
 @app.route('/rest/getLicense.view', methods=["GET", "POST"])
 def endpoint_get_license():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     payload = {
         'license': {
@@ -124,7 +124,7 @@ def endpoint_get_license():
 @app.route('/rest/getMusicFolders.view', methods=["GET", "POST"])
 def endpoint_get_music_folders():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     payload = musicdirectory_payload(subsonic_musicdirectory_id='m-0', with_artists=False)
 
@@ -138,8 +138,8 @@ def endpoint_get_music_directory():
     # Works pretty much like a file system
     # Usually Artist first, then Album, then Songs
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
 
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

@@ -2,7 +2,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.playlistprovider import Playlist
-from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subsonic_error, sub_to_beets_song
+from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subsonic_error, sub_to_beets_song, safe_str
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/
@@ -10,8 +10,8 @@ from beetsplug.beetstreamnext.utils import map_playlist, subsonic_response, subs
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
 def endpoint_get_playlists():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    # username = r.get('username', default=flask.g.username, type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    # username = r.get('username', default=flask.g.username, type=safe_str)
     playlists = flask.g.playlist_provider.getall()
     # TODO: Properly support support per-user playlists
 
@@ -28,8 +28,8 @@ def endpoint_get_playlists():
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
 def endpoint_get_playlist():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    playlist_id = r.get('id', default='', type=str)     # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    playlist_id = r.get('id', default='', type=safe_str)     # Required
 
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -50,10 +50,10 @@ def endpoint_get_playlist():
 @app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
 def endpoint_create_playlist():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    playlist_id = r.get('playlistId', default='', type=str)     # Required if updating
-    name = r.get('name', default='', type=str)[:200]            # Required if creating
-    songs_ids = r.getlist('songId', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    playlist_id = r.get('playlistId', default='', type=safe_str)     # Required if updating
+    name = r.get('name', default='', type=safe_str)[:200]            # Required if creating
+    songs_ids = r.getlist('songId', type=safe_str)
 
     if playlist_id:
         return endpoint_update_playlist()
@@ -80,8 +80,8 @@ def endpoint_create_playlist():
 @app.route('/rest/deletePlaylist.view', methods=['GET', 'POST'])
 def endpoint_delete_playlist():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    playlist_id = r.get('id', default='', type=str)     # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    playlist_id = r.get('id', default='', type=safe_str)     # Required
 
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -99,12 +99,12 @@ def endpoint_delete_playlist():
 @app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
 def endpoint_update_playlist():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    playlist_id = r.get('playlistId', default='', type=str)     # Required
-    new_name =  r.get('name', default='', type=str)[:200]
-    # new_comment =  r.get('comment', default='', type=str)[:1024]
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    playlist_id = r.get('playlistId', default='', type=safe_str)     # Required
+    new_name =  r.get('name', default='', type=safe_str)[:200]
+    # new_comment =  r.get('comment', default='', type=safe_str)[:1024]
     # make_public =  r.get('public', default=False, type=api_bool)
-    to_add = r.getlist('songIdToAdd', type=str)
+    to_add = r.getlist('songIdToAdd', type=safe_str)
     to_remove = r.getlist('songIndexToRemove', type=int)
     # TODO: Playlist comments
 

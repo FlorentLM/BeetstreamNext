@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
-    sub_to_beets_artist, chunked_query,
+    sub_to_beets_artist, chunked_query, safe_str,
 )
 
 
@@ -42,10 +42,10 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 @app.route('/rest/unstar.view', methods=['GET', 'POST'])
 def endpoint_star_or_unstar():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    song_ids = r.getlist('id', type=str)
-    album_ids = r.getlist('albumId', type=str)
-    artist_ids = r.getlist('artistId', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    song_ids = r.getlist('id', type=safe_str)
+    album_ids = r.getlist('albumId', type=safe_str)
+    artist_ids = r.getlist('artistId', type=safe_str)
 
     liked = 'unstar' not in flask.request.path
 
@@ -72,7 +72,7 @@ def endpoint_star_or_unstar():
 @app.route('/rest/getStarred2.view', methods=['GET', 'POST'])
 def endpoint_get_starred():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     username = flask.g.username
 

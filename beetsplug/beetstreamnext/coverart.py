@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
     get_mimetype, query_deezer,
     ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, http_session, subsonic_error
+    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, http_session, subsonic_error, safe_str
 )
 
 
@@ -317,8 +317,8 @@ def send_artist_image(artist, size=None):
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def endpoint_get_cover_art():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
     req_size = r.get('size', default=0, type=int)
 
     # TODO: Return placeholder images

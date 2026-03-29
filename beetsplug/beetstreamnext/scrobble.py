@@ -3,7 +3,8 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song, api_bool
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song, api_bool, \
+    safe_str
 
 # TODO: Lastfm optional integration?
 
@@ -15,10 +16,10 @@ _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 @app.route('/rest/scrobble.view', methods=['GET', 'POST'])
 def endpoint_scrobble():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
     submission = r.get('submission', default=True, type=api_bool)
-    client = r.get('c', default='', type=str)
-    song_ids = r.getlist('id', type=str)        # Required
+    client = r.get('c', default='', type=safe_str)
+    song_ids = r.getlist('id', type=safe_str)        # Required
     times_ms = r.getlist('time', type=int)
 
     if not song_ids:
@@ -71,7 +72,7 @@ def endpoint_scrobble():
 @app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
 def endpoint_get_now_playing():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     now = time.time()
     entries = []

@@ -4,7 +4,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, sub_to_beets_song, beets_to_sub_song, map_song, timestamp_to_iso
+    subsonic_response, sub_to_beets_song, beets_to_sub_song, map_song, timestamp_to_iso, safe_str
 )
 
 
@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.utils import (
 @app.route('/rest/getPlayQueue.view', methods=['GET', 'POST'])
 def endpoint_get_play_queue():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     username = flask.g.username
 
@@ -64,11 +64,11 @@ def endpoint_get_play_queue():
 @app.route('/rest/savePlayQueue.view', methods=['GET', 'POST'])
 def endpoint_save_play_queue():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    client = r.get('c', default='', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    client = r.get('c', default='', type=safe_str)
     position = r.get('position', default=0.0, type=float)
-    current_sid = r.get('current', default='', type=str)    # Required unless id is empty
-    song_ids = r.getlist('id', type=str)
+    current_sid = r.get('current', default='', type=safe_str)    # Required unless id is empty
+    song_ids = r.getlist('id', type=safe_str)
 
     username = flask.g.username
 

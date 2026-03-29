@@ -35,6 +35,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.db import close_database
 
+
 # Flask setup
 app = flask.Flask(__name__)
 app.teardown_appcontext(close_database)
@@ -116,8 +117,10 @@ _BLOCK_TIME_SECONDS = 300   # after 5 failed attempts
 
 @app.before_request
 def _before_request():
+    from beetsplug.beetstreamnext.utils import safe_str
+
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     if flask.request.path == '/':
         return
@@ -129,6 +132,7 @@ def _before_request():
     now = time.time()
 
     from beetsplug.beetstreamnext.utils import subsonic_error
+    from beetsplug.beetstreamnext.users import authenticate, load_user_roles
 
     if client_ip not in ['127.0.0.1', 'localhost']:
 
@@ -145,8 +149,6 @@ def _before_request():
             return subsonic_error(50, message="Access denied: IP is blacklisted.", resp_fmt=resp_fmt)
 
         # Rate limiting
-        from beetsplug.beetstreamnext.users import authenticate, load_user_roles
-
         if client_ip in _FAILED_AUTH_ATTEMPTS:
 
             _FAILED_AUTH_ATTEMPTS[client_ip] = [
@@ -173,6 +175,7 @@ def _before_request():
 
     # Pre-build base URL for images so all mapping functions use it in the current request
     params = {k: r.get(k, default='', type=str) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if k in r}
+    # TODO: Use safe_str for non-password fields
     g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
 
     try_tidyingup_cache()

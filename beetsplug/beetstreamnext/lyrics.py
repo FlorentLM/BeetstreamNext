@@ -2,7 +2,7 @@ import flask
 
 from beets.plugins import find_plugins
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, safe_str
 
 
 def _fetch_lyrics(item):
@@ -30,9 +30,9 @@ def _fetch_lyrics(item):
 @app.route('/rest/getLyrics.view', methods=["GET", "POST"])
 def endpoint_get_lyrics():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    artist = r.get('artist', default='', type=str)
-    title = r.get('title', default='', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    artist = r.get('artist', default='', type=safe_str)
+    title = r.get('title', default='', type=safe_str)
 
     if not artist or not title:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -71,8 +71,8 @@ def endpoint_get_lyrics():
 @app.route('/rest/getLyricsBySongId.view', methods=["GET", "POST"])
 def endpoint_get_lyrics_by_song_id():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
 
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

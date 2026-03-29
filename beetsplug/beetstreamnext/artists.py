@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.utils import (
     sub_to_beets_artist,
     map_artist, map_album, imageart_url,
     query_lastfm, query_wikipedia, WIKI_API,
-    trim_text, remove_accents
+    trim_text, remove_accents, safe_str
 )
 
 
@@ -46,7 +46,7 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
 def endpoint_get_artists_or_indexes():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
     modified_since = r.get('ifModifiedSince', default=0, type=int)
 
     tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
@@ -119,8 +119,8 @@ def endpoint_get_artists_or_indexes():
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
 def endpoint_get_artist():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    artist_id = r.get('id', default='', type=str)   # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    artist_id = r.get('id', default='', type=safe_str)   # Required
 
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
 
@@ -136,8 +136,8 @@ def endpoint_get_artist():
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
 def endpoint_artist_info():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    artist_id = r.get('id', default='', type=str)   # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    artist_id = r.get('id', default='', type=safe_str)   # Required
     # TODO: ID can be artist, album or song
 
     artist_name = sub_to_beets_artist(artist_id)

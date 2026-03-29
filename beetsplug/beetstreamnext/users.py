@@ -8,7 +8,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import get_cipher, database
-from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string, api_bool
+from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string, api_bool, safe_str
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
@@ -213,8 +213,8 @@ def delete_user(username: str) -> bool:
 @app.route('/rest/getUser.view', methods=["GET", "POST"])
 def endpoint_get_user():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    username = r.get('username', default=flask.g.username, type=str)    # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    username = r.get('username', default=flask.g.username, type=safe_str)    # Required
     # (defaults to flask.g.username so non-admins can only query themselves)
     username = unquote(username)
 
@@ -243,7 +243,7 @@ def endpoint_get_user():
 @app.route('/rest/getUsers.view', methods=["GET", "POST"])
 def endpoint_get_users():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -261,10 +261,10 @@ def endpoint_get_users():
 @app.route('/rest/createUser.view', methods=["GET", "POST"])
 def endpoint_create_user():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    username = r.get('username', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    username = r.get('username', default='', type=safe_str)      # Required
     password = r.get('password', default='', type=str)      # Required
-    # email = r.get('email', default='', type=str)            # Required??? uhhh no thanks
+    # email = r.get('email', default='', type=safe_str)            # Required??? uhhh no thanks
     username = unquote(username)
     password = unquote(password)
 
@@ -304,10 +304,10 @@ def endpoint_create_user():
 @app.route('/rest/updateUser.view', methods=["GET", "POST"])
 def endpoint_update_user():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    username = r.get('username', default='', type=str)      # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    username = r.get('username', default='', type=safe_str)      # Required
     password = r.get('password', default='', type=str)
-    # email = r.get('email', default='', type=str)
+    # email = r.get('email', default='', type=safe_str)
     username = unquote(username)
     password = unquote(password)
 
@@ -349,8 +349,8 @@ def endpoint_update_user():
 @app.route('/rest/deleteUser.view', methods=["GET", "POST"])
 def endpoint_delete_user():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    target_user = r.get('username', default='', type=str)   # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    target_user = r.get('username', default='', type=safe_str)   # Required
     target_user = unquote(target_user)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
@@ -373,8 +373,8 @@ def endpoint_delete_user():
 @app.route('/rest/changePassword.view', methods=["GET", "POST"])
 def endpoint_change_password():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
-    target_user = r.get('username', default=flask.g.username, type=str)     # Required
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    target_user = r.get('username', default=flask.g.username, type=safe_str)     # Required
     new_password =  r.get('password', default='', type=str)                 # Required
     target_user = unquote(target_user)
     new_password = unquote(new_password)
@@ -491,7 +491,7 @@ def load_user_play_stats(username: str) -> dict:
 def authenticate(flask_req_values: 'CombinedMultiDict'):
     r = flask_req_values
     api_key = r.get('apiKey', default='', type=str)
-    user = r.get('u', default='', type=str)
+    user = r.get('u', default='', type=safe_str)
     token = r.get('t', default='', type=str)
     salt = r.get('s', default='', type=str)
     clearpass = r.get('p', default='', type=str)

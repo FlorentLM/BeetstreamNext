@@ -23,7 +23,7 @@ from beetsplug.beetstreamnext.utils import (
 @app.route('/rest/search3.view', methods=["GET", "POST"])
 def endpoint_search():
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=str)
+    resp_fmt = r.get('f', default='xml', type=safe_str)
 
     # Pagination
     global_count = r.get('count', default=20, type=int)
@@ -37,10 +37,10 @@ def endpoint_search():
     artist_offset = r.get('artistOffset', default=global_offset, type=int)
 
     # Legacy search
-    depr_artist = r.get('artist', default='', type=str)
-    depr_album = r.get('album', default='', type=str)
-    depr_song = r.get('title', default='', type=str)
-    depr_any = r.get('any', default='', type=str)
+    depr_artist = r.get('artist', default='', type=safe_str)
+    depr_album = r.get('album', default='', type=safe_str)
+    depr_song = r.get('title', default='', type=safe_str)
+    depr_any = r.get('any', default='', type=safe_str)
     newer_than = r.get('newerThan', default=0, type=int) / 1000.0
 
     # search2/3 query

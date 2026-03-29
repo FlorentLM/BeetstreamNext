@@ -51,13 +51,12 @@ def endpoint_get_playlist():
 def endpoint_create_playlist():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    playlist_id = r.get('playlistId', default='', type=str)     # Required if updating (what to update here???)
+    playlist_id = r.get('playlistId', default='', type=str)     # Required if updating
     name = r.get('name', default='', type=str)[:200]            # Required if creating
     songs_ids = r.getlist('songId', type=str)
 
     if playlist_id:
-        # Update mode: API documentation is very unclear. Error; client should use updatePlaylist anyway
-        return subsonic_error(0, message='Please use `/rest/updatePlaylist` to update a playlist.', resp_fmt=resp_fmt)
+        return endpoint_update_playlist()
 
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)

@@ -56,6 +56,18 @@ except ImportError:
 
 GENRE_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\␀', '\x00']))
 
+_ASCII_TRANSLATE_TABLE = {
+    ord('\u2010'): '-', ord('\u2011'): '-', ord('\u2012'): '-',
+    ord('\u2013'): '-', ord('\u2014'): '-', ord('\u2015'): '-',
+    ord('\u2212'): '-', ord('\u2018'): "'", ord('\u2019'): "'",
+    ord('\u201a'): "'", ord('\u201b'): "'", ord('\u201c'): '"',
+    ord('\u201d'): '"', ord('\u201e'): '"', ord('\u201f'): '"',
+    ord('\u00a0'): ' ', ord('\u2000'): ' ', ord('\u2001'): ' ',
+    ord('\u2002'): ' ', ord('\u2003'): ' ', ord('\u2004'): ' ',
+    ord('\u2005'): ' ', ord('\u2006'): ' ', ord('\u2007'): ' ',
+    ord('\u2008'): ' ', ord('\u2009'): ' ', ord('\u200a'): ' ',
+    ord('\u202f'): ' ', ord('\u2026'): '...',
+}
 
 http_session = requests_cache.CachedSession(
     str(app.config['HTTP_CACHE_PATH']),
@@ -603,8 +615,10 @@ def jsonpify(format: str, data: dict):
 ##
 # Text utilities
 
-def remove_accents(s):
-    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+def remove_accents(text: Any):
+    if not text:
+        return ''
+    return ''.join(c for c in unicodedata.normalize('NFD', str(text)) if unicodedata.category(c) != 'Mn')
 
 
 def customstrip(value: Any, punctuation: bool = False) -> str:
@@ -612,11 +626,11 @@ def customstrip(value: Any, punctuation: bool = False) -> str:
         return ''
     if isinstance(value, bytes):
         try:
-            value = value.decode('utf-8')
+            s = value.decode('utf-8')
         except UnicodeDecodeError:
             return ''
-
-    s = str(value)
+    else:
+        s = str(value)
     to_strip = string.whitespace + '\v\f\x00'
     if punctuation:
         to_strip += string.punctuation
@@ -624,52 +638,12 @@ def customstrip(value: Any, punctuation: bool = False) -> str:
     return s.strip(to_strip)
 
 
-def standard_ascii(text: str) -> str:
+def standard_ascii(text: Any) -> str:
     """Replace fancy unicode characters by standard ASCII equivalents."""
-
     if not text:
         return ''
-
     text = unicodedata.normalize('NFC', str(text))
-
-    # TODO: Use str.translate() here instead?
-
-    replacements = {
-        '\u2010': '-',
-        '\u2011': '-',
-        '\u2012': '-',
-        '\u2013': '-',
-        '\u2014': '-',
-        '\u2015': '-',
-        '\u2212': '-',
-        '\u2018': "'",
-        '\u2019': "'",
-        '\u201a': "'",
-        '\u201b': "'",
-        '\u201c': '"',
-        '\u201d': '"',
-        '\u201e': '"',
-        '\u201f': '"',
-        '\u00a0': ' ',
-        '\u2000': ' ',
-        '\u2001': ' ',
-        '\u2002': ' ',
-        '\u2003': ' ',
-        '\u2004': ' ',
-        '\u2005': ' ',
-        '\u2006': ' ',
-        '\u2007': ' ',
-        '\u2008': ' ',
-        '\u2009': ' ',
-        '\u200a': ' ',
-        '\u202f': ' ',
-        '\u2026': '...',
-    }
-
-    for unicode_char, ascii_char in replacements.items():
-        text = text.replace(unicode_char, ascii_char)
-
-    return text.strip()
+    return text.translate(_ASCII_TRANSLATE_TABLE).strip()
 
 
 def stringlist_splitter(delimiter_separated_string: str):

@@ -231,10 +231,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'port': 8080,
             'ip_whitelist': [],
             'ip_blacklist': [],
-            'cors': '*',
+            'cors': '',
             'debug': False,
             'force_trust_host': False,
-            'cors_supports_credentials': True,
+            'cors_supports_credentials': False,
             'reverse_proxy': False,
             'legacy_auth': True,
             'never_transcode': False,
@@ -406,12 +406,27 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['playlist_dirs'] = playlist_dirs
 
             # Enable CORS if required
-            if self.config['cors']:
-                self._log.info(f'Enabling CORS with origin: {self.config["cors"]}')
+            cors_origin = self.config['cors'].get(str)
+            supports_creds = self.config['cors_supports_credentials'].get(bool)
+
+            if cors_origin:
+                if cors_origin == '*' and supports_creds:
+                    print(
+                        "\n[SECURITY WARNING] CORS is set to allow all origins ('*') WITH credentials. "
+                        "This tells the server to allow any website to interact with your API. "
+                        "If you use a web-based Subsonic player, it is highly recommended to set 'cors' "
+                        "specifically to that player's URL.\n"
+                    )
+                else:
+                    app.logger.info(f"Enabling CORS for origin(s): {cors_origin}")
 
                 app.config['CORS_ALLOW_HEADERS'] = "Content-Type"
-                app.config['CORS_RESOURCES'] = {r"/*": {"origins": self.config['cors'].get(str)}}
-                CORS(app, supports_credentials=self.config['cors_supports_credentials'].get(bool))
+                origins_list = [o.strip() for o in cors_origin.split(',')] if ',' in cors_origin else cors_origin
+
+                app.config['CORS_RESOURCES'] = {r"/*": {"origins": origins_list}}
+                CORS(app, supports_credentials=supports_creds)
+            else:
+                app.logger.info("CORS is disabled (secure default). Web-based clients will be blocked by browsers.")
 
             # Allow serving behind a reverse proxy
             if self.config['reverse_proxy']:

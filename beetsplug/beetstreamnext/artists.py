@@ -93,7 +93,6 @@ def endpoint_get_artists_or_indexes():
 
     payload = {
         tag: {
-            'ignoredArticles': '',      # TODO - include config from 'the' plugin??
             'index': [
                 {
                     'name': char,
@@ -103,6 +102,11 @@ def endpoint_get_artists_or_indexes():
             ]
         }
     }
+
+    ignored_articles = "The An A El La Los Las Le Les Die Das Ein Eine"
+    # the_plugin = 'the' in config['plugins'].as_str_seq()
+    # TODO: use config from 'the' plugin
+    payload[tag]['ignoredArticles'] = ignored_articles
 
     if tag == 'indexes':
         payload[tag]['lastModified'] = latest_mtime

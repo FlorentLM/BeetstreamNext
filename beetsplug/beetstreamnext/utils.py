@@ -1,3 +1,4 @@
+import binascii
 from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple, Any
 import threading
 import os
@@ -161,7 +162,10 @@ def beets_to_sub_artist(beet_artist_name):
 def sub_to_beets_artist(subsonic_artist_id):
     subsonic_artist_id = str(subsonic_artist_id)[len(ART_ID_PREF):]
     padding = (4 - (len(subsonic_artist_id) % 4)) % 4
-    return base64.urlsafe_b64decode(subsonic_artist_id + ('=' * padding)).decode('utf-8')
+    try:
+        return base64.urlsafe_b64decode(subsonic_artist_id + ('=' * padding)).decode('utf-8')
+    except (binascii.Error, UnicodeDecodeError):
+        return ''
 
 def beets_to_sub_album(beet_album_id):
     return f'{ALB_ID_PREF}{beet_album_id}'

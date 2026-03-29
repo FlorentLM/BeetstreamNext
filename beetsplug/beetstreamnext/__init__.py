@@ -170,12 +170,13 @@ def _add_security_headers(response):
 @app.route('/')
 def home():
     lib = app.config.get('lib')
-    stats = {
-        "artists": 0,   # TODO
-        "albums": len(lib.albums()) if lib else 0,
-        "songs": len(lib.items()) if lib else 0,
-        "status": "Online"
-    }
+    with lib.transaction() as tx:
+        stats = {
+            "artists": tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0],
+            "albums": tx.query("SELECT COUNT(*) FROM albums")[0][0],
+            "songs": tx.query("SELECT COUNT(*) FROM items")[0][0],
+            "status": "Online"
+        }
     template_content = (PROJECT_ROOT / 'index.html' ).open().read()
     try:
         logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').open().read()

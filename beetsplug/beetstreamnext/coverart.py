@@ -4,6 +4,7 @@ import platform
 import re
 import subprocess
 import os
+import tempfile
 from pathlib import Path
 from typing import Union, Optional
 from io import BytesIO
@@ -94,8 +95,13 @@ def _cached_resize(source_file: Union[Path, str, bytes, BytesIO], size: int) -> 
     try:  # Generate and save thumbnail
         with open(full_path, 'rb') as f:
             resized_buffer = _resize_image(BytesIO(f.read()), size)
-            with open(thumb_path, 'wb') as tf:
-                tf.write(resized_buffer.getbuffer())
+
+        fd, tmp_path = tempfile.mkstemp(dir=thumb_path.parent)
+
+        with os.fdopen(fd, 'wb') as tf:
+            tf.write(resized_buffer.getbuffer())
+
+        os.replace(tmp_path, thumb_path)
         _make_hidden(thumb_path)
         return str(thumb_path)
 

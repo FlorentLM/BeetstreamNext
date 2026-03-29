@@ -5,7 +5,8 @@ from beetsplug.beetstreamnext.artists import artist_payload
 from beetsplug.beetstreamnext.albums import album_payload
 from beetsplug.beetstreamnext.songs import song_payload
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter, subsonic_error
+    get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter, subsonic_error,
+    beets_to_sub_artist
 )
 
 
@@ -158,11 +159,31 @@ def endpoint_get_music_directory():
         payload['directory'] = payload.pop('song')
 
     else:
-        payload = musicdirectory_payload('m-0', with_artists=True)
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartist 
+                FROM albums 
+                WHERE albumartist IS NOT NULL 
+                GROUP BY albumartist
+                """
+            )
 
-        # TODO - Add missing fields to artist mapper so we can return a directory with artist children
-        # payload['directory'] = payload.pop('artist')
-        # payload['directory']['child'] = payload['directory'].pop('album')
+        payload = musicdirectory_payload('m-0', with_artists=True)
+        payload['directory'] = payload.pop('musicFolders')['musicFolder'][0]
+
+        children = []
+        for row in rows:
+            artist_name = row[0]
+            artist_id = beets_to_sub_artist(artist_name)
+            children.append({
+                'id': artist_id,
+                'title': artist_name,
+                'isDir': True,
+                'artist': artist_name,
+                'coverArt': artist_id,
+            })
+        payload['directory']['child'] = children
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
 

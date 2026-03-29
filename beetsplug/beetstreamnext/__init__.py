@@ -128,18 +128,34 @@ def _before_request():
     now = time.time()
 
     from beetsplug.beetstreamnext.utils import subsonic_error
-    from beetsplug.beetstreamnext.users import authenticate, load_user_roles
 
-    if client_ip in _FAILED_AUTH_ATTEMPTS:
+    if client_ip not in ['127.0.0.1', 'localhost']:
 
-        _FAILED_AUTH_ATTEMPTS[client_ip] = [
-            t for t in _FAILED_AUTH_ATTEMPTS[client_ip]
-            if now - t < _BLOCK_TIME_SECONDS     # remove attempts older than BLOCK_TIME_SECONDS
-        ]
+        # IP whitelist / blacklist
+        whitelist = app.config.get('ip_whitelist', [])
 
-        # If currently blocked, immediately reject
-        if len(_FAILED_AUTH_ATTEMPTS[client_ip]) >= _MAX_AUTH_FAILURES:
-            return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
+        if whitelist and client_ip not in whitelist:
+            app.logger.info(f"[{datetime.fromtimestamp(now)}] IP {client_ip} not in whitelist: access denied.")
+            return subsonic_error(50, message="Access denied: IP not in whitelist.", resp_fmt=resp_fmt)
+
+        blacklist = app.config.get('ip_blacklist', [])
+        if blacklist and client_ip in blacklist:
+            app.logger.info(f"[{datetime.fromtimestamp(now)}] IP {client_ip} is blacklisted: access denied.")
+            return subsonic_error(50, message="Access denied: IP is blacklisted.", resp_fmt=resp_fmt)
+
+        # Rate limiting
+        from beetsplug.beetstreamnext.users import authenticate, load_user_roles
+
+        if client_ip in _FAILED_AUTH_ATTEMPTS:
+
+            _FAILED_AUTH_ATTEMPTS[client_ip] = [
+                t for t in _FAILED_AUTH_ATTEMPTS[client_ip]
+                if now - t < _BLOCK_TIME_SECONDS     # remove attempts older than BLOCK_TIME_SECONDS
+            ]
+
+            # If currently blocked, immediately reject
+            if len(_FAILED_AUTH_ATTEMPTS[client_ip]) >= _MAX_AUTH_FAILURES:
+                return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
 
     # Attempt authentication
     ok, error_code, username = authenticate(r)
@@ -212,6 +228,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
         self.config.add({
             'host': '0.0.0.0',
             'port': 8080,
+            'ip_whitelist': [],
+            'ip_blacklist': [],
             'cors': '*',
             'debug': False,
             'force_trust_host': False,
@@ -252,6 +270,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             app.config['BEETS_DB_PATH'] = Path(config['library'].get())
             app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
+            app.config['ip_whitelist'] = self.config['ip_whitelist'].get(list)
+            app.config['ip_blacklist'] = self.config['ip_blacklist'].get(list)
 
             # Cache clearing
             if opts.clear_cache:

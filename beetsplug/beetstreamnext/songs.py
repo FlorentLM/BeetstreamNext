@@ -185,13 +185,13 @@ def endpoint_get_top_songs():
             with flask.g.lib.transaction() as tx:
                 top_tracks_available = list(tx.query(sql, [artist_name] + lastfm_track_names))
 
-        if top_tracks_available:
-            payload = {
-                'topSongs': {
-                    'song': [map_song(s) for s in top_tracks_available]
+            if top_tracks_available:
+                payload = {
+                    'topSongs': {
+                        'song': [map_song(s) for s in top_tracks_available]
+                    }
                 }
-            }
-            return subsonic_response(payload, resp_fmt=resp_fmt)
+                return subsonic_response(payload, resp_fmt=resp_fmt)
 
     # Fallback to local play stats
     with dual_database() as db:

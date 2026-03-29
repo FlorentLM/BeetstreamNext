@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
-    sub_to_beets_artist,
+    sub_to_beets_artist, chunked_query,
 )
 
 
@@ -113,8 +113,23 @@ def endpoint_get_starred():
     albums = [map_album(row, with_songs=False, song_counts=song_counts) for row in album_dicts]
 
     artist_ids = [row[0] for row in artist_rows]
+    beets_artist_names = [sub_to_beets_artist(aid) for aid in artist_ids]
 
-    artists = [map_artist(sub_to_beets_artist(aid), with_albums=False) for aid in artist_ids] # TODO: N+1 query to fix here
+    prefetched = {}
+    if beets_artist_names:
+        with flask.g.lib.transaction() as tx:
+            placeholders = ','.join(['?'] * len(beets_artist_names))
+            sql = f"""
+                   SELECT albumartist, COUNT(*), mb_albumartistid
+                   FROM albums 
+                   WHERE albumartist IN ({placeholders}) 
+                   GROUP BY albumartist
+                   """
+            rows = chunked_query(tx, sql, beets_artist_names)
+            for r in rows:
+                prefetched[r[0]] = {'album_count': r[1], 'mbid': r[2]}
+
+    artists = [map_artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
 
     tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {

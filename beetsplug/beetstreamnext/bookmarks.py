@@ -53,16 +53,14 @@ def endpoint_get_bookmarks():
 def endpoint_create_bookmark():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    song_sub_id = r.get('id')
-
-    if not song_sub_id:
-        return subsonic_error(10, resp_fmt=resp_fmt)
-
-    beets_id = sub_to_beets_song(song_sub_id)
-
-    position = r.get('position', default=0.0, type=float)
+    song_id = r.get('id', default='', type=str)             # Required
+    position = r.get('position', default=0.0, type=float)   # Required
     comment = r.get('comment', default='', type=str)[:1024]
 
+    if not song_id or not position:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    beets_id = sub_to_beets_song(song_id)
     username = flask.g.username
     now = time.time()
 
@@ -86,12 +84,12 @@ def endpoint_create_bookmark():
 def endpoint_delete_bookmark():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    song_sub_id = r.get('id', default='', type=str)
+    song_id = r.get('id', default='', type=str)     # Required
 
-    if not song_sub_id:
+    if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = sub_to_beets_song(song_sub_id)
+    beets_id = sub_to_beets_song(song_id)
     username = flask.g.username
 
     with database() as db:

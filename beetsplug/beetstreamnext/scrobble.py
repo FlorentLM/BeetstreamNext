@@ -16,16 +16,15 @@ _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 def endpoint_scrobble():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    song_ids = r.getlist('id', type=str)
     submission = r.get('submission', default=True, type=api_bool)
     client = r.get('c', default='', type=str)
+    song_ids = r.getlist('id', type=str)        # Required
     times_ms = r.getlist('time', type=int)
 
     if not song_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     username = flask.g.username
-
     now = time.time()
 
     if not submission:

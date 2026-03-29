@@ -4,7 +4,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import (
-    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song
+    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song, api_bool
 )
 
 
@@ -96,13 +96,19 @@ def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_
 def endpoint_stream_song():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)
+    song_id = r.get('id', default='', type=str)             # Required
     max_bitrate = r.get('maxBitRate', default=0, type=int)
-    req_format = r.get('format', default='mp3', type=str)
+    req_format = r.get('format', default='raw', type=str)
     time_offset = r.get('timeOffset', default=0.0, type=float)
+
+    # estimate_length = r.get('estimateContentLength', default=False, type=api_bool)
+    # TODO: If true, the Content-Length HTTP header will be set to an estimated value for transcoded media
 
     if not bool(flask.g.user_data.get('streamRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not song_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     beets_song_id = sub_to_beets_song(song_id)
     song = flask.g.lib.get_item(beets_song_id)
@@ -147,10 +153,13 @@ def endpoint_stream_song():
 def endpoint_download_song():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)
+    song_id = r.get('id', default='', type=str)         # Required
 
     if not bool(flask.g.user_data.get('downloadRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not song_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     beets_song_id = sub_to_beets_song(song_id)
     item = flask.g.lib.get_item(beets_song_id)

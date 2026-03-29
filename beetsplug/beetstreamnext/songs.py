@@ -35,7 +35,7 @@ def song_payload(subsonic_song_id: str) -> dict:
 def endpoint_get_song():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    song_id = r.get('id', default='', type=str)
+    song_id = r.get('id', default='', type=str)     # Required
 
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -52,7 +52,10 @@ def endpoint_songs_by_genre():
     resp_fmt = r.get('f', default='xml', type=str)
     count = r.get('count', default=10, type=int)
     offset = r.get('offset', default=0, type=int)
-    genre = r.get('genre', default='', type=str)[:64]
+    genre = r.get('genre', default='', type=str)[:64]   # Required
+
+    if not genre:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     genre_pattern = f"%{genre}%"
 
@@ -144,7 +147,7 @@ def endpoint_get_top_songs():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
     req_artist_id = r.get('id', default='', type=str)
-    req_artist_name = r.get('artist', default='', type=str)
+    req_artist_name = r.get('artist', default='', type=str)     # Required
     count = r.get('count', default=50, type=int)
 
     if req_artist_id and req_artist_id.startswith(ART_ID_PREF):
@@ -218,8 +221,11 @@ def endpoint_get_top_songs():
 def endpoint_get_similar_songs():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)
+    req_id = r.get('id', default='', type=str)      # Required
     limit = r.get('count', default=50, type=int)
+
+    if not req_id:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     if req_id.startswith(SNG_ID_PREF):
         # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?

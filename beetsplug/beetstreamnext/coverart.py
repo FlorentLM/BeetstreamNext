@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
     get_mimetype, query_deezer,
     ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, http_session
+    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, http_session, subsonic_error
 )
 
 
@@ -302,52 +302,57 @@ def send_artist_image(artist, size=None):
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
 def endpoint_get_cover_art():
     r = flask.request.values
-    req_id = r.get('id', default='', type=str)
-    size = r.get('size', default=0, type=int)
+    resp_fmt = r.get('f', default='xml', type=str)
+    req_id = r.get('id', default='', type=str)      # Required
+    req_size = r.get('size', default=0, type=int)
 
-    if req_id:
-        size = _round_size(size)
+    # TODO: Return placeholder images
 
-        # album requests
-        if req_id.startswith(ALB_ID_PREF):
-            album_id = sub_to_beets_album(req_id)
+    if not req_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    size = _round_size(req_size)
+
+    # album requests
+    if req_id.startswith(ALB_ID_PREF):
+        album_id = sub_to_beets_album(req_id)
+        response = send_album_art(album_id, size)
+        if response is not None:
+            return response
+
+    # song requests
+    elif req_id.startswith(SNG_ID_PREF):
+        item_id = sub_to_beets_song(req_id)
+        item = flask.g.lib.get_item(item_id)
+        if not item:
+            return subsonic_error(70, resp_fmt=resp_fmt)
+
+        album_id = item.get('album_id')
+        if album_id:
             response = send_album_art(album_id, size)
             if response is not None:
                 return response
 
-        # song requests
-        elif req_id.startswith(SNG_ID_PREF):
-            item_id = sub_to_beets_song(req_id)
-            item = flask.g.lib.get_item(item_id)
-            if not item:
-                flask.abort(404)
+        # Fallback: try to extract cover from the song file
+        if have_ffmpeg:
+            cover_io = _image_from_song(item.path)
+            if cover_io is not None:
+                image_bytes = cover_io.getvalue()
+                if size:
+                    cover_io = _resize_image(BytesIO(image_bytes), size)
+                    return flask.send_file(cover_io, mimetype='image/jpeg')
+                return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
-            album_id = item.get('album_id')
-            if album_id:
-                response = send_album_art(album_id, size)
-                if response is not None:
-                    return response
+    # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
 
-            # Fallback: try to extract cover from the song file
-            if have_ffmpeg:
-                cover_io = _image_from_song(item.path)
-                if cover_io is not None:
-                    image_bytes = cover_io.getvalue()
-                    if size:
-                        cover_io = _resize_image(BytesIO(image_bytes), size)
-                        return flask.send_file(cover_io, mimetype='image/jpeg')
-                    return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+    # artist requests
+    else:  # some clients ask with artist ID, others ask with artist name, so this catches both
+        response = send_artist_image(req_id, size=size)
+        if response is not None:
+            return response
 
-        # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
+    # root folder ID or name: serve BeetstreamNext's logo
+    if req_id == app.config['root_directory'].name or req_id == 'm-0':
+        return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg', mimetype='image/png')
 
-        # artist requests
-        else:  # some clients ask with artist ID, others ask with artist name, so this catches both
-            response = send_artist_image(req_id, size=size)
-            if response is not None:
-                return response
-
-        # root folder ID or name: serve BeetstreamNext's logo
-        if req_id == app.config['root_directory'].name or req_id == 'm-0':
-            return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg', mimetype='image/png')
-
-    flask.abort(404)    # TODO - Return placeholders instead
+    return subsonic_error(70, resp_fmt=resp_fmt)

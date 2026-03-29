@@ -115,7 +115,6 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
         43: 'Multiple conflicting authentication mechanisms provided.',
         44: 'Invalid API key.',
         50: 'User is not authorized for the given operation.',
-        # 60: 'The trial period for the Subsonic server is over.',
         70: 'The requested data was not found.'
     }
 

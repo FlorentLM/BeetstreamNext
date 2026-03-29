@@ -116,7 +116,7 @@ def endpoint_get_artists_or_indexes():
 def endpoint_get_artist():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    artist_id = r.get('id', default='', type=str)
+    artist_id = r.get('id', default='', type=str)   # Required
 
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
 
@@ -133,7 +133,8 @@ def endpoint_get_artist():
 def endpoint_artist_info():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    artist_id = r.get('id', default='', type=str)
+    artist_id = r.get('id', default='', type=str)   # Required
+    # TODO: ID can be artist, album or song
 
     artist_name = sub_to_beets_artist(artist_id)
     items = flask.g.lib.items(f'albumartist:{artist_name}')

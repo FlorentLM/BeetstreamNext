@@ -8,7 +8,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import get_cipher, database
-from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string
+from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, pythonize_string, api_bool
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
@@ -214,19 +214,19 @@ def delete_user(username: str) -> bool:
 def endpoint_get_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    req_username = r.get('username', default=flask.g.username, type=str) # 'username' param lets an admin query any user
+    username = r.get('username', default=flask.g.username, type=str)    # Required
     # (defaults to flask.g.username so non-admins can only query themselves)
-    req_username = unquote(req_username)
+    username = unquote(username)
 
     requesting_user_data = flask.g.user_data
     if not requesting_user_data:
         return subsonic_error(40, resp_fmt=resp_fmt)
 
-    if req_username != flask.g.username and not requesting_user_data.get('adminRole'):
+    if username != flask.g.username and not requesting_user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
-    if req_username != flask.g.username:
-        target_data = _get_userdata(req_username)
+    if username != flask.g.username:
+        target_data = _get_userdata(username)
         if not target_data:
             return subsonic_error(70, resp_fmt=resp_fmt)
     else:
@@ -262,10 +262,24 @@ def endpoint_get_users():
 def endpoint_create_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    username = r.get('username', default='', type=str)
-    password = r.get('password', default='', type=str)
+    username = r.get('username', default='', type=str)      # Required
+    password = r.get('password', default='', type=str)      # Required
+    # email = r.get('email', default='', type=str)            # Required??? uhhh no thanks
     username = unquote(username)
     password = unquote(password)
+
+    # ldap_authenticated = r.get('ldapAuthenticated', default=False, type=api_bool)
+    # is_admin = r.get('adminRole', default=False, type=api_bool)
+    # can_change_settings = r.get('settingsRole', default=True, type=api_bool)
+    # can_stream = r.get('streamRole', default=True, type=api_bool)
+    # can_download = r.get('downloadRole', default=False, type=api_bool)
+    # can_upload = r.get('uploadRole', default=False, type=api_bool)
+    # can_use_playlists = r.get('playlistRole', default=False, type=api_bool)
+    # can_edit_art = r.get('coverArtRole', default=False, type=api_bool)
+    # can_comment = r.get('commentRole', default=False, type=api_bool)
+    # # can_share = r.get('shareRole', default=False, type=api_bool)
+    # # can_use_podcast = r.get('podcastRole', default=False, type=api_bool)
+    # # can_use_jukebox = r.get('jukeboxRole', default=False, type=api_bool)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -291,10 +305,28 @@ def endpoint_create_user():
 def endpoint_update_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    username = r.get('username', default='', type=str)
+    username = r.get('username', default='', type=str)      # Required
     password = r.get('password', default='', type=str)
+    # email = r.get('email', default='', type=str)
     username = unquote(username)
     password = unquote(password)
+
+    max_bitrate = r.get('maxBitRate', default=0, type=int)
+    # TODO: Add this (also in createUser even if spec does not have it)
+    #   allowed: 0 (no limit), 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320
+
+    # ldap_authenticated = r.get('ldapAuthenticated', default=False, type=api_bool)
+    # is_admin = r.get('adminRole', default=False, type=api_bool)
+    # can_change_settings = r.get('settingsRole', default=True, type=api_bool)
+    # can_stream = r.get('streamRole', default=True, type=api_bool)
+    # can_download = r.get('downloadRole', default=False, type=api_bool)
+    # can_upload = r.get('uploadRole', default=False, type=api_bool)
+    # can_use_playlists = r.get('playlistRole', default=False, type=api_bool)
+    # can_edit_art = r.get('coverArtRole', default=False, type=api_bool)
+    # can_comment = r.get('commentRole', default=False, type=api_bool)
+    # # can_share = r.get('shareRole', default=False, type=api_bool)
+    # # can_use_podcast = r.get('podcastRole', default=False, type=api_bool)
+    # # can_use_jukebox = r.get('jukeboxRole', default=False, type=api_bool)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -318,7 +350,7 @@ def endpoint_update_user():
 def endpoint_delete_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    target_user = r.get('username', default='', type=str)
+    target_user = r.get('username', default='', type=str)   # Required
     target_user = unquote(target_user)
 
     if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
@@ -342,13 +374,10 @@ def endpoint_delete_user():
 def endpoint_change_password():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    target_user = r.get('username', default=flask.g.username, type=str)
-    new_password =  r.get('password', default='', type=str)
+    target_user = r.get('username', default=flask.g.username, type=str)     # Required
+    new_password =  r.get('password', default='', type=str)                 # Required
     target_user = unquote(target_user)
     new_password = unquote(new_password)
-
-    if not new_password:
-        return subsonic_error(10, resp_fmt=resp_fmt)
 
     # User can change their own password, admin can change anyone's
     is_self = (target_user == flask.g.username)
@@ -356,6 +385,9 @@ def endpoint_change_password():
 
     if not is_self and not is_admin:
         return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not new_password:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
         update_user(target_user, password=new_password)
@@ -470,8 +502,6 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
     salt = unquote(salt)
     clearpass = unquote(clearpass)
 
-    legacy_auth_enabled = app.config.get('legacy_auth', True)
-
     # API Key (modern)
     if api_key:
         if user or token or salt or clearpass:
@@ -483,36 +513,40 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
             return True, 0, found_user
         return False, 40, None
 
-    if not legacy_auth_enabled:
-        return False, 42, None
-
     # Legacy (MD5 / password)
-    if not user:
-        return False, 10, None
+    else:
+        if clearpass and (token or salt):
+            return False, 43, None
 
-    user_data = _get_userdata(user, fields=['password'])
-    if not user_data:
-        _get_userdata('', fields=['password'])  # dummy DB round-trip for timing
-        hmac.compare_digest(token or '', _DUMMY_TOKEN)
-        return False, 40, None
+        if not app.config.get('legacy_auth', True):
+            return False, 42, None
 
-    stored_password = user_data['password']
+        if not user:
+            return False, 10, None
 
-    if token and salt:
-        expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
-        if hmac.compare_digest(token, expected):
-            return True, 0, user
-    elif clearpass:
-        if clearpass.startswith('enc:'):
-            try:
-                decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
-            except ValueError:
-                return False, 40, None
-            ok = hmac.compare_digest(decoded, stored_password)
-        else:
-            ok = hmac.compare_digest(clearpass, stored_password)
-        if ok:
-            return True, 0, user
+        user_data = _get_userdata(user, fields=['password'])
+        if not user_data:
+            _get_userdata('', fields=['password'])  # dummy DB round-trip for timing
+            hmac.compare_digest(token or '', _DUMMY_TOKEN)
+            return False, 40, None
+
+        stored_password = user_data['password']
+        if token and salt:
+            expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
+            if hmac.compare_digest(token, expected):
+                return True, 0, user
+
+        elif clearpass:
+            if clearpass.startswith('enc:'):
+                try:
+                    decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
+                except ValueError:
+                    return False, 40, None
+                ok = hmac.compare_digest(decoded, stored_password)
+            else:
+                ok = hmac.compare_digest(clearpass, stored_password)
+            if ok:
+                return True, 0, user
 
     return False, 40, None
 

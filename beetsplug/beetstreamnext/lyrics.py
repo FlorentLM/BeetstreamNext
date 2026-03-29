@@ -20,7 +20,7 @@ def _fetch_lyrics(item):
             if item.lyrics:
                 return item.lyrics
         except Exception as e:
-            app.logger.error(f"Error fetching lyrics via beets plugin: {e}")
+            app.logger.error(f'Error fetching lyrics via beets plugin: {e}')
 
     return None
 
@@ -49,16 +49,18 @@ def endpoint_get_lyrics():
         )
 
     if not rows:
-        return subsonic_error(70, message="Song not found", resp_fmt=resp_fmt)
+        return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)
 
     item = flask.g.lib.get_item(rows[0][0])
     lyrics_text = _fetch_lyrics(item)
+    if not lyrics_text:
+        return subsonic_error(70, message='Lyrics not found.', resp_fmt=resp_fmt)
 
     payload = {
         'lyrics': {
             'artist': artist,
             'title': title,
-            'value': lyrics_text or ''
+            'value': lyrics_text
         }
     }
     return subsonic_response(payload, resp_fmt)
@@ -68,10 +70,9 @@ def endpoint_get_lyrics():
 @app.route('/rest/getLyricsBySongId', methods=["GET", "POST"])
 @app.route('/rest/getLyricsBySongId.view', methods=["GET", "POST"])
 def endpoint_get_lyrics_by_song_id():
-
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)
+    req_id = r.get('id', default='', type=str)      # Required
 
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -80,15 +81,18 @@ def endpoint_get_lyrics_by_song_id():
     item = flask.g.lib.get_item(beets_id)
 
     if not item:
-        return subsonic_error(70, message="Song not found", resp_fmt=resp_fmt)
+        return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)
 
     lyrics_text = _fetch_lyrics(item)
+    if not lyrics_text:
+        return subsonic_error(70, message='Lyrics not found.', resp_fmt=resp_fmt)
 
-    lines = [{'value': line} for line in lyrics_text.split('\n')] if lyrics_text else []
+    lines = [{'value': line} for line in lyrics_text.split('\n')]
     payload = {
         'lyricsList': {
             'structuredLyrics': [
                 {
+                    'kind': 'main',
                     'displayArtist': item.get('artist') or '',
                     'displayTitle': item.get('title') or '',
                     'lang': item.get('language') or 'xxx',  # OpenSubsonic's fallback for unknown language is xxx

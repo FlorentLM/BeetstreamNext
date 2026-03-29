@@ -12,8 +12,8 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error
 def endpoint_set_rating():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)
-    rating = r.get('rating', default=0, type=int)
+    req_id = r.get('id', default='', type=str)      # Required
+    rating = r.get('rating', default=0, type=int)   # Required
 
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

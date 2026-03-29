@@ -5,7 +5,7 @@ from beetsplug.beetstreamnext.artists import artist_payload
 from beetsplug.beetstreamnext.albums import album_payload
 from beetsplug.beetstreamnext.songs import song_payload
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter
+    get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter, subsonic_error
 )
 
 
@@ -138,7 +138,10 @@ def endpoint_get_music_directory():
     # Usually Artist first, then Album, then Songs
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
-    req_id = r.get('id', default='', type=str)
+    req_id = r.get('id', default='', type=str)      # Required
+
+    if not req_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     if req_id.startswith(ART_ID_PREF):
         payload = artist_payload(req_id, with_albums=True)

@@ -11,8 +11,8 @@ from beetsplug.beetstreamnext.utils import (
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
-@app.route('/rest/search', methods=["GET", "POST"])
-@app.route('/rest/search.view', methods=["GET", "POST"])
+# @app.route('/rest/search', methods=["GET", "POST"])
+# @app.route('/rest/search.view', methods=["GET", "POST"])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search2/
 @app.route('/rest/search2', methods=["GET", "POST"])
@@ -24,6 +24,17 @@ from beetsplug.beetstreamnext.utils import (
 def endpoint_search():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=str)
+
+    # Old search parameters (specs says deprecated)
+    # TODO: Still support these for old clients, because why not
+    # depr_artist = r.get('artist', default='', type=str)
+    # depr_album = r.get('album', default='', type=str)
+    # depr_song = r.get('title', default='', type=str)
+    # depr_any = r.get('any', default='', type=str)
+    # depr_count = r.get('count', default=20, type=int)
+    # depr_offset = r.get('offset', default=0, type=int)
+    # depr_newerthan = r.get('newerThan', default=0, type=int)
+
     song_count = r.get('songCount', default=20, type=int)
     song_offset = r.get('songOffset', default=0, type=int)
     album_count = r.get('albumCount', default=20, type=int)
@@ -42,6 +53,10 @@ def endpoint_search():
         tag = 'searchResult3'
     else:
         tag = 'searchResult'
+
+    if not query and tag == 'searchResult2':
+        # search2 does not support empty queries
+        return subsonic_error(10, message='Specify a query, or use `/rest/search3` instead.', resp_fmt=resp_fmt)
 
     artist_prefetch = {}
 
@@ -69,15 +84,7 @@ def endpoint_search():
 
     # Normal SQL search
     else:
-        if not query:
-            if tag == 'searchResult2':
-                # search2 does not support empty queries: return an empty response
-                return subsonic_error(10, resp_fmt=resp_fmt)
-            # search3 "must support an empty query and return all the data"
-            # https://opensubsonic.netlify.app/docs/endpoints/search3/
-            pattern = "%"
-        else:
-            pattern = f"%{query.lower()}%"
+        pattern = f'%{query.lower()}%' if query else '%'
 
         lib = app.config.get('lib')
 

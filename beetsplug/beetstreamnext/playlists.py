@@ -40,7 +40,7 @@ def endpoint_get_playlist():
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
-        'playlist': map_playlist(playlist, with_songs=True)
+        'playlist': map_playlist(playlist, include_songs=True)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 

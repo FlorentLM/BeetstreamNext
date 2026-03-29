@@ -281,7 +281,7 @@ def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
     return subsonic_media
 
 
-def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
+def map_album(album_object: Union[Dict, library.Album], include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
 
     data = standardise_datadict(album_object)
 
@@ -332,41 +332,44 @@ def map_album(album_object: Union[Dict, library.Album], with_songs: bool = True,
     # - AlbumID3WithSongs response
     # - directory response ('song' key needs to be renamed to 'child')
 
-    songs = []
-
-    # Song counts and durations
-    need_songs = not (song_counts and beets_album_id in song_counts)
-
-    # Still need to load songs to get the count if song_counts is not passed   # TODO: Can this be avoided?
-    if need_songs or with_songs:
-        if isinstance(album_object, library.Album):
-            songs = list(album_object.items())
-        else:
-            songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
-
-    # Song count and duration
     if song_counts and beets_album_id in song_counts:
         subsonic_album['songCount'], subsonic_album['duration'] = song_counts[beets_album_id]
-    else:
-        subsonic_album['songCount'] = len(songs)
-        subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
 
-    # Map songs
-    if with_songs:
+    elif not include_songs:
+        # No need for full song objects, only SQL count
+        with flask.g.lib.transaction() as tx:
+            row = tx.query(
+                """
+                SELECT COUNT(*), SUM(length) 
+                FROM items 
+                WHERE album_id = ?
+                """, (beets_album_id,)
+            ).fetchone()
+
+            subsonic_album['songCount'] = row[0]
+            subsonic_album['duration'] = round(row[1] or 0)
+
+
+    if include_songs:
+        # Need song details
+        songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
+
+        if 'songCount' not in subsonic_album:
+            subsonic_album['songCount'] = len(songs)
+            subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
+
         song_filesizes = {}
         if songs:
             try:
-                first_path = songs[0].path
-                album_dir = os.path.dirname(os.fsdecode(first_path))
-
+                album_dir = os.path.dirname(os.fsdecode(songs[0].path))
                 with os.scandir(album_dir) as it:
                     for entry in it:
                         if entry.is_file():
                             song_filesizes[entry.path] = entry.stat().st_size
-            except Exception:
-                pass
+            except Exception as e:
+                app.logger.debug(f"Filesize prefetch failed: {e}")
 
-        songs.sort(key=lambda s: (s.disc, s.track))
+        songs.sort(key=lambda s: (s.get('disc', 1), s.get('track', 1)))
         subsonic_album['song'] = [map_song(s, prefetched_sizes=song_filesizes) for s in songs]
 
     # Average rating
@@ -514,7 +517,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
             subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
 
         song_counts = get_song_counts(albums)
-        subsonic_artist['album'] = [map_album(alb, with_songs=False, song_counts=song_counts) for alb in albums]
+        subsonic_artist['album'] = [map_album(alb, include_songs=False, song_counts=song_counts) for alb in albums]
 
     else:
         if prefetched and artist_name in prefetched:
@@ -543,7 +546,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     return subsonic_artist
 
 
-def map_playlist(playlist, with_songs=False):
+def map_playlist(playlist, include_songs=False):
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
@@ -555,7 +558,7 @@ def map_playlist(playlist, with_songs=False):
         # 'owner': 'userA',     # TODO
         # 'public': True,
     }
-    if with_songs and playlist.songs:
+    if include_songs and playlist.songs:
         subsonic_playlist['entry'] = playlist.songs
 
     return subsonic_playlist

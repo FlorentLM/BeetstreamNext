@@ -150,7 +150,7 @@ def endpoint_get_music_directory():
         payload['directory']['child'] = payload['directory'].pop('album')
 
     elif req_id.startswith(ALB_ID_PREF):
-        payload = album_payload(req_id, with_songs=True)
+        payload = album_payload(req_id, include_songs=True)
         payload['directory'] = payload.pop('album')
         payload['directory']['child'] = payload['directory'].pop('song')
 

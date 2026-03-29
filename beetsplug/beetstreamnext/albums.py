@@ -10,14 +10,14 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
-def album_payload(subsonic_album_id: str, with_songs=True) -> dict:
+def album_payload(subsonic_album_id: str, include_songs=True) -> dict:
 
     beets_album_id = sub_to_beets_album(subsonic_album_id)
     album_object = flask.g.lib.get_album(beets_album_id)
 
     payload = {
         "album": {
-            **map_album(album_object, with_songs=with_songs)
+            **map_album(album_object, include_songs=include_songs)
         }
     }
     return payload
@@ -52,7 +52,7 @@ def endpoint_get_album():
     resp_fmt = r.get('f', default='xml', type=safe_str)
     album_id = r.get('id', default='', type=safe_str)    # Required
 
-    payload = album_payload(album_id, with_songs=True)
+    payload = album_payload(album_id, include_songs=True)
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
@@ -178,7 +178,7 @@ def endpoint_get_album_list():
 
         payload = {
             tag: {
-                "album": [map_album(a, with_songs=False, song_counts=counts) for a in album_dicts]
+                "album": [map_album(a, include_songs=False, song_counts=counts) for a in album_dicts]
             }
         }
         return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -236,7 +236,7 @@ def endpoint_get_album_list():
     song_counts = get_song_counts(albums)
     payload = {
         tag: {
-            "album": [map_album(a, with_songs=False, song_counts=song_counts) for a in albums]
+            "album": [map_album(a, include_songs=False, song_counts=song_counts) for a in albums]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

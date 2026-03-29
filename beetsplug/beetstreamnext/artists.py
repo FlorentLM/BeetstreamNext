@@ -32,7 +32,7 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
         # I don't think there is any endpoint that returns an artist with albums AND songs?
         song_counts = get_song_counts(albums)
 
-        payload['artist']['album'] = list(map(partial(map_album, with_songs=False, song_counts=song_counts), albums))
+        payload['artist']['album'] = list(map(partial(map_album, include_songs=False, song_counts=song_counts), albums))
 
     return payload
 

@@ -110,7 +110,7 @@ def endpoint_get_starred():
 
     album_dicts = [dict(row) for row in album_rows]
     song_counts = get_song_counts(album_dicts)
-    albums = [map_album(row, with_songs=False, song_counts=song_counts) for row in album_dicts]
+    albums = [map_album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
 
     artist_ids = [row[0] for row in artist_rows]
     beets_artist_names = [sub_to_beets_artist(aid) for aid in artist_ids]

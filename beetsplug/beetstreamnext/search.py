@@ -191,7 +191,7 @@ def endpoint_search():
     payload = {
         tag: {
             'artist': [map_artist(name, with_albums=False, prefetched=artist_prefetch) for name in artists],
-            'album': [map_album(alb, with_songs=False, song_counts=song_counts) for alb in albums],
+            'album': [map_album(alb, include_songs=False, song_counts=song_counts) for alb in albums],
             'song': [map_song(s) for s in songs]
         }
     }

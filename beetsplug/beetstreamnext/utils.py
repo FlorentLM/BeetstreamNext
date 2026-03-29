@@ -714,7 +714,8 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
                .replace("Rock 'N'", 'Rock and')
                .replace('.', ' '))
 
-        final_tag = customstrip(tag)
+        final_tag = customstrip(tag, punctuation=True)
+        final_tag = remove_accents(final_tag)
         if final_tag and final_tag not in cleaned:
             cleaned.append(final_tag)
 

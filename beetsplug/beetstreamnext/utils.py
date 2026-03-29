@@ -1,4 +1,5 @@
 import binascii
+import string
 from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple, Any
 import threading
 import os
@@ -12,6 +13,7 @@ import json
 import base64
 import mimetypes
 import unicodedata
+from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 # from xml.dom import minidom
 import requests
@@ -605,7 +607,7 @@ def remove_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 
-def customstrip(value: Optional[Union[str, bytes]]) -> str:
+def customstrip(value: Any, punctuation: bool = False) -> str:
     if not value:
         return ''
     if isinstance(value, bytes):
@@ -613,7 +615,13 @@ def customstrip(value: Optional[Union[str, bytes]]) -> str:
             value = value.decode('utf-8')
         except UnicodeDecodeError:
             return ''
-    return str(value).strip(' \n\t\r\v\f\x00"\'()[]{};,\\/|')
+
+    s = str(value)
+    to_strip = string.whitespace + '\v\f\x00'
+    if punctuation:
+        to_strip += string.punctuation
+
+    return s.strip(to_strip)
 
 
 def standard_ascii(text: str) -> str:
@@ -687,8 +695,19 @@ def trim_text(text, char_limit=300):
 ##
 # Various parsers / converters / formatters
 
+def safe_str(val: Any) -> str:
+    if val is None:
+        return ''
+    s = unquote(str(val))
+    s = unicodedata.normalize('NFC', s)
+    s = standard_ascii(s)
+    return customstrip(s)
+
 def api_bool(val: Any) -> bool:
-    return str(val).lower() not in ('false', '0', 'no', 'none')
+    if val is None:
+        return False
+    return safe_str(val).lower() not in ('false', '0', 'no', 'none', '')
+
 
 def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:

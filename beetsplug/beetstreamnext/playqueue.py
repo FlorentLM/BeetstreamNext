@@ -69,8 +69,6 @@ def endpoint_save_play_queue():
     position = r.get('position', default=0.0, type=float)
     current_sid = r.get('current', default='', type=str)    # Required unless id is empty
     song_ids = r.getlist('id', type=str)
-    # TODO: Use one id parameter for each song in the play queue
-    # TODO: Empty id clears the queue
 
     username = flask.g.username
 

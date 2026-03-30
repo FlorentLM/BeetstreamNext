@@ -61,7 +61,7 @@ def endpoint_create_playlist():
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = [flask.g.lib.get_item(sub_to_beets_song(sid)) for sid in songs_ids if sub_to_beets_song(sid)]
+    songs = [flask.g.lib.get_item(sub_to_beets_song(sid)) for sid in songs_ids if sid]
     try:
         playlist = Playlist.from_songs(name, songs)
     except FileExistsError as e:

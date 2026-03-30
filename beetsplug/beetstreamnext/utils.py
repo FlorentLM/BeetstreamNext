@@ -296,12 +296,10 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
         'musicBrainzId': data.get('mb_albumid') or '',
         'name': album_name,
         'sortName': album_name,
-        # 'version': 'Deluxe Edition',   # TODO - Use the 'media' field maybe?
+        # 'version': 'Deluxe Edition', # TODO: items table has 'media' that contains "Vinyl", "CD"< "Digital Media", etc
+                        # TODO: also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
         'coverArt': subsonic_album_id,
-
         'userRating': cached_user_ratings().get(subsonic_album_id, 0),
-
-        # 'recordLabels': [{'name': l for l in stringlist_splitter(album.get('label', ''))}],
         'isCompilation': bool(data.get('comp', False)),
 
         # These are only needed when part of a directory response
@@ -316,9 +314,16 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
     }
     subsonic_album.update(album_specific)
 
+    # Add labels if possible
+    label = data.get('label', '')
+    if label:
+        subsonic_album['recordLabels'] = [{'name': label}]
+
     # Add release types if possible
     rt = data.get('albumtypes', '') or data.get('albumtype', '')
-    subsonic_album['releaseTypes'] = stringlist_splitter(rt) if isinstance(rt, str) else [r.strip().title() for r in rt]
+    release_types = stringlist_splitter(rt) if isinstance(rt, str) else [r.strip().title() for r in rt]
+    if release_types:
+        subsonic_album['releaseTypes'] = release_types
 
     # Add multi-disc info if needed
     nb_discs = data.get('disctotal', 1)
@@ -409,13 +414,8 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
         'albumId': album_id,
         'coverArt': album_id or song_id,
         'language': data.get('language') or '',
-
         'path': song_filepath,
-
-        'played': '',
-        'playCount': 0,
         'userRating': cached_user_ratings().get(song_id, 0),
-
         'duration': round(data.get('length') or 0),
         'bpm': data.get('bpm') or 0,
         'bitRate': round((data.get('bitrate') or 0) / 1000),
@@ -439,6 +439,8 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
         'mediaType': 'song'
     }
     subsonic_song.update(song_specific)
+
+    # TODO: lyricist, composer, etc
 
     track_nb = data.get('track')
     if track_nb:

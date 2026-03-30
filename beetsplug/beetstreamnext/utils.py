@@ -725,7 +725,7 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
         if final_tag and final_tag not in cleaned:
             cleaned.append(final_tag)
 
-    return tuple(dict.fromkeys(cleaned).keys())
+    return tuple(cleaned)
 
 
 ##

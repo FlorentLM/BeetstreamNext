@@ -152,7 +152,7 @@ class Playlist:
         instance = cls.__new__(cls)
 
         safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
-        base_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs[0])).resolve()
+        base_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
         path = (base_dir / f'{safe_name}.m3u').resolve()
 
         if not path.is_relative_to(base_dir):

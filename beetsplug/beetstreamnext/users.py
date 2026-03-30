@@ -98,13 +98,14 @@ def _get_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = N
     return user_dict
 
 
-def _store_userdata(user_dict):
+def _store_userdata(user_dict: Dict):
 
-    username = user_dict.pop('username', None)
+    _user_dict = dict(user_dict)
+    username = _user_dict.pop('username', None)
     if not username:
         raise ValueError("User dict must have the 'username' key!")
 
-    filtered_dict = {k: v for k, v in user_dict.items() if k in _ALLOWED_USER_FIELDS}
+    filtered_dict = {k: v for k, v in _user_dict.items() if k in _ALLOWED_USER_FIELDS}
 
     cipher = get_cipher()
     if 'password' in filtered_dict and cipher:

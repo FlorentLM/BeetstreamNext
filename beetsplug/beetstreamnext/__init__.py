@@ -197,9 +197,9 @@ def home():
             "songs": tx.query("SELECT COUNT(*) FROM items")[0][0],
             "status": "Online"
         }
-    template_content = (PROJECT_ROOT / 'index.html' ).open().read()
+    template_content = (PROJECT_ROOT / 'index.html').read_text(encoding='utf-8')
     try:
-        logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').open().read()
+        logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').read_text(encoding='utf-8')
     except Exception:
         logo_svg = ''
     # TODO - more colours for the indicator dot: http / https / unencrypted db -> orange / red

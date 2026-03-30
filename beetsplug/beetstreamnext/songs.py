@@ -161,7 +161,7 @@ def endpoint_get_top_songs():
             """
             SELECT mb_artistid 
             FROM items 
-            WHERE albumartist LIKE ? 
+            WHERE albumartist LIKE ? COLLATE NOCASE
             LIMIT 1
             """, (artist_name,)
         )

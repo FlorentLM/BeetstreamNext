@@ -125,7 +125,7 @@ def _before_request():
     if flask.request.path == '/':
         return
 
-    if 'getOpenSubsonicExtensions' in flask.request.path:
+    if flask.request.path.rstrip('/') in ('/rest/getOpenSubsonicExtensions', '/rest/getOpenSubsonicExtensions.view'):
         return
 
     client_ip = flask.request.remote_addr

@@ -337,16 +337,16 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
     elif not include_songs:
         # No need for full song objects, only SQL count
         with flask.g.lib.transaction() as tx:
-            row = tx.query(
+            rows = tx.query(
                 """
                 SELECT COUNT(*), SUM(length) 
                 FROM items 
                 WHERE album_id = ?
                 """, (beets_album_id,)
-            ).fetchone()
-
-            subsonic_album['songCount'] = row[0]
-            subsonic_album['duration'] = round(row[1] or 0)
+            )
+            count, duration = rows[0][:2] if rows else (0, 0)
+            subsonic_album['songCount'] = count
+            subsonic_album['duration'] = round(duration)
 
 
     if include_songs:

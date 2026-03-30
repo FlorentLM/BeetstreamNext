@@ -289,11 +289,17 @@ def endpoint_get_similar_songs():
     if req_artist_name and req_artist_mbid:
         similar_artists[req_artist_name] = req_artist_mbid
 
-    # Filter to columns that actually exist in this beets install.
-    # mb_artistids, artists, composer, lyricist are all optional/plugin fields.
+    # Filter to columns that actually exist in current beets library
     available_cols = set(get_beets_schema('items'))
     mbid_fields = [f for f in ['mb_artistid', 'mb_artistids'] if f in available_cols]
     name_fields = [f for f in ['artist', 'artists', 'composer', 'lyricist'] if f in available_cols]
+
+    # Safety cap to stay under SQLite 999 param limit
+    # (last.fm scores by similarity anyway so the top N are fine)
+    if mbid_fields or name_fields:
+        max_params_per_artist = len(mbid_fields) + len(name_fields)
+        max_artists = 998 // max(max_params_per_artist, 1)
+        similar_artists = dict(list(similar_artists.items())[:max_artists])
 
     conditions = []
     params = []

@@ -18,13 +18,14 @@ BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
 """
 import os
 import time
-from collections import defaultdict
 import platform
 import shutil
 from datetime import datetime
 from pathlib import Path
 import threading
 import getpass
+from typing import Dict, List
+
 from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
@@ -69,8 +70,11 @@ _CLEANUP_INTERVAL = 24 * 3600  # once per day
 _MAX_CACHE_AGE_DAYS = 30
 
 
-def try_tidyingup_cache():
-    """Deletes old cached thumbnails periodically."""
+def _run_periodic_things():
+    """
+    Runs housekeeping periodically.
+    Deletes old cached thumbnails, purges rate limiting store.
+    """
 
     global _last_cleanup
 
@@ -88,6 +92,15 @@ def try_tidyingup_cache():
         _last_cleanup = now
     finally:
         _cleanup_lock.release()
+
+    # Sweep stale IPs from rate-limit dict
+    with _auth_lock:
+        stale = [
+            ip for ip, attempts in _FAILED_AUTH_ATTEMPTS.items()
+            if not attempts or (now - max(attempts) > _BLOCK_TIME_SECONDS)
+        ]
+        for ip in stale:
+            del _FAILED_AUTH_ATTEMPTS[ip]
 
     def _tidyup_cache(days):
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']
@@ -110,7 +123,8 @@ def try_tidyingup_cache():
 
 
 # Rate-limit auth failures
-_FAILED_AUTH_ATTEMPTS = defaultdict(list)    # dict of IP -> list of failed attempts timestamps
+_auth_lock = threading.Lock()
+_FAILED_AUTH_ATTEMPTS: Dict[str, List[float]] = {}   # IP -> list of failed attempt timestamps
 _MAX_AUTH_FAILURES = 5      # Block for 5 minutes
 _BLOCK_TIME_SECONDS = 300   # after 5 failed attempts
 
@@ -128,7 +142,7 @@ def _before_request():
     if flask.request.path.rstrip('/') in ('/rest/getOpenSubsonicExtensions', '/rest/getOpenSubsonicExtensions.view'):
         return
 
-    client_ip = flask.request.remote_addr
+    client_ip = str(flask.request.remote_addr)
     now = time.time()
 
     from beetsplug.beetstreamnext.utils import subsonic_error
@@ -149,24 +163,27 @@ def _before_request():
             return subsonic_error(50, message="Access denied: IP is blacklisted.", resp_fmt=resp_fmt)
 
         # Rate limiting
-        if client_ip in _FAILED_AUTH_ATTEMPTS:
+        with _auth_lock:
+            recent = [t for t in _FAILED_AUTH_ATTEMPTS.get(client_ip, [])
+                      if now - t < _BLOCK_TIME_SECONDS]
+            if recent:
+                _FAILED_AUTH_ATTEMPTS[client_ip] = recent
+            else:
+                _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)
+            blocked = len(recent) >= _MAX_AUTH_FAILURES
 
-            _FAILED_AUTH_ATTEMPTS[client_ip] = [
-                t for t in _FAILED_AUTH_ATTEMPTS[client_ip]
-                if now - t < _BLOCK_TIME_SECONDS     # remove attempts older than BLOCK_TIME_SECONDS
-            ]
-
-            # If currently blocked, immediately reject
-            if len(_FAILED_AUTH_ATTEMPTS[client_ip]) >= _MAX_AUTH_FAILURES:
-                return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
+        if blocked:
+            return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
 
     # Attempt authentication
     ok, error_code, username = authenticate(r)
     if not ok:
-        _FAILED_AUTH_ATTEMPTS[client_ip].append(now)     # failed attempt : record it
+        with _auth_lock:
+            _FAILED_AUTH_ATTEMPTS.setdefault(client_ip, []).append(now)     # failed attempt : record it
         return subsonic_error(error_code, resp_fmt=resp_fmt)
 
-    _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
+    with _auth_lock:
+        _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
 
     g.lib = app.config['lib']
     g.username = username
@@ -178,7 +195,9 @@ def _before_request():
     # TODO: Use safe_str for non-password fields
     g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
 
-    try_tidyingup_cache()
+    _run_periodic_things()
+
+    return 0
 
 
 @app.after_request

@@ -166,11 +166,6 @@ class Playlist:
         instance.name = safe_name
         instance.path = path
 
-        if instance.path.is_file():
-            err = f"Playlist {instance.name}.m3u already exists in BeetstreamNext's folder!"
-            app.logger.warning(err)
-            raise FileExistsError(err)
-
         instance.dir_id = 0
         instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.stem.lower()[:200]}{instance.path.suffix.lower()}'
         instance.ctime = None

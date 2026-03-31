@@ -1,8 +1,9 @@
 import threading
-from typing import TYPE_CHECKING, Union, List, Any, Optional
+from typing import TYPE_CHECKING, Union, List, Optional
 import os
 from pathlib import Path
 import flask
+from beets.util import bytestring_path
 
 from beetsplug.beetstreamnext.utils import (
     PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song, chunked_query
@@ -83,7 +84,7 @@ class Playlist:
             for _, e in path_entries:
                 uri = e['uri']
                 full_path = (self.path.parent / uri).resolve()
-                absolute_paths_bytes.append(str(full_path).encode('utf-8'))
+                absolute_paths_bytes.append(bytestring_path(str(full_path)))
 
             with flask.g.lib.transaction() as tx:
                 sql_query = 'SELECT * FROM items WHERE path IN ({q})'

@@ -1,6 +1,6 @@
 import binascii
 import string
-from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple, Any
+from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple, Any, Sequence
 import threading
 import os
 import shutil
@@ -54,7 +54,8 @@ except ImportError:
     WIKI_API = False
 
 
-GENRE_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\␀', '\x00']))
+_BEETS_MULTI_DELIM = '\\\u2400'     # what's used in beets' db to separate multiple artists, multiple genres etc
+_MORE_GENRES_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\u2400', '\\', '\x00']))
 
 _ASCII_TRANSLATE_TABLE = {
     ord('\u2010'): '-', ord('\u2011'): '-', ord('\u2012'): '-',
@@ -315,7 +316,7 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
 
     # Add release types if possible
     rt = data.get('albumtypes', '') or data.get('albumtype', '')
-    release_types = stringlist_splitter(rt) if isinstance(rt, str) else [r.strip().title() for r in rt]
+    release_types = [s.title() for s in split_beets_multi(rt)]
     if release_types:
         subsonic_album['releaseTypes'] = release_types
 
@@ -626,6 +627,19 @@ def remove_accents(text: Any):
     return ''.join(c for c in unicodedata.normalize('NFD', str(text)) if unicodedata.category(c) != 'Mn')
 
 
+def split_beets_multi(stringlist: Union[Sequence[Any], str]) -> List[str]:
+    """Split a beets multi-value field."""
+    if not stringlist:
+        return []
+
+    if not isinstance(stringlist, str) and isinstance(stringlist, Sequence):
+        # re-join if it's a sequence
+        stringlist = _BEETS_MULTI_DELIM.join(stringlist)
+
+    splitted = str(stringlist).split(_BEETS_MULTI_DELIM)
+    return [s.strip('\\\u2400') for s in splitted if s]
+
+
 def customstrip(value: Any, punctuation: bool = False) -> str:
     if not value:
         return ''
@@ -649,13 +663,6 @@ def standard_ascii(text: Any) -> str:
         return ''
     text = unicodedata.normalize('NFC', str(text))
     return text.translate(_ASCII_TRANSLATE_TABLE).strip()
-
-
-def stringlist_splitter(delimiter_separated_string: str):
-    if not delimiter_separated_string:
-        return []
-    parts = GENRE_DELIM.split(str(delimiter_separated_string))
-    return [customstrip(p) for p in parts if customstrip(p)]
 
 
 def trim_text(text, char_limit=300):
@@ -704,10 +711,11 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     if not genres:
         return ()
 
-    raw_list = stringlist_splitter(genres)
+    raw_list = split_beets_multi(genres)
+    separated = _MORE_GENRES_DELIM.split(';'.join(raw_list))
 
     cleaned = []
-    for g in raw_list:
+    for g in separated:
         tag = standard_ascii(g).title()
 
         tag = (tag.replace('Post ', 'Post-')

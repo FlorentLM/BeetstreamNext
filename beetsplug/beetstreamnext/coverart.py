@@ -253,8 +253,6 @@ def send_album_art(album_id, size=None):
 
 def send_artist_image(artist, size=None):
 
-    # TODO - Maybe make a separate plugin to save deezer data permanently to disk / beets db?
-
     artist = customstrip(artist)
     artist_name = sub_to_beets_artist(artist) if artist.startswith(ART_ID_PREF) else artist
 

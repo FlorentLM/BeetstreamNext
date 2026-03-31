@@ -197,8 +197,6 @@ def _before_request():
 
     _run_periodic_things()
 
-    return 0
-
 
 @app.after_request
 def _add_security_headers(response):

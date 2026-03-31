@@ -332,6 +332,10 @@ def endpoint_get_cover_art():
 
     size = _round_size(req_size)
 
+    # root folder ID or name: serve BeetstreamNext's logo
+    if req_id == app.config['root_directory'].name or req_id == 'm-0':
+        return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.png', mimetype='image/png')
+
     # album requests
     if req_id.startswith(ALB_ID_PREF):
         album_id = sub_to_beets_album(req_id)
@@ -391,9 +395,5 @@ def endpoint_get_cover_art():
         response = send_artist_image(req_id, size=size)
         if response is not None:
             return response
-
-    # root folder ID or name: serve BeetstreamNext's logo
-    if req_id == app.config['root_directory'].name or req_id == 'm-0':
-        return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg', mimetype='image/png')
 
     return subsonic_error(70, resp_fmt=resp_fmt)

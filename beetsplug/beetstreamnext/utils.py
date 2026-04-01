@@ -943,7 +943,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     return {}
 
 
-def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
+def query_lastfm(q: str, type: str, method: str = 'info', is_mbid=True) -> Dict:
 
     if not app.config['lastfm_api_key']:
         return {}
@@ -956,7 +956,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', mbid=True) -> Dict:
         'api_key': app.config['lastfm_api_key'],
         }
 
-    if mbid:
+    if is_mbid:
         q = q.replace(' ', '+')
         params['mbid'] = q
     elif q and type != 'user':

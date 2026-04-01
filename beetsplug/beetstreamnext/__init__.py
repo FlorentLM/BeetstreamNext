@@ -55,6 +55,8 @@ def cache_location() -> Path:
     return final_path
 
 
+_LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
+
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
 app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
@@ -148,7 +150,7 @@ def _before_request():
     from beetsplug.beetstreamnext.utils import subsonic_error
     from beetsplug.beetstreamnext.users import authenticate, load_user_roles
 
-    if client_ip not in ['127.0.0.1', 'localhost']:
+    if client_ip not in _LOOPBACK_IPS:
 
         # IP whitelist / blacklist
         whitelist = app.config.get('ip_whitelist', [])
@@ -403,7 +405,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
             app.config['save_album_art'] = self.config['save_album_art'].get(bool)
 
-            if debug and host not in ['127.0.0.1', 'localhost']:
+            if debug and host not in _LOOPBACK_IPS:
                 if force_trust_host:
                     print(f"[!!! SUPER IMPORTANT WARNING !!!] Debug mode is force-enabled on {host}. "
                           "The Werkzeug debugger allows arbitrary remote code execution. "
@@ -414,7 +416,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     return
 
             if app.config['legacy_auth'] and not self.config['reverse_proxy']:
-                if host not in ['127.0.0.1', 'localhost']:
+                if host not in _LOOPBACK_IPS:
                     print(
                         "[WARNING] Legacy authentication is enabled and the server is listening on "
                         f"{host}:{port} without a reverse proxy. Passwords from legacy "

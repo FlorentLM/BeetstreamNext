@@ -54,10 +54,10 @@ def endpoint_create_bookmark():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)             # Required
-    position = r.get('position', default=0.0, type=float)   # Required
+    position = r.get('position', default=0.0, type=float)       # Required
     comment = r.get('comment', default='', type=safe_str)[:1024]
 
-    if not song_id or not position:
+    if not song_id or position < 0.0:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     beets_id = sub_to_beets_song(song_id)

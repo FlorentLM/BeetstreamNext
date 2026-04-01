@@ -88,7 +88,7 @@ def endpoint_search():
 
     # Normal SQL search
     else:
-        lib = app.config.get('lib')
+        lib = flask.g.lib
 
         def build_where(table_type: str, main_field: str):
             # table_type: 'items' or 'albums'

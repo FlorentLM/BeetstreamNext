@@ -187,7 +187,7 @@ I tested it and confirmed it working with:
 - [x] User management (create/delete) via the API (instead of CLI only)
 - [x] Implement rate limiting
 - [x] Move now_playing into the db as a volatile table
-- [ ] Use MBID instead of artists names for internal ID mapping
+- [x] Use MBID instead of artists names for internal ID mapping
 - [ ] Support multi-artists / contributors / producers / labels properly
 - [ ] Make an Admin WebUI panel to manage users
 - [ ] Docker image

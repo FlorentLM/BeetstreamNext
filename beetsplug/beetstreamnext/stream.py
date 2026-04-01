@@ -15,7 +15,14 @@ def _send_direct(file_path):
         return None
 
 
-def _send_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
+def _send_transcode(
+        file_path,
+        start_at: float = 0.0,
+        max_bitrate: int = 128,
+        req_format: str = 'mp3',
+        duration: float = 0.0,
+        estimate_length: bool = False
+    ):
 
     format_map = {
         'mp3': {'f': 'mp3', 'c': 'libmp3lame', 'mime': 'audio/mpeg'},
@@ -73,16 +80,41 @@ def _send_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, re
 
     response = flask.Response(flask.stream_with_context(generate()), mimetype=target['mime'])
 
-    # # Not sure if it's important to tell clients they cant seek with HTTP range headers
+    if estimate_length and max_bitrate > 0 and duration > 0:
+        # This is an estimate. Pretty sure it will be very inaccurate in many cases.
+        # but as per the spec:
+        #   "Content-Length HTTP header will be set to an estimated value for transcoded or downsampled media."
+        # so... yeah
+        remaining = max(0.0, duration - start_at)
+        estimated_bytes = int((max_bitrate * 1000 / 8) * remaining)
+        response.headers['Content-Length'] = estimated_bytes
+
+    # TODO: Not sure if it's important to tell clients they cant seek with HTTP range headers?
     # response.headers['Accept-Ranges'] = 'none'
     # response.headers['Cache-Control'] = 'no-cache'
 
     return response
 
 
-def try_transcode(file_path, start_at: float = 0.0, max_bitrate: int = 128, req_format: str = 'mp3'):
+def try_transcode(
+        file_path,
+        start_at: float = 0.0,
+        max_bitrate: int = 128,
+        req_format: str = 'mp3',
+        duration: float = 0.0,
+        estimate_length: bool = False
+    ):
+
     if FFMPEG_PYTHON or FFMPEG_BIN:
-        return _send_transcode(file_path, start_at, max_bitrate, req_format)
+        return _send_transcode(
+            file_path=file_path,
+            start_at=start_at,
+            max_bitrate=max_bitrate,
+            req_format=req_format,
+            duration=duration,
+            estimate_length=estimate_length
+        )
+
     else:
         return _send_direct(file_path)
 
@@ -100,9 +132,7 @@ def endpoint_stream_song():
     max_bitrate = r.get('maxBitRate', default=0, type=int)
     req_format = r.get('format', default='raw', type=safe_str)
     time_offset = r.get('timeOffset', default=0.0, type=float)
-
-    # estimate_length = r.get('estimateContentLength', default=False, type=api_bool)
-    # TODO: If true, the Content-Length HTTP header will be set to an estimated value for transcoded media
+    estimate_length = r.get('estimateContentLength', default=False, type=api_bool)
 
     if not bool(flask.g.user_data.get('streamRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -140,7 +170,9 @@ def endpoint_stream_song():
                 song_path,
                 start_at=time_offset,
                 max_bitrate=target_bitrate,
-                req_format=req_format if req_format != 'raw' else 'mp3'
+                req_format=req_format if req_format != 'raw' else 'mp3',
+                duration=song.get('length') or 0.0,
+                estimate_length=estimate_length
             )
 
         if response is not None:

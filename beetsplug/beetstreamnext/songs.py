@@ -1,16 +1,14 @@
 import re
-from typing import Optional, Tuple
 import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
+from beetsplug.beetstreamnext.external import query_lastfm
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
-    ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song,
-    map_song, query_lastfm, get_beets_schema, safe_str, resolve_artist
+    ART_ID_PREF, sub_to_beets_song,
+    map_song, get_beets_schema, safe_str, resolve_artist
 )
-
 
 artists_separators = re.compile(r', | & ')
 

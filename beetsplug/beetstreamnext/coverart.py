@@ -13,13 +13,12 @@ import flask
 from requests import RequestException
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.external import http_session, query_deezer, query_coverartarchive
 from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
-    get_mimetype, query_deezer,
-    ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, http_session, subsonic_error, safe_str
+    get_mimetype, ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
+    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, subsonic_error, safe_str
 )
-
 
 have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
 
@@ -167,23 +166,6 @@ def _image_from_song(path) -> Union[BytesIO, None]:
         img_bytes = b''
 
     return BytesIO(img_bytes) if img_bytes else None
-
-
-def query_coverartarchive(mbid: str) -> bytes:
-    """Fetch image from CAA and cache the bytes. Returns b'' if not found to avoid retries."""
-    if not mbid:
-        return b''
-
-    art_url = f'https://coverartarchive.org/release/{mbid}/front'
-    try:
-        response = http_session.get(art_url, timeout=8)
-        if response.from_cache:
-            app.logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
-
-        return response.content if (response.ok and response.content) else b''
-
-    except RequestException:
-        return b''
 
 
 ##

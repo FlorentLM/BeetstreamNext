@@ -6,11 +6,11 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
+from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.utils import (
     subsonic_response,
     sub_to_beets_artist,
     map_artist, map_album, imageart_url,
-    query_lastfm, query_wikipedia, WIKI_API,
     trim_text, remove_accents, safe_str, resolve_artist,
     subsonic_error, beets_to_sub_artist
 )

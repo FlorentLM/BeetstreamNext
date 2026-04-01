@@ -33,9 +33,9 @@ def get_song_counts(albums: List[Dict]) -> Dict:
             sql_query = ('SELECT album_id, COUNT(*) as count, CAST(SUM(length) AS INTEGER) as duration'
                          + ' FROM items WHERE album_id IN ({q}) GROUP BY album_id')
             count_rows = chunked_query(
-                tx,
-                sql_query,
-                album_ids
+                db_obj=tx,
+                query_template=sql_query,
+                chunked_values=album_ids
             )
         counts = {row['album_id']: (row['count'], row['duration'] or 0) for row in count_rows}
     else:

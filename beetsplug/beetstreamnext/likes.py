@@ -144,7 +144,7 @@ def endpoint_get_starred():
                    WHERE albumartist IN ({placeholders}) 
                    GROUP BY albumartist
                    """
-            rows = chunked_query(tx, sql, beets_artist_names)
+            rows = chunked_query(db_obj=tx, query_template=sql, chunked_values=beets_artist_names)
             for r in rows:
                 prefetched[r[0]] = {'album_count': r[1], 'mbid': r[2]}
 

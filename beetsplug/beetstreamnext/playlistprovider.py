@@ -68,7 +68,7 @@ class Playlist:
 
             with flask.g.lib.transaction() as tx:
                 sql_query = 'SELECT * FROM items WHERE id IN ({q})'
-                rows = chunked_query(tx, sql_query, beets_ids)
+                rows = chunked_query(db_obj=tx, query_template=sql_query, chunked_values=beets_ids)
 
             id_map = {row['id']: row for row in rows}
 
@@ -88,7 +88,7 @@ class Playlist:
 
             with flask.g.lib.transaction() as tx:
                 sql_query = 'SELECT * FROM items WHERE path IN ({q})'
-                rows = chunked_query(tx, sql_query, absolute_paths_bytes)
+                rows = chunked_query(db_obj=tx, query_template=sql_query, chunked_values=absolute_paths_bytes)
 
             path_map = {row['path']: row for row in rows}
 

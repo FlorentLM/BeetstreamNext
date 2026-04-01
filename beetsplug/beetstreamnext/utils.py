@@ -22,8 +22,8 @@ from beets import library
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.external import BEETSTREAMNEXT_VERSION
 
-if TYPE_CHECKING:
-    from beets.dbcore.db import Transaction
+from sqlite3 import Connection
+from beets.dbcore.db import Transaction
 
 
 API_VERSION = '1.16.1'
@@ -902,19 +902,31 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
     return columns
 
 
-def chunked_query(tx: 'Transaction', query_template: str, values: List[str], chunk_size=900):
+def chunked_query(
+        db_obj: Union['Transaction', 'Connection'],
+        query_template: str,
+        chunked_values: List[Any],
+        base_params: Optional[List[Any]] = None,
+        chunk_size=900
+    ):
     """
-    tx: The beets transaction or sqlite connection
+    db_obj: The beets Transaction or sqlite Connection object
     query_template: SQL string with a '{q}' placeholder for the IN clause
-    values: The list of values to query
+    chunked_values: The list of values to query
+    base_params: Static parameters to bind before the chunked values
     """
+    base_params = base_params or []
     results = []
-    for i in range(0, len(values), chunk_size):
-        chunk = values[i: i + chunk_size]
+
+    for i in range(0, len(chunked_values), chunk_size):
+        chunk = chunked_values[i: i + chunk_size]
         question_marks = ','.join(['?'] * len(chunk))
-
         sql = query_template.replace('{q}', question_marks)
+        params = base_params + chunk
 
-        chunk_results = list(tx.query(sql, chunk))
+        if isinstance(db_obj, Transaction):
+            chunk_results = list(db_obj.query(sql, params))
+        else:
+            chunk_results = db_obj.execute(sql, params).fetchall()
         results.extend(chunk_results)
     return results

@@ -821,6 +821,9 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
         search_endpoint = base_search + f'album?q={album}'
 
     search_endpoint += '&limit=1&index=0'
+    # TODO: Actually Deezer's API sometimes return a duplicate (wrong) entry with same artist name.
+    #   Maybe fix: use the 'nb_fan' entry to disambiguate?
+    #   Example 'Mariah Carey' axists as nb_fan: 58 and nb_fan: 3404526, obviously the real one is the 2nd
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
 

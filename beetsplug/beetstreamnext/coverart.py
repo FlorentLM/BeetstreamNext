@@ -199,7 +199,7 @@ def send_album_art(album_id, size=None):
         return None
 
     # Check Beets db
-    art_path = os.fsdecode(album.get('artpath', b''))
+    art_path = os.fsdecode(album.get('artpath') or b'')
     if art_path and os.path.isfile(art_path):
         try:
             if size:

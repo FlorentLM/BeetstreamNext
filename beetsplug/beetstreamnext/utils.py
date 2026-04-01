@@ -235,6 +235,64 @@ def cached_user_play_stats():
     return flask.g.play_stats
 
 
+def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
+    """
+    Returns (name, mbid) for an artist, from any subsonic ID (artist, album, or song)
+    (or None if the ID can't be resolved).
+    """
+    if req_id.startswith(SNG_ID_PREF):
+        item = flask.g.lib.get_item(sub_to_beets_song(req_id))
+        if not item:
+            return None
+
+        return item.get('albumartist', ''), item.get('mb_artistid', '')
+
+    if req_id.startswith(ALB_ID_PREF):
+        album = flask.g.lib.get_album(sub_to_beets_album(req_id))
+        if not album:
+            return None
+
+        return album.get('albumartist', ''), album.get('mb_artistid', '')
+
+    # Artist ID (or name as fallback)
+    if req_id.startswith(ART_ID_PREF):
+        value, is_mbid = sub_to_beets_artist(req_id)
+    else:
+        value, is_mbid = req_id, False
+
+    if is_mbid:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartist 
+                FROM albums 
+                WHERE mb_albumartistid = ? 
+                LIMIT 1
+                """, (value,)
+            )
+        artist_name = rows[0][0] if rows else ''
+        if not artist_name:
+            return None
+
+        return artist_name, value   # value is the mbid
+
+    else:
+        artist_name = value
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT mb_artistid 
+                FROM items 
+                WHERE albumartist LIKE ? 
+                LIMIT 1
+                """, (artist_name,)
+            )
+        if not rows:
+            return None
+
+        return artist_name, rows[0][0] or ''
+
+
 ##
 # Mapping functions to translate Beets to OpenSubsonic dict-like structures
 # TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/

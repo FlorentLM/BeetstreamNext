@@ -11,7 +11,8 @@ from beetsplug.beetstreamnext.utils import (
     sub_to_beets_artist,
     map_artist, map_album, imageart_url,
     query_lastfm, query_wikipedia, WIKI_API,
-    trim_text, remove_accents, safe_str
+    trim_text, remove_accents, safe_str, resolve_artist,
+    subsonic_error, beets_to_sub_artist
 )
 
 
@@ -170,26 +171,15 @@ def endpoint_artist_info():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist_id = r.get('id', default='', type=safe_str)   # Required
-    # TODO: ID can be artist, album or song
 
-    value, is_mbid = sub_to_beets_artist(artist_id)
+    if not artist_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if is_mbid:
-        artist_mbid = value
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                """
-                SELECT albumartist 
-                FROM albums 
-                WHERE mb_albumartistid = ? 
-                LIMIT 1
-                """, (value,)
-            )
-        artist_name = rows[0][0] if rows else value
-    else:
-        artist_name = value
-        items = flask.g.lib.items(f'albumartist:{artist_name}')
-        artist_mbid = items[0].get('mb_albumartistid', '') if items else ''
+    resolved = resolve_artist(artist_id)
+    if not resolved:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    artist_name, artist_mbid = resolved
 
     short_bio = ''
 
@@ -213,14 +203,21 @@ def endpoint_artist_info():
         short_bio = f'wow. much artist. very {artist_name}'
 
     tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
+
+    # image id is the artist id, but input may have been song or album
+    if artist_mbid:
+        image_id = beets_to_sub_artist(artist_mbid)
+    else:
+        image_id = beets_to_sub_artist(artist_name, is_mbid=False)
+
     payload = {
         tag: {
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
             'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
-            'largeImageUrl': imageart_url(artist_id, size=1200),
-            'mediumImageUrl': imageart_url(artist_id, size=500),
-            'smallImageUrl': imageart_url(artist_id, size=250)
+            'largeImageUrl': imageart_url(image_id, size=1200),
+            'mediumImageUrl': imageart_url(image_id, size=500),
+            'smallImageUrl': imageart_url(image_id, size=250)
         }
     }
 

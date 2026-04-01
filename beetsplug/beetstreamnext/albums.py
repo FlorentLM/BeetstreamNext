@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
     get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url, subsonic_error,
-    safe_str
+    safe_str, SNG_ID_PREF, sub_to_beets_song, beets_to_sub_album
 )
 
 
@@ -67,10 +67,23 @@ def endpoint_get_album_info():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required
-    # TODO: ID can be album or song
 
-    album_id = sub_to_beets_album(req_id)
-    album = flask.g.lib.get_album(album_id)
+    if not req_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    if req_id.startswith(SNG_ID_PREF):
+        item = flask.g.lib.get_item(sub_to_beets_song(req_id))
+        beets_album_id = item.get('album_id') if item else None
+
+        album = flask.g.lib.get_album(beets_album_id) if beets_album_id else None
+        image_id = beets_to_sub_album(beets_album_id) if beets_album_id else req_id
+
+    else:
+        album = flask.g.lib.get_album(sub_to_beets_album(req_id))
+        image_id = req_id
+
+    if not album:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     artist_quot = urllib.parse.quote(album.get('albumartist', ''))
     album_quot = urllib.parse.quote(album.get('album', ''))
@@ -79,11 +92,11 @@ def endpoint_get_album_info():
     tag = 'albumInfo2' if 'getAlbumInfo2' in flask.request.path else 'albumInfo'
     payload = {
         tag: {
-        'musicBrainzId': album.get('mb_albumid', ''),
-        'lastFmUrl': lastfm_url,
-        'smallImageUrl': imageart_url(req_id, size=250),
-        'mediumImageUrl': imageart_url(req_id, size=500),
-        'largeImageUrl': imageart_url(req_id, size=1200)
+            'musicBrainzId': album.get('mb_albumid', ''),
+            'lastFmUrl': lastfm_url,
+            'smallImageUrl': imageart_url(image_id, size=250),
+            'mediumImageUrl': imageart_url(image_id, size=500),
+            'largeImageUrl': imageart_url(image_id, size=1200)
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

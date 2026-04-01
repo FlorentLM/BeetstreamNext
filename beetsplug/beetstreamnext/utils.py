@@ -170,7 +170,6 @@ def imageart_url(item_id: str, size: Optional[int] = None) -> str:
 
 ##
 # BeetstreamNext internal IDs mappers
-# TODO: Maybe use the mbid with fallback to filepath instead of artist name?
 
 def beets_to_sub_artist(name_or_mbid: str, is_mbid: bool = True) -> str:
     encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')

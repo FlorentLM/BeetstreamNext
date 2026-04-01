@@ -193,9 +193,13 @@ def _before_request():
     g.playlist_provider = app.config['playlist_provider']
 
     # Pre-build base URL for images so all mapping functions use it in the current request
-    params = {k: r.get(k, default='', type=str) for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if k in r}
-    # TODO: Use safe_str for non-password fields
-    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
+    auth_params = {k: r.get(k, default='', type=str)    # no safe_str for these
+                   for k in ['s', 't', 'p', 'apiKey'] if k in r}
+    other_auth_params = {k: r.get(k, default='', type=safe_str)
+                         for k in ['u', 'c', 'v'] if k in r}
+    auth_params.update(other_auth_params)
+
+    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **auth_params)
 
     _run_periodic_things()
 

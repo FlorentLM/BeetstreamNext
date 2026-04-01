@@ -1,7 +1,6 @@
 import re
+from typing import Optional, Tuple
 import flask
-
-from beets.dbcore.query import MatchQuery
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
@@ -24,6 +23,65 @@ def song_payload(subsonic_song_id: str) -> dict:
         'song': map_song(song_item)
     }
     return payload
+
+##
+
+def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
+    """
+    Returns (name, mbid) for an artist, from any subsonic ID (artist, album, or song)
+    (or None if the ID can't be resolved).
+    """
+    if req_id.startswith(SNG_ID_PREF):
+        item = flask.g.lib.get_item(sub_to_beets_song(req_id))
+        if not item:
+            return None
+
+        return item.get('albumartist', ''), item.get('mb_artistid', '')
+
+    if req_id.startswith(ALB_ID_PREF):
+        album = flask.g.lib.get_album(sub_to_beets_album(req_id))
+        if not album:
+            return None
+
+        return album.get('albumartist', ''), album.get('mb_artistid', '')
+
+    # Artist ID (or name as fallback)
+    if req_id.startswith(ART_ID_PREF):
+        value, is_mbid = sub_to_beets_artist(req_id)
+    else:
+        value, is_mbid = req_id, False
+
+    if is_mbid:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartist 
+                FROM albums 
+                WHERE mb_albumartistid = ? 
+                LIMIT 1
+                """, (value,)
+            )
+        artist_name = rows[0][0] if rows else ''
+        if not artist_name:
+            return None
+
+        return artist_name, value   # value is the mbid
+
+    else:
+        artist_name = value
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT mb_artistid 
+                FROM items 
+                WHERE albumartist LIKE ? 
+                LIMIT 1
+                """, (artist_name,)
+            )
+        if not rows:
+            return None
+
+        return artist_name, rows[0][0] or ''
 
 
 ##
@@ -150,26 +208,17 @@ def endpoint_get_top_songs():
     req_artist_name = r.get('artist', default='', type=safe_str)     # Required
     count = r.get('count', default=50, type=int)
 
-    if req_artist_id and req_artist_id.startswith(ART_ID_PREF):
-        artist_name = sub_to_beets_artist(req_artist_id)
-    else:
-        artist_name = req_artist_name
+    lookup = req_artist_id if req_artist_id.startswith(ART_ID_PREF) else req_artist_name
+    resolved = resolve_artist(lookup)
+    if not resolved:
+        empty_payload = { 'topSongs': { 'song': [] } }
+        return subsonic_response(empty_payload, resp_fmt=resp_fmt)
 
-    # grab the artist's mbid
-    with flask.g.lib.transaction() as tx:
-        mbid_artist = tx.query(
-            """
-            SELECT mb_artistid 
-            FROM items 
-            WHERE albumartist LIKE ? COLLATE NOCASE
-            LIMIT 1
-            """, (artist_name,)
-        )
+    artist_name, artist_mbid = resolved
 
     if app.config['lastfm_api_key']:
-        # Query last.fm for top tracks for this artist and parse the response
-        if mbid_artist:
-            lastfm_resp = query_lastfm(q=mbid_artist[0][0], type='artist', method='TopTracks', mbid=True)
+        if artist_mbid:
+            lastfm_resp = query_lastfm(q=artist_mbid, type='artist', method='TopTracks', mbid=True)
         else:
             lastfm_resp = query_lastfm(q=artist_name, type='artist', method='TopTracks', mbid=False)
 
@@ -230,62 +279,30 @@ def endpoint_get_similar_songs():
     if not req_id:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    if req_id.startswith(SNG_ID_PREF):
-        # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?
-        beets_song_id = sub_to_beets_song(req_id)
-        song_item = flask.g.lib.get_item(beets_song_id)
+    # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?
 
-        if not song_item:
-            return subsonic_error(70, resp_fmt=resp_fmt)
+    resolved = resolve_artist(req_id)
+    if resolved is None:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
-        req_artist_name = song_item.get('albumartist', '')
-        req_artist_mbid = song_item.get('mb_artistid', '')
-
-    elif req_id.startswith(ALB_ID_PREF):
-        beets_album_id = sub_to_beets_album(req_id)
-        album_object = flask.g.lib.get_album(beets_album_id)
-
-        if not album_object:
-            return subsonic_error(70, resp_fmt=resp_fmt)
-
-        req_artist_name = album_object.get('albumartist', '')
-        req_artist_mbid = album_object.get('mb_artistid', '')
-
-    else:
-        req_artist_name = sub_to_beets_artist(req_id) if req_id.startswith(ART_ID_PREF) else req_id
-
-        with flask.g.lib.transaction() as tx:
-            beets_artist_mbid = tx.query(
-                """
-                SELECT mb_artistid 
-                FROM items 
-                WHERE albumartist LIKE ? 
-                LIMIT 1
-                """, (req_artist_name,)
-            )
-        try:
-            req_artist_mbid = beets_artist_mbid[0][0]
-        except IndexError:
-            return subsonic_error(70, resp_fmt=resp_fmt)
+    req_artist_name, req_artist_mbid = resolved
 
     similar_artists = {}
 
     if app.config['lastfm_api_key']:
-        # Query last.fm for similar artists and parse the response
         if req_artist_mbid:
             lastfm_resp = query_lastfm(q=req_artist_mbid, type='artist', method='similar', mbid=True)
         else:
             lastfm_resp = query_lastfm(q=req_artist_name, type='artist', method='similar', mbid=False)
 
-        lastfm_artists = lastfm_resp.get('similarartists', {}).get('artist', [])
-        for artist in lastfm_artists:
-            artist_name = artist.get('name')
-            artist_mbid = artist.get('mbid')
+        for artist in lastfm_resp.get('similarartists', {}).get('artist', []):
+            name = artist.get('name')
+            mbid = artist.get('mbid')
 
-            if artist_name and artist_mbid:
-                similar_artists[artist_name] = artist_mbid
+            if name and mbid:
+                similar_artists[name] = mbid
 
-    # Always include the requested artist as a fallback
+    # Always include requested artist
     if req_artist_name and req_artist_mbid:
         similar_artists[req_artist_name] = req_artist_mbid
 

@@ -17,7 +17,34 @@ from beetsplug.beetstreamnext.utils import (
 
 def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
-    artist_name = sub_to_beets_artist(subsonic_artist_id)
+    value, is_mbid = sub_to_beets_artist(subsonic_artist_id)
+
+    prefetched_albums = None
+
+    if is_mbid:
+        if with_albums:
+            # fetch albums by mbid to get name and album list in 1 query
+            with flask.g.lib.transaction() as tx:
+                prefetched_albums = list(tx.query(
+                    """
+                    SELECT * FROM albums 
+                    WHERE mb_albumartistid = ?
+                    """, (value,)
+                ))
+            artist_name = prefetched_albums[0]['albumartist'] if prefetched_albums else value
+        else:
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(
+                    """
+                    SELECT albumartist 
+                    FROM albums 
+                    WHERE mb_albumartistid = ? 
+                    LIMIT 1
+                    """, (value,)
+                )
+            artist_name = rows[0][0] if rows else value
+    else:
+        artist_name = value
 
     payload = {
         "artist": {
@@ -28,8 +55,11 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
     # When part of a directory response or a ArtistWithAlbumsID3 response
     if with_albums:
-        albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
-        # I don't think there is any endpoint that returns an artist with albums AND songs?
+        if prefetched_albums is not None:
+            albums = prefetched_albums
+        else:
+            albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+
         song_counts = get_song_counts(albums)
 
         payload['artist']['album'] = list(map(partial(map_album, include_songs=False, song_counts=song_counts), albums))
@@ -142,10 +172,25 @@ def endpoint_artist_info():
     artist_id = r.get('id', default='', type=safe_str)   # Required
     # TODO: ID can be artist, album or song
 
-    artist_name = sub_to_beets_artist(artist_id)
-    items = flask.g.lib.items(f'albumartist:{artist_name}')
+    value, is_mbid = sub_to_beets_artist(artist_id)
 
-    artist_mbid = items[0].get('mb_albumartistid', '') if items else ''
+    if is_mbid:
+        artist_mbid = value
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartist 
+                FROM albums 
+                WHERE mb_albumartistid = ? 
+                LIMIT 1
+                """, (value,)
+            )
+        artist_name = rows[0][0] if rows else value
+    else:
+        artist_name = value
+        items = flask.g.lib.items(f'albumartist:{artist_name}')
+        artist_mbid = items[0].get('mb_albumartistid', '') if items else ''
+
     short_bio = ''
 
     if app.config['lastfm_api_key']:

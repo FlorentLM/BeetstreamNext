@@ -33,7 +33,9 @@ API_VERSION = '1.16.1'
 BEETSTREAMNEXT_VERSION = '1.6.0-dev'
 
 # Prefixes for BeetstreamNext's internal IDs
-ART_ID_PREF = 'ar-'
+ART_ID_PREF   = 'ar-'
+ART_MBID_PREF = 'ar-m-'   # ar-m-<base64url(mbid)>  preferred if mbid is known
+ART_NAME_PREF = 'ar-n-'   # ar-n-<base64url(name)>  fallback
 ALB_ID_PREF = 'al-'
 SNG_ID_PREF = 'sg-'
 PLY_ID_PREF = 'pl-'
@@ -170,17 +172,30 @@ def imageart_url(item_id: str, size: Optional[int] = None) -> str:
 # BeetstreamNext internal IDs mappers
 # TODO: Maybe use the mbid with fallback to filepath instead of artist name?
 
-def beets_to_sub_artist(beet_artist_name):
-    base64_name = base64.urlsafe_b64encode(str(beet_artist_name).encode('utf-8'))
-    return f"{ART_ID_PREF}{base64_name.rstrip(b'=').decode('utf-8')}"
+def beets_to_sub_artist(name_or_mbid: str, is_mbid: bool = True) -> str:
+    encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
+    prefix = ART_MBID_PREF if is_mbid else ART_NAME_PREF
+    return f"{prefix}{encoded}"
 
-def sub_to_beets_artist(subsonic_artist_id):
-    subsonic_artist_id = str(subsonic_artist_id)[len(ART_ID_PREF):]
-    padding = (4 - (len(subsonic_artist_id) % 4)) % 4
+
+def sub_to_beets_artist(subsonic_artist_id: str) -> tuple[str, bool]:
+    sid = str(subsonic_artist_id)
+
+    if sid.startswith(ART_MBID_PREF):
+        payload = sid[len(ART_MBID_PREF):]
+        is_mbid = True
+    elif sid.startswith(ART_NAME_PREF):
+        payload = sid[len(ART_NAME_PREF):]
+        is_mbid = False
+    else:
+        return '', False
+
+    padding = (4 - len(payload) % 4) % 4
     try:
-        return base64.urlsafe_b64decode(subsonic_artist_id + ('=' * padding)).decode('utf-8')
+        value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
+        return value, is_mbid
     except (binascii.Error, UnicodeDecodeError):
-        return ''
+        return '', False
 
 def beets_to_sub_album(beet_album_id):
     return f'{ALB_ID_PREF}{beet_album_id}'
@@ -246,15 +261,21 @@ def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
     data = standardise_datadict(beets_object)
 
     artist_name = data.get('albumartist') or data.get('artist') or ''
+    artist_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
     raw_genres = f"{data.get('genres') or ''};{data.get('genre') or ''}"
     formatted_genres = genres_formatter(raw_genres)
 
     main_genre = formatted_genres[0] if formatted_genres else ''
     genres_list = [{'name': g} for g in formatted_genres]
 
+    if artist_mbid:
+        artist_id = beets_to_sub_artist(artist_mbid)
+    else:
+        artist_id = beets_to_sub_artist(artist_name, is_mbid=False)
+
     subsonic_media = {
         'artist': artist_name,
-        'artistId': beets_to_sub_artist(artist_name),
+        'artistId': artist_id,
         'displayArtist': artist_name,
         'displayAlbumArtist': artist_name,
         'album': data.get('album') or '',
@@ -483,7 +504,37 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
 
 def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> Dict:
 
-    subsonic_artist_id = beets_to_sub_artist(artist_name)
+    # Priority: prefetched -> album query (when with_albums) -> standalone db query
+    mbid = ''
+    albums = None
+
+    if prefetched and artist_name in prefetched:
+        mbid = prefetched[artist_name].get('mbid') or ''
+
+    elif with_albums:
+        from beetsplug.beetstreamnext.albums import get_song_counts
+
+        albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+        if albums:
+            mbid = albums[0].get('mb_albumartistid', '') or ''
+
+    else:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT COUNT(*), mb_albumartistid
+                FROM albums
+                WHERE albumartist = ?
+                GROUP BY albumartist
+                """, (artist_name,)
+            )
+        if rows:
+            mbid = rows[0][1] or ''
+
+    if mbid:
+        subsonic_artist_id = beets_to_sub_artist(mbid)
+    else:
+        subsonic_artist_id = beets_to_sub_artist(artist_name, is_mbid=False)
 
     subsonic_artist = {
         'id': subsonic_artist_id,
@@ -507,11 +558,14 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     if with_albums:
         from beetsplug.beetstreamnext.albums import get_song_counts
 
-        albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
-        subsonic_artist['albumCount'] = len(albums)
+        if albums is None:  # already fetched above if not prefetched
+            albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
 
-        if albums:
-            subsonic_artist['musicBrainzId'] = albums[0].get('mb_albumartistid', '')
+            if albums and not mbid:
+                mbid = albums[0].get('mb_albumartistid', '') or ''
+
+        subsonic_artist['albumCount'] = len(albums)
+        subsonic_artist['musicBrainzId'] = mbid
 
         song_counts = get_song_counts(albums)
         subsonic_artist['album'] = [map_album(alb, include_songs=False, song_counts=song_counts) for alb in albums]
@@ -519,20 +573,11 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     else:
         if prefetched and artist_name in prefetched:
             subsonic_artist['albumCount'] = prefetched[artist_name]['album_count']
-            subsonic_artist['musicBrainzId'] = prefetched[artist_name]['mbid'] or ''
+            subsonic_artist['musicBrainzId'] = mbid
         else:
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    """
-                    SELECT COUNT(*), mb_albumartistid 
-                    FROM albums 
-                    WHERE albumartist = ? 
-                    GROUP BY albumartist
-                    """, (artist_name,)
-                )
             if rows:
                 subsonic_artist['albumCount'] = rows[0][0]
-                subsonic_artist['musicBrainzId'] = rows[0][1] or ''
+                subsonic_artist['musicBrainzId'] = mbid
             else:
                 subsonic_artist['albumCount'] = 0
 

@@ -255,7 +255,24 @@ def send_album_art(album_id, size=None):
 def send_artist_image(artist, size=None):
 
     artist = customstrip(artist)
-    artist_name = sub_to_beets_artist(artist) if artist.startswith(ART_ID_PREF) else artist
+    if artist.startswith(ART_ID_PREF):
+        value, is_mbid = sub_to_beets_artist(artist)
+
+        if is_mbid:
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(
+                    """
+                    SELECT albumartist 
+                    FROM albums 
+                    WHERE mb_albumartistid = ? 
+                    LIMIT 1
+                    """, (value,)
+                )
+            artist_name = rows[0][0] if rows else value
+        else:
+            artist_name = value
+    else:
+        artist_name = artist
 
     local_folder = (app.config['root_directory'] / artist_name).resolve()
     if not local_folder.is_relative_to(app.config['root_directory']):

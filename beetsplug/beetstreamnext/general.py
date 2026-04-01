@@ -162,7 +162,7 @@ def endpoint_get_music_directory():
         with flask.g.lib.transaction() as tx:
             rows = tx.query(
                 """
-                SELECT albumartist 
+                SELECT albumartist, mb_albumartistid
                 FROM albums 
                 WHERE albumartist IS NOT NULL 
                 GROUP BY albumartist
@@ -174,8 +174,11 @@ def endpoint_get_music_directory():
 
         children = []
         for row in rows:
-            artist_name = row[0]
-            artist_id = beets_to_sub_artist(artist_name)
+            artist_name, artist_mbid = row
+            if artist_mbid:
+                artist_id = beets_to_sub_artist(artist_mbid)
+            else:
+                artist_id = beets_to_sub_artist(artist_name, is_mbid=False)
             children.append({
                 'id': artist_id,
                 'title': artist_name,
@@ -186,5 +189,3 @@ def endpoint_get_music_directory():
         payload['directory']['child'] = children
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
-
-

@@ -17,6 +17,7 @@ def _fetch_lyrics(item):
     if lyrics_plugin:
         try:
             lyrics_plugin.add_item_lyrics(item, False)
+            # TODO: This is the only non-read operation on the Beets database... probably should be disableable
             if item.lyrics:
                 return item.lyrics
         except Exception as e:

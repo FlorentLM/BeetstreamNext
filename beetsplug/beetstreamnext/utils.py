@@ -1,6 +1,6 @@
 import binascii
 import string
-from typing import TYPE_CHECKING, Union, Optional, Dict, List, Tuple, Any, Sequence
+from typing import Union, Optional, Dict, List, Tuple, Any, Sequence
 import threading
 import os
 import shutil
@@ -17,13 +17,12 @@ from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 # from xml.dom import minidom
 import flask
+from sqlite3 import Connection
+from beets.dbcore.db import Transaction
 
 from beets import library
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.external import BEETSTREAMNEXT_VERSION
-
-from sqlite3 import Connection
-from beets.dbcore.db import Transaction
 
 
 API_VERSION = '1.16.1'

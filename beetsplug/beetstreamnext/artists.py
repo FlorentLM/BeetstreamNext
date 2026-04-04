@@ -113,7 +113,7 @@ def endpoint_get_artists_or_indexes():
     artist_prefetch = {}
     artists = []
     for row in rows:
-        name, count, mbid = row[0], row[1], row[2]
+        name, count, mbid = row
         artists.append(name)
         artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 

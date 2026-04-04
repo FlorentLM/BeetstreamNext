@@ -186,70 +186,65 @@ def endpoint_get_album_list():
                     """, (flask.g.username, size, offset)
                 ).fetchall()
 
-        album_dicts = [dict(row) for row in album_rows]
-        counts = get_song_counts(album_dicts)
+        albums_dict = [dict(row) for row in album_rows]
 
-        payload = {
-            tag: {
-                "album": [map_album(a, include_songs=False, song_counts=counts) for a in album_dicts]
-            }
-        }
-        return subsonic_response(payload, resp_fmt=resp_fmt)
+    else:
+        # All other sort types we can do in SQL directly
+        query = """SELECT * FROM albums"""
+        conditions = []
+        params = []
 
-    # All other sort types we can do in SQL directly
-    query = """SELECT * FROM albums"""
-    conditions = []
-    params = []
+        # filtering conditions:
+        if sort_by == 'byYear':
+            conditions.append("year BETWEEN ? AND ?")
+            params.extend([min(from_year, to_year), max(from_year, to_year)])
 
-    # filtering conditions:
-    if sort_by == 'byYear':
-        conditions.append("year BETWEEN ? AND ?")
-        params.extend([min(from_year, to_year), max(from_year, to_year)])
+        if sort_by == 'byGenre':
+            cols = get_beets_schema('albums')
+            genre_conditions = []
+            pattern = f"%{genre_filter.strip().lower()}%"
 
-    if sort_by == 'byGenre':
-        cols = get_beets_schema('albums')
-        genre_conditions = []
-        pattern = f"%{genre_filter.strip().lower()}%"
+            if 'genres' in cols:
+                genre_conditions.append("lower(genres) LIKE ?")
+                params.append(pattern)
+            if 'genre' in cols:
+                genre_conditions.append("lower(genre) LIKE ?")
+                params.append(pattern)
+            if genre_conditions:
+                conditions.append("(" + " OR ".join(genre_conditions) + ")")
+            else:
+                conditions.append("1 = 0")
 
-        if 'genres' in cols:
-            genre_conditions.append("lower(genres) LIKE ?")
-            params.append(pattern)
-        if 'genre' in cols:
-            genre_conditions.append("lower(genre) LIKE ?")
-            params.append(pattern)
-        if genre_conditions:
-            conditions.append("(" + " OR ".join(genre_conditions) + ")")
-        else:
-            conditions.append("1 = 0")
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
 
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
+        # ordering based on sort_by parameter
+        if sort_by == 'newest':
+            query += " ORDER BY added DESC"
+        elif sort_by == 'alphabeticalByName':
+            query += " ORDER BY album COLLATE NOCASE"
+        elif sort_by == 'alphabeticalByArtist':
+            query += " ORDER BY albumartist COLLATE NOCASE"
+        elif sort_by == 'byYear':
+            # Order by year, then by month and day
+            sort_dir = 'ASC' if from_year <= to_year else 'DESC'
+            query += f" ORDER BY year {sort_dir}, month {sort_dir}, day {sort_dir}"
+        elif sort_by == 'random':
+            query += " ORDER BY RANDOM()"
 
-    # ordering based on sort_by parameter
-    if sort_by == 'newest':
-        query += " ORDER BY added DESC"
-    elif sort_by == 'alphabeticalByName':
-        query += " ORDER BY album COLLATE NOCASE"
-    elif sort_by == 'alphabeticalByArtist':
-        query += " ORDER BY albumartist COLLATE NOCASE"
-    elif sort_by == 'byYear':
-        # Order by year, then by month and day
-        sort_dir = 'ASC' if from_year <= to_year else 'DESC'
-        query += f" ORDER BY year {sort_dir}, month {sort_dir}, day {sort_dir}"
-    elif sort_by == 'random':
-        query += " ORDER BY RANDOM()"
+        # LIMIT and OFFSET for pagination
+        query += " LIMIT ? OFFSET ?"
+        params.extend([size, offset])
 
-    # LIMIT and OFFSET for pagination
-    query += " LIMIT ? OFFSET ?"
-    params.extend([size, offset])
+        with flask.g.lib.transaction() as tx:
+            albums = list(tx.query(query, params))
 
-    with flask.g.lib.transaction() as tx:
-        albums = list(tx.query(query, params))
+        albums_dict = [dict(album) for album in albums]
 
-    song_counts = get_song_counts(albums)
+    song_counts = get_song_counts(albums_dict)
     payload = {
         tag: {
-            "album": [map_album(a, include_songs=False, song_counts=song_counts) for a in albums]
+            "album": [map_album(a, include_songs=False, song_counts=song_counts) for a in albums_dict]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

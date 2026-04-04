@@ -646,6 +646,14 @@ def map_playlist(playlist, include_songs=False):
 
 ## Requests format conversions
 
+def _clean_xml_key(key: str) -> str:
+    safe = re.sub(r'[^a-zA-Z0-9_\-.]', '_', str(key))
+    # XML tags cant start with a number, hyphen or dot
+    if re.match(r'^[^a-zA-Z_]', safe):
+        safe = '_' + safe
+    return safe
+
+
 def dict_to_xml(tag: str, data):
     """
     Converts a json-like dict to an XML tree.
@@ -659,6 +667,7 @@ def dict_to_xml(tag: str, data):
 
     def _add_node(parent, key, val):
         """Decide if a simple value should be an attribute or a child/text."""
+        key = _clean_xml_key(key)
         if key == "value":
             parent.text = _fmt(val)
         elif key in parent.attrib:
@@ -783,7 +792,7 @@ def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
         return ''
     try:
-        return datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat().replace('+00:00', 'Z')
     except (ValueError, TypeError):
         return ''
 

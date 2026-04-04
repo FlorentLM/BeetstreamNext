@@ -1,8 +1,7 @@
 from typing import Optional, List
 import flask
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import chunked_query
-
+from beetsplug.beetstreamnext.utils import chunked_query, beets_to_sub_song, beets_to_sub_album
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
@@ -151,3 +150,33 @@ def one_play_stats(beets_song_id: int) -> Optional[dict]:
 
     result = cache[beets_song_id]
     return None if result is _MISSING else result
+
+
+##
+
+
+def preload_songs(beets_items: list):
+    if not beets_items:
+        return
+    beets_ids = [s['id'] for s in beets_items]
+    sub_ids = [beets_to_sub_song(i) for i in beets_ids]
+
+    batch_likes(sub_ids)
+    batch_ratings(sub_ids)
+    batch_play_stats(beets_ids)
+
+
+def preload_albums(beets_albums: list):
+    if not beets_albums:
+        return
+    sub_ids = [beets_to_sub_album(a['id']) for a in beets_albums]
+
+    batch_likes(sub_ids)
+    batch_ratings(sub_ids)
+
+
+def preload_artists(subsonic_artist_ids: List[str]):
+    if not subsonic_artist_ids:
+        return
+    batch_likes(subsonic_artist_ids)
+    batch_ratings(subsonic_artist_ids)

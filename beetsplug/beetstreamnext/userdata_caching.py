@@ -1,7 +1,8 @@
 from typing import Optional, List
 import flask
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import chunked_query, beets_to_sub_song, beets_to_sub_album
+from beetsplug.beetstreamnext.utils import chunked_query, beets_to_sub_song, beets_to_sub_album, beets_to_sub_artist
+
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
@@ -175,8 +176,32 @@ def preload_albums(beets_albums: list):
     batch_ratings(sub_ids)
 
 
-def preload_artists(subsonic_artist_ids: List[str]):
-    if not subsonic_artist_ids:
+def preload_artists(artists_data):
+
+    if not artists_data:
         return
-    batch_likes(subsonic_artist_ids)
-    batch_ratings(subsonic_artist_ids)
+
+    sub_ids = []
+    if isinstance(artists_data, dict):
+        for name, data in artists_data.items():
+            mbid = data.get('mbid')
+            if mbid:
+                sub_ids.append(beets_to_sub_artist(mbid, is_mbid=True))
+            else:
+                sub_ids.append(beets_to_sub_artist(name, is_mbid=False))
+
+    elif isinstance(artists_data, list):
+        for item in artists_data:
+            if isinstance(item, str):
+                sub_ids.append(beets_to_sub_artist(item, is_mbid=False))
+            elif isinstance(item, dict) or hasattr(item, 'keys'):
+                name = item.get('albumartist') or item.get('artist') or ''
+                mbid = item.get('mb_albumartistid') or item.get('mb_artistid') or ''
+                if mbid:
+                    sub_ids.append(beets_to_sub_artist(mbid, is_mbid=True))
+                elif name:
+                    sub_ids.append(beets_to_sub_artist(name, is_mbid=False))
+
+    if sub_ids:
+        batch_likes(sub_ids)
+        batch_ratings(sub_ids)

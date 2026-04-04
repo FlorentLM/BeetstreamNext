@@ -658,6 +658,8 @@ def dict_to_xml(tag: str, data):
     if isinstance(data, dict):
         for key, val in data.items():
             if isinstance(val, list):
+                if not val:
+                    ET.SubElement(elem, _clean_xml_key(key))
                 for item in val:
                     if isinstance(item, (dict, list)):
                         elem.append(dict_to_xml(key, item))

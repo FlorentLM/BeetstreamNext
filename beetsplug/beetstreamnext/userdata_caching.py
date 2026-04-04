@@ -1,8 +1,7 @@
 from typing import Optional, List
 import flask
 from beetsplug.beetstreamnext.db import database
-import beetsplug.beetstreamnext.utils as utils
-
+from beetsplug.beetstreamnext.utils import chunked_query, beets_to_sub_artist, beets_to_sub_album, beets_to_sub_song
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
@@ -35,7 +34,7 @@ def batch_likes(subsonic_ids: List[str]):
             WHERE username=? AND item_id IN ({q})
         """
         with database() as db:
-            rows = utils.chunked_query(
+            rows = chunked_query(
                 db_obj=db,
                 query_template=query,
                 chunked_values=ids,
@@ -77,7 +76,7 @@ def batch_ratings(subsonic_ids: List[str]):
             WHERE username=? AND item_id IN ({q})
         """
         with database() as db:
-            rows = utils.chunked_query(
+            rows = chunked_query(
                 db_obj=db,
                 query_template=query,
                 chunked_values=ids,
@@ -119,7 +118,7 @@ def batch_play_stats(beets_song_ids: list[int]):
             WHERE username=? AND song_id IN ({q})
         """
         with database() as db:
-            rows = utils.chunked_query(
+            rows = chunked_query(
                 db_obj=db,
                 query_template=query,
                 chunked_values=ids,
@@ -160,7 +159,7 @@ def preload_songs(beets_items: list):
     if not beets_items:
         return
     beets_ids = [s['id'] for s in beets_items]
-    sub_ids = [utils.beets_to_sub_song(i) for i in beets_ids]
+    sub_ids = [beets_to_sub_song(i) for i in beets_ids]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -170,7 +169,7 @@ def preload_songs(beets_items: list):
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
-    sub_ids = [utils.beets_to_sub_album(a['id']) for a in beets_albums]
+    sub_ids = [beets_to_sub_album(a['id']) for a in beets_albums]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -186,21 +185,21 @@ def preload_artists(artists_data):
         for name, data in artists_data.items():
             mbid = data.get('mbid')
             if mbid:
-                sub_ids.append(utils.beets_to_sub_artist(mbid, is_mbid=True))
+                sub_ids.append(beets_to_sub_artist(mbid, is_mbid=True))
             else:
-                sub_ids.append(utils.beets_to_sub_artist(name, is_mbid=False))
+                sub_ids.append(beets_to_sub_artist(name, is_mbid=False))
 
     elif isinstance(artists_data, list):
         for item in artists_data:
             if isinstance(item, str):
-                sub_ids.append(utils.beets_to_sub_artist(item, is_mbid=False))
+                sub_ids.append(beets_to_sub_artist(item, is_mbid=False))
             elif isinstance(item, dict) or hasattr(item, 'keys'):
                 name = item.get('albumartist') or item.get('artist') or ''
                 mbid = item.get('mb_albumartistid') or item.get('mb_artistid') or ''
                 if mbid:
-                    sub_ids.append(utils.beets_to_sub_artist(mbid, is_mbid=True))
+                    sub_ids.append(beets_to_sub_artist(mbid, is_mbid=True))
                 elif name:
-                    sub_ids.append(utils.beets_to_sub_artist(name, is_mbid=False))
+                    sub_ids.append(beets_to_sub_artist(name, is_mbid=False))
 
     if sub_ids:
         batch_likes(sub_ids)

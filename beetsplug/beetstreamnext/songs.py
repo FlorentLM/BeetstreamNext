@@ -8,8 +8,9 @@ from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, sub_to_beets_song,
-    map_song, get_beets_schema, safe_str, resolve_artist
+    get_beets_schema, safe_str
 )
+from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
 
 artists_separators = re.compile(r', | & ')
 

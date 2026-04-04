@@ -1,14 +1,13 @@
 import flask
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
-    map_song, map_album, map_artist,
     sub_to_beets_artist, chunked_query, safe_str,
 )
+from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, get_song_counts
 
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:

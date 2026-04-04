@@ -3,9 +3,9 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, map_song, api_bool, \
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, api_bool, \
     safe_str
-
+from beetsplug.beetstreamnext.mappings import map_song
 
 _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 

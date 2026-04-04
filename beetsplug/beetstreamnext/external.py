@@ -17,14 +17,20 @@ except ImportError:
     WIKI_API = False
 
 
-http_session = requests_cache.CachedSession(
-    str(app.config['HTTP_CACHE_PATH']),
-    backend='sqlite',
-    expire_after=timedelta(days=30),
-    allowable_codes=[200],
-    stale_if_error=True         # serve expired cached version if remote server goes down
-)
+_http_session = None
 
+def http_session():
+    global _http_session
+
+    if _http_session is None:
+        _http_session = requests_cache.CachedSession(
+            str(app.config['HTTP_CACHE_PATH']),
+            backend='sqlite',
+            expire_after=timedelta(days=30),
+            allowable_codes=[200],
+            stale_if_error=True     # serve expired cached version if remote server goes down
+        )
+    return _http_session
 
 
 _DEEZER_PLACEHOLDER_HASHES = frozenset({
@@ -70,7 +76,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
 
     try:
-        response = http_session.get(search_endpoint, headers=headers, timeout=8)
+        response = http_session().get(search_endpoint, headers=headers, timeout=8)
         if response.from_cache:
             app.logger.debug(f"Cache hit for Deezer: {artist}")
 
@@ -111,7 +117,7 @@ def query_musicbrainz(mbid: str, type: str):
         params['inc'] = 'annotation'
 
     try:
-        response = http_session.get(endpoint, headers=headers, params=params, timeout=8)
+        response = http_session().get(endpoint, headers=headers, params=params, timeout=8)
         if response.from_cache:
             app.logger.debug(f"Cache hit for MusicBrainz: {mbid}")
         return response.json() if response.ok else {}
@@ -141,7 +147,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid=True) -> Dict:
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
     try:
-        response = http_session.get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
+        response = http_session().get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
         if response.from_cache:
             app.logger.debug(f"Cache hit for Last.fm: {q}")
         return response.json() if response.ok else {}
@@ -177,7 +183,7 @@ def query_coverartarchive(mbid: str) -> bytes:
 
     art_url = f'https://coverartarchive.org/release/{mbid}/front'
     try:
-        response = http_session.get(art_url, timeout=8)
+        response = http_session().get(art_url, timeout=8)
         if response.from_cache:
             app.logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
 

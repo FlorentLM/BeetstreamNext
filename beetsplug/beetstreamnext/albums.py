@@ -1,4 +1,3 @@
-from typing import List, Dict
 import urllib.parse
 import flask
 
@@ -6,9 +5,10 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_albums
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url, subsonic_error,
+    get_beets_schema, sub_to_beets_album, subsonic_response, subsonic_error,
     safe_str, SNG_ID_PREF, sub_to_beets_song, beets_to_sub_album
 )
+from beetsplug.beetstreamnext.mappings import imageart_url, map_album, get_song_counts
 
 
 def album_payload(subsonic_album_id: str, include_songs=True) -> dict:
@@ -24,27 +24,6 @@ def album_payload(subsonic_album_id: str, include_songs=True) -> dict:
         }
     }
     return payload
-
-
-def get_song_counts(albums: List[Dict]) -> Dict:
-    """Get song counts for a list of albums in a single db query."""
-
-    album_ids = [row['id'] for row in albums]
-
-    if album_ids:
-        with (flask.g.lib.transaction() as tx):
-            sql_query = ('SELECT album_id, COUNT(*) as count, CAST(SUM(length) AS INTEGER) as duration'
-                         + ' FROM items WHERE album_id IN ({q}) GROUP BY album_id')
-            count_rows = chunked_query(
-                db_obj=tx,
-                query_template=sql_query,
-                chunked_values=album_ids
-            )
-        counts = {row['album_id']: (row['count'], row['duration'] or 0) for row in count_rows}
-    else:
-        counts = {}
-
-    return counts
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbum/

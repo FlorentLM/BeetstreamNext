@@ -5,16 +5,14 @@ from functools import partial
 import flask
 
 from beetsplug.beetstreamnext import app
-from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.userdata_caching import preload_artists
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response,
-    sub_to_beets_artist,
-    map_artist, map_album, imageart_url,
-    trim_text, remove_accents, safe_str, resolve_artist,
-    subsonic_error, beets_to_sub_artist
+    subsonic_response, subsonic_error,
+    sub_to_beets_artist, beets_to_sub_artist,
+    trim_text, remove_accents, safe_str
 )
+from beetsplug.beetstreamnext.mappings import imageart_url, resolve_artist, map_album, map_artist, get_song_counts
 
 
 def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:

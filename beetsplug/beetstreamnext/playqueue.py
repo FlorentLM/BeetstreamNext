@@ -5,8 +5,9 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, sub_to_beets_song, beets_to_sub_song, map_song, timestamp_to_iso, safe_str
+    subsonic_response, sub_to_beets_song, beets_to_sub_song, timestamp_to_iso, safe_str
 )
+from beetsplug.beetstreamnext.mappings import map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/

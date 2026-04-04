@@ -274,7 +274,7 @@ def send_artist_image(artist, size=None):
 
                 if artist_image_url:
                     try:
-                        response = http_session.get(artist_image_url, timeout=5)
+                        response = http_session().get(artist_image_url, timeout=5)
                         if response.ok and app.config['save_artists_images']:
                             img = Image.open(BytesIO(response.content))
                             img.save(local_image_path)
@@ -300,7 +300,7 @@ def send_artist_image(artist, size=None):
 
             if artist_image_url:
                 try:
-                    response = http_session.get(artist_image_url, timeout=5)
+                    response = http_session().get(artist_image_url, timeout=5)
                     if response.ok:
                         if size and size != target_size:
                             cover = _resize_image(BytesIO(response.content), size)

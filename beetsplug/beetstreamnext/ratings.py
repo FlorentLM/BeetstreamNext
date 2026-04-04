@@ -18,7 +18,7 @@ def endpoint_set_rating():
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if rating not in range(0, 6):
+    if not (0 <= rating <= 5):
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     username = flask.g.username

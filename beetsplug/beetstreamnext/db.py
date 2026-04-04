@@ -252,6 +252,8 @@ def initialise_db():
             f"\nRestore the original key, or delete the database (`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
         )
 
+    # TODO: should add db migration for future db changes
+
 
 ##
 

@@ -16,6 +16,8 @@ artists_separators = re.compile(r', | & ')
 def song_payload(subsonic_song_id: str) -> dict:
     beets_song_id = sub_to_beets_song(subsonic_song_id)
     song_item = flask.g.lib.get_item(beets_song_id)
+    if not song_item:
+        return {}
 
     payload = {
         'song': map_song(song_item)

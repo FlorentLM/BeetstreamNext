@@ -14,6 +14,8 @@ def album_payload(subsonic_album_id: str, include_songs=True) -> dict:
 
     beets_album_id = sub_to_beets_album(subsonic_album_id)
     album_object = flask.g.lib.get_album(beets_album_id)
+    if not album_object:
+        return {}
 
     payload = {
         "album": {

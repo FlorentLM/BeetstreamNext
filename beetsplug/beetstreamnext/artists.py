@@ -19,6 +19,8 @@ from beetsplug.beetstreamnext.utils import (
 def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 
     value, is_mbid = sub_to_beets_artist(subsonic_artist_id)
+    if not value:
+        return {}
 
     prefetched_albums = None
 

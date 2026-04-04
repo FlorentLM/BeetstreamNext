@@ -7,6 +7,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
+from beetsplug.beetstreamnext.userdata_caching import preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_response,
     sub_to_beets_artist,
@@ -125,6 +126,8 @@ def endpoint_get_artists_or_indexes():
             char = remove_accents(artist[0]).upper()
             group_key = char if char.isalpha() else '#'
             alphanum_dict[group_key].append(artist)
+
+    preload_artists(artist_prefetch)
 
     payload = {
         tag: {

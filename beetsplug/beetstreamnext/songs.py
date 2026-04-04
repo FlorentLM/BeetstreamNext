@@ -4,6 +4,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.external import query_lastfm
+from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, sub_to_beets_song,
@@ -81,6 +82,8 @@ def endpoint_songs_by_genre():
         with flask.g.lib.transaction() as tx:
             songs = list(tx.query(sql, params))
 
+    preload_songs(songs)
+
     payload = {
         "songsByGenre": {
             "song": [map_song(s) for s in songs]
@@ -131,6 +134,8 @@ def endpoint_get_random_songs():
     with flask.g.lib.transaction() as tx:
         songs = list(tx.query(sql, params))
 
+    preload_songs(songs)
+
     payload = {
         "randomSongs": {
             "song": list(map(map_song, songs))
@@ -176,6 +181,8 @@ def endpoint_get_top_songs():
                 top_tracks_available = list(tx.query(sql, [artist_name] + lastfm_track_names))
 
             if top_tracks_available:
+                preload_songs(top_tracks_available)
+
                 payload = {
                     'topSongs': {
                         'song': [map_song(s) for s in top_tracks_available]
@@ -195,6 +202,8 @@ def endpoint_get_top_songs():
             LIMIT ?
             """, (artist_name, flask.g.username, count)
         ).fetchall()
+
+    preload_songs(rows)
 
     payload = {
         'topSongs': {
@@ -300,6 +309,8 @@ def endpoint_get_similar_songs():
 
     with flask.g.lib.transaction() as tx:
         avail_similar_songs = list(tx.query(query, params))
+
+    preload_songs(avail_similar_songs)
 
     payload = {
         tag: {

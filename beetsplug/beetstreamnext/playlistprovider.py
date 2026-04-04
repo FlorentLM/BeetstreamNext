@@ -5,6 +5,7 @@ from pathlib import Path
 import flask
 from beets.util import bytestring_path
 
+from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     PLY_ID_PREF, genres_formatter, creation_date, map_song, sub_to_beets_song, chunked_query
 )
@@ -98,6 +99,8 @@ class Playlist:
                     results[idx] = row
 
         # Rebuild original order
+        preload_songs(list(results.values()))
+
         self.songs = []
         self.duration = 0
         for idx in sorted(results):

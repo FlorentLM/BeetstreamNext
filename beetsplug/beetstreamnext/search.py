@@ -3,6 +3,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
+from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_error, subsonic_response,
     remove_accents,
@@ -187,6 +188,10 @@ def endpoint_search():
             artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 
     song_counts = get_song_counts(albums)
+
+    preload_songs(songs)
+    preload_albums(albums)
+    preload_artists(artist_prefetch)
 
     payload = {
         tag: {

@@ -423,58 +423,6 @@ def load_user_roles(username: str) -> Union[dict, None]:
     return _get_userdata(username, fields=set(_ALLOWED_USER_FIELDS - {'password'}))
 
 
-def load_user_likes(username: str) -> dict:
-    """Load all likes for a user as {subsonic_id: starred_at}."""
-
-    with database() as db:
-        rows = db.execute(
-            """
-            SELECT item_id, starred_at
-            FROM likes
-            WHERE username = ?
-            """, (username,)
-        ).fetchall()
-
-    likes = {item_id: starred_at for item_id, starred_at in rows}
-    return likes
-
-
-def load_user_ratings(username: str) -> dict:
-    """Load all ratings for a user as {subsonic_id: starred_at}."""
-
-    with database() as db:
-        rows = db.execute(
-            """
-            SELECT item_id, rating
-            FROM ratings
-            WHERE username = ?
-            """, (username,)
-        ).fetchall()
-
-    ratings = {item_id: rating for item_id, rating in rows}
-    return ratings
-
-
-def load_user_play_stats(username: str) -> dict:
-    """Load play stats for a user as {beets_song_id: {'play_count': N, 'last_played': ts}}."""
-
-    with database() as db:
-        rows = db.execute(
-            """
-            SELECT song_id, play_count, last_played
-            FROM play_stats
-            WHERE username = ?
-            """, (username,)
-        ).fetchall()
-
-    play_stats = {
-        song_id: {'play_count': play_count, 'last_played': last_played}
-        for song_id, play_count, last_played in rows
-    }
-
-    return play_stats
-
-
 ##
 
 def authenticate(flask_req_values: 'CombinedMultiDict'):

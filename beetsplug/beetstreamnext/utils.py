@@ -23,7 +23,7 @@ from beets.dbcore.db import Transaction
 from beets import library
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.external import BEETSTREAMNEXT_VERSION
-
+import beetsplug.beetstreamnext.userdata_caching as userdata_caching
 
 API_VERSION = '1.16.1'
 
@@ -191,30 +191,6 @@ def sub_to_beets_song(subsonic_song_id):
 
 
 ##
-# Caching user data in g
-
-# TODO: need to figure out something better than loading all likes at once
-
-def cached_user_likes():
-    if 'liked' not in flask.g:
-        from beetsplug.beetstreamnext.users import load_user_likes
-        flask.g.liked = load_user_likes(flask.g.username)
-    return flask.g.liked
-
-
-def cached_user_ratings():
-    if 'ratings' not in flask.g:
-        from beetsplug.beetstreamnext.users import load_user_ratings
-        flask.g.ratings = load_user_ratings(flask.g.username)
-    return flask.g.ratings
-
-
-def cached_user_play_stats():
-    if 'play_stats' not in flask.g:
-        from beetsplug.beetstreamnext.users import load_user_play_stats
-        flask.g.play_stats = load_user_play_stats(flask.g.username)
-    return flask.g.play_stats
-
 
 def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
     """
@@ -353,7 +329,7 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
         # 'version': 'Deluxe Edition', # TODO: items table has 'media' that contains "Vinyl", "CD"< "Digital Media", etc
                         # TODO: also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
         'coverArt': subsonic_album_id,
-        'userRating': cached_user_ratings().get(subsonic_album_id, 0),
+        'userRating': userdata_caching.one_rating(subsonic_album_id),
         'isCompilation': bool(data.get('comp', False)),
 
         # These are only needed when part of a directory response
@@ -413,6 +389,8 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
         # Need song details
         songs = list(flask.g.lib.items(f'album_id:{beets_album_id}'))
 
+        userdata_caching.preload_songs(songs)
+
         if 'songCount' not in subsonic_album:
             subsonic_album['songCount'] = len(songs)
             subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
@@ -439,7 +417,7 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
         subsonic_album['averageRating'] = album_specific['userRating']
 
     # Starred status
-    liked_at = cached_user_likes().get(subsonic_album_id)
+    liked_at = userdata_caching.one_like(subsonic_album_id)
     if liked_at:
         subsonic_album['starred'] = timestamp_to_iso(liked_at)
 
@@ -469,7 +447,7 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
         'coverArt': album_id or song_id,
         'language': data.get('language') or '',
         'path': song_filepath,
-        'userRating': cached_user_ratings().get(song_id, 0),
+        'userRating': userdata_caching.one_rating(song_id),
         'duration': round(data.get('length') or 0),
         'bpm': data.get('bpm') or 0,
         'bitRate': round((data.get('bitrate') or 0) / 1000),
@@ -527,13 +505,13 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
             except Exception:
                 pass
 
-    stats = cached_user_play_stats().get(beets_song_id)
+    stats = userdata_caching.one_play_stats(beets_song_id)
     if stats:
         subsonic_song['playCount'] = stats['play_count']
         if stats['last_played']:
             subsonic_song['played'] = timestamp_to_iso(stats['last_played'])
 
-    liked_at = cached_user_likes().get(subsonic_song['id'])
+    liked_at = userdata_caching.one_like(subsonic_song['id'])
     if liked_at:
         subsonic_song['starred'] = timestamp_to_iso(liked_at)
 
@@ -550,8 +528,6 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
         mbid = prefetched[artist_name].get('mbid') or ''
 
     elif with_albums:
-        from beetsplug.beetstreamnext.albums import get_song_counts
-
         albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
         if albums:
             mbid = albums[0].get('mb_albumartistid', '') or ''
@@ -580,7 +556,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
         'sortName': artist_name,
         'title': artist_name,
         'coverArt': subsonic_artist_id,
-        'userRating': cached_user_ratings().get(subsonic_artist_id, 0),
+        'userRating': userdata_caching.one_rating(subsonic_artist_id),
         'artistImageUrl': imageart_url(subsonic_artist_id),
 
         # "roles": [
@@ -602,6 +578,8 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
             if albums and not mbid:
                 mbid = albums[0].get('mb_albumartistid', '') or ''
 
+        userdata_caching.preload_albums(albums)
+
         subsonic_artist['albumCount'] = len(albums)
         subsonic_artist['musicBrainzId'] = mbid
 
@@ -619,7 +597,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
             else:
                 subsonic_artist['albumCount'] = 0
 
-    liked_at = cached_user_likes().get(subsonic_artist_id)
+    liked_at = userdata_caching.one_like(subsonic_artist_id)
     if liked_at:
         subsonic_artist['starred'] = timestamp_to_iso(liked_at)
 

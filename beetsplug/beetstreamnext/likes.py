@@ -3,6 +3,7 @@ import flask
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.albums import get_song_counts
 from beetsplug.beetstreamnext.db import database, dual_database
+from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     map_song, map_album, map_artist,
@@ -106,8 +107,12 @@ def endpoint_get_starred():
             """, (username,)
         ).fetchall()
 
+    preload_songs(song_rows)
+
     songs = [map_song(dict(row)) for row in song_rows]
     album_dicts = [dict(row) for row in album_rows]
+
+    preload_albums(album_dicts)
 
     song_counts = get_song_counts(album_dicts)
     albums = [map_album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
@@ -147,6 +152,8 @@ def endpoint_get_starred():
             rows = chunked_query(db_obj=tx, query_template=sql, chunked_values=beets_artist_names)
             for r in rows:
                 prefetched[r[0]] = {'album_count': r[1], 'mbid': r[2]}
+
+    preload_artists(prefetched)
 
     artists = [map_artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
 

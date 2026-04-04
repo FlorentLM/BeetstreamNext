@@ -4,6 +4,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database
+from beetsplug.beetstreamnext.userdata_caching import preload_albums
 from beetsplug.beetstreamnext.utils import (
     get_beets_schema, sub_to_beets_album, map_album, subsonic_response, chunked_query, imageart_url, subsonic_error,
     safe_str, SNG_ID_PREF, sub_to_beets_song, beets_to_sub_album
@@ -244,6 +245,8 @@ def endpoint_get_album_list():
         albums_dict = [dict(album) for album in albums]
 
     song_counts = get_song_counts(albums_dict)
+    preload_albums(albums_dict)
+
     payload = {
         tag: {
             "album": [map_album(a, include_songs=False, song_counts=song_counts) for a in albums_dict]

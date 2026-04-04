@@ -3,6 +3,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import database, dual_database
+from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, sub_to_beets_song, beets_to_sub_song, map_song, timestamp_to_iso, safe_str
 )
@@ -45,6 +46,7 @@ def endpoint_get_play_queue():
     if not rows:
         return subsonic_response({}, resp_fmt=resp_fmt)
 
+    preload_songs(rows)
     songs = [map_song(dict(row)) for row in rows]
 
     payload = {

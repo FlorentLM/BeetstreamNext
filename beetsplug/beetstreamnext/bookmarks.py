@@ -3,6 +3,7 @@ import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.db import dual_database, database
+from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     sub_to_beets_song, map_song, timestamp_to_iso, safe_str
@@ -27,6 +28,8 @@ def endpoint_get_bookmarks():
             WHERE b.username = ?
             """, (username,)
         ).fetchall()
+
+    preload_songs(rows)
 
     bookmarks = []
     for row in rows:

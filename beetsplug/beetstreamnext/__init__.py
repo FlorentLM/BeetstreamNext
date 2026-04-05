@@ -25,6 +25,7 @@ from pathlib import Path
 import threading
 import getpass
 from typing import Dict, List
+import logging
 
 from beets.plugins import BeetsPlugin
 from beets import config
@@ -489,6 +490,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
             else:
                 from waitress import serve
                 from paste.translogger import TransLogger
+
+                logging.getLogger('waitress').setLevel(logging.INFO)
 
                 print(f"BeetstreamNext server running on {host}:{port}...")
                 logged_app = TransLogger(app, setup_console_handler=True)

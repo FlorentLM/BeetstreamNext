@@ -1,12 +1,10 @@
-import concurrent.futures
 import flask
 
 from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_error, subsonic_response,
-    remove_accents,
-    safe_str
+    remove_accents, safe_str
 )
 from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, get_song_counts
 
@@ -123,67 +121,55 @@ def endpoint_search():
             where_clause = " WHERE " + " AND ".join(conds) if conds else ""
             return where_clause, params
 
-        def search_songs():
-            where, params = build_where('items', 'title')
-            with lib.transaction() as tx:
-                rows = tx.query(
-                    f"""
-                    SELECT * FROM items {where} 
-                    ORDER BY title 
-                    COLLATE NOCASE 
-                    LIMIT ? OFFSET ?
-                    """, params + [song_count, song_offset]
-                )
-            return list(rows)
+        # Search songs
+        where, params = build_where('items', 'title')
+        with lib.transaction() as tx:
+            rows = tx.query(
+                f"""
+                SELECT * FROM items {where} 
+                ORDER BY title 
+                COLLATE NOCASE 
+                LIMIT ? OFFSET ?
+                """, params + [song_count, song_offset]
+            )
+        songs = list(rows)
 
-        def search_albums():
-            where, params = build_where('albums', 'album')
-            with lib.transaction() as tx:
-                rows = tx.query(
-                    f"""
-                    SELECT * FROM albums {where} 
-                    ORDER BY album 
-                    COLLATE NOCASE 
-                    LIMIT ? OFFSET ?
-                    """, params + [album_count, album_offset]
-                )
-            return list(rows)
+        # Search albums
+        where, params = build_where('albums', 'album')
+        with lib.transaction() as tx:
+            rows = tx.query(
+                f"""
+                SELECT * FROM albums {where} 
+                ORDER BY album 
+                COLLATE NOCASE 
+                LIMIT ? OFFSET ?
+                """, params + [album_count, album_offset]
+            )
+        albums = list(rows)
 
-        def search_artists():
-            # Artists are derived from albums for indexing
-            conds, params = [], []
-            if main_query or depr_artist:
-                q = main_query or depr_artist
-                conds.append("lower(albumartist) LIKE ?")
-                params.append(f"%{q.lower()}%")
+        # Search artists
+        conds, params = [], []
+        if main_query or depr_artist:
+            q = main_query or depr_artist
+            conds.append("lower(albumartist) LIKE ?")
+            params.append(f"%{q.lower()}%")
 
-            where = " WHERE " + " AND ".join(conds) if conds else " WHERE albumartist IS NOT NULL"
-
-            with lib.transaction() as tx:
-                rows = tx.query(
-                    f"""
-                    SELECT albumartist, COUNT(*), mb_albumartistid 
-                    FROM albums {where}
-                    GROUP BY albumartist
-                    ORDER BY albumartist COLLATE NOCASE
-                    LIMIT ? OFFSET ?
-                    """, params + [artist_count, artist_offset]
-                )
-            return list(rows)
-
-        # TODO: I am not sure this is worth it actually. Should bench it
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_songs = executor.submit(search_songs)
-            future_albums = executor.submit(search_albums)
-            future_artists = executor.submit(search_artists)
-
-            songs = future_songs.result()
-            albums = future_albums.result()
-            artist_rows = future_artists.result()
+        where = " WHERE " + " AND ".join(conds) if conds else " WHERE albumartist IS NOT NULL"
+        with lib.transaction() as tx:
+            rows = tx.query(
+                f"""
+                SELECT albumartist, COUNT(*), mb_albumartistid 
+                FROM albums {where}
+                GROUP BY albumartist
+                ORDER BY albumartist COLLATE NOCASE
+                LIMIT ? OFFSET ?
+                """, params + [artist_count, artist_offset]
+            )
+        artist_rows = list(rows)
 
         artists = []
         for row in artist_rows:
-            name, count, mbid = row[0], row[1], row[2]
+            name, count, mbid = row
             artists.append(name)
             artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 

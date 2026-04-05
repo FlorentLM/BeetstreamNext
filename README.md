@@ -188,7 +188,7 @@ I tested it and confirmed it working with:
 - [x] Implement rate limiting
 - [x] Move now_playing into the db as a volatile table
 - [x] Use MBID instead of artists names for internal ID mapping
-- [ ] Support multi-artists / contributors / producers / labels properly
+- [x] Support multi-artists / contributors / producers / labels properly
 - [ ] Make an Admin WebUI panel to manage users
 - [ ] Docker image
 - [ ] Add scrobbling to Last.fm and other similar services

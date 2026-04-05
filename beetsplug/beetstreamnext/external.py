@@ -161,8 +161,9 @@ def query_wikipedia(q: str) -> Optional[str]:
     if not WIKI_API:
         return None
 
-    from beetsplug.beetstreamnext.utils import standard_ascii
+    from beetsplug.beetstreamnext.utils import standard_ascii, remove_accents
     q = standard_ascii(q)
+    q = remove_accents(q)
     if not q:
         return None
 

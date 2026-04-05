@@ -95,32 +95,38 @@ def _run_periodic_things():
     finally:
         _cleanup_lock.release()
 
-    # Sweep stale IPs from rate-limit dict
-    with _auth_lock:
-        stale = [
-            ip for ip, attempts in _FAILED_AUTH_ATTEMPTS.items()
-            if not attempts or (now - max(attempts) > _BLOCK_TIME_SECONDS)
-        ]
-        for ip in stale:
-            del _FAILED_AUTH_ATTEMPTS[ip]
+    def _background_maintenance():
+        app.logger.info(f"[{datetime.fromtimestamp(now)}] Starting background maintenance...")
 
-    def _tidyup_cache(days):
+        # Sweep stale IPs from rate-limit dict
+        with _auth_lock:    # only hold lock to grab the keys
+            all_ips = list(_FAILED_AUTH_ATTEMPTS.keys())
+
+        stale = []
+        for ip in all_ips:  # reads are ok without lock
+            attempts = _FAILED_AUTH_ATTEMPTS.get(ip, [])
+            if not attempts or (now - max(attempts) > _BLOCK_TIME_SECONDS):
+                stale.append(ip)
+
+        if stale:
+            with _auth_lock:   # only lock when actually deleting
+                for ip in stale:
+                    _FAILED_AUTH_ATTEMPTS.pop(ip, None)
+
+        # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']
-        if not cache_dir.exists():
-            return
+        if cache_dir.exists():
+            max_age_seconds = _MAX_CACHE_AGE_DAYS * 86400
+            try:
+                for f in cache_dir.iterdir():
+                    if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
+                        f.unlink(missing_ok=True)
+            except Exception as e:
+                app.logger.error(f"Error cleaning thumbnail cache: {e}")
 
-        max_age_seconds = days * 86400
-        now = time.time()
-        try:
-            app.logger.info(f"[{datetime.fromtimestamp(now)}] Thumbnail cache cleanup triggered.")
-            for f in cache_dir.iterdir():
-                if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
-                    f.unlink(missing_ok=True)
+        app.logger.info(f"[{datetime.fromtimestamp(now)}] Background maintenance complete.")
 
-        except Exception as e:
-            app.logger.error(f"Error cleaning thumbnail cache: {e}")
-
-    thread = threading.Thread(target=_tidyup_cache, kwargs={'days': _MAX_CACHE_AGE_DAYS}, daemon=True)
+    thread = threading.Thread(target=_background_maintenance, daemon=True)
     thread.start()
 
 

@@ -36,24 +36,33 @@ def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
 
     data = standardise_datadict(beets_object)
 
-    artist_name = data.get('albumartist') or data.get('artist') or ''
-    artist_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
+    track_artist_name = data.get('artist') or data.get('albumartist') or ''
+
+    main_artist_name = data.get('albumartist') or data.get('artist') or ''
+    main_artist_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
+
+    if main_artist_mbid:
+        artist_id = beets_to_sub_artist(main_artist_mbid)
+    else:
+        artist_id = beets_to_sub_artist(main_artist_name, is_mbid=False)
+
+    artists, album_artists, contributors, display_composer = get_artists(data)
+
     raw_genres = f"{data.get('genres') or ''};{data.get('genre') or ''}"
     formatted_genres = genres_formatter(raw_genres)
 
     main_genre = formatted_genres[0] if formatted_genres else ''
     genres_list = [{'name': g} for g in formatted_genres]
 
-    if artist_mbid:
-        artist_id = beets_to_sub_artist(artist_mbid)
-    else:
-        artist_id = beets_to_sub_artist(artist_name, is_mbid=False)
-
     subsonic_media = {
-        'artist': artist_name,
+        'artist': track_artist_name,
         'artistId': artist_id,
-        'displayArtist': artist_name,
-        'displayAlbumArtist': artist_name,
+        'displayArtist': track_artist_name,
+        'displayAlbumArtist': main_artist_name,
+        'artists': artists,
+        'albumArtists': album_artists,
+        'contributors': contributors,
+        'displayComposer': display_composer,
         'album': data.get('album') or '',
         'year': data.get('year') or 0,
         'genre': main_genre,
@@ -70,6 +79,10 @@ def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
             'day': data.get('day') or 0
         },
     }
+
+    if display_composer:
+        subsonic_media['displayComposer'] = display_composer
+
     return subsonic_media
 
 
@@ -88,7 +101,7 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
         'musicBrainzId': data.get('mb_albumid') or '',
         'name': album_name,
         'sortName': album_name,
-        # 'version': 'Deluxe Edition', # TODO: items table has 'media' that contains "Vinyl", "CD"< "Digital Media", etc
+        # 'version': 'Deluxe Edition', # TODO: items table has 'media' that contains "Vinyl", "CD", "Digital Media", etc
                         # TODO: also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
         'coverArt': subsonic_album_id,
         'userRating': userdata_caching.one_rating(subsonic_album_id),
@@ -137,15 +150,19 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
         with flask.g.lib.transaction() as tx:
             rows = tx.query(
                 """
-                SELECT COUNT(*), SUM(length) 
-                FROM items 
+                SELECT COUNT(*), SUM(length)
+                FROM items
                 WHERE album_id = ?
                 """, (beets_album_id,)
             )
-            count, duration = rows[0][:2] if rows else (0, 0)
-            subsonic_album['songCount'] = count
-            subsonic_album['duration'] = round(duration)
 
+        if rows:
+            count, duration = rows[0][:2]
+            subsonic_album['songCount'] = count
+            subsonic_album['duration'] = round(duration or 0)
+        else:
+            subsonic_album['songCount'] = 0
+            subsonic_album['duration'] = 0
 
     if include_songs:
         # Need song details
@@ -284,28 +301,41 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
 
     # Priority: prefetched -> album query (when with_albums) -> standalone db query
     mbid = ''
+    sort_name = artist_name
+    album_count = 0
     albums = None
 
     if prefetched and artist_name in prefetched:
-        mbid = prefetched[artist_name].get('mbid') or ''
+        pf = prefetched[artist_name]
+        mbid = pf.get('mbid') or ''
+        sort_name = pf.get('sort_name') or artist_name
+        album_count = pf.get('album_count', 0)
 
     elif with_albums:
         albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
         if albums:
             mbid = albums[0].get('mb_albumartistid', '') or ''
+            sort_name = albums[0].get('albumartist_sort', '') or artist_name
+        album_count = len(albums) if albums else 0
 
     else:
         with flask.g.lib.transaction() as tx:
-            rows = tx.query(
+            row = tx.query(
                 """
-                SELECT COUNT(*), mb_albumartistid
+                SELECT COUNT(*), mb_albumartistid, albumartist_sort
                 FROM albums
                 WHERE albumartist = ?
                 GROUP BY albumartist
                 """, (artist_name,)
-            )
-        if rows:
-            mbid = rows[0][1] or ''
+            ).fetchone()
+
+        if row:
+            album_count, mbid, sort_name = row[0], row[1] or '', row[2] or artist_name
+
+    meta = _artist_metadata(artist_name)
+    mbid = mbid or meta['mbid']
+    sort_name = sort_name if sort_name != artist_name else meta['sort_name']
+    roles = meta['roles']
 
     if mbid:
         subsonic_artist_id = beets_to_sub_artist(mbid)
@@ -315,19 +345,14 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     subsonic_artist = {
         'id': subsonic_artist_id,
         'name': artist_name,
-        'sortName': artist_name,
+        'sortName': sort_name,
+        'roles': roles,
+        'musicBrainzId': mbid,
         'title': artist_name,
+        'albumCount': album_count,
         'coverArt': subsonic_artist_id,
         'userRating': userdata_caching.one_rating(subsonic_artist_id),
         'artistImageUrl': imageart_url(subsonic_artist_id),
-
-        # "roles": [
-        #     "artist",
-        #     "albumartist",
-        #     "composer"
-        # ],
-
-        # This is only needed when part of a Child response
         'mediaType': 'artist'
     }
 
@@ -336,27 +361,13 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
         if albums is None:  # already fetched above if not prefetched
             albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
 
-            if albums and not mbid:
-                mbid = albums[0].get('mb_albumartistid', '') or ''
-
         userdata_caching.preload_albums(albums)
-
-        subsonic_artist['albumCount'] = len(albums)
-        subsonic_artist['musicBrainzId'] = mbid
-
         song_counts = get_song_counts(albums)
-        subsonic_artist['album'] = [map_album(alb, include_songs=False, song_counts=song_counts) for alb in albums]
 
-    else:
-        if prefetched and artist_name in prefetched:
-            subsonic_artist['albumCount'] = prefetched[artist_name]['album_count']
-            subsonic_artist['musicBrainzId'] = mbid
-        else:
-            if rows:
-                subsonic_artist['albumCount'] = rows[0][0]
-                subsonic_artist['musicBrainzId'] = mbid
-            else:
-                subsonic_artist['albumCount'] = 0
+        subsonic_artist['album'] = [
+            map_album(alb, include_songs=False, song_counts=song_counts)
+            for alb in albums
+        ]
 
     liked_at = userdata_caching.one_like(subsonic_artist_id)
     if liked_at:
@@ -387,26 +398,92 @@ def map_playlist(playlist, include_songs=False):
 # Other more specialised utils
 
 
+def _artist_metadata(name: str) -> dict:
+    """Lookup MBID, sort name and roles for a given artist name."""
+    if not name:
+        return {'mbid': '', 'sort_name': '', 'roles': []}
+
+    cache = flask.g.setdefault('_artist_metadata_cache', {})
+    if name in cache:
+        return cache[name]
+
+    mbid = ''
+    sort_name = ''
+    roles = []
+
+    with flask.g.lib.transaction() as tx:
+        album_rows = tx.query(
+            """SELECT mb_albumartistid, albumartist_sort FROM albums WHERE albumartist = ? LIMIT 1""",
+            (name,)
+        )
+        if album_rows:
+            roles.append('albumartist')
+            row = album_rows[0]
+            if row[0]: mbid = row[0]
+            if row[1]: sort_name = row[1]
+
+        item_rows = tx.query(
+            """SELECT mb_artistid, artist_sort FROM items WHERE artist = ? LIMIT 1""",
+            (name,)
+        )
+        if item_rows:
+            roles.append('artist')
+            row = item_rows[0]
+            if not mbid and row[0]: mbid = row[0]
+            if not sort_name and row[1]: sort_name = row[1]
+
+        # Check for secondary roles
+        if not roles:
+            if tx.query("""SELECT 1 FROM items WHERE artists LIKE ? LIMIT 1""", (f"%{name}%",)):
+                roles.append('artist')
+
+        if tx.query("""SELECT 1 FROM items WHERE composer = ? OR composer LIKE ? LIMIT 1""", (name, f"%{name}%")):
+            roles.append('composer')
+
+        if tx.query("""SELECT 1 FROM items WHERE lyricist = ? OR lyricist LIKE ? LIMIT 1""", (name, f"%{name}%")):
+            roles.append('lyricist')
+
+    result = {
+        'mbid': mbid,
+        'sort_name': sort_name or name,
+        'roles': roles if roles else ['artist']
+    }
+
+    cache[name] = result
+    return result
+
+
 def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
     """
-    Returns (name, mbid) for an artist, from any subsonic ID (artist, album, or song)
-    (or None if the ID can't be resolved).
+    Returns (name, mbid) for an artist from any subsonic ID (artist, album, or song)
+    (or None if ID can't be resolved)
     """
     if req_id.startswith(SNG_ID_PREF):
         item = flask.g.lib.get_item(sub_to_beets_song(req_id))
         if not item:
             return None
 
-        return item.get('albumartist', ''), item.get('mb_artistid', '')
+        name = item.get('albumartist') or item.get('artist') or ''
+        mbid = item.get('mb_albumartistid') or item.get('mb_artistid') or ''
+        if not mbid:
+            mbids = split_beets_multi(item.get('mb_albumartistids') or item.get('mb_artistids') or '')
+            mbid = mbids[0] if mbids else ''
+
+        return name, mbid
 
     if req_id.startswith(ALB_ID_PREF):
         album = flask.g.lib.get_album(sub_to_beets_album(req_id))
         if not album:
             return None
 
-        return album.get('albumartist', ''), album.get('mb_artistid', '')
+        name = album.get('albumartist') or ''
+        mbid = album.get('mb_albumartistid') or ''
+        if not mbid:
+            mbids = split_beets_multi(album.get('mb_albumartistids') or '')
+            mbid = mbids[0] if mbids else ''
 
-    # Artist ID (or name as fallback)
+        return name, mbid
+
     if req_id.startswith(ART_ID_PREF):
         value, is_mbid = sub_to_beets_artist(req_id)
     else:
@@ -414,14 +491,25 @@ def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
 
     if is_mbid:
         with flask.g.lib.transaction() as tx:
+            # Check albums first
             rows = tx.query(
                 """
-                SELECT albumartist 
-                FROM albums 
-                WHERE mb_albumartistid = ? 
+                SELECT albumartist
+                FROM albums
+                WHERE mb_albumartistid = ?
                 LIMIT 1
                 """, (value,)
             )
+            if not rows:  # fallback to items table
+                rows = tx.query(
+                    """
+                    SELECT artist
+                    FROM items
+                    WHERE mb_artistid = ?
+                    LIMIT 1
+                    """, (value,)
+                )
+
         artist_name = rows[0][0] if rows else ''
         if not artist_name:
             return None
@@ -430,19 +518,8 @@ def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
 
     else:
         artist_name = value
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                """
-                SELECT mb_artistid 
-                FROM items 
-                WHERE albumartist LIKE ? 
-                LIMIT 1
-                """, (artist_name,)
-            )
-        if not rows:
-            return None
-
-        return artist_name, rows[0][0] or ''
+        meta = _artist_metadata(artist_name)
+        return artist_name, meta['mbid']
 
 
 def get_song_counts(albums: List[Dict]) -> Dict:
@@ -465,3 +542,67 @@ def get_song_counts(albums: List[Dict]) -> Dict:
 
     return counts
 
+
+def get_artists(data: dict) -> Tuple[List[dict], List[dict], List[dict], str]:
+    artists_array = []
+    album_artists_array = []
+    contributors_array = []
+    composers = []
+
+    seen_artists = set()
+    seen_album_artists = set()
+    seen_contributors = set()
+
+    def _process(raw_names: str, raw_mbids: str, target_list: list, seen_set: set, is_contributor: bool = False, role: str = ''):
+        if not raw_names:
+            return
+
+        names = split_beets_multi(raw_names)
+        mbids = split_beets_multi(raw_mbids) if raw_mbids else []
+
+        for i, name in enumerate(names):
+            if not name:
+                continue
+
+            mbid = ''
+            if i < len(mbids) and mbids[i]:
+                mbid = mbids[i]
+            elif is_contributor:
+                meta = _artist_metadata(name)
+                mbid = meta['mbid']
+
+            contributor_id = beets_to_sub_artist(mbid, True) if mbid else beets_to_sub_artist(name, False)
+
+            if is_contributor:
+                dedup_key = (contributor_id, role)
+                if dedup_key not in seen_set:
+                    seen_set.add(dedup_key)
+                    target_list.append({
+                        'role': role,
+                        'artist': {
+                            'id': contributor_id,
+                            'name': name
+                        }
+                    })
+                    if role == 'composer':
+                        composers.append(name)
+            else:
+                dedup_key = contributor_id
+                if dedup_key not in seen_set:
+                    seen_set.add(dedup_key)
+                    target_list.append({
+                        'id': contributor_id,
+                        'name': name
+                    })
+
+    _process(data.get('artists') or '', data.get('mb_artistids') or '', artists_array, seen_artists)
+    _process(data.get('albumartists') or '', data.get('mb_albumartistids') or '', album_artists_array, seen_album_artists)
+
+    _process(data.get('composer') or '', '', contributors_array, seen_contributors, True, 'composer')
+    _process(data.get('lyricist') or '', '', contributors_array, seen_contributors, True, 'lyricist')
+    _process(data.get('remixer') or '', '', contributors_array, seen_contributors, True, 'remixer')
+    _process(data.get('arranger') or '', '', contributors_array, seen_contributors, True, 'arranger')
+
+    display_composer = ", ".join(composers)
+
+    return artists_array, album_artists_array, contributors_array, display_composer

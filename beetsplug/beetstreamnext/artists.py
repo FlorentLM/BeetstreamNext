@@ -104,7 +104,7 @@ def endpoint_get_artists_or_indexes():
     with flask.g.lib.transaction() as tx:
         rows = tx.query(
             """
-            SELECT albumartist, COUNT(*) as album_count, mb_albumartistid
+            SELECT albumartist, COUNT(*) as album_count, mb_albumartistid, albumartist_sort
             FROM albums
             WHERE albumartist IS NOT NULL
             GROUP BY albumartist
@@ -114,9 +114,9 @@ def endpoint_get_artists_or_indexes():
     artist_prefetch = {}
     artists = []
     for row in rows:
-        name, count, mbid = row
+        name, count, mbid, sort_name = row
         artists.append(name)
-        artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
+        artist_prefetch[name] = {'album_count': count, 'mbid': mbid, 'sort_name': sort_name}
 
     alphanum_dict = defaultdict(list)
     for artist in artists:

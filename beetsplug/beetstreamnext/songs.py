@@ -1,4 +1,3 @@
-import re
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -11,8 +10,6 @@ from beetsplug.beetstreamnext.utils import (
     get_beets_schema, safe_str
 )
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
-
-artists_separators = re.compile(r', | & ')
 
 
 def song_payload(subsonic_song_id: str) -> dict:
@@ -176,10 +173,11 @@ def endpoint_get_top_songs():
             placeholders = ','.join(['?'] * len(lastfm_track_names))
             sql = f"""
                    SELECT * FROM items 
-                   WHERE albumartist = ? AND title IN ({placeholders})
+                   WHERE (albumartist = ? OR artist = ? OR artists LIKE ?)
+                     AND title IN ({placeholders})
                    """
             with flask.g.lib.transaction() as tx:
-                top_tracks_available = list(tx.query(sql, [artist_name] + lastfm_track_names))
+                top_tracks_available = list(tx.query(sql, [artist_name, artist_name, f"%{artist_name}%"] + lastfm_track_names))
 
             if top_tracks_available:
                 preload_songs(top_tracks_available)
@@ -195,13 +193,15 @@ def endpoint_get_top_songs():
     with dual_database() as db:
         rows = db.execute(
             """
-            SELECT i.* 
+            SELECT i.*
             FROM beets.items i
-            JOIN play_stats ps ON ps.song_id = i.id
-            WHERE i.albumartist = ? AND ps.username = ? AND ps.play_count > 0
-            ORDER BY ps.play_count DESC 
+                     JOIN play_stats ps ON ps.song_id = i.id
+            WHERE (i.albumartist = ? OR i.artist = ? OR i.artists LIKE ?)
+              AND ps.username = ?
+              AND ps.play_count > 0
+            ORDER BY ps.play_count DESC
             LIMIT ?
-            """, (artist_name, flask.g.username, count)
+            """, (artist_name, artist_name, f"%{artist_name}%", flask.g.username, count)
         ).fetchall()
 
     preload_songs(rows)
@@ -287,12 +287,9 @@ def endpoint_get_similar_songs():
                 params.append(f"%{name}%")
 
         else:
-            # no mbid: Last.fm returns this when it is a multi-artist collab,
-            # -> match each part against all name fields
-            for part in re.split(artists_separators, name):
-                for field in name_fields:
-                    sub_conditions.append(f"{field} LIKE ?")
-                    params.append(f"%{part}%")
+            for field in name_fields:
+                sub_conditions.append(f"{field} LIKE ?")
+                params.append(f"%{name}%")
 
         if sub_conditions:
             conditions.append("(" + " OR ".join(sub_conditions) + ")")

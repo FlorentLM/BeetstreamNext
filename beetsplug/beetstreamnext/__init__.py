@@ -232,7 +232,6 @@ def home():
 import beetsplug.beetstreamnext.albums
 import beetsplug.beetstreamnext.artists
 import beetsplug.beetstreamnext.coverart
-import beetsplug.beetstreamnext.dummy
 import beetsplug.beetstreamnext.likes
 import beetsplug.beetstreamnext.ratings
 import beetsplug.beetstreamnext.playlists

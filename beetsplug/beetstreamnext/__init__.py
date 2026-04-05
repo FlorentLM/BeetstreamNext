@@ -60,6 +60,7 @@ _LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
+app.config['PROJECT_ROOT'] = PROJECT_ROOT
 app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
 app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.sqlite'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'

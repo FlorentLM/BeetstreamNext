@@ -87,8 +87,6 @@ def endpoint_search():
 
     # Normal SQL search
     else:
-        lib = flask.g.lib
-
         def build_where(table_type: str, main_field: str):
             # table_type: 'items' or 'albums'
             # main_field: 'title' or 'album'
@@ -123,7 +121,7 @@ def endpoint_search():
 
         # Search songs
         where, params = build_where('items', 'title')
-        with lib.transaction() as tx:
+        with flask.g.lib.transaction() as tx:
             rows = tx.query(
                 f"""
                 SELECT * FROM items {where} 
@@ -136,7 +134,7 @@ def endpoint_search():
 
         # Search albums
         where, params = build_where('albums', 'album')
-        with lib.transaction() as tx:
+        with flask.g.lib.transaction() as tx:
             rows = tx.query(
                 f"""
                 SELECT * FROM albums {where} 
@@ -155,7 +153,7 @@ def endpoint_search():
             params.append(f"%{q.lower()}%")
 
         where = " WHERE " + " AND ".join(conds) if conds else " WHERE albumartist IS NOT NULL"
-        with lib.transaction() as tx:
+        with flask.g.lib.transaction() as tx:
             rows = tx.query(
                 f"""
                 SELECT albumartist, COUNT(*), mb_albumartistid 

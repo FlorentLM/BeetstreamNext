@@ -58,6 +58,7 @@ def initialise_db():
     conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     cur = conn.cursor()
 
+    cur.execute("PRAGMA busy_timeout = 5000;")
     cur.execute("PRAGMA journal_mode = WAL;")
     cur.execute("PRAGMA synchronous = NORMAL;")
     cur.execute("PRAGMA foreign_keys = ON;")
@@ -261,9 +262,10 @@ def database():
     """Get internal database connection."""
     if 'db' not in g:
         g.db = sqlite3.connect(current_app.config['DB_PATH'])
-        g.db.execute("PRAGMA foreign_keys = ON;")
-        g.db.execute("PRAGMA journal_mode = WAL;")
+        g.db.execute("PRAGMA main.journal_mode = WAL;")
         g.db.execute("PRAGMA synchronous = NORMAL;")
+        g.db.execute("PRAGMA busy_timeout = 5000;")
+        g.db.execute("PRAGMA foreign_keys = ON;")
         g.db.row_factory = sqlite3.Row
     return g.db
 

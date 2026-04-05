@@ -483,8 +483,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             else:
                 from waitress import serve
+                from paste.translogger import TransLogger
+
                 print(f"BeetstreamNext server running on {host}:{port}...")
-                serve(app, host=host, port=port, threads=8)
+                logged_app = TransLogger(app, setup_console_handler=True)
+                serve(logged_app, host=host, port=port, threads=8)
 
         cmd.func = func
         return [cmd]

@@ -73,8 +73,12 @@ def _send_transcode(
             pass
         finally:
             try:
-                output_stream.kill()
-                output_stream.wait(timeout=10)
+                output_stream.terminate()
+                try:
+                    output_stream.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    output_stream.kill()
+                    output_stream.wait(timeout=3)
             except Exception:
                 pass
 

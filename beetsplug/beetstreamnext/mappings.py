@@ -219,7 +219,6 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
     song_specific = {
         'id': song_id,
         'musicBrainzId': data.get('mb_releasetrackid') or data.get('mb_trackid') or '',
-        'isrc': data.get('isrc') or '',
         'name': song_title,
         'sortName': song_title,
         'albumId': album_id,
@@ -251,18 +250,48 @@ def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[
     }
     subsonic_song.update(song_specific)
 
-    # TODO: lyricist, composer, etc
+    isrc_raw = data.get('isrc') or ''
+    if isrc_raw:
+        subsonic_song['isrc'] = split_beets_multi(isrc_raw)
+
+    work = data.get('work') or ''
+    if work:
+        work_obj = {'name': work}
+        mb_workid = data.get('mb_workid')
+        if mb_workid:
+            work_obj['musicBrainzId'] = mb_workid
+        subsonic_song['works'] = [work_obj]
+
+    tg = data.get('rg_track_gain')
+    ag = data.get('rg_album_gain')
+
+    # r128 fields are stored as LU/dB * 256
+    if tg is None:
+        r128_tg = data.get('r128_track_gain')
+        if r128_tg is not None:
+            tg = float(r128_tg) / 256.0
+
+    if ag is None:
+        r128_ag = data.get('r128_album_gain')
+        if r128_ag is not None:
+            ag = float(r128_ag) / 256.0
+
+    # Peaks are stored as linear ratios 0.0 to 1.0
+    tp = data.get('rg_track_peak')
+    ap = data.get('rg_album_peak')
+
+    if tg is not None or ag is not None:
+        subsonic_song['replayGain'] = {
+            'trackGain': round(float(tg or 0.0), 2),
+            'albumGain': round(float(ag or 0.0), 2),
+            'trackPeak': float(tp or 0.0),
+            'albumPeak': float(ap or 0.0),
+            'baseGain': 0.0
+        }
 
     track_nb = data.get('track')
     if track_nb:
         subsonic_song['track'] = track_nb
-
-    # subsonic_song['replayGain'] = {
-    #         'trackGain': (song.get('rg_track_gain') or 0) or ((song.get('r128_track_gain') or 107) - 107),
-    #         'albumGain': (song.get('rg_album_gain') or 0) or ((song.get('r128_album_gain') or 107) - 107),
-    #         'trackPeak': song.get('rg_track_peak', 0),
-    #         'albumPeak': song.get('rg_album_peak', 0)
-    # }
 
     suffix = (data.get('format') or '').lower()
     if not suffix and song_filepath:

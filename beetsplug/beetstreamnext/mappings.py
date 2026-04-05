@@ -10,9 +10,11 @@ from beetsplug.beetstreamnext.utils import (
     SNG_ID_PREF, sub_to_beets_song, beets_to_sub_song,
     ALB_ID_PREF, sub_to_beets_album, beets_to_sub_album,
     ART_ID_PREF, sub_to_beets_artist, beets_to_sub_artist,
-    genres_formatter, split_beets_multi, chunked_query
+    genres_formatter, split_beets_multi, chunked_query, imageart_url
 )
 
+
+##
 
 def standardise_datadict(obj: Union[dict, library.LibModel, any]) -> dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
@@ -463,23 +465,3 @@ def get_song_counts(albums: List[Dict]) -> Dict:
 
     return counts
 
-
-def imageart_url(item_id: str, size: Optional[int] = None) -> str:
-    if not item_id:
-        return ''
-
-    # check if the base URL is already built for the current request, if not, build it
-    base_url = getattr(flask.g, '_art_base_url', None)
-    if not base_url:
-        params = {
-            k: flask.request.values.get(k)
-            for k in ['u', 's', 't', 'p', 'apiKey', 'c', 'v'] if flask.request.values.get(k)
-        }
-        base_url = flask.url_for('endpoint_get_cover_art', _external=True, **params)
-        flask.g._art_base_url = base_url
-
-    sep = '&' if '?' in base_url else '?'
-    url = f"{base_url}{sep}id={item_id}"
-    if size:
-        url += f"&size={size}"
-    return url

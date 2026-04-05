@@ -10,9 +10,9 @@ from beetsplug.beetstreamnext.userdata_caching import preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     sub_to_beets_artist, beets_to_sub_artist,
-    trim_text, remove_accents, safe_str
+    trim_text, remove_accents, safe_str, imageart_url
 )
-from beetsplug.beetstreamnext.mappings import imageart_url, resolve_artist, map_album, map_artist, get_song_counts
+from beetsplug.beetstreamnext.mappings import resolve_artist, map_album, map_artist, get_song_counts
 
 
 def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:

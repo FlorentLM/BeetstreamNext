@@ -60,6 +60,36 @@ _ASCII_TRANSLATE_TABLE = {
 
 
 ##
+# General flask helpers
+
+def grab_auth_params() -> Dict:
+    r = flask.request.values
+
+    auth_params = {k: r.get(k, default='', type=str) for k in ['s', 't', 'p', 'apiKey'] if k in r}
+    other_auth_params = {k: r.get(k, default='', type=safe_str) for k in ['u', 'c', 'v'] if k in r}
+    auth_params.update(other_auth_params)
+
+    return auth_params
+
+
+def imageart_url(item_id: str, size: Optional[int] = None) -> str:
+    if not item_id:
+        return ''
+
+    # check if the base URL is already built for the current request, if not, build it
+    base_url = getattr(flask.g, '_art_base_url', None)
+    if not base_url:
+        base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
+        flask.g._art_base_url = base_url
+
+    sep = '&' if '?' in base_url else '?'
+    url = f"{base_url}{sep}id={item_id}"
+    if size:
+        url += f"&size={size}"
+    return url
+
+
+##
 # Main response and error payloads
 
 def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed: bool = False):

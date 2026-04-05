@@ -181,25 +181,19 @@ def _before_request():
     ok, error_code, username = authenticate(r)
     if not ok:
         with _auth_lock:
-            _FAILED_AUTH_ATTEMPTS.setdefault(client_ip, []).append(now)     # failed attempt : record it
+            _FAILED_AUTH_ATTEMPTS.setdefault(client_ip, []).append(now)   # failed attempt : record it
         return subsonic_error(error_code, resp_fmt=resp_fmt)
 
     with _auth_lock:
         _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
 
+    from beetsplug.beetstreamnext.utils import grab_auth_params
+
     g.lib = app.config['lib']
     g.username = username
     g.user_data = load_user_roles(username)
     g.playlist_provider = app.config['playlist_provider']
-
-    # Pre-build base URL for images so all mapping functions use it in the current request
-    auth_params = {k: r.get(k, default='', type=str)    # no safe_str for these
-                   for k in ['s', 't', 'p', 'apiKey'] if k in r}
-    other_auth_params = {k: r.get(k, default='', type=safe_str)
-                         for k in ['u', 'c', 'v'] if k in r}
-    auth_params.update(other_auth_params)
-
-    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **auth_params)
+    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
 
     _run_periodic_things()
 

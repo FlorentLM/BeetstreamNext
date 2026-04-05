@@ -41,7 +41,13 @@ def _send_transcode(
         output_stream = (
             input_stream
             .audio
-            .output('pipe:', format=target['f'], acodec=target['c'], audio_bitrate=f'{max_bitrate}k')
+            .output(
+                'pipe:',
+                format=target['f'],
+                acodec=target['c'],
+                audio_bitrate=f'{max_bitrate}k',
+                map_metadata='-1'
+            )
             .run_async(pipe_stdout=True, quiet=True)
         )
     elif FFMPEG_BIN:
@@ -53,6 +59,7 @@ def _send_transcode(
         command.extend([
             '-i', file_path,
             '-vn',  # strip cover art, otherwise many clients just crash
+            '-map_metadata', '-1',
             '-f', target['f'],
             '-c:a', target['c'],
             '-b:a', f'{max_bitrate}k',
@@ -75,10 +82,10 @@ def _send_transcode(
             try:
                 output_stream.terminate()
                 try:
-                    output_stream.wait(timeout=3)
+                    output_stream.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     output_stream.kill()
-                    output_stream.wait(timeout=3)
+                    output_stream.wait(timeout=5)
             except Exception:
                 pass
 

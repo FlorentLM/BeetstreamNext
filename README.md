@@ -189,6 +189,7 @@ I tested it and confirmed it working with:
 - [x] Move now_playing into the db as a volatile table
 - [x] Use MBID instead of artists names for internal ID mapping
 - [x] Support multi-artists / contributors / producers / labels properly
+- [ ] Make BeetstreamNext a standalone app, it does not _need_ to be a plugin
 - [ ] Make an Admin WebUI panel to manage users
 - [ ] Docker image
 - [ ] Add scrobbling to Last.fm and other similar services

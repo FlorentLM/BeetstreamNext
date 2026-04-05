@@ -1,5 +1,6 @@
 import os
 import subprocess
+import select
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -72,10 +73,16 @@ def _send_transcode(
     def generate():
         try:
             while True:
-                chunk = output_stream.stdout.read(8192)
-                if not chunk:
-                    break
-                yield chunk
+                ready, _, _ = select.select([output_stream.stdout], [], [], 2.0)
+
+                if ready:
+                    chunk = output_stream.stdout.read(8192)
+                    if not chunk:
+                        break
+                    yield chunk
+                else:
+                    if output_stream.poll() is not None:
+                        break
         except OSError:
             pass
         finally:

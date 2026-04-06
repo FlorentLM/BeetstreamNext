@@ -38,6 +38,11 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from beetsplug.beetstreamnext.db import close_database
 
 
+# LOG_LEVEL = logging.ERROR
+LOG_LEVEL = logging.INFO
+
+logging.getLogger('flask').setLevel(LOG_LEVEL)
+
 # Flask setup
 app = flask.Flask(__name__)
 app.teardown_appcontext(close_database)
@@ -493,10 +498,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 from waitress import serve
                 from paste.translogger import TransLogger
 
-                logging.getLogger('waitress').setLevel(logging.INFO)
-
-                print(f"BeetstreamNext server running on {host}:{port}...")
+                logging.getLogger('waitress').setLevel(LOG_LEVEL)
+                if LOG_LEVEL > logging.INFO:
+                    print(f"BeetstreamNext server running on http://{host}:{port}...")
                 logged_app = TransLogger(app, setup_console_handler=True)
+
                 serve(logged_app, host=host, port=port, threads=8)
 
         cmd.func = func

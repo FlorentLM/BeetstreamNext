@@ -256,6 +256,9 @@ def send_artist_image(artist, size=None):
     else:
         artist_name = artist
 
+    if not artist_name:
+        return None
+
     local_folder = (app.config['root_directory'] / artist_name).resolve()
     if not local_folder.is_relative_to(app.config['root_directory']):
         return None

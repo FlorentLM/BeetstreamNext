@@ -187,13 +187,19 @@ def beets_to_sub_album(beet_album_id):
     return f'{ALB_ID_PREF}{beet_album_id}'
 
 def sub_to_beets_album(subsonic_album_id):
-    return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
+    try:
+        return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
+    except (ValueError, IndexError):
+        return None
 
 def beets_to_sub_song(beet_song_id):
     return f'{SNG_ID_PREF}{beet_song_id}'
 
 def sub_to_beets_song(subsonic_song_id):
-    return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
+    try:
+        return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
+    except (ValueError, IndexError):
+        return None
 
 
 ##

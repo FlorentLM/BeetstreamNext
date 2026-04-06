@@ -1,6 +1,8 @@
 import os
 import subprocess
 import select
+from pathlib import Path
+
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -195,6 +197,8 @@ def endpoint_stream_song():
 
         if response is not None:
             return response
+
+        app.logger.warning(f"Direct play of song '{Path(song_path).name}' failed.")
 
     return subsonic_error(70, resp_fmt=resp_fmt)
 

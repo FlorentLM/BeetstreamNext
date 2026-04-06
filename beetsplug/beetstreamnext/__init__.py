@@ -225,7 +225,8 @@ def home():
     template_content = (PROJECT_ROOT / 'index.html').read_text(encoding='utf-8')
     try:
         logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').read_text(encoding='utf-8')
-    except Exception:
+    except OSError:
+        app.logger.error("Can't find logo in images directory")
         logo_svg = ''
     # TODO - more colours for the indicator dot: http / https / unencrypted db -> orange / red
     return render_template_string(template_content, stats=stats, logo_svg=logo_svg)

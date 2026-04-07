@@ -11,6 +11,9 @@ import flask
 from flask import g, current_app
 
 
+##
+# Secrets management
+
 def _load_env():
     try:
         db_dir = Path(flask.current_app.config['DB_PATH']).parent
@@ -21,6 +24,77 @@ def _load_env():
             load_dotenv()
     except (RuntimeError, KeyError):
         load_dotenv()
+
+
+def ensure_secret(db_path: Path) -> None:
+    """
+    Called once at startup, before initialise_db().
+    Generates the BEETSTREAMNEXT_KEY, saves it to .env, displays it. Once.
+    """
+    env_path = db_path.parent / '.env'
+
+    # Load whatever is already in the env before deciding
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=False)
+    else:
+        load_dotenv(override=False)
+
+    is_first_run = not db_path.exists()
+
+    from beetsplug.beetstreamnext import TermColors, print_box
+
+    if is_first_run:
+        existing_lines = env_path.read_text().splitlines() if env_path.exists() else []
+        already_set = {line.split('=', 1)[0] for line in existing_lines if '=' in line}
+
+        new_lines = list(existing_lines)
+
+        # Generate and record key
+        if 'BEETSTREAMNEXT_KEY' not in already_set:
+            enc_key = Fernet.generate_key().decode()
+            new_lines.append(f'BEETSTREAMNEXT_KEY={enc_key}')
+            os.environ['BEETSTREAMNEXT_KEY'] = enc_key
+        else:
+            enc_key = os.environ['BEETSTREAMNEXT_KEY']   # was loaded by load_dotenv above
+
+        env_path.write_text('\n'.join(new_lines) + '\n')
+        env_path.chmod(0o600)
+
+        print_box([
+            '',
+            f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
+            '',
+            'An encryption key has been generated for your database:',
+            '',
+            f'{TermColors.BOLD}BEETSTREAMNEXT_KEY={enc_key}{TermColors.ENDC}',
+            '',
+            'It has been saved to:',
+            f'{env_path}',
+            '',
+            "  ▶  It won't be shown again. Store it safely.",
+            '  ▶  If you lose it, stored passwords will be unrecoverable.',
+            '',
+        ], color=TermColors.WARNING)
+
+    else:
+        # Not first run, key must be present
+        if not os.environ.get('BEETSTREAMNEXT_KEY'):
+            print_box([
+                '',
+                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP FAILED: Missing required secret  {TermColors.ENDC}',
+                '',
+                f'Add the {TermColors.BOLD}BEETSTREAMNEXT_KEY{TermColors.ENDC} to:',
+                # '',
+                f'{env_path}',
+                '',
+                'If you have lost the BEETSTREAMNEXT_KEY, stored passwords',
+                'are unrecoverable. Delete the database and run setup again.',
+                '',
+            ], color=TermColors.FAIL)
+            exit(1)
+
+
+##
 
 
 def get_cipher() -> Union[Fernet, None]:
@@ -229,7 +303,7 @@ def initialise_db():
         """
     )
     # ephemeral: clears on startup
-    cur.execute("DELETE FROM now_playing")
+    cur.execute("""DELETE FROM now_playing""")
 
     # Indices for per-user queries (most common accesses)
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username       ON likes(username);""")

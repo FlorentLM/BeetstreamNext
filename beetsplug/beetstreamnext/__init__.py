@@ -17,6 +17,7 @@
 BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
 """
 import os
+import re
 import time
 import platform
 import shutil
@@ -24,7 +25,7 @@ from datetime import datetime
 from pathlib import Path
 import threading
 import getpass
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
 
 from beets.plugins import BeetsPlugin
@@ -42,6 +43,33 @@ from beetsplug.beetstreamnext.db import close_database
 LOG_LEVEL = logging.INFO
 
 logging.getLogger('flask').setLevel(LOG_LEVEL)
+
+
+class TermColors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    REVERSE = "\033[;7m"
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+
+def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) -> None:
+    col = color if color else ''
+    border = '═' * width
+    print(f'\n{col}╔{border}╗{TermColors.ENDC}')
+    for line in lines:
+        true_len = len(TermColors.ansi_escape.sub('', line))
+        w = width + (len(line) - true_len)
+        to_print = f'{line:<{w}}' if line.startswith('  ▶') else line.center(w, ' ')
+        print(f'{col}║{TermColors.ENDC}{to_print}{col}║{TermColors.ENDC}')
+    print(f'{col}╚{border}╝{TermColors.ENDC}\n')
+
 
 # Flask setup
 app = flask.Flask(__name__)
@@ -307,6 +335,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['ip_whitelist'] = self.config['ip_whitelist'].get(list)
             app.config['ip_blacklist'] = self.config['ip_blacklist'].get(list)
 
+            from beetsplug.beetstreamnext.db import ensure_secret
+
+            ensure_secret(app.config['DB_PATH'])
+
             # Cache clearing
             if opts.clear_cache:
                 shutil.rmtree(app.config['THUMBNAIL_CACHE_PATH'], ignore_errors=True)
@@ -324,15 +356,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
                 with app.app_context():
                     db.initialise_db()
-
-                    legacy_enabled = self.config['legacy_auth'].get(bool)
-
-                    if legacy_enabled and db.get_cipher() is None:
-                        print("\n[WARNING] Legacy authentication is enabled, but BEETSTREAMNEXT_KEY env var is not set.")
-                        print("Without it, passwords for legacy Subsonic clients will be stored in PLAINTEXT.")
-                        confirm = input("Continue anyway? [y/N]: ")
-                        if confirm.lower() != 'y':
-                            return
 
                     unsername_ok = False
                     while not unsername_ok:
@@ -355,9 +378,16 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         print(f"\n[ERROR] {e}")
                         return
 
-                    print(f"\nUser created successfully!")
-                    print(f"API KEY: {api_key}")
-                    print("This key is needed by your Subsonic client. Store it safely (it will not be shown again).")
+                    print_box([
+                        '',
+                        f"{TermColors.OKGREEN + TermColors.BOLD}User '{username_cleaned}' created successfully.{TermColors.ENDC}",
+                        '',
+                        f'USER API KEY: {api_key}',
+                        '',
+                        '  ▶  Enter this key in your Subsonic client instead of a password.',
+                        "  ▶  It won't be shown again. Store it safely.",
+                        '',
+                    ])
 
                 return
 
@@ -418,21 +448,42 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             if debug and host not in _LOOPBACK_IPS:
                 if force_trust_host:
-                    print(f"[!!! SUPER IMPORTANT WARNING !!!] Debug mode is force-enabled on {host}. "
-                          "The Werkzeug debugger allows arbitrary remote code execution. "
-                          "I hope you know what you're doing!")
+                    print_box([
+                        '',
+                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  !!! SUPER IMPORTANT WARNING !!!  {TermColors.ENDC}',
+                        '',
+                        f'Debug mode is force-enabled on {host}.',
+                        f'The Werkzeug debugger allows arbitrary remote code execution.',
+                        '',
+                        "I hope you know what you're doing!",
+                        '',
+                    ], color=TermColors.WARNING)
+
                 else:
-                    print(f"[ERROR] Debug mode can only be used on localhost "
-                          f"(the debugger allows arbitrary remote code execution).")
+                    print_box([
+                        '',
+                        f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
+                        '',
+                        f'Debug mode can only be used on localhost.',
+                        f'The Werkzeug debugger allows arbitrary remote code execution.',
+                        '',
+                    ], color=TermColors.FAIL)
                     return
 
             if app.config['legacy_auth'] and not self.config['reverse_proxy']:
                 if host not in _LOOPBACK_IPS:
-                    print(
-                        "[WARNING] Legacy authentication is enabled and the server is listening on "
-                        f"{host}:{port} without a reverse proxy. Passwords from legacy "
-                        "clients may be transmitted in cleartext over HTTP. "
-                    )
+                    print_box([
+                        '',
+                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
+                        '',
+                        f'Legacy authentication is enabled, and the server',
+                        f"is listening on http://{host}:{port}",
+                        f"without a reverse proxy.",
+                        '',
+                        'Passwords from legacy clients may be',
+                        'transmitted in cleartext over HTTP.',
+                        '',
+                    ], color=TermColors.WARNING)
 
             possible_paths = [
                 (0, self.config['playlist_dir'].as_str()),  # BeetstreamNext's own
@@ -456,12 +507,17 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             if cors_origin:
                 if cors_origin == '*' and supports_creds:
-                    print(
-                        "\n[SECURITY WARNING] CORS is set to allow all origins ('*') WITH credentials. "
-                        "This tells the server to allow any website to interact with your API. "
-                        "If you use a web-based Subsonic player, it is highly recommended to set 'cors' "
-                        "specifically to that player's URL.\n"
-                    )
+                    print_box([
+                        '',
+                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
+                        '',
+                        f"CORS is set to allow all origins ('*') WITH credentials.",
+                        f"This could allow any malicious website you visit to silently interact",
+                        f"with your BeetstreamNext server in the background."
+                        '',
+                        "It is highly recommended to only allow your specific player's URL.",
+                        ''
+                    ], color=TermColors.WARNING)
                 else:
                     app.logger.info(f"Enabling CORS for origin(s): {cors_origin}")
 

@@ -435,7 +435,7 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
 
     api_key = unquote(api_key)
     user = unquote(user)
-    token = unquote(token)
+    token = unquote(token).zfill(32)    # some clients strip leading zeros...
     salt = unquote(salt)
     clearpass = unquote(clearpass)
 

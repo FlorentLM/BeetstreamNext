@@ -435,9 +435,12 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
 
     api_key = unquote(api_key)
     user = unquote(user)
-    token = unquote(token).zfill(32)    # some clients strip leading zeros...
+    token = unquote(token)
     salt = unquote(salt)
     clearpass = unquote(clearpass)
+
+    if token and len(token) < 32:
+        token = token.zfill(32)  # some clients strip leading zeros...
 
     # API Key (modern)
     if api_key:

@@ -18,19 +18,21 @@ BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
 """
 import os
 import re
-import time
 import platform
 import shutil
-from datetime import datetime
 from pathlib import Path
-import threading
-import getpass
-from typing import Dict, List, Optional
 import logging
+import threading
+import time
+from collections import defaultdict
+from datetime import datetime
+from typing import Dict, List, Optional, Sequence, Set
+import getpass
 
 from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
+
 import flask
 from flask import g, render_template_string
 from flask_cors import CORS
@@ -40,7 +42,8 @@ from beetsplug.beetstreamnext.db import close_database
 
 
 # LOG_LEVEL = logging.ERROR
-LOG_LEVEL = logging.INFO
+# LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 
 logging.getLogger('flask').setLevel(LOG_LEVEL)
 
@@ -89,8 +92,6 @@ def cache_location() -> Path:
     return final_path
 
 
-_LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
-
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
 app.config['PROJECT_ROOT'] = PROJECT_ROOT
@@ -105,6 +106,135 @@ _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
 _CLEANUP_INTERVAL = 24 * 3600  # once per day
 _MAX_CACHE_AGE_DAYS = 30
+
+_LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
+
+
+class RateLimiter:
+    def __init__(self, max_failures: int = 5, block_window: int = 300):
+
+        self._lock = threading.Lock()
+
+        self._store: Dict[str, List[float]] = defaultdict(list)
+
+        self._max_failures = max_failures
+        self._block_window = block_window
+
+    def check(self, ip: str) -> bool:
+        """Check if an IP is currently blocked."""
+
+        if ip in _LOOPBACK_IPS:
+            app.logger.debug(f'IP {ip} is in the loopback IPs list, ignoring rate limiting check.')
+            return False
+
+        now = time.monotonic()
+        with self._lock:
+            attempts = self._store.get(ip)
+            if not attempts:
+                return False
+
+            recent = [t for t in attempts if now - t < self._block_window]
+            if not recent:
+                self._store.pop(ip, None)
+                return False
+
+            self._store[ip] = recent
+            exceeds = len(recent) >= self._max_failures
+            return exceeds
+
+    def record(self, ip: str):
+        """Log a failed attempt for an IP."""
+        if ip in _LOOPBACK_IPS:
+            app.logger.debug(f'IP {ip} is in the loopback IPs list, skipping rate limiting record.')
+            return
+
+        now = time.monotonic()
+        with self._lock:
+            self._store[ip].append(now)
+
+    def reset(self, ip: str):
+        """Clear failures for an IP."""
+        with self._lock:
+            self._store.pop(ip, None)
+
+    def sweep(self):
+        """Remove all stale IPs from memory."""
+        now = time.monotonic()
+        with self._lock:
+            stale_ips = [
+                ip for ip, attempts in self._store.items()
+                if not attempts or (now - max(attempts) > self._block_window)
+            ]
+            for ip in stale_ips:
+                self._store.pop(ip, None)
+
+
+class IPFilter:
+    def __init__(self,
+                 whitelist: Optional[Sequence[str]] = None,
+                 blacklist: Optional[Sequence[str]] = None
+        ):
+
+        self._whitelist = set(whitelist) if whitelist else set()
+        self._blacklist = set(blacklist) if blacklist else set()
+
+    def check(self, ip: str) -> bool:
+
+        if ip in _LOOPBACK_IPS:
+            return True
+
+        now = time.time()
+        if ip in self._blacklist:
+            app.logger.info(f'[{datetime.fromtimestamp(now)}] IP {ip} is in blacklist: access denied.')
+            return False
+
+        if self._whitelist and ip not in self._whitelist:
+            app.logger.info(f'[{datetime.fromtimestamp(now)}] IP {ip} not in whitelist: access denied.')
+            return False
+
+        return True
+
+    def allow(self, ip: str):
+        app.logger.debug(f'IP {ip} added to whitelist.')
+        self._whitelist.add(ip)
+
+    def disallow(self, ip: str):
+        app.logger.debug(f'IP {ip} removed from whitelist.')
+        self._whitelist.discard(ip)
+
+    def ban(self, ip: str):
+        app.logger.debug(f'IP {ip} added to blacklist.')
+        self._blacklist.add(ip)
+
+    def unban(self, ip: str):
+        app.logger.debug(f'IP {ip} removed from blacklist.')
+        self._blacklist.discard(ip)
+
+    @property
+    def whitelist(self) -> Set[str]:
+        return self._whitelist
+
+    @whitelist.setter
+    def whitelist(self, whitelisted_ips: str | Sequence[str]):
+        if isinstance(whitelisted_ips, str):
+            whitelisted_ips = [whitelisted_ips] if whitelisted_ips else []
+        self._whitelist = set(whitelisted_ips) if whitelisted_ips else set()
+        app.logger.debug(f'Loaded new whitelist: {self._whitelist}.')
+
+    @property
+    def blacklist(self) -> Set[str]:
+        return self._blacklist
+
+    @blacklist.setter
+    def blacklist(self, blacklisted_ips: str | Sequence[str]):
+        if isinstance(blacklisted_ips, str):
+            blacklisted_ips = [blacklisted_ips] if blacklisted_ips else []
+        self._blacklist = set(blacklisted_ips) if blacklisted_ips else set()
+        app.logger.debug(f'Loaded new blacklist: {self._blacklist}.')
+
+
+rate_limiter = RateLimiter(max_failures=5, block_window=300)
+IP_filter = IPFilter()
 
 
 def _run_periodic_things():
@@ -133,20 +263,7 @@ def _run_periodic_things():
     def _background_maintenance():
         app.logger.info(f"[{datetime.fromtimestamp(now)}] Starting background maintenance...")
 
-        # Sweep stale IPs from rate-limit dict
-        with _auth_lock:    # only hold lock to grab the keys
-            all_ips = list(_FAILED_AUTH_ATTEMPTS.keys())
-
-        stale = []
-        for ip in all_ips:  # reads are ok without lock
-            attempts = _FAILED_AUTH_ATTEMPTS.get(ip, [])
-            if not attempts or (now - max(attempts) > _BLOCK_TIME_SECONDS):
-                stale.append(ip)
-
-        if stale:
-            with _auth_lock:   # only lock when actually deleting
-                for ip in stale:
-                    _FAILED_AUTH_ATTEMPTS.pop(ip, None)
+        rate_limiter.sweep()
 
         # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']
@@ -165,13 +282,6 @@ def _run_periodic_things():
     thread.start()
 
 
-# Rate-limit auth failures
-_auth_lock = threading.Lock()
-_FAILED_AUTH_ATTEMPTS: Dict[str, List[float]] = {}   # IP -> list of failed attempt timestamps
-_MAX_AUTH_FAILURES = 5      # Block for 5 minutes
-_BLOCK_TIME_SECONDS = 300   # after 5 failed attempts
-
-
 @app.before_request
 def _before_request():
     from beetsplug.beetstreamnext.utils import safe_str
@@ -185,48 +295,24 @@ def _before_request():
     if flask.request.path.rstrip('/') in ('/rest/getOpenSubsonicExtensions', '/rest/getOpenSubsonicExtensions.view'):
         return
 
-    client_ip = str(flask.request.remote_addr)
-    now = time.time()
+    client_ip = str(flask.request.remote_addr) or 'unknown'
 
     from beetsplug.beetstreamnext.utils import subsonic_error
     from beetsplug.beetstreamnext.users import authenticate, load_user_roles
 
-    if client_ip not in _LOOPBACK_IPS:
+    if not IP_filter.check(client_ip):
+        return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
 
-        # IP whitelist / blacklist
-        whitelist = app.config.get('ip_whitelist', [])
-
-        if whitelist and client_ip not in whitelist:
-            app.logger.info(f"[{datetime.fromtimestamp(now)}] IP {client_ip} not in whitelist: access denied.")
-            return subsonic_error(50, message="Access denied: IP not in whitelist.", resp_fmt=resp_fmt)
-
-        blacklist = app.config.get('ip_blacklist', [])
-        if blacklist and client_ip in blacklist:
-            app.logger.info(f"[{datetime.fromtimestamp(now)}] IP {client_ip} is blacklisted: access denied.")
-            return subsonic_error(50, message="Access denied: IP is blacklisted.", resp_fmt=resp_fmt)
-
-        # Rate limiting
-        with _auth_lock:
-            recent = [t for t in _FAILED_AUTH_ATTEMPTS.get(client_ip, [])
-                      if now - t < _BLOCK_TIME_SECONDS]
-            if recent:
-                _FAILED_AUTH_ATTEMPTS[client_ip] = recent
-            else:
-                _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)
-            blocked = len(recent) >= _MAX_AUTH_FAILURES
-
-        if blocked:
-            return subsonic_error(40, message="Too many failed login attempts. Try again later.", resp_fmt=resp_fmt)
+    if rate_limiter.check(client_ip):
+        return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
 
     # Attempt authentication
     ok, error_code, username = authenticate(r)
     if not ok:
-        with _auth_lock:
-            _FAILED_AUTH_ATTEMPTS.setdefault(client_ip, []).append(now)   # failed attempt : record it
+        rate_limiter.record(client_ip)
         return subsonic_error(error_code, resp_fmt=resp_fmt)
 
-    with _auth_lock:
-        _FAILED_AUTH_ATTEMPTS.pop(client_ip, None)   # auth success: clear failure history
+    rate_limiter.reset(client_ip)
 
     from beetsplug.beetstreamnext.utils import grab_auth_params
 
@@ -280,6 +366,7 @@ import beetsplug.beetstreamnext.scrobble
 import beetsplug.beetstreamnext.lyrics
 import beetsplug.beetstreamnext.users
 import beetsplug.beetstreamnext.general
+import beetsplug.beetstreamnext.settings
 
 
 # Plugin hook
@@ -332,8 +419,9 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             app.config['BEETS_DB_PATH'] = Path(config['library'].get())
             app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
-            app.config['ip_whitelist'] = self.config['ip_whitelist'].get(list)
-            app.config['ip_blacklist'] = self.config['ip_blacklist'].get(list)
+
+            IP_filter.whitelist = self.config['ip_whitelist'].get(list)
+            IP_filter.blacklist = self.config['ip_blacklist'].get(list)
 
             from beetsplug.beetstreamnext.db import ensure_secret
 

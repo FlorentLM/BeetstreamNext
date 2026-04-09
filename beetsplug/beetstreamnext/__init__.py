@@ -78,6 +78,11 @@ def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) ->
 app = flask.Flask(__name__)
 app.teardown_appcontext(close_database)
 
+logging.getLogger('flask').setLevel(LOG_LEVEL)
+logging.getLogger('flask.app').setLevel(LOG_LEVEL)
+app.logger.setLevel(LOG_LEVEL)
+app.logger.propagate = True
+
 
 def cache_location() -> Path:
     if platform.system() == "Windows":
@@ -183,13 +188,12 @@ class IPFilter:
         if ip in _LOOPBACK_IPS:
             return True
 
-        now = time.time()
         if ip in self._blacklist:
-            app.logger.info(f'[{datetime.fromtimestamp(now)}] IP {ip} is in blacklist: access denied.')
+            app.logger.info(f'IP {ip}: access denied (blacklist).')
             return False
 
         if self._whitelist and ip not in self._whitelist:
-            app.logger.info(f'[{datetime.fromtimestamp(now)}] IP {ip} not in whitelist: access denied.')
+            app.logger.info(f'IP {ip}: access denied (not in whitelist).')
             return False
 
         return True

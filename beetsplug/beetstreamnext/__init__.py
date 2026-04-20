@@ -114,7 +114,6 @@ _MAX_CACHE_AGE_DAYS = 30
 
 _LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 
-
 class RateLimiter:
     def __init__(self, max_failures: int = 5, block_window: int = 300):
 
@@ -125,7 +124,7 @@ class RateLimiter:
         self._max_failures = max_failures
         self._block_window = block_window
 
-    def check(self, ip: str) -> bool:
+    def is_blocked(self, ip: str) -> bool:
         """Check if an IP is currently blocked."""
 
         if ip in _LOOPBACK_IPS:
@@ -183,7 +182,7 @@ class IPFilter:
         self._whitelist = set(whitelist) if whitelist else set()
         self._blacklist = set(blacklist) if blacklist else set()
 
-    def check(self, ip: str) -> bool:
+    def is_allowed(self, ip: str) -> bool:
 
         if ip in _LOOPBACK_IPS:
             return True
@@ -304,10 +303,10 @@ def _before_request():
     from beetsplug.beetstreamnext.utils import subsonic_error
     from beetsplug.beetstreamnext.users import authenticate, load_user_roles
 
-    if not IP_filter.check(client_ip):
+    if not IP_filter.is_allowed(client_ip):
         return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
 
-    if rate_limiter.check(client_ip):
+    if rate_limiter.is_blocked(client_ip):
         return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
 
     # Attempt authentication

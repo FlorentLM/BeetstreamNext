@@ -35,6 +35,9 @@ def endpoint_get_album():
     album_id = r.get('id', default='', type=safe_str)    # Required
 
     payload = album_payload(album_id, include_songs=True)
+    if not payload:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 

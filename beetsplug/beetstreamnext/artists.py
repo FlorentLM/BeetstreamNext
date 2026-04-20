@@ -159,6 +159,8 @@ def endpoint_get_artist():
     artist_id = r.get('id', default='', type=safe_str)   # Required
 
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
+    if not payload:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
 

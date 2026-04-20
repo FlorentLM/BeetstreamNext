@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
-def musicdirectory_payload(subsonic_musicdirectory_id: str, with_artists=True) -> dict:
+def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
 
     # Only one possible root directory in beets (?), so just return its name
     directory_name = app.config['root_directory'].name

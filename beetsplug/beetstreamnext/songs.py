@@ -39,6 +39,9 @@ def endpoint_get_song():
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     payload = song_payload(song_id)
+    if not payload:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 

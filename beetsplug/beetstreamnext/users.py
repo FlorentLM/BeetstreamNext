@@ -153,6 +153,9 @@ def create_user(username, password, admin=False, **kwargs):
     raw_api_key = secrets.token_urlsafe(32)
     api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
 
+    username = safe_str(username)
+    password = unquote(password)
+
     user_data = {
         'username': username,
         'password': password,   # store_userdata handles the encryption
@@ -467,7 +470,10 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
         user_data = _get_userdata(user, fields=['password'])
         if not user_data:
             _get_userdata('', fields=['password'])  # dummy DB round-trip for timing
-            hmac.compare_digest(token or '', _DUMMY_TOKEN)
+            dummy_pw = _DUMMY_TOKEN
+            if token and salt:
+                hashlib.md5(f"{dummy_pw}{salt}".encode()).hexdigest()
+            hmac.compare_digest(token or clearpass or '', _DUMMY_TOKEN)
             return False, 40, None
 
         stored_password = user_data['password']

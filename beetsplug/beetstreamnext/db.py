@@ -170,41 +170,54 @@ def initialise_db():
         """
         CREATE TABLE IF NOT EXISTS encryption (
             key TEXT PRIMARY KEY,
-            value TEXT)
+            value TEXT
+        )
         """
     )
 
     cipher = get_cipher()
+    existing = cur.execute(
+        """
+        SELECT value FROM encryption WHERE key = 'key_hash'
+        """
+    ).fetchone()
 
-    if cipher is not None:
-        key_hash = get_key_hash()
-
-        cur.execute(
-            """
-            INSERT OR IGNORE INTO encryption (key, value)
-            VALUES ('enabled', 'true');
-            """
-        )
-
-        cur.execute(
-            """
-            INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
-            """, ('key_hash', key_hash)
-        )
-
+    if existing is None:
+        # First run: record current key hash (if encryption is configured)
+        if cipher is not None:
+            cur.execute(
+                """
+                INSERT INTO encryption (key, value) VALUES ('key_hash', ?)
+                """, (get_key_hash(),),
+            )
     else:
-        cur.execute(
-            """
-            INSERT OR IGNORE INTO encryption (key, value)
-            VALUES ('enabled', 'false');
-            """
-        )
+        stored_hash = existing[0]   # could be NULL from a pre-encryption install
 
-        cur.execute(
-            """
-            INSERT OR REPLACE INTO encryption (key, value) VALUES (?, ?)
-            """, ('key_hash', None)
-        )
+        if cipher is not None:
+            if stored_hash is None:
+                # Upgrading a clear DB to encrypted: record new hash
+                cur.execute(
+                    """
+                    UPDATE encryption SET value = ? WHERE key = 'key_hash'
+                    """, (get_key_hash(),),
+                )
+
+            elif stored_hash != get_key_hash():
+                conn.close()
+                raise RuntimeError(
+                    "BEETSTREAMNEXT_KEY has changed since the database was initialised. "
+                    "Stored passwords are unrecoverable with the current key.\n"
+                    f"Restore the original key, or delete the database "
+                    f"(`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
+                )
+
+        elif stored_hash is not None:
+            # Cipher gone but db has encrypted passwords: no good
+            conn.close()
+            raise RuntimeError(
+                "Database contains encrypted passwords but BEETSTREAMNEXT_KEY is not set. "
+                "Passwords cannot be decrypted."
+            )
 
     cur.execute(
         """
@@ -348,13 +361,6 @@ def initialise_db():
 
     conn.commit()
     conn.close()
-
-    # TODO: Could support key rotation and eventually encryption of a clear db? But that's probably not worth the hassle
-    if cipher is not None and not verify_key():
-        raise RuntimeError(
-            "BEETSTREAMNEXT_KEY has changed since the database was initialised. Stored passwords are unrecoverable with the current key. "
-            f"\nRestore the original key, or delete the database (`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
-        )
 
     # TODO: should add db migration for future db changes
 

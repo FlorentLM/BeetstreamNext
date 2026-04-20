@@ -1,7 +1,10 @@
+import json
+import secrets
 import sqlite3
 import os
 import base64
 import hashlib
+import time
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from pathlib import Path
@@ -9,6 +12,9 @@ from typing import Union
 
 import flask
 from flask import g, current_app
+
+
+_SESSION_KEY_ROTATION_DAYS = 30
 
 
 ##
@@ -24,6 +30,29 @@ def _load_env():
             load_dotenv()
     except (RuntimeError, KeyError):
         load_dotenv()
+
+
+def rotate_session_key(cache_dir: Path) -> str:
+    """
+    Loads the admin session signing key from the cache directory, rotating it
+    if it is older than _SESSION_KEY_ROTATION_DAYS.
+    """
+    key_file = cache_dir / '.beetstreamnext_session'
+
+    if key_file.exists():
+        try:
+            data = json.loads(key_file.read_text())
+            age_days = (time.time() - data['generated_at']) / 86400
+            if age_days < _SESSION_KEY_ROTATION_DAYS:
+                return data['key']
+        except (json.JSONDecodeError, KeyError, OSError):
+            pass   # malformed file, regenerate
+
+    new_key = secrets.token_urlsafe(32)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    key_file.write_text(json.dumps({'key': new_key, 'generated_at': time.time()}))
+    key_file.chmod(0o600)
+    return new_key
 
 
 def ensure_secret(db_path: Path) -> None:

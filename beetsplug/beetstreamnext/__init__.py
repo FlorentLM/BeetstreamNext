@@ -45,7 +45,7 @@ from beetsplug.beetstreamnext.db import close_database
 # LOG_LEVEL = logging.INFO
 LOG_LEVEL = logging.DEBUG
 
-logging.getLogger('flask').setLevel(LOG_LEVEL)
+PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
 
 class TermColors:
@@ -74,16 +74,6 @@ def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) ->
     print(f'{col}╚{border}╝{TermColors.ENDC}\n')
 
 
-# Flask setup
-app = flask.Flask(__name__)
-app.teardown_appcontext(close_database)
-
-logging.getLogger('flask').setLevel(LOG_LEVEL)
-logging.getLogger('flask.app').setLevel(LOG_LEVEL)
-app.logger.setLevel(LOG_LEVEL)
-app.logger.propagate = True
-
-
 def cache_location() -> Path:
     if platform.system() == "Windows":
         cache_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
@@ -97,7 +87,14 @@ def cache_location() -> Path:
     return final_path
 
 
-PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
+# Flask setup
+app = flask.Flask(__name__)
+app.teardown_appcontext(close_database)
+
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600   # 1 hour
+# app.config['SESSION_COOKIE_SECURE'] = True   # TODO: Have this automatically on if https or reverse proxy is detected
 
 app.config['PROJECT_ROOT'] = PROJECT_ROOT
 app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
@@ -106,12 +103,21 @@ app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 
 
-# Cache cleanup
+# Logging stuff
+logging.getLogger('flask').setLevel(LOG_LEVEL)
+logging.getLogger('flask.app').setLevel(LOG_LEVEL)
+app.logger.setLevel(LOG_LEVEL)
+app.logger.propagate = True
+
+
+# Cache cleanup stuff
 _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
 _CLEANUP_INTERVAL = 24 * 3600  # once per day
 _MAX_CACHE_AGE_DAYS = 30
 
+
+# IP filtering stuff
 _LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 
 class RateLimiter:
@@ -426,9 +432,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
             IP_filter.whitelist = self.config['ip_whitelist'].get(list)
             IP_filter.blacklist = self.config['ip_blacklist'].get(list)
 
-            from beetsplug.beetstreamnext.db import ensure_secret
+            from beetsplug.beetstreamnext.db import ensure_secret, rotate_session_key
 
             ensure_secret(app.config['DB_PATH'])
+            app.config['SECRET_KEY'] = rotate_session_key(cache_location())
 
             # Cache clearing
             if opts.clear_cache:
@@ -438,6 +445,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 except OSError:
                     pass
                 print("Thumbnail cache cleared.")
+                print("Admin session key cleared, any active admin sessions have been invalidated.")
                 return
 
             # Create user

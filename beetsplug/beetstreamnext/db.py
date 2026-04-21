@@ -1,3 +1,4 @@
+import binascii
 import json
 import secrets
 import sqlite3
@@ -9,6 +10,8 @@ from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from pathlib import Path
 from typing import Union
+from functools import lru_cache
+from typing import Optional
 
 import flask
 from flask import g, current_app
@@ -19,18 +22,6 @@ _SESSION_KEY_ROTATION_DAYS = 30
 
 ##
 # Secrets management
-
-def _load_env():
-    try:
-        db_dir = Path(flask.current_app.config['DB_PATH']).parent
-        env_path = db_dir / '.env'
-        if env_path.exists():
-            load_dotenv(dotenv_path=env_path)
-        else:
-            load_dotenv()
-    except (RuntimeError, KeyError):
-        load_dotenv()
-
 
 def rotate_session_key(cache_dir: Path) -> str:
     """
@@ -125,25 +116,36 @@ def ensure_secret(db_path: Path) -> None:
 
 ##
 
+@lru_cache(maxsize=1)
+def _cipher_for(key: str) -> Optional[Fernet]:
+    """Fernet for a given key string. Cached for the process lifetime."""
+    try:
+        return Fernet(key)
+    except (ValueError, TypeError):
+        return None
 
-def get_cipher() -> Union[Fernet, None]:
-    _load_env()
+
+@lru_cache(maxsize=1)
+def _hash_for(key: str) -> str:
+    """SHA256 of the decoded key bytes. Also cached."""
+    return hashlib.sha256(base64.urlsafe_b64decode(key)).hexdigest()
+
+
+def get_cipher() -> Optional[Fernet]:
+    key = os.environ.get('BEETSTREAMNEXT_KEY')
+    if not key:
+        return None
+    return _cipher_for(key)
+
+
+def get_key_hash() -> Optional[str]:
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
     try:
-        return Fernet(key)
-    except Exception:
+        return _hash_for(key)
+    except binascii.Error:
         return None
-
-
-def get_key_hash() -> Union[str, None]:
-    _load_env()
-    key = os.environ.get('BEETSTREAMNEXT_KEY')
-    if not key:
-        return None
-    decoded_key = base64.urlsafe_b64decode(key)
-    return hashlib.sha256(decoded_key).hexdigest()
 
 
 def verify_key():

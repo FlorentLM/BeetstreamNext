@@ -36,6 +36,7 @@ from beets import ui
 import flask
 from flask import g, render_template_string
 from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.db import close_database
@@ -95,12 +96,15 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600   # 1 hour
 # app.config['SESSION_COOKIE_SECURE'] = True   # TODO: Have this automatically on if https or reverse proxy is detected
+app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
 app.config['PROJECT_ROOT'] = PROJECT_ROOT
 app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
 app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.sqlite'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
+
+csrf = CSRFProtect(app)
 
 
 # Logging stuff
@@ -336,6 +340,8 @@ def _before_request():
 
 @app.after_request
 def _add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
     return response
 
@@ -375,7 +381,6 @@ import beetsplug.beetstreamnext.scrobble
 import beetsplug.beetstreamnext.lyrics
 import beetsplug.beetstreamnext.users
 import beetsplug.beetstreamnext.general
-import beetsplug.beetstreamnext.settings
 
 
 # Plugin hook

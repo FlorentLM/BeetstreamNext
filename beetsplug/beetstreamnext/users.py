@@ -46,10 +46,8 @@ _ALLOWED_USER_FIELDS = frozenset({
 
 _ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
 
-# Dummies for constant-time comparison when username not found
-_DUMMY_SALT = 'beetstreamnext_dummy_salt'
-_DUMMY_TOKEN = hashlib.md5(f'beetstreamnext_dummy_password{_DUMMY_SALT}'.encode()).hexdigest()
-
+# Dummy password for constant-time comparison when username not found
+_DUMMY_PASSWORD = secrets.token_urlsafe(12)
 
 ##
 # Internal helpers to this module
@@ -469,11 +467,24 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
 
         user_data = _get_userdata(user, fields=['password'])
         if not user_data:
-            _get_userdata('', fields=['password'])  # dummy DB round-trip for timing
-            dummy_pw = _DUMMY_TOKEN
+            _get_userdata('', fields=['password'])  # dummy DB round-trip
+
+            dummy_pw = _DUMMY_PASSWORD
+
             if token and salt:
-                hashlib.md5(f"{dummy_pw}{salt}".encode()).hexdigest()
-            hmac.compare_digest(token or clearpass or '', _DUMMY_TOKEN)
+                expected = hashlib.md5(f"{dummy_pw}{salt}".encode('utf-8')).hexdigest().lower()
+                hmac.compare_digest(token, expected)
+
+            elif clearpass:
+                if clearpass.startswith('enc:'):
+                    try:
+                        decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
+                    except ValueError:
+                        return False, 40, None
+                    hmac.compare_digest(decoded, dummy_pw)
+                else:
+                    hmac.compare_digest(clearpass, dummy_pw)
+
             return False, 40, None
 
         stored_password = user_data['password']

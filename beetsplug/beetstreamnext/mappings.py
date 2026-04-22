@@ -1,11 +1,10 @@
 import os
-from typing import Optional, Tuple, Dict, List, Any
+from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
 
 import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext import userdata_caching as userdata_caching, app
-from beetsplug.beetstreamnext.playlistprovider import Playlist
 from beetsplug.beetstreamnext.utils import (
     get_mimetype, timestamp_to_iso,
     SNG_ID_PREF, sub_to_beets_song, beets_to_sub_song,
@@ -13,6 +12,8 @@ from beetsplug.beetstreamnext.utils import (
     ART_ID_PREF, sub_to_beets_artist, beets_to_sub_artist,
     genres_formatter, split_beets_multi, chunked_query, imageart_url
 )
+if TYPE_CHECKING:
+    from beetsplug.beetstreamnext.playlistprovider import Playlist
 
 
 ##
@@ -406,7 +407,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     return subsonic_artist
 
 
-def map_playlist(playlist : Playlist, include_songs: bool = False) -> Dict:
+def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> Dict:
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,

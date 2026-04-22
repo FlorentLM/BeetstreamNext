@@ -104,6 +104,8 @@ app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.sqlite'
 app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 
+# TODO: Add 'TRUSTED_HOSTS'
+
 csrf = CSRFProtect(app)
 
 

@@ -32,7 +32,7 @@ def _send_transcode(
         'ogg': {'f': 'ogg', 'c': 'libvorbis', 'mime': 'audio/ogg'},
         'opus': {'f': 'ogg', 'c': 'libopus', 'mime': 'audio/ogg'},
         'aac': {'f': 'adts', 'c': 'aac', 'mime': 'audio/aac'},
-        'm4a': {'f': 'adts', 'c': 'aac', 'mime': 'audio/aac'},
+        'm4a': {'f': 'mp4', 'c': 'aac', 'mime': 'audio/aac'},   # TODO: needs ' movflags +faststart '?
         'flac': {'f': 'flac', 'c': 'flac', 'mime': 'audio/flac'}
     }
 
@@ -76,6 +76,7 @@ def _send_transcode(
         try:
             while True:
                 ready, _, _ = select.select([output_stream.stdout], [], [], 2.0)
+                # TODO: This fails on Windows????
 
                 if ready:
                     chunk = output_stream.stdout.read(8192)

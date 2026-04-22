@@ -77,18 +77,30 @@ def _send_transcode(
     def generate() -> Generator:
         chunk_queue: queue.Queue = queue.Queue(maxsize=32)
         _SENTINEL = object()   # marks "reader finished"
+        stop_event = threading.Event()
 
-        def _reader():
+        def _reader() -> None:
             try:
-                while True:
-                    chunk = output_stream.stdout.read(8192)
+                while not stop_event.is_set():
+                    try:
+                        chunk = output_stream.stdout.read(8192)
+                    except (OSError, ValueError):
+                        break
                     if not chunk:
                         break
-                    chunk_queue.put(chunk)
-            except (OSError, ValueError):
-                pass    # pipe closed
+                    while not stop_event.is_set():
+                        try:
+                            chunk_queue.put(chunk, timeout=0.5)
+                            # timeout put to detect stop_event even when consumer has stopped draining the queue
+                            break
+                        except queue.Full:
+                            continue
             finally:
-                chunk_queue.put(_SENTINEL)
+                # if queue is full, consumer is gone and won't read the sentinel anyway
+                try:
+                    chunk_queue.put_nowait(_SENTINEL)
+                except queue.Full:
+                    pass
 
         reader_thread = threading.Thread(target=_reader, daemon=True)
         reader_thread.start()
@@ -107,6 +119,7 @@ def _send_transcode(
                     break
                 yield chunk
         finally:
+            stop_event.set()
             try:
                 output_stream.terminate()
                 try:
@@ -116,7 +129,7 @@ def _send_transcode(
                     output_stream.wait(timeout=5)
             except Exception:
                 pass
-            # reader thread exits when stdout closes (terminate() causes EOF)
+    # reader is a daemon, here stdout is closed and stop_event is set, so it will exit on its own. Joining would block.
 
     response = flask.Response(flask.stream_with_context(generate()), mimetype=target['mime'])
 

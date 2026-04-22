@@ -196,6 +196,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
         subsonic_album['averageRating'] = sum(ratings) / len(ratings) if ratings else 0
     else:
         subsonic_album['averageRating'] = album_specific['userRating']
+        # TODO: Actually that's wrong? should be community rating (average of all users')?
 
     # Starred status
     liked_at = userdata_caching.one_like(subsonic_album_id)

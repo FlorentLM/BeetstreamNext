@@ -250,7 +250,7 @@ def endpoint_get_users():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     payload = {
@@ -271,7 +271,7 @@ def endpoint_create_user():
     password = unquote(r.get('password', default='', type=str))     # Required
     # email = r.get('email', default='', type=safe_str)             # Required??? uhhh no thanks
 
-    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not username or not password:
@@ -307,7 +307,7 @@ def endpoint_update_user():
     password = unquote(r.get('password', default='', type=str))
     # email = r.get('email', default='', type=safe_str)
 
-    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not username:
@@ -343,7 +343,7 @@ def endpoint_delete_user():
     target_user = r.get('username', default='', type=safe_str)   # Required
     target_user = unquote(target_user)
 
-    if not flask.g.user_data or not flask.g.user_data.get('adminRole'):
+    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not target_user:
@@ -473,7 +473,7 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
 
             if token and salt:
                 expected = hashlib.md5(f"{dummy_pw}{salt}".encode('utf-8')).hexdigest().lower()
-                hmac.compare_digest(token, expected)
+                _ = hmac.compare_digest(token, expected)
 
             elif clearpass:
                 if clearpass.startswith('enc:'):
@@ -481,9 +481,9 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
                         decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
                     except ValueError:
                         return False, 40, None
-                    hmac.compare_digest(decoded, dummy_pw)
+                    _ = hmac.compare_digest(decoded, dummy_pw)
                 else:
-                    hmac.compare_digest(clearpass, dummy_pw)
+                    _ = hmac.compare_digest(clearpass, dummy_pw)
 
             return False, 40, None
 

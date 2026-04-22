@@ -40,7 +40,7 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/unstar/
 @app.route('/rest/unstar', methods=['GET', 'POST'])
 @app.route('/rest/unstar.view', methods=['GET', 'POST'])
-def endpoint_star_or_unstar():
+def endpoint_star_or_unstar() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_ids = r.getlist('id', type=safe_str)
@@ -70,7 +70,7 @@ def endpoint_star_or_unstar():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred2/
 @app.route('/rest/getStarred2', methods=['GET', 'POST'])
 @app.route('/rest/getStarred2.view', methods=['GET', 'POST'])
-def endpoint_get_starred():
+def endpoint_get_starred() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 

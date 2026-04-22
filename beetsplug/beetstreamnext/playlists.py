@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.mappings import map_playlist
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/
 @app.route('/rest/getPlaylists', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
-def endpoint_get_playlists():
+def endpoint_get_playlists() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     # username = r.get('username', default=flask.g.username, type=safe_str)
@@ -27,7 +27,7 @@ def endpoint_get_playlists():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylist/
 @app.route('/rest/getPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
-def endpoint_get_playlist():
+def endpoint_get_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('id', default='', type=safe_str)     # Required
@@ -49,7 +49,7 @@ def endpoint_get_playlist():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createPlaylist/
 @app.route('/rest/createPlaylist', methods=['GET', 'POST'])
 @app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
-def endpoint_create_playlist():
+def endpoint_create_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('playlistId', default='', type=safe_str)     # Required if updating
@@ -79,7 +79,7 @@ def endpoint_create_playlist():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deletePlaylist/
 @app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/deletePlaylist.view', methods=['GET', 'POST'])
-def endpoint_delete_playlist():
+def endpoint_delete_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('id', default='', type=safe_str)     # Required
@@ -98,7 +98,7 @@ def endpoint_delete_playlist():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/updatePlaylist/
 @app.route('/rest/updatePlaylist', methods=['GET', 'POST'])
 @app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
-def endpoint_update_playlist():
+def endpoint_update_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('playlistId', default='', type=safe_str)     # Required

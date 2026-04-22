@@ -1,3 +1,5 @@
+from typing import Dict
+
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -10,7 +12,7 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
-def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
+def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:
 
     # Only one possible root directory in beets (?), so just return its name
     directory_name = app.config['root_directory'].name
@@ -29,7 +31,7 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getOpenSubsonicExtensions/
 @app.route('/rest/getOpenSubsonicExtensions', methods=["GET", "POST"])
 @app.route('/rest/getOpenSubsonicExtensions.view', methods=["GET", "POST"])
-def endpoint_get_open_subsonic_extensions():
+def endpoint_get_open_subsonic_extensions() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -51,7 +53,7 @@ def endpoint_get_open_subsonic_extensions():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getGenres/
 @app.route('/rest/getGenres', methods=["GET", "POST"])
 @app.route('/rest/getGenres.view', methods=["GET", "POST"])
-def endpoint_get_genres():
+def endpoint_get_genres() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -107,7 +109,7 @@ def endpoint_get_genres():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLicense/
 @app.route('/rest/getLicense', methods=["GET", "POST"])
 @app.route('/rest/getLicense.view', methods=["GET", "POST"])
-def endpoint_get_license():
+def endpoint_get_license() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -122,7 +124,7 @@ def endpoint_get_license():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicFolders/
 @app.route('/rest/getMusicFolders', methods=["GET", "POST"])
 @app.route('/rest/getMusicFolders.view', methods=["GET", "POST"])
-def endpoint_get_music_folders():
+def endpoint_get_music_folders() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -134,7 +136,7 @@ def endpoint_get_music_folders():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicDirectory/
 @app.route('/rest/getMusicDirectory', methods=["GET", "POST"])
 @app.route('/rest/getMusicDirectory.view', methods=["GET", "POST"])
-def endpoint_get_music_directory():
+def endpoint_get_music_directory() -> flask.Response:
     # Works pretty much like a file system
     # Usually Artist first, then Album, then Songs
     r = flask.request.values
@@ -194,7 +196,7 @@ def endpoint_get_music_directory():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/ping/
 @app.route('/rest/ping', methods=["GET", "POST"])
 @app.route('/rest/ping.view', methods=["GET", "POST"])
-def endpoint_ping():
+def endpoint_ping() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     return subsonic_response({}, resp_fmt=resp_fmt)
@@ -203,7 +205,7 @@ def endpoint_ping():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/startScan/
 @app.route('/rest/startScan', methods=["GET", "POST"])
 @app.route('/rest/startScan.view', methods=["GET", "POST"])
-def endpoint_start_scan():
+def endpoint_start_scan() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -215,7 +217,7 @@ def endpoint_start_scan():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/
 @app.route('/rest/getScanStatus', methods=["GET", "POST"])
 @app.route('/rest/getScanStatus.view', methods=["GET", "POST"])
-def endpoint_get_scan_status():
+def endpoint_get_scan_status() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -234,7 +236,7 @@ def endpoint_get_scan_status():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/tokenInfo/
 @app.route('/rest/tokenInfo', methods=["GET", "POST"])
 @app.route('/rest/tokenInfo.view', methods=["GET", "POST"])
-def endpoint_token_info():
+def endpoint_token_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     api_key = r.get('apiKey', default='', type=str)
@@ -262,7 +264,7 @@ def endpoint_token_info():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPodcasts/
 @app.route('/rest/getPodcasts', methods=["GET", "POST"])
 @app.route('/rest/getPodcasts.view', methods=["GET", "POST"])
-def endpoint_get_podcasts():
+def endpoint_get_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     return subsonic_error(0, message='Podcast feature is not supported.', resp_fmt=resp_fmt)
@@ -271,7 +273,7 @@ def endpoint_get_podcasts():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getInternetRadioStations/
 @app.route('/rest/getInternetRadioStations', methods=["GET", "POST"])
 @app.route('/rest/getInternetRadioStations.view', methods=["GET", "POST"])
-def endpoint_get_radios():
+def endpoint_get_radios() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     return subsonic_error(0, message='Radio feature is not supported.', resp_fmt=resp_fmt)

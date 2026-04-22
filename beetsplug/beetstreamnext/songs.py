@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.utils import (
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
 
 
-def song_payload(subsonic_song_id: str) -> dict:
+def song_payload(subsonic_song_id: str) -> Dict:
     beets_song_id = sub_to_beets_song(subsonic_song_id)
     song_item = flask.g.lib.get_item(beets_song_id)
     if not song_item:
@@ -65,7 +65,7 @@ def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[s
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSong/
 @app.route('/rest/getSong', methods=["GET", "POST"])
 @app.route('/rest/getSong.view', methods=["GET", "POST"])
-def endpoint_get_song():
+def endpoint_get_song() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)     # Required
@@ -83,7 +83,7 @@ def endpoint_get_song():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSongsByGenre/
 @app.route('/rest/getSongsByGenre', methods=["GET", "POST"])
 @app.route('/rest/getSongsByGenre.view', methods=["GET", "POST"])
-def endpoint_songs_by_genre():
+def endpoint_songs_by_genre() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     count = r.get('count', default=10, type=int)
@@ -131,7 +131,7 @@ def endpoint_songs_by_genre():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getRandomSongs/
 @app.route('/rest/getRandomSongs', methods=["GET", "POST"])
 @app.route('/rest/getRandomSongs.view', methods=["GET", "POST"])
-def endpoint_get_random_songs():
+def endpoint_get_random_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     size = r.get('size', default=10, type=int)
@@ -183,7 +183,7 @@ def endpoint_get_random_songs():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getTopSongs/
 @app.route('/rest/getTopSongs', methods=["GET", "POST"])
 @app.route('/rest/getTopSongs.view', methods=["GET", "POST"])
-def endpoint_get_top_songs():
+def endpoint_get_top_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_artist_id = r.get('id', default='', type=safe_str)
@@ -259,7 +259,7 @@ def endpoint_get_top_songs():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs2/
 @app.route('/rest/getSimilarSongs2', methods=["GET", "POST"])
 @app.route('/rest/getSimilarSongs2.view', methods=["GET", "POST"])
-def endpoint_get_similar_songs():
+def endpoint_get_similar_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required

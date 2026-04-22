@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.mappings import map_song
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
 @app.route('/rest/getBookmarks', methods=['GET', 'POST'])
 @app.route('/rest/getBookmarks.view', methods=['GET', 'POST'])
-def endpoint_get_bookmarks():
+def endpoint_get_bookmarks() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -54,7 +54,7 @@ def endpoint_get_bookmarks():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createBookmark/
 @app.route('/rest/createBookmark', methods=['GET', 'POST'])
 @app.route('/rest/createBookmark.view', methods=['GET', 'POST'])
-def endpoint_create_bookmark():
+def endpoint_create_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)             # Required
@@ -85,7 +85,7 @@ def endpoint_create_bookmark():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteBookmark/
 @app.route('/rest/deleteBookmark', methods=['GET', 'POST'])
 @app.route('/rest/deleteBookmark.view', methods=['GET', 'POST'])
-def endpoint_delete_bookmark():
+def endpoint_delete_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)     # Required

@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sa
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/
 @app.route('/rest/setRating', methods=['GET', 'POST'])
 @app.route('/rest/setRating.view', methods=['GET', 'POST'])
-def endpoint_set_rating():
+def endpoint_set_rating() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required

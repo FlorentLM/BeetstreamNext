@@ -2,9 +2,10 @@ import os
 from typing import Optional, Tuple, Dict, List, Any
 
 import flask
-from beets import library
+from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext import userdata_caching as userdata_caching, app
+from beetsplug.beetstreamnext.playlistprovider import Playlist
 from beetsplug.beetstreamnext.utils import (
     get_mimetype, timestamp_to_iso,
     SNG_ID_PREF, sub_to_beets_song, beets_to_sub_song,
@@ -16,9 +17,9 @@ from beetsplug.beetstreamnext.utils import (
 
 ##
 
-def standardise_datadict(obj: Dict | library.LibModel | library.Item | Any) -> Dict:
+def standardise_datadict(obj: Dict | LibModel | Item | Any) -> Dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
-    if isinstance(obj, library.LibModel):
+    if isinstance(obj, LibModel):
         data = dict(obj)
         data['id'] = obj.id
         if hasattr(obj, 'path'):
@@ -32,7 +33,7 @@ def standardise_datadict(obj: Dict | library.LibModel | library.Item | Any) -> D
         return {}
 
 
-def map_media(beets_object: Dict | library.LibModel | Any) -> Dict:
+def map_media(beets_object: Dict | LibModel) -> Dict:
 
     data = standardise_datadict(beets_object)
 
@@ -86,7 +87,7 @@ def map_media(beets_object: Dict | library.LibModel | Any) -> Dict:
     return subsonic_media
 
 
-def map_album(album_object: Dict | library.LibModel | Any, include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
+def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
 
     data = standardise_datadict(album_object)
 
@@ -203,7 +204,7 @@ def map_album(album_object: Dict | library.LibModel | Any, include_songs: bool =
     return subsonic_album
 
 
-def map_song(song_object: Dict | library.LibModel | library.Item | Any, prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
+def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
 
     data = standardise_datadict(song_object)
 
@@ -405,7 +406,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     return subsonic_artist
 
 
-def map_playlist(playlist, include_songs=False):
+def map_playlist(playlist : Playlist, include_songs: bool = False) -> Dict:
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
@@ -427,7 +428,7 @@ def map_playlist(playlist, include_songs=False):
 # Other more specialised utils
 
 
-def _artist_metadata(name: str) -> dict:
+def _artist_metadata(name: str) -> Dict:
     """Lookup MBID, sort name and roles for a given artist name."""
     if not name:
         return {'mbid': '', 'sort_name': '', 'roles': []}
@@ -482,7 +483,7 @@ def _artist_metadata(name: str) -> dict:
     return result
 
 
-def resolve_artist(req_id: str) -> Optional[Tuple[str, str]]:
+def resolve_artist(req_id: str) -> Tuple[str, str] | None:
     """
     Returns (name, mbid) for an artist from any subsonic ID (artist, album, or song)
     (or None if ID can't be resolved)
@@ -572,7 +573,7 @@ def get_song_counts(albums: List[Dict]) -> Dict:
     return counts
 
 
-def get_artists(data: dict) -> Tuple[List[dict], List[dict], List[dict], str]:
+def get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
     artists_array = []
     album_artists_array = []
     contributors_array = []

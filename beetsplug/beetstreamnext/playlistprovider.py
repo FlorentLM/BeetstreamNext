@@ -1,5 +1,5 @@
 import threading
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Generator
 import os
 from pathlib import Path
 import flask
@@ -31,7 +31,7 @@ class Playlist:
         self.song_count = 0
         self._parse_metadata()
 
-    def _parse_metadata(self):
+    def _parse_metadata(self) -> None:
         """Quickly parse M3U for duration and song count."""
         with self._lock:
             if not self.path.exists():
@@ -52,7 +52,7 @@ class Playlist:
             except OSError:
                 pass
 
-    def load_songs(self):
+    def load_songs(self) -> None:
         """Resolve all songs in the M3U in a minimal number of DB queries."""
 
         entries = list(self.from_m3u(self.path))
@@ -111,7 +111,7 @@ class Playlist:
 
         self.song_count = len(self.songs)
 
-    def rename(self, name : Optional[str] = None):
+    def rename(self, name : Optional[str] = None) -> None:
         with self._lock:
             if name and name[:200] != self.name:
                 safe_name = os.path.basename(str(name)).rsplit('.', 1)[0]
@@ -131,7 +131,7 @@ class Playlist:
                 self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
                 self.mtime = self.path.stat().st_mtime
 
-    def remove_songs(self, indices: List[int]):
+    def remove_songs(self, indices: List[int]) -> None:
         with self._lock:
             for i in sorted(indices, reverse=True):  # descending order so that removing an item doesn't shift other indices
                 if 0 <= i < len(self.songs):
@@ -139,18 +139,18 @@ class Playlist:
             self._calc_duration()
             self.to_m3u()
 
-    def add_songs(self, beets_items):
+    def add_songs(self, beets_items) -> None:
         with self._lock:
             for item in beets_items:
                 self.songs.append(map_song(item))
             self._calc_duration()
             self.to_m3u()
 
-    def _calc_duration(self):
+    def _calc_duration(self) -> None:
         self.duration = sum(int(s.get('duration', 0) or 0) for s in self.songs)
 
     @classmethod
-    def from_songs(cls, name: str, songs: List['Item']):
+    def from_songs(cls, name: str, songs: List['Item']) -> Playlist:
         """
         Create a new playlist from a list of beets songs, write it to disk, and return Playlist instance.
         """
@@ -188,7 +188,7 @@ class Playlist:
         return instance
 
     @classmethod
-    def from_m3u(cls, filepath):
+    def from_m3u(cls, filepath) -> Generator:
         """Parse a playlist (m3u, m3u8 or m3a) and yield its entries."""
 
         filepath = Path(filepath)
@@ -249,7 +249,7 @@ class Playlist:
                     yield curr_entry
                     curr_entry = {}
 
-    def to_m3u(self):
+    def to_m3u(self) -> None:
         with self._lock:
             content = ['#EXTM3U']
 
@@ -292,6 +292,7 @@ class Playlist:
 
 
 class PlaylistProvider:
+
     def __init__(self):
         self._lock = threading.RLock()
         self.playlist_dirs = app.config.get('playlist_dirs', {})
@@ -311,7 +312,7 @@ class PlaylistProvider:
 
             app.logger.debug(f"Loaded {len(self._playlists)} playlists.")
 
-    def _load_playlist(self, dir_id, filepath):
+    def _load_playlist(self, dir_id, filepath) -> Playlist:
         """Load playlist data from a file, or return the cached version if still current."""
 
         file_mtime = filepath.stat().st_mtime
@@ -327,7 +328,7 @@ class PlaylistProvider:
 
         return playlist
 
-    def get(self, playlist_id: str) -> Optional[Playlist]:
+    def get(self, playlist_id: str) -> Playlist | None:
         """Get a playlist by its id, reloading from disk if file changed."""
 
         with self._lock:
@@ -402,7 +403,7 @@ class PlaylistProvider:
         with self._lock:
             self._playlists[playlist.id] = playlist
 
-    def deregister(self, playlist_id: str):
+    def deregister(self, playlist_id: str) -> None:
         with self._lock:
             self._playlists.pop(playlist_id, None)
 

@@ -1,3 +1,5 @@
+from typing import Tuple, List
+
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -20,7 +22,7 @@ from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, g
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search3/
 @app.route('/rest/search3', methods=["GET", "POST"])
 @app.route('/rest/search3.view', methods=["GET", "POST"])
-def endpoint_search():
+def endpoint_search() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
@@ -87,7 +89,7 @@ def endpoint_search():
 
     # Normal SQL search
     else:
-        def build_where(table_type: str, main_field: str):
+        def build_where(table_type: str, main_field: str) -> Tuple[str, List[str]]:
             # table_type: 'items' or 'albums'
             # main_field: 'title' or 'album'
             conds = []

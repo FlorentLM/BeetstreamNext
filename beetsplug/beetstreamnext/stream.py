@@ -1,7 +1,9 @@
 import os
 import subprocess
-import select
 from pathlib import Path
+import queue
+import threading
+from typing import Generator
 
 import flask
 
@@ -11,7 +13,7 @@ from beetsplug.beetstreamnext.utils import (
 )
 
 
-def _send_direct(file_path):
+def _send_direct(file_path) -> flask.Response | None:
     try:
         return flask.send_file(file_path, mimetype=get_mimetype(file_path))
     except OSError:
@@ -25,7 +27,7 @@ def _send_transcode(
         req_format: str = 'mp3',
         duration: float = 0.0,
         estimate_length: bool = False
-    ):
+    ) -> flask.Response | None:
 
     format_map = {
         'mp3': {'f': 'mp3', 'c': 'libmp3lame', 'mime': 'audio/mpeg'},
@@ -72,22 +74,38 @@ def _send_transcode(
     else:
         return None
 
-    def generate():
-        try:
-            while True:
-                ready, _, _ = select.select([output_stream.stdout], [], [], 2.0)
-                # TODO: This fails on Windows????
+    def generate() -> Generator:
+        chunk_queue: queue.Queue = queue.Queue(maxsize=32)
+        _SENTINEL = object()   # marks "reader finished"
 
-                if ready:
+        def _reader():
+            try:
+                while True:
                     chunk = output_stream.stdout.read(8192)
                     if not chunk:
                         break
-                    yield chunk
-                else:
+                    chunk_queue.put(chunk)
+            except (OSError, ValueError):
+                pass    # pipe closed
+            finally:
+                chunk_queue.put(_SENTINEL)
+
+        reader_thread = threading.Thread(target=_reader, daemon=True)
+        reader_thread.start()
+
+        try:
+            while True:
+                try:
+                    chunk = chunk_queue.get(timeout=2.0)
+                except queue.Empty:
+                    # No data for 2s, is ffmpeg still alive?
                     if output_stream.poll() is not None:
                         break
-        except OSError:
-            pass
+                    continue
+
+                if chunk is _SENTINEL:
+                    break
+                yield chunk
         finally:
             try:
                 output_stream.terminate()
@@ -98,6 +116,7 @@ def _send_transcode(
                     output_stream.wait(timeout=5)
             except Exception:
                 pass
+            # reader thread exits when stdout closes (terminate() causes EOF)
 
     response = flask.Response(flask.stream_with_context(generate()), mimetype=target['mime'])
 
@@ -124,7 +143,7 @@ def try_transcode(
         req_format: str = 'mp3',
         duration: float = 0.0,
         estimate_length: bool = False
-    ):
+    ) -> flask.Response | None:
 
     if FFMPEG_PYTHON or FFMPEG_BIN:
         return _send_transcode(
@@ -146,7 +165,7 @@ def try_transcode(
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/stream/
 @app.route('/rest/stream', methods=["GET", "POST"])
 @app.route('/rest/stream.view', methods=["GET", "POST"])
-def endpoint_stream_song():
+def endpoint_stream_song() -> flask.Response | None:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)             # Required
@@ -187,7 +206,7 @@ def endpoint_stream_song():
         else:
             target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
-            return try_transcode(
+            return try_transcode(       # TODO: Should this return a subsonic error or 404?
                 song_path,
                 start_at=time_offset,
                 max_bitrate=target_bitrate,
@@ -207,7 +226,7 @@ def endpoint_stream_song():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/download/
 @app.route('/rest/download', methods=["GET", "POST"])
 @app.route('/rest/download.view', methods=["GET", "POST"])
-def endpoint_download_song():
+def endpoint_download_song() -> flask.Response | None:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)         # Required

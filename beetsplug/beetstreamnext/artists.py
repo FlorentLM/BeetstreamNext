@@ -3,6 +3,8 @@ import time
 import urllib.parse
 from collections import defaultdict
 from functools import partial
+from typing import Dict
+
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -16,7 +18,7 @@ from beetsplug.beetstreamnext.utils import (
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_album, map_artist, get_song_counts
 
 
-def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
+def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> Dict:
 
     value, is_mbid = sub_to_beets_artist(subsonic_artist_id)
     if not value:
@@ -77,7 +79,7 @@ def artist_payload(subsonic_artist_id: str, with_albums=True) -> dict:
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getIndexes/
 @app.route('/rest/getIndexes', methods=["GET", "POST"])
 @app.route('/rest/getIndexes.view', methods=["GET", "POST"])
-def endpoint_get_artists_or_indexes():
+def endpoint_get_artists_or_indexes() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     modified_since = r.get('ifModifiedSince', default=0, type=int)
@@ -154,7 +156,7 @@ def endpoint_get_artists_or_indexes():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtist/
 @app.route('/rest/getArtist', methods=["GET", "POST"])
 @app.route('/rest/getArtist.view', methods=["GET", "POST"])
-def endpoint_get_artist():
+def endpoint_get_artist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist_id = r.get('id', default='', type=safe_str)   # Required
@@ -173,7 +175,7 @@ def endpoint_get_artist():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtistInfo2/
 @app.route('/rest/getArtistInfo2', methods=["GET", "POST"])
 @app.route('/rest/getArtistInfo2.view', methods=["GET", "POST"])
-def endpoint_artist_info():
+def endpoint_artist_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist_id = r.get('id', default='', type=safe_str)   # Required

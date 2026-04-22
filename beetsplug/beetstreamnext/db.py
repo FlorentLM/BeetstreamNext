@@ -116,7 +116,7 @@ def ensure_secret(db_path: Path) -> None:
 ##
 
 @lru_cache(maxsize=1)
-def _cipher_for(key: str) -> Optional[Fernet]:
+def _cipher_for(key: str) -> Fernet | None:
     """Fernet for a given key string. Cached for the process lifetime."""
     try:
         return Fernet(key)
@@ -130,14 +130,14 @@ def _hash_for(key: str) -> str:
     return hashlib.sha256(base64.urlsafe_b64decode(key)).hexdigest()
 
 
-def get_cipher() -> Optional[Fernet]:
+def get_cipher() -> Fernet | None:
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
     return _cipher_for(key)
 
 
-def get_key_hash() -> Optional[str]:
+def get_key_hash() -> str | None:
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
@@ -147,7 +147,7 @@ def get_key_hash() -> Optional[str]:
         return None
 
 
-def verify_key():
+def verify_key() -> bool:
 
     with database() as db:
         result = db.execute("""SELECT value FROM encryption WHERE key = 'key_hash'""").fetchone()
@@ -158,7 +158,7 @@ def verify_key():
     return current_hash == stored_hash
 
 
-def initialise_db():
+def initialise_db() -> None:
     conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
     cur = conn.cursor()
 
@@ -368,7 +368,7 @@ def initialise_db():
 
 ##
 
-def database():
+def database() -> sqlite3.Connection:
     """Get internal database connection."""
     if 'db' not in g:
         g.db = sqlite3.connect(current_app.config['DB_PATH'])
@@ -380,7 +380,7 @@ def database():
     return g.db
 
 
-def dual_database():
+def dual_database() -> sqlite3.Connection:
     """Get internal database with the Beets library attached."""
     db = database()
     if not getattr(g, 'beets_attached', False):
@@ -393,7 +393,7 @@ def dual_database():
     return db
 
 
-def close_database(e=None):
+def close_database(e=None) -> None:
     """Closes the database at the end of the request."""
     db = g.pop('db', None)
     if db is not None:

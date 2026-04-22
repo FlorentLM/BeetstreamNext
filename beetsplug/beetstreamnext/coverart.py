@@ -41,7 +41,7 @@ def _thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float =
     return app.config['THUMBNAIL_CACHE_PATH'] / f'.{file_hash}.jpg'
 
 
-def _make_hidden(filepath: Path):
+def _make_hidden(filepath: Path) -> None:
     """Marks a file as hidden on Windows."""
     if platform.system() == "Windows":
         try:
@@ -53,7 +53,7 @@ def _make_hidden(filepath: Path):
 ##
 # Resizing
 
-def _round_size(requested_size: Optional[int]) -> Optional[int]:
+def _round_size(requested_size: Optional[int]) -> int | None:
     """Rounds requested image size up to nearest allowed size to limit cache bloat."""
     if not requested_size:
         return None
@@ -75,7 +75,7 @@ def _resize_image(data: BytesIO, size: int) -> BytesIO:
     return buf
 
 
-def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> Optional[str | BytesIO]:
+def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> str | BytesIO | None:
 
     if not source_file:
         return None
@@ -112,7 +112,7 @@ def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> Opti
 ##
 # Image fetching
 
-def _image_from_folder(album_dir: str | Path) -> Optional[Path]:
+def _image_from_folder(album_dir: str | Path) -> Path | None:
     if not album_dir:
         return None
 
@@ -135,7 +135,7 @@ def _image_from_folder(album_dir: str | Path) -> Optional[Path]:
     return images[0]
 
 
-def _image_from_song(path) -> Optional[BytesIO]:
+def _image_from_song(path: str | Path) -> BytesIO | None:
 
     if FFMPEG_PYTHON:
         try:
@@ -173,7 +173,7 @@ def _image_from_song(path) -> Optional[BytesIO]:
 ##
 # Main logic for album art and for artist images
 
-def send_album_art(album_id, size=None):
+def send_album_art(album_id, size=None)  -> flask.Response | None:
     """
     Generates a response with the album art for the given album ID and (optional) size.
     Uses the local file first, then falls back to coverartarchive.org
@@ -236,7 +236,7 @@ def send_album_art(album_id, size=None):
     return None # TODO - send a placeholder instead of 404ing
 
 
-def send_artist_image(artist, size=None):
+def send_artist_image(artist, size=None) -> flask.Response | None:
 
     artist = customstrip(artist)
     if artist.startswith(ART_ID_PREF):
@@ -324,7 +324,7 @@ def send_artist_image(artist, size=None):
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
 @app.route('/rest/getCoverArt', methods=["GET", "POST"])
 @app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
-def endpoint_get_cover_art():
+def endpoint_get_cover_art() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required

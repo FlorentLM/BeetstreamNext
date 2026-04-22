@@ -5,13 +5,13 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, safe_str
 
 
-def _fetch_lyrics(item):
+def _fetch_lyrics(item) -> str | None:
 
     if not item:
         return None
 
     if item.get('lyrics'):
-        return item.lyrics
+        return str(item.lyrics)
 
     lyrics_plugin = next((p for p in find_plugins() if p.name == 'lyrics'), None)
     if lyrics_plugin:
@@ -19,7 +19,7 @@ def _fetch_lyrics(item):
             lyrics_plugin.add_item_lyrics(item, False)
             # TODO: This is the only non-read operation on the Beets database... probably should be disableable
             if item.lyrics:
-                return item.lyrics
+                return str(item.lyrics)
         except Exception as e:
             app.logger.error(f'Error fetching lyrics via beets plugin: {e}')
 
@@ -29,7 +29,7 @@ def _fetch_lyrics(item):
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyrics/
 @app.route('/rest/getLyrics', methods=["GET", "POST"])
 @app.route('/rest/getLyrics.view', methods=["GET", "POST"])
-def endpoint_get_lyrics():
+def endpoint_get_lyrics() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist = r.get('artist', default='', type=safe_str)
@@ -70,7 +70,7 @@ def endpoint_get_lyrics():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyricsBySongId/
 @app.route('/rest/getLyricsBySongId', methods=["GET", "POST"])
 @app.route('/rest/getLyricsBySongId.view', methods=["GET", "POST"])
-def endpoint_get_lyrics_by_song_id():
+def endpoint_get_lyrics_by_song_id() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required

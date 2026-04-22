@@ -1,9 +1,9 @@
 import urllib.parse
 from datetime import timedelta
 from functools import lru_cache
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 import requests
-import requests_cache
+from requests_cache import CachedSession
 from requests import RequestException
 
 from beetsplug.beetstreamnext import app
@@ -19,11 +19,11 @@ except ImportError:
 
 _http_session = None
 
-def http_session():
+def http_session() -> CachedSession:
     global _http_session
 
     if _http_session is None:
-        _http_session = requests_cache.CachedSession(
+        _http_session = CachedSession(
             str(app.config['HTTP_CACHE_PATH']),
             backend='sqlite',
             expire_after=timedelta(days=30),
@@ -105,7 +105,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     return {}
 
 
-def query_musicbrainz(mbid: str, type: str):
+def query_musicbrainz(mbid: str, type: str) -> Dict:
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
@@ -126,7 +126,7 @@ def query_musicbrainz(mbid: str, type: str):
         return {}
 
 
-def query_lastfm(q: str, type: str, method: str = 'info', is_mbid=True) -> Dict:
+def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) -> Dict:
 
     if not app.config['lastfm_api_key']:
         return {}
@@ -157,7 +157,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid=True) -> Dict:
 
 
 @lru_cache(maxsize=512)
-def query_wikipedia(q: str, cache_ttl_hash=None) -> Optional[str]:
+def query_wikipedia(q: str, cache_ttl_hash=None) -> str | None:
     """`cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
 
     if not WIKI_API:

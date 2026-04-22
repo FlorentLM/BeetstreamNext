@@ -1,4 +1,6 @@
 import urllib.parse
+from typing import Dict
+
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -11,7 +13,7 @@ from beetsplug.beetstreamnext.utils import (
 from beetsplug.beetstreamnext.mappings import map_album, get_song_counts
 
 
-def album_payload(subsonic_album_id: str, include_songs=True) -> dict:
+def album_payload(subsonic_album_id: str, include_songs: bool = True) -> Dict:
 
     beets_album_id = sub_to_beets_album(subsonic_album_id)
     album_object = flask.g.lib.get_album(beets_album_id)
@@ -29,7 +31,7 @@ def album_payload(subsonic_album_id: str, include_songs=True) -> dict:
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbum/
 @app.route('/rest/getAlbum', methods=["GET", "POST"])
 @app.route('/rest/getAlbum.view', methods=["GET", "POST"])
-def endpoint_get_album():
+def endpoint_get_album() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     album_id = r.get('id', default='', type=safe_str)    # Required
@@ -48,7 +50,7 @@ def endpoint_get_album():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo2/
 @app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
-def endpoint_get_album_info():
+def endpoint_get_album_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required
@@ -94,7 +96,7 @@ def endpoint_get_album_info():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList2/
 @app.route('/rest/getAlbumList2', methods=["GET", "POST"])
 @app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
-def endpoint_get_album_list():
+def endpoint_get_album_list() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 

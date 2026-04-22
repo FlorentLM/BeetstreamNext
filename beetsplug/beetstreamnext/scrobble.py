@@ -13,7 +13,7 @@ _NOW_PLAYING_TIMEOUT = 600  # 10 min = stale
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @app.route('/rest/scrobble', methods=['GET', 'POST'])
 @app.route('/rest/scrobble.view', methods=['GET', 'POST'])
-def endpoint_scrobble():
+def endpoint_scrobble() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     submission = r.get('submission', default=True, type=api_bool)
@@ -73,7 +73,7 @@ def endpoint_scrobble():
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getNowPlaying/
 @app.route('/rest/getNowPlaying', methods=['GET', 'POST'])
 @app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
-def endpoint_get_now_playing():
+def endpoint_get_now_playing() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 

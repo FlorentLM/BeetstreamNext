@@ -124,6 +124,8 @@ def _image_from_folder(album_dir: Union[str, Path]) -> Optional[Path]:
     if not images:
         return None
 
+    images = sorted(images) # iterdir order is OS-dependant
+
     for pattern in ART_PRIORITY:
         for img in images:
             if pattern.match(img.stem):

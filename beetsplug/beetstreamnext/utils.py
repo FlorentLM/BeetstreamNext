@@ -341,6 +341,11 @@ def trim_text(text, char_limit=300):
 ##
 # Various parsers / converters / formatters
 
+def escape_like(s: str, escape: str = '!') -> str:
+    """Escape SQL LIKE wildcards. Use with `LIKE ? ESCAPE '!'`."""
+    return s.replace(escape, escape * 2).replace('%', escape + '%').replace('_', escape + '_')
+
+
 def safe_str(val: Any) -> str:
     if val is None:
         return ''

@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 import flask
 
 from beetsplug.beetstreamnext import app
@@ -7,7 +9,7 @@ from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
     ART_ID_PREF, sub_to_beets_song,
-    get_beets_schema, safe_str
+    get_beets_schema, safe_str, escape_like, _BEETS_MULTI_DELIM
 )
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
 
@@ -22,6 +24,39 @@ def song_payload(subsonic_song_id: str) -> dict:
         'song': map_song(song_item)
     }
     return payload
+
+
+def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[str]]:
+    """
+    Build OR-conditions and params matching `name` across all name columns.
+    `artists` is treated as a multi-value beets field with delimiters, everything else is exact-matched.
+    """
+
+    conditions = []
+    params = []
+    escaped = escape_like(name)
+    delim = _BEETS_MULTI_DELIM
+
+    for field in name_fields:
+        if field == 'artists':
+            # Four shapes: sole value, first, last, or somewhere in the middle.
+            conditions.extend([
+                f"{field} = ?",
+                f"{field} LIKE ? ESCAPE '!'",
+                f"{field} LIKE ? ESCAPE '!'",
+                f"{field} LIKE ? ESCAPE '!'",
+            ])
+            params.extend([
+                name,
+                f"{escaped}{delim}%",
+                f"%{delim}{escaped}",
+                f"%{delim}{escaped}{delim}%",
+            ])
+        else:
+            # artist / composer / lyricist are single-valued in beets
+            conditions.append(f"{field} = ?")
+            params.append(name)
+    return conditions, params
 
 
 ##
@@ -268,7 +303,8 @@ def endpoint_get_similar_songs():
     # Safety cap to stay under SQLite 999 param limit
     # (last.fm scores by similarity anyway so the top N are fine)
     if mbid_fields or name_fields:
-        max_params_per_artist = len(mbid_fields) + len(name_fields)
+        name_cost = sum(4 if f == 'artists' else 1 for f in name_fields)
+        max_params_per_artist = len(mbid_fields) + name_cost
         max_artists = 998 // max(max_params_per_artist, 1)
         similar_artists = dict(list(similar_artists.items())[:max_artists])
 
@@ -284,15 +320,10 @@ def endpoint_get_similar_songs():
                 sub_conditions.append(f"{field} = ?")
                 params.append(mbid)
 
-            # Also match by name in case mbid fields are incomplete
-            for field in name_fields:
-                sub_conditions.append(f"{field} LIKE ?")
-                params.append(f"%{name}%")
-
-        else:
-            for field in name_fields:
-                sub_conditions.append(f"{field} LIKE ?")
-                params.append(f"%{name}%")
+        if name:
+            name_conds, name_params = _sql_conditions_for(name, name_fields)
+            sub_conditions.extend(name_conds)
+            params.extend(name_params)
 
         if sub_conditions:
             conditions.append("(" + " OR ".join(sub_conditions) + ")")

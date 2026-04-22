@@ -88,7 +88,7 @@ def endpoint_delete_playlist() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
-        flask.g.playlist_provider.delete(playlist_id.lower())
+        flask.g.playlist_provider.delete(playlist_id)
     except FileNotFoundError as e:
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 

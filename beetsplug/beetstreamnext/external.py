@@ -157,7 +157,9 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid=True) -> Dict:
 
 
 @lru_cache(maxsize=512)
-def query_wikipedia(q: str) -> Optional[str]:
+def query_wikipedia(q: str, cache_ttl_hash=None) -> Optional[str]:
+    """`cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
+
     if not WIKI_API:
         return None
 

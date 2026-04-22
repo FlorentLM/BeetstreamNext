@@ -1,4 +1,5 @@
 import os
+import time
 import urllib.parse
 from collections import defaultdict
 from functools import partial
@@ -200,7 +201,7 @@ def endpoint_artist_info():
             short_bio = trim_text(lastfm_bio, char_limit=300)
 
     if not short_bio and WIKI_API:
-        wiki_bio = query_wikipedia(artist_name)
+        wiki_bio = query_wikipedia(artist_name, cache_ttl_hash=round(time.time() / 3600))
         if wiki_bio:
             short_bio = trim_text(wiki_bio, char_limit=300)
 

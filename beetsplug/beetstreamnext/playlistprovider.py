@@ -1,5 +1,5 @@
 import threading
-from typing import TYPE_CHECKING, Union, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 import os
 from pathlib import Path
 import flask
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class Playlist:
 
-    def __init__(self, dir_id, path: Union[str, Path]):
+    def __init__(self, dir_id, path: str | Path):
         self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
@@ -327,7 +327,7 @@ class PlaylistProvider:
 
         return playlist
 
-    def get(self, playlist_id: str) -> Union[Playlist, None]:
+    def get(self, playlist_id: str) -> Optional[Playlist]:
         """Get a playlist by its id, reloading from disk if file changed."""
 
         with self._lock:

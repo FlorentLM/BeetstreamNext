@@ -6,7 +6,7 @@ import subprocess
 import os
 import tempfile
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional
 from io import BytesIO
 from PIL import Image
 import flask
@@ -30,7 +30,7 @@ ART_PRIORITY = [
 ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
 
 
-def _thumbnail_path(original_path: Union[Path, str, bytes], size: int, mtime: float = None) -> Path:
+def _thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = None) -> Path:
     """Generates unique path for a cached thumbnail."""
     if mtime is None:
         mtime = os.path.getmtime(original_path)
@@ -75,7 +75,7 @@ def _resize_image(data: BytesIO, size: int) -> BytesIO:
     return buf
 
 
-def _cached_resize(source_file: Union[Path, str, bytes, BytesIO], size: int) -> Optional[Union[str, BytesIO]]:
+def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> Optional[str | BytesIO]:
 
     if not source_file:
         return None
@@ -112,7 +112,7 @@ def _cached_resize(source_file: Union[Path, str, bytes, BytesIO], size: int) -> 
 ##
 # Image fetching
 
-def _image_from_folder(album_dir: Union[str, Path]) -> Optional[Path]:
+def _image_from_folder(album_dir: str | Path) -> Optional[Path]:
     if not album_dir:
         return None
 
@@ -135,7 +135,7 @@ def _image_from_folder(album_dir: Union[str, Path]) -> Optional[Path]:
     return images[0]
 
 
-def _image_from_song(path) -> Union[BytesIO, None]:
+def _image_from_song(path) -> Optional[BytesIO]:
 
     if FFMPEG_PYTHON:
         try:

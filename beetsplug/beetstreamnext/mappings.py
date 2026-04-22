@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Tuple, Union, Dict, List
+from typing import Optional, Tuple, Dict, List, Any
 
 import flask
 from beets import library
@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.utils import (
 
 ##
 
-def standardise_datadict(obj: Union[dict, library.LibModel, any]) -> dict:
+def standardise_datadict(obj: Dict | library.LibModel | library.Item | Any) -> Dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
     if isinstance(obj, library.LibModel):
         data = dict(obj)
@@ -32,7 +32,7 @@ def standardise_datadict(obj: Union[dict, library.LibModel, any]) -> dict:
         return {}
 
 
-def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
+def map_media(beets_object: Dict | library.LibModel | Any) -> Dict:
 
     data = standardise_datadict(beets_object)
 
@@ -86,7 +86,7 @@ def map_media(beets_object: Union[Dict, library.LibModel]) -> Dict:
     return subsonic_media
 
 
-def map_album(album_object: Union[Dict, library.Album], include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
+def map_album(album_object: Dict | library.LibModel | Any, include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
 
     data = standardise_datadict(album_object)
 
@@ -203,7 +203,7 @@ def map_album(album_object: Union[Dict, library.Album], include_songs: bool = Tr
     return subsonic_album
 
 
-def map_song(song_object: Union[Dict, library.Item], prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
+def map_song(song_object: Dict | library.LibModel | library.Item | Any, prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
 
     data = standardise_datadict(song_object)
 

@@ -1,6 +1,6 @@
 import binascii
 import string
-from typing import Union, Optional, Dict, List, Tuple, Any, Sequence
+from typing import Optional, Dict, List, Tuple, Any, Sequence
 import threading
 import os
 import shutil
@@ -62,7 +62,7 @@ _ASCII_TRANSLATE_TABLE = {
 ##
 # General flask helpers
 
-def grab_auth_params() -> Dict:
+def grab_auth_params() -> Dict[str, str]:
     r = flask.request.values
 
     auth_params = {k: r.get(k, default='', type=str) for k in ['s', 't', 'p', 'apiKey'] if k in r}
@@ -92,7 +92,7 @@ def imageart_url(item_id: str, size: Optional[int] = None) -> str:
 ##
 # Main response and error payloads
 
-def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed: bool = False):
+def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed: bool = False) -> flask.Response:
     """
     Wraps json-like dict with the subsonic response data and
     outputs the appropriate format (json or xml).
@@ -128,7 +128,7 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
         return flask.Response(xml_str, mimetype="text/xml")
 
 
-def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml'):
+def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml') -> flask.Response:
 
     subsonic_errors = {
         0:  'A generic error.',
@@ -164,7 +164,7 @@ def beets_to_sub_artist(name_or_mbid: str, is_mbid: bool = True) -> str:
     return f"{prefix}{encoded}"
 
 
-def sub_to_beets_artist(subsonic_artist_id: str) -> tuple[str, bool]:
+def sub_to_beets_artist(subsonic_artist_id: str) -> Tuple[str, bool]:
     sid = str(subsonic_artist_id)
 
     if sid.startswith(ART_MBID_PREF):
@@ -183,19 +183,19 @@ def sub_to_beets_artist(subsonic_artist_id: str) -> tuple[str, bool]:
     except (binascii.Error, UnicodeDecodeError):
         return '', False
 
-def beets_to_sub_album(beet_album_id):
+def beets_to_sub_album(beet_album_id) -> str:
     return f'{ALB_ID_PREF}{beet_album_id}'
 
-def sub_to_beets_album(subsonic_album_id):
+def sub_to_beets_album(subsonic_album_id) -> int | None:
     try:
         return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
     except (ValueError, IndexError):
         return None
 
-def beets_to_sub_song(beet_song_id):
+def beets_to_sub_song(beet_song_id) -> str:
     return f'{SNG_ID_PREF}{beet_song_id}'
 
-def sub_to_beets_song(subsonic_song_id):
+def sub_to_beets_song(subsonic_song_id) -> int | None:
     try:
         return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
     except (ValueError, IndexError):
@@ -220,7 +220,7 @@ def _clean_xml_key(key: str) -> str:
     return safe
 
 
-def dict_to_xml(tag: str, data):
+def dict_to_xml(tag: str, data) -> ET.Element[str]:
     """
     Converts a json-like dict to an XML tree.
     Simple values are mapped as attributes unless the attribute name already exists
@@ -270,7 +270,7 @@ def dict_to_xml(tag: str, data):
     return elem
 
 
-def jsonpify(format: str, data: dict):
+def jsonpify(format: str, data: dict) -> flask.Response:
     if format == 'jsonp':
         callback = flask.request.values.get("callback")
         return flask.Response(f"{callback}({json.dumps(data)});", mimetype='application/javascript')
@@ -281,13 +281,13 @@ def jsonpify(format: str, data: dict):
 ##
 # Text utilities
 
-def remove_accents(text: Any):
+def remove_accents(text: Any) -> str:
     if not text:
         return ''
     return ''.join(c for c in unicodedata.normalize('NFD', str(text)) if unicodedata.category(c) != 'Mn')
 
 
-def split_beets_multi(stringlist: Union[Sequence[Any], str]) -> List[str]:
+def split_beets_multi(stringlist: Sequence[Any] | str) -> List[str]:
     """Split a beets multi-value field."""
     if not stringlist:
         return []
@@ -325,7 +325,7 @@ def standard_ascii(text: Any) -> str:
     return text.translate(_ASCII_TRANSLATE_TABLE).strip()
 
 
-def trim_text(text, char_limit=300):
+def trim_text(text: str, char_limit: int = 300) -> str:
     if len(text) <= char_limit:
         return text
 
@@ -404,7 +404,7 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
 ##
 # File access and format detection utilities
 
-def creation_date(filepath):
+def creation_date(filepath) -> float:
     """Get a file's creation date."""
 
     if platform.system() == 'Windows':
@@ -419,7 +419,7 @@ def creation_date(filepath):
     return getattr(stat, 'st_birthtime', stat.st_mtime)
 
 
-def get_mimetype(path):
+def get_mimetype(path) -> str:
 
     if not path:
         return 'application/octet-stream'
@@ -484,12 +484,12 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
 
 
 def chunked_query(
-        db_obj: Union['Transaction', 'Connection'],
+        db_obj: 'Transaction | Connection',
         query_template: str,
         chunked_values: List[Any],
         base_params: Optional[List[Any]] = None,
         chunk_size=900
-    ):
+    ) -> List[Any]:
     """
     db_obj: The beets Transaction or sqlite Connection object
     query_template: SQL string with a '{q}' placeholder for the IN clause

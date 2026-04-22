@@ -9,7 +9,6 @@ import time
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from pathlib import Path
-from typing import Union
 from functools import lru_cache
 from typing import Optional
 

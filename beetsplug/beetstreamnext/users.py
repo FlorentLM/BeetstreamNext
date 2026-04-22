@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import secrets
-from typing import TYPE_CHECKING, Union, Sequence, Optional, Dict
+from typing import TYPE_CHECKING, Sequence, Optional, Dict
 from urllib.parse import unquote
 
 import flask
@@ -53,7 +53,7 @@ _DUMMY_PASSWORD = secrets.token_urlsafe(12)
 # Internal helpers to this module
 
 
-def _get_userdata(username: str, fields: Optional[Union[str, Sequence[str]]] = None) -> Optional[Dict]:
+def _get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) -> Optional[Dict]:
 
     if fields is None:
         # return all safe fields
@@ -419,7 +419,7 @@ def load_all_users() -> list[dict]:
     return [dict(zip(columns, row)) for row in rows]
 
 
-def load_user_roles(username: str) -> Union[dict, None]:
+def load_user_roles(username: str) -> Optional[Dict]:
     """Load all user fields except password, safe to cache in g."""
     return _get_userdata(username, fields=set(_ALLOWED_USER_FIELDS - {'password'}))
 

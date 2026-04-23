@@ -55,7 +55,7 @@ def imageart_url(item_id: str, size: Optional[int] = None) -> str:
     # check if the base URL is already built for the current request, if not, build it
     base_url = getattr(flask.g, '_art_base_url', None)
     if not base_url:
-        base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
+        base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
         flask.g._art_base_url = base_url
 
     sep = '&' if '?' in base_url else '?'

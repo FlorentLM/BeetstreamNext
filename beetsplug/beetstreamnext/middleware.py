@@ -39,7 +39,7 @@ def _before_request():
     flask.g.username = username
     flask.g.user_data = load_user_roles(username)
     flask.g.playlist_provider = app.config['playlist_provider']
-    flask.g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
+    flask.g._art_base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
 
     run_periodic()
 

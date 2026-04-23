@@ -16,18 +16,16 @@ from beetsplug.beetstreamnext import app
 from beetsplug.beetstreamnext.external import http_session, query_deezer, query_coverartarchive
 from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
-    get_mimetype, ALB_ID_PREF, SNG_ID_PREF, ART_ID_PREF,
-    sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, subsonic_error, safe_str
+    get_mimetype, sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, subsonic_error, safe_str
 )
+from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES
 
 have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
 
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.bmp'}
-ART_PRIORITY = [
+_ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
-ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
 
 
 def _thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = None) -> Path:
@@ -126,7 +124,7 @@ def _image_from_folder(album_dir: str | Path) -> Path | None:
 
     images = sorted(images) # iterdir order is OS-dependant
 
-    for pattern in ART_PRIORITY:
+    for pattern in _ART_PRIORITY:
         for img in images:
             if pattern.match(img.stem):
                 return img

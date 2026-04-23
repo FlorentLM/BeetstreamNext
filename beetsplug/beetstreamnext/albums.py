@@ -8,8 +8,9 @@ from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_albums
 from beetsplug.beetstreamnext.utils import (
     get_beets_schema, sub_to_beets_album, subsonic_response, subsonic_error,
-    safe_str, SNG_ID_PREF, sub_to_beets_song, beets_to_sub_album, imageart_url
+    safe_str, sub_to_beets_song, beets_to_sub_album, imageart_url
 )
+from beetsplug.beetstreamnext.constants import SNG_ID_PREF
 from beetsplug.beetstreamnext.mappings import map_album, get_song_counts
 
 

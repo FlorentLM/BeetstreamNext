@@ -39,14 +39,13 @@ from flask_cors import CORS
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, LOOPBACK_IPS
 from beetsplug.beetstreamnext.db import close_database
 
 
 # LOG_LEVEL = logging.ERROR
 # LOG_LEVEL = logging.INFO
 LOG_LEVEL = logging.DEBUG
-
-PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
 
 class TermColors:
@@ -119,12 +118,9 @@ app.logger.propagate = True
 # Cache cleanup stuff
 _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
-_CLEANUP_INTERVAL = 24 * 3600  # once per day
-_MAX_CACHE_AGE_DAYS = 30
 
 
 # IP filtering stuff
-_LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 
 class RateLimiter:
     def __init__(self, max_failures: int = 5, block_window: int = 300):
@@ -139,7 +135,7 @@ class RateLimiter:
     def is_blocked(self, ip: str) -> bool:
         """Check if an IP is currently blocked."""
 
-        if ip in _LOOPBACK_IPS:
+        if ip in LOOPBACK_IPS:
             app.logger.debug(f'IP {ip} is in the loopback IPs list, ignoring rate limiting check.')
             return False
 
@@ -160,7 +156,7 @@ class RateLimiter:
 
     def record(self, ip: str):
         """Log a failed attempt for an IP."""
-        if ip in _LOOPBACK_IPS:
+        if ip in LOOPBACK_IPS:
             app.logger.debug(f'IP {ip} is in the loopback IPs list, skipping rate limiting record.')
             return
 
@@ -196,7 +192,7 @@ class IPFilter:
 
     def is_allowed(self, ip: str) -> bool:
 
-        if ip in _LOOPBACK_IPS:
+        if ip in LOOPBACK_IPS:
             return True
 
         if ip in self._blacklist:
@@ -261,7 +257,7 @@ def _run_periodic_things():
     global _last_cleanup
 
     now = time.time()
-    if now - _last_cleanup < _CLEANUP_INTERVAL:
+    if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
         return
 
     if not _cleanup_lock.acquire(blocking=False):
@@ -269,7 +265,7 @@ def _run_periodic_things():
 
     try:
         # check inside the lock if another thread may have just finished
-        if now - _last_cleanup < _CLEANUP_INTERVAL:
+        if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
             return
         _last_cleanup = now
     finally:
@@ -283,7 +279,7 @@ def _run_periodic_things():
         # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']
         if cache_dir.exists():
-            max_age_seconds = _MAX_CACHE_AGE_DAYS * 86400
+            max_age_seconds = MAX_CACHE_AGE_DAYS * 86400
             try:
                 for f in cache_dir.iterdir():
                     if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
@@ -552,7 +548,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
             app.config['save_album_art'] = self.config['save_album_art'].get(bool)
 
-            if debug and host not in _LOOPBACK_IPS:
+            if debug and host not in LOOPBACK_IPS:
                 if force_trust_host:
                     print_box([
                         '',
@@ -577,7 +573,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     return
 
             if app.config['legacy_auth'] and not self.config['reverse_proxy']:
-                if host not in _LOOPBACK_IPS:
+                if host not in LOOPBACK_IPS:
                     print_box([
                         '',
                         f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',

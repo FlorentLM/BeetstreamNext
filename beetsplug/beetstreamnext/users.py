@@ -7,12 +7,26 @@ from urllib.parse import unquote
 import flask
 
 from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
 from beetsplug.beetstreamnext.db import get_cipher, database
 from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, api_bool, safe_str
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
 
+
+_ALLOWED_USER_FIELDS = frozenset({
+    'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
+    'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
+    'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
+})
+
+# Dummy password for constant-time comparison when username not found
+_DUMMY_PASSWORD = secrets.token_urlsafe(12)
+
+
+##
+# Internal helpers to this module
 
 def _user_payload(user_data: dict) -> dict:
     """Build a Subsonic user dict from a load_userdata result."""
@@ -36,21 +50,6 @@ def _user_payload(user_data: dict) -> dict:
         # 'avatarLastChanged':   '',  # TODO
         'folder':              [0],     # Beets has only one 'folder'
     }
-
-
-_ALLOWED_USER_FIELDS = frozenset({
-    'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
-    'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
-    'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
-})
-
-_ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
-
-# Dummy password for constant-time comparison when username not found
-_DUMMY_PASSWORD = secrets.token_urlsafe(12)
-
-##
-# Internal helpers to this module
 
 
 def _get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) -> Optional[Dict]:
@@ -283,7 +282,7 @@ def endpoint_create_user():
             if field in r:
                 if field == 'maxBitRate':
                     val = r.get(field, default=0, type=int)
-                    params[field] = val if val in _ALLOWED_BITRATES else 0
+                    params[field] = val if val in ALLOWED_BITRATES else 0
                 else:
                     params[field] = int(r.get(field, default=False, type=api_bool))
 
@@ -321,7 +320,7 @@ def endpoint_update_user():
 
         if 'maxBitRate' in r:
             br = r.get('maxBitRate', default=0, type=int)
-            updates['maxBitRate'] = br if br in _ALLOWED_BITRATES else 0
+            updates['maxBitRate'] = br if br in ALLOWED_BITRATES else 0
 
         for field in _ALLOWED_USER_FIELDS:
             if field in r and field not in ('password', 'maxBitRate'):

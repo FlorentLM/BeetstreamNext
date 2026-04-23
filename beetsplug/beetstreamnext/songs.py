@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import flask
 
@@ -8,9 +8,10 @@ from beetsplug.beetstreamnext.external import query_lastfm
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
     subsonic_response, subsonic_error,
-    ART_ID_PREF, sub_to_beets_song,
-    get_beets_schema, safe_str, escape_like, _BEETS_MULTI_DELIM
+    sub_to_beets_song,
+    get_beets_schema, safe_str, escape_like
 )
+from beetsplug.beetstreamnext.constants import ART_ID_PREF, BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
 
 
@@ -35,7 +36,7 @@ def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[s
     conditions = []
     params = []
     escaped = escape_like(name)
-    delim = _BEETS_MULTI_DELIM
+    delim = BEETS_MULTI_DELIM
 
     for field in name_fields:
         if field == 'artists':

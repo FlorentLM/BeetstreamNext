@@ -7,8 +7,7 @@ from requests_cache import CachedSession
 from requests import RequestException
 
 from beetsplug.beetstreamnext import app
-
-BEETSTREAMNEXT_VERSION = '1.6.0-dev'
+from beetsplug.beetstreamnext.constants import BEETSTREAMNEXT_VERSION
 
 try:
     import wikipediaapi

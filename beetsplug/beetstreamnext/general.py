@@ -7,9 +7,10 @@ from beetsplug.beetstreamnext.artists import artist_payload
 from beetsplug.beetstreamnext.albums import album_payload
 from beetsplug.beetstreamnext.songs import song_payload
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, subsonic_response, ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, genres_formatter, subsonic_error,
+    get_beets_schema, subsonic_response, genres_formatter, subsonic_error,
     beets_to_sub_artist, safe_str
 )
+from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:

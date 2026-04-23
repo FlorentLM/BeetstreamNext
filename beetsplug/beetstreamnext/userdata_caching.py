@@ -3,6 +3,7 @@ import flask
 from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import chunked_query, beets_to_sub_artist, beets_to_sub_album, beets_to_sub_song
 
+
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
 

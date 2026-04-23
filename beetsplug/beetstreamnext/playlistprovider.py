@@ -7,8 +7,9 @@ from beets.util import bytestring_path
 
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
-    PLY_ID_PREF, genres_formatter, creation_date, sub_to_beets_song, chunked_query
+    genres_formatter, creation_date, sub_to_beets_song, chunked_query
 )
+from beetsplug.beetstreamnext.constants import PLY_ID_PREF
 from beetsplug.beetstreamnext.mappings import map_song
 from beetsplug.beetstreamnext import app
 

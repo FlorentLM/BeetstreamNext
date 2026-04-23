@@ -20,17 +20,10 @@ import flask
 from sqlite3 import Connection
 from beets.dbcore.db import Transaction
 
-from beetsplug.beetstreamnext.external import BEETSTREAMNEXT_VERSION
-
-API_VERSION = '1.16.1'
+from beetsplug.beetstreamnext.constants import SUBSONIC_API_VERSION, ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF, \
+    BEETS_MULTI_DELIM, GENRES_DELIM, ASCII_TRANSLATE_TABLE, BEETSTREAMNEXT_VERSION
 
 # Prefixes for BeetstreamNext's internal IDs
-ART_ID_PREF   = 'ar-'
-ART_MBID_PREF = 'ar-m-'   # ar-m-<base64url(mbid)>  preferred if mbid is known
-ART_NAME_PREF = 'ar-n-'   # ar-n-<base64url(name)>  fallback
-ALB_ID_PREF = 'al-'
-SNG_ID_PREF = 'sg-'
-PLY_ID_PREF = 'pl-'
 
 
 FFMPEG_BIN = shutil.which("ffmpeg") is not None
@@ -40,23 +33,6 @@ if FFMPEG_PYTHON:
     import ffmpeg
 elif FFMPEG_BIN:
     ffmpeg = None
-
-
-_BEETS_MULTI_DELIM = '\\\u2400'     # what's used in beets' db to separate multiple artists, multiple genres etc
-_MORE_GENRES_DELIM = re.compile('|'.join([';', ',', '/', '\\|', '\u2400', '\\', '\x00']))
-
-_ASCII_TRANSLATE_TABLE = {
-    ord('\u2010'): '-', ord('\u2011'): '-', ord('\u2012'): '-',
-    ord('\u2013'): '-', ord('\u2014'): '-', ord('\u2015'): '-',
-    ord('\u2212'): '-', ord('\u2018'): "'", ord('\u2019'): "'",
-    ord('\u201a'): "'", ord('\u201b'): "'", ord('\u201c'): '"',
-    ord('\u201d'): '"', ord('\u201e'): '"', ord('\u201f'): '"',
-    ord('\u00a0'): ' ', ord('\u2000'): ' ', ord('\u2001'): ' ',
-    ord('\u2002'): ' ', ord('\u2003'): ' ', ord('\u2004'): ' ',
-    ord('\u2005'): ' ', ord('\u2006'): ' ', ord('\u2007'): ' ',
-    ord('\u2008'): ' ', ord('\u2009'): ' ', ord('\u200a'): ' ',
-    ord('\u202f'): ' ', ord('\u2026'): '...',
-}
 
 
 ##
@@ -103,7 +79,7 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
         wrapped = {
             'subsonic-response': {
                 'status': 'failed' if failed else 'ok',
-                'version': API_VERSION,
+                'version': SUBSONIC_API_VERSION,
                 'type': 'BeetstreamNext',
                 'serverVersion': BEETSTREAMNEXT_VERSION,
                 'openSubsonic': True,
@@ -116,7 +92,7 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
         root = dict_to_xml("subsonic-response", data)
         root.set("xmlns", "http://subsonic.org/restapi")
         root.set("status", 'failed' if failed else 'ok')
-        root.set("version", API_VERSION)
+        root.set("version", SUBSONIC_API_VERSION)
         root.set("type", 'BeetstreamNext')
         root.set("serverVersion", BEETSTREAMNEXT_VERSION)
         root.set("openSubsonic", 'true')
@@ -294,9 +270,9 @@ def split_beets_multi(stringlist: Sequence[Any] | str) -> List[str]:
 
     if not isinstance(stringlist, str) and isinstance(stringlist, Sequence):
         # re-join if it's a sequence
-        stringlist = _BEETS_MULTI_DELIM.join(stringlist)
+        stringlist = BEETS_MULTI_DELIM.join(stringlist)
 
-    splitted = str(stringlist).split(_BEETS_MULTI_DELIM)
+    splitted = str(stringlist).split(BEETS_MULTI_DELIM)
     return [s.strip('\\\u2400') for s in splitted if s]
 
 
@@ -322,7 +298,7 @@ def standard_ascii(text: Any) -> str:
     if not text:
         return ''
     text = unicodedata.normalize('NFC', str(text))
-    return text.translate(_ASCII_TRANSLATE_TABLE).strip()
+    return text.translate(ASCII_TRANSLATE_TABLE).strip()
 
 
 def trim_text(text: str, char_limit: int = 300) -> str:
@@ -377,7 +353,7 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
         return ()
 
     raw_list = split_beets_multi(genres)
-    separated = _MORE_GENRES_DELIM.split(';'.join(raw_list))
+    separated = GENRES_DELIM.split(';'.join(raw_list))
 
     cleaned = []
     for g in separated:

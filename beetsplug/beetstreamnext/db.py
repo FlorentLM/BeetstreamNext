@@ -10,13 +10,11 @@ from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from pathlib import Path
 from functools import lru_cache
-from typing import Optional
 
 import flask
 from flask import g, current_app
 
-
-_SESSION_KEY_ROTATION_DAYS = 30
+from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
 
 
 ##
@@ -33,7 +31,7 @@ def rotate_session_key(cache_dir: Path) -> str:
         try:
             data = json.loads(key_file.read_text())
             age_days = (time.time() - data['generated_at']) / 86400
-            if age_days < _SESSION_KEY_ROTATION_DAYS:
+            if age_days < SESSION_KEY_ROTATION_DAYS:
                 return data['key']
         except (json.JSONDecodeError, KeyError, OSError):
             pass   # malformed file, regenerate

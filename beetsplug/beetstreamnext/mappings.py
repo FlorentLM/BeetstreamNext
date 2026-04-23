@@ -7,11 +7,13 @@ from beets.library import LibModel, Item
 from beetsplug.beetstreamnext import userdata_caching as userdata_caching, app
 from beetsplug.beetstreamnext.utils import (
     get_mimetype, timestamp_to_iso,
-    SNG_ID_PREF, sub_to_beets_song, beets_to_sub_song,
-    ALB_ID_PREF, sub_to_beets_album, beets_to_sub_album,
-    ART_ID_PREF, sub_to_beets_artist, beets_to_sub_artist,
+    sub_to_beets_song, beets_to_sub_song,
+    sub_to_beets_album, beets_to_sub_album,
+    sub_to_beets_artist, beets_to_sub_artist,
     genres_formatter, split_beets_multi, chunked_query, imageart_url
 )
+from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
+
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.playlistprovider import Playlist
 

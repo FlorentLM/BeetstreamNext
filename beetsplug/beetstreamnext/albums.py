@@ -3,7 +3,7 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_albums
 from beetsplug.beetstreamnext.utils import (
@@ -30,8 +30,8 @@ def album_payload(subsonic_album_id: str, include_songs: bool = True) -> Dict:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbum/
-@app.route('/rest/getAlbum', methods=["GET", "POST"])
-@app.route('/rest/getAlbum.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbum', methods=["GET", "POST"])
+@api_bp.route('/getAlbum.view', methods=["GET", "POST"])
 def endpoint_get_album() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -45,12 +45,12 @@ def endpoint_get_album() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo/
-@app.route('/rest/getAlbumInfo', methods=["GET", "POST"])
-@app.route('/rest/getAlbumInfo.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumInfo', methods=["GET", "POST"])
+@api_bp.route('/getAlbumInfo.view', methods=["GET", "POST"])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo2/
-@app.route('/rest/getAlbumInfo2', methods=["GET", "POST"])
-@app.route('/rest/getAlbumInfo2.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumInfo2', methods=["GET", "POST"])
+@api_bp.route('/getAlbumInfo2.view', methods=["GET", "POST"])
 def endpoint_get_album_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -91,12 +91,12 @@ def endpoint_get_album_info() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList/
-@app.route('/rest/getAlbumList', methods=["GET", "POST"])
-@app.route('/rest/getAlbumList.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumList', methods=["GET", "POST"])
+@api_bp.route('/getAlbumList.view', methods=["GET", "POST"])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList2/
-@app.route('/rest/getAlbumList2', methods=["GET", "POST"])
-@app.route('/rest/getAlbumList2.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumList2', methods=["GET", "POST"])
+@api_bp.route('/getAlbumList2.view', methods=["GET", "POST"])
 def endpoint_get_album_list() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

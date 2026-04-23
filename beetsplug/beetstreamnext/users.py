@@ -6,6 +6,7 @@ from urllib.parse import unquote
 
 import flask
 
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
 from beetsplug.beetstreamnext.db import get_cipher, database
@@ -213,8 +214,8 @@ def delete_user(username: str) -> bool:
 # Endpoints
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getUser/
-@app.route('/rest/getUser', methods=["GET", "POST"])
-@app.route('/rest/getUser.view', methods=["GET", "POST"])
+@api_bp.route('/getUser', methods=["GET", "POST"])
+@api_bp.route('/getUser.view', methods=["GET", "POST"])
 def endpoint_get_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -243,8 +244,8 @@ def endpoint_get_user():
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getUsers/
-@app.route('/rest/getUsers', methods=["GET", "POST"])
-@app.route('/rest/getUsers.view', methods=["GET", "POST"])
+@api_bp.route('/getUsers', methods=["GET", "POST"])
+@api_bp.route('/getUsers.view', methods=["GET", "POST"])
 def endpoint_get_users():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -261,8 +262,8 @@ def endpoint_get_users():
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createUser/
-@app.route('/rest/createUser', methods=["GET", "POST"])
-@app.route('/rest/createUser.view', methods=["GET", "POST"])
+@api_bp.route('/createUser', methods=["GET", "POST"])
+@api_bp.route('/createUser.view', methods=["GET", "POST"])
 def endpoint_create_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -297,8 +298,8 @@ def endpoint_create_user():
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/updateUser/
-@app.route('/rest/updateUser', methods=["GET", "POST"])
-@app.route('/rest/updateUser.view', methods=["GET", "POST"])
+@api_bp.route('/updateUser', methods=["GET", "POST"])
+@api_bp.route('/updateUser.view', methods=["GET", "POST"])
 def endpoint_update_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -334,8 +335,8 @@ def endpoint_update_user():
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteUser/
-@app.route('/rest/deleteUser', methods=["GET", "POST"])
-@app.route('/rest/deleteUser.view', methods=["GET", "POST"])
+@api_bp.route('/deleteUser', methods=["GET", "POST"])
+@api_bp.route('/deleteUser.view', methods=["GET", "POST"])
 def endpoint_delete_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -358,8 +359,8 @@ def endpoint_delete_user():
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/changePassword/
-@app.route('/rest/changePassword', methods=["GET", "POST"])
-@app.route('/rest/changePassword.view', methods=["GET", "POST"])
+@api_bp.route('/changePassword', methods=["GET", "POST"])
+@api_bp.route('/changePassword.view', methods=["GET", "POST"])
 def endpoint_change_password():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

@@ -1,6 +1,8 @@
 import flask
 
 from beets.plugins import find_plugins
+
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, safe_str
 
@@ -27,8 +29,8 @@ def _fetch_lyrics(item) -> str | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyrics/
-@app.route('/rest/getLyrics', methods=["GET", "POST"])
-@app.route('/rest/getLyrics.view', methods=["GET", "POST"])
+@api_bp.route('/getLyrics', methods=["GET", "POST"])
+@api_bp.route('/getLyrics.view', methods=["GET", "POST"])
 def endpoint_get_lyrics() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -68,8 +70,8 @@ def endpoint_get_lyrics() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyricsBySongId/
-@app.route('/rest/getLyricsBySongId', methods=["GET", "POST"])
-@app.route('/rest/getLyricsBySongId.view', methods=["GET", "POST"])
+@api_bp.route('/getLyricsBySongId', methods=["GET", "POST"])
+@api_bp.route('/getLyricsBySongId.view', methods=["GET", "POST"])
 def endpoint_get_lyrics_by_song_id() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

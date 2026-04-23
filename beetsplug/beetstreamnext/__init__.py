@@ -26,7 +26,7 @@ from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
 
-from flask import render_template_string
+from flask import Blueprint, render_template_string
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -39,6 +39,8 @@ from beetsplug.beetstreamnext.console import TermColors, print_box
 logging.getLogger('flask').setLevel(LOG_LEVEL)
 logging.getLogger('flask.app').setLevel(LOG_LEVEL)
 
+
+api_bp = Blueprint('api', __name__, url_prefix='/rest')
 
 @app.route('/')
 def home():

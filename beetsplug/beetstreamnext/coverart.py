@@ -12,6 +12,7 @@ from PIL import Image
 import flask
 from requests import RequestException
 
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.external import http_session, query_deezer, query_coverartarchive
 from beetsplug.beetstreamnext.utils import (
@@ -320,8 +321,8 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
 # Endpoints
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
-@app.route('/rest/getCoverArt', methods=["GET", "POST"])
-@app.route('/rest/getCoverArt.view', methods=["GET", "POST"])
+@api_bp.route('/getCoverArt', methods=["GET", "POST"])
+@api_bp.route('/getCoverArt.view', methods=["GET", "POST"])
 def endpoint_get_cover_art() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

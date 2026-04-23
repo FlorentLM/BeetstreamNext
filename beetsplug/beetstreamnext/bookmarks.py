@@ -1,7 +1,7 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.db import dual_database, database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
@@ -12,8 +12,8 @@ from beetsplug.beetstreamnext.mappings import map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
-@app.route('/rest/getBookmarks', methods=['GET', 'POST'])
-@app.route('/rest/getBookmarks.view', methods=['GET', 'POST'])
+@api_bp.route('/getBookmarks', methods=['GET', 'POST'])
+@api_bp.route('/getBookmarks.view', methods=['GET', 'POST'])
 def endpoint_get_bookmarks() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -52,8 +52,8 @@ def endpoint_get_bookmarks() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createBookmark/
-@app.route('/rest/createBookmark', methods=['GET', 'POST'])
-@app.route('/rest/createBookmark.view', methods=['GET', 'POST'])
+@api_bp.route('/createBookmark', methods=['GET', 'POST'])
+@api_bp.route('/createBookmark.view', methods=['GET', 'POST'])
 def endpoint_create_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -83,8 +83,8 @@ def endpoint_create_bookmark() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteBookmark/
-@app.route('/rest/deleteBookmark', methods=['GET', 'POST'])
-@app.route('/rest/deleteBookmark.view', methods=['GET', 'POST'])
+@api_bp.route('/deleteBookmark', methods=['GET', 'POST'])
+@api_bp.route('/deleteBookmark.view', methods=['GET', 'POST'])
 def endpoint_delete_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

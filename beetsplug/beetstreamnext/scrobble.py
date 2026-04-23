@@ -1,6 +1,7 @@
 import time
 import flask
 
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.db import database
@@ -11,8 +12,8 @@ from beetsplug.beetstreamnext.mappings import map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
-@app.route('/rest/scrobble', methods=['GET', 'POST'])
-@app.route('/rest/scrobble.view', methods=['GET', 'POST'])
+@api_bp.route('/scrobble', methods=['GET', 'POST'])
+@api_bp.route('/scrobble.view', methods=['GET', 'POST'])
 def endpoint_scrobble() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -71,8 +72,8 @@ def endpoint_scrobble() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getNowPlaying/
-@app.route('/rest/getNowPlaying', methods=['GET', 'POST'])
-@app.route('/rest/getNowPlaying.view', methods=['GET', 'POST'])
+@api_bp.route('/getNowPlaying', methods=['GET', 'POST'])
+@api_bp.route('/getNowPlaying.view', methods=['GET', 'POST'])
 def endpoint_get_now_playing() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

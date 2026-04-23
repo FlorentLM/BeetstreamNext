@@ -1,5 +1,6 @@
 import flask
 
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.playlistprovider import Playlist
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, safe_str
@@ -7,8 +8,8 @@ from beetsplug.beetstreamnext.mappings import map_playlist
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/
-@app.route('/rest/getPlaylists', methods=['GET', 'POST'])
-@app.route('/rest/getPlaylists.view', methods=['GET', 'POST'])
+@api_bp.route('/getPlaylists', methods=['GET', 'POST'])
+@api_bp.route('/getPlaylists.view', methods=['GET', 'POST'])
 def endpoint_get_playlists() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -25,8 +26,8 @@ def endpoint_get_playlists() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylist/
-@app.route('/rest/getPlaylist', methods=['GET', 'POST'])
-@app.route('/rest/getPlaylist.view', methods=['GET', 'POST'])
+@api_bp.route('/getPlaylist', methods=['GET', 'POST'])
+@api_bp.route('/getPlaylist.view', methods=['GET', 'POST'])
 def endpoint_get_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -47,8 +48,8 @@ def endpoint_get_playlist() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createPlaylist/
-@app.route('/rest/createPlaylist', methods=['GET', 'POST'])
-@app.route('/rest/createPlaylist.view', methods=['GET', 'POST'])
+@api_bp.route('/createPlaylist', methods=['GET', 'POST'])
+@api_bp.route('/createPlaylist.view', methods=['GET', 'POST'])
 def endpoint_create_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -77,8 +78,8 @@ def endpoint_create_playlist() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deletePlaylist/
-@app.route('/rest/deletePlaylist', methods=['GET', 'POST'])
-@app.route('/rest/deletePlaylist.view', methods=['GET', 'POST'])
+@api_bp.route('/deletePlaylist', methods=['GET', 'POST'])
+@api_bp.route('/deletePlaylist.view', methods=['GET', 'POST'])
 def endpoint_delete_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -96,8 +97,8 @@ def endpoint_delete_playlist() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/updatePlaylist/
-@app.route('/rest/updatePlaylist', methods=['GET', 'POST'])
-@app.route('/rest/updatePlaylist.view', methods=['GET', 'POST'])
+@api_bp.route('/updatePlaylist', methods=['GET', 'POST'])
+@api_bp.route('/updatePlaylist.view', methods=['GET', 'POST'])
 def endpoint_update_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

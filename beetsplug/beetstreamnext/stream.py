@@ -7,6 +7,7 @@ from typing import Generator
 
 import flask
 
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song, api_bool, safe_str
@@ -176,8 +177,8 @@ def try_transcode(
 # Endpoints
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/stream/
-@app.route('/rest/stream', methods=["GET", "POST"])
-@app.route('/rest/stream.view', methods=["GET", "POST"])
+@api_bp.route('/stream', methods=["GET", "POST"])
+@api_bp.route('/stream.view', methods=["GET", "POST"])
 def endpoint_stream_song() -> flask.Response | None:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -237,8 +238,8 @@ def endpoint_stream_song() -> flask.Response | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/download/
-@app.route('/rest/download', methods=["GET", "POST"])
-@app.route('/rest/download.view', methods=["GET", "POST"])
+@api_bp.route('/download', methods=["GET", "POST"])
+@api_bp.route('/download.view', methods=["GET", "POST"])
 def endpoint_download_song() -> flask.Response | None:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

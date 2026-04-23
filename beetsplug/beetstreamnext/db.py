@@ -12,7 +12,6 @@ from pathlib import Path
 from functools import lru_cache
 
 import flask
-from flask import g, current_app
 
 from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
 
@@ -369,31 +368,31 @@ def initialise_db() -> None:
 
 def database() -> sqlite3.Connection:
     """Get internal database connection."""
-    if 'db' not in g:
-        g.db = sqlite3.connect(current_app.config['DB_PATH'])
-        g.db.execute("PRAGMA main.journal_mode = WAL;")
-        g.db.execute("PRAGMA synchronous = NORMAL;")
-        g.db.execute("PRAGMA busy_timeout = 5000;")
-        g.db.execute("PRAGMA foreign_keys = ON;")
-        g.db.row_factory = sqlite3.Row
-    return g.db
+    if 'db' not in flask.g:
+        flask.g.db = sqlite3.connect(flask.current_app.config['DB_PATH'])
+        flask.g.db.execute("PRAGMA main.journal_mode = WAL;")
+        flask.g.db.execute("PRAGMA synchronous = NORMAL;")
+        flask.g.db.execute("PRAGMA busy_timeout = 5000;")
+        flask.g.db.execute("PRAGMA foreign_keys = ON;")
+        flask.g.db.row_factory = sqlite3.Row
+    return flask.g.db
 
 
 def dual_database() -> sqlite3.Connection:
     """Get internal database with the Beets library attached."""
     db = database()
-    if not getattr(g, 'beets_attached', False):
-        beets_path = Path(os.fsdecode(current_app.config['BEETS_DB_PATH']))
+    if not getattr(flask.g, 'beets_attached', False):
+        beets_path = Path(os.fsdecode(flask.current_app.config['BEETS_DB_PATH']))
         if not beets_path.is_file():
             raise RuntimeError(f"Beets database not found at '{beets_path}'")
 
         db.execute("ATTACH DATABASE ? AS beets", (str(beets_path),))
-        g.beets_attached = True
+        flask.g.beets_attached = True
     return db
 
 
 def close_database(e=None) -> None:
     """Closes the database at the end of the request."""
-    db = g.pop('db', None)
+    db = flask.g.pop('db', None)
     if db is not None:
         db.close()

@@ -1,6 +1,6 @@
 import flask
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
@@ -34,12 +34,12 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/star/
-@app.route('/rest/star', methods=['GET', 'POST'])
-@app.route('/rest/star.view', methods=['GET', 'POST'])
+@api_bp.route('/star', methods=['GET', 'POST'])
+@api_bp.route('/star.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/unstar/
-@app.route('/rest/unstar', methods=['GET', 'POST'])
-@app.route('/rest/unstar.view', methods=['GET', 'POST'])
+@api_bp.route('/unstar', methods=['GET', 'POST'])
+@api_bp.route('/unstar.view', methods=['GET', 'POST'])
 def endpoint_star_or_unstar() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -64,12 +64,12 @@ def endpoint_star_or_unstar() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred/
-@app.route('/rest/getStarred', methods=['GET', 'POST'])
-@app.route('/rest/getStarred.view', methods=['GET', 'POST'])
+@api_bp.route('/getStarred', methods=['GET', 'POST'])
+@api_bp.route('/getStarred.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred2/
-@app.route('/rest/getStarred2', methods=['GET', 'POST'])
-@app.route('/rest/getStarred2.view', methods=['GET', 'POST'])
+@api_bp.route('/getStarred2', methods=['GET', 'POST'])
+@api_bp.route('/getStarred2.view', methods=['GET', 'POST'])
 def endpoint_get_starred() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

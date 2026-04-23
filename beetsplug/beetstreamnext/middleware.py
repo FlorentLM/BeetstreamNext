@@ -1,7 +1,5 @@
 import secrets
-
 import flask
-from flask import g
 
 from beetsplug.beetstreamnext.application import app, rate_limiter, IP_filter
 from beetsplug.beetstreamnext.maintenance import run_periodic
@@ -37,11 +35,11 @@ def _before_request():
 
     rate_limiter.reset(client_ip)
 
-    g.lib = app.config['lib']
-    g.username = username
-    g.user_data = load_user_roles(username)
-    g.playlist_provider = app.config['playlist_provider']
-    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
+    flask.g.lib = app.config['lib']
+    flask.g.username = username
+    flask.g.user_data = load_user_roles(username)
+    flask.g.playlist_provider = app.config['playlist_provider']
+    flask.g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
 
     run_periodic()
 
@@ -49,7 +47,7 @@ def _before_request():
 @app.before_request
 def _csp_nonce():
     if flask.request.path.startswith('/admin'):
-        g.csp_nonce = secrets.token_urlsafe(16)
+        flask.g.csp_nonce = secrets.token_urlsafe(16)
 
 
 @app.after_request

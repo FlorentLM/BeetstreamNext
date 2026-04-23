@@ -1,7 +1,7 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
@@ -11,8 +11,8 @@ from beetsplug.beetstreamnext.mappings import map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
-@app.route('/rest/getPlayQueue', methods=['GET', 'POST'])
-@app.route('/rest/getPlayQueue.view', methods=['GET', 'POST'])
+@api_bp.route('/getPlayQueue', methods=['GET', 'POST'])
+@api_bp.route('/getPlayQueue.view', methods=['GET', 'POST'])
 def endpoint_get_play_queue() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -63,8 +63,8 @@ def endpoint_get_play_queue() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/savePlayQueue/
-@app.route('/rest/savePlayQueue', methods=['GET', 'POST'])
-@app.route('/rest/savePlayQueue.view', methods=['GET', 'POST'])
+@api_bp.route('/savePlayQueue', methods=['GET', 'POST'])
+@api_bp.route('/savePlayQueue.view', methods=['GET', 'POST'])
 def endpoint_save_play_queue() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

@@ -2,7 +2,7 @@ from typing import Tuple, List
 
 import flask
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext import api_bp
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
     subsonic_error, subsonic_response,
@@ -12,16 +12,16 @@ from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, g
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
-@app.route('/rest/search', methods=["GET", "POST"])
-@app.route('/rest/search.view', methods=["GET", "POST"])
+@api_bp.route('/search', methods=["GET", "POST"])
+@api_bp.route('/search.view', methods=["GET", "POST"])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search2/
-@app.route('/rest/search2', methods=["GET", "POST"])
-@app.route('/rest/search2.view', methods=["GET", "POST"])
+@api_bp.route('/search2', methods=["GET", "POST"])
+@api_bp.route('/search2.view', methods=["GET", "POST"])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search3/
-@app.route('/rest/search3', methods=["GET", "POST"])
-@app.route('/rest/search3.view', methods=["GET", "POST"])
+@api_bp.route('/search3', methods=["GET", "POST"])
+@api_bp.route('/search3.view', methods=["GET", "POST"])
 def endpoint_search() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

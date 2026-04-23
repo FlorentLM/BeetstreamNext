@@ -4,7 +4,6 @@ from functools import lru_cache
 from typing import Optional, Dict
 import requests
 from requests_cache import CachedSession
-from requests import RequestException
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import BEETSTREAMNEXT_VERSION
@@ -191,5 +190,5 @@ def query_coverartarchive(mbid: str) -> bytes:
 
         return response.content if (response.ok and response.content) else b''
 
-    except RequestException:
+    except requests.exceptions.RequestException:
         return b''

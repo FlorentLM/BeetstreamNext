@@ -1,7 +1,7 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str
 

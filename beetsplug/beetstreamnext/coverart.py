@@ -12,7 +12,7 @@ from PIL import Image
 import flask
 from requests import RequestException
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.external import http_session, query_deezer, query_coverartarchive
 from beetsplug.beetstreamnext.utils import (
     FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,

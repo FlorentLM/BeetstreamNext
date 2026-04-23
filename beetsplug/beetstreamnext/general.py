@@ -2,7 +2,7 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.artists import artist_payload
 from beetsplug.beetstreamnext.albums import album_payload
 from beetsplug.beetstreamnext.songs import song_payload

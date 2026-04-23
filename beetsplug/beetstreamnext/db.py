@@ -58,7 +58,8 @@ def ensure_secret(db_path: Path) -> None:
 
     is_first_run = not db_path.exists()
 
-    from beetsplug.beetstreamnext import TermColors, print_box
+    from beetsplug.beetstreamnext import print_box
+    from beetsplug.beetstreamnext import TermColors
 
     if is_first_run:
         existing_lines = env_path.read_text().splitlines() if env_path.exists() else []

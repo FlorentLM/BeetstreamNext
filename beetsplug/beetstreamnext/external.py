@@ -6,7 +6,7 @@ import requests
 from requests_cache import CachedSession
 from requests import RequestException
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import BEETSTREAMNEXT_VERSION
 
 try:

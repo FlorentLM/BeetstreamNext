@@ -1,7 +1,7 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import dual_database, database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (

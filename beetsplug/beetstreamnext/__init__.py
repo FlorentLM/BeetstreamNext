@@ -17,331 +17,27 @@
 BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
 """
 import os
-import re
-import platform
 import shutil
 from pathlib import Path
 import logging
-import threading
-import time
-from collections import defaultdict
-from datetime import datetime
-from typing import Dict, List, Optional, Sequence, Set
 import getpass
 
 from beets.plugins import BeetsPlugin
 from beets import config
 from beets import ui
 
-import flask
-from flask import g, render_template_string
+from flask import render_template_string
 from flask_cors import CORS
-from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, LOOPBACK_IPS
+from beetsplug.beetstreamnext.application import app, IP_filter, rate_limiter, LOG_LEVEL, cache_location
 from beetsplug.beetstreamnext.db import close_database
+from beetsplug.beetstreamnext.console import TermColors, print_box
 
 
-# LOG_LEVEL = logging.ERROR
-# LOG_LEVEL = logging.INFO
-LOG_LEVEL = logging.DEBUG
-
-
-class TermColors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    REVERSE = "\033[;7m"
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-
-
-def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) -> None:
-    col = color if color else ''
-    border = '═' * width
-    print(f'\n{col}╔{border}╗{TermColors.ENDC}')
-    for line in lines:
-        true_len = len(TermColors.ansi_escape.sub('', line))
-        w = width + (len(line) - true_len)
-        to_print = f'{line:<{w}}' if line.startswith('  ▶') else line.center(w, ' ')
-        print(f'{col}║{TermColors.ENDC}{to_print}{col}║{TermColors.ENDC}')
-    print(f'{col}╚{border}╝{TermColors.ENDC}\n')
-
-
-def cache_location() -> Path:
-    if platform.system() == "Windows":
-        cache_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-    elif platform.system() == "Darwin":
-        cache_dir = Path.home() / "Library" / "Caches"
-    else:
-        cache_dir = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-
-    final_path = cache_dir / "beetstreamnext"
-    final_path.mkdir(parents=True, exist_ok=True)
-    return final_path
-
-
-# Flask setup
-app = flask.Flask(__name__)
-app.teardown_appcontext(close_database)
-
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600   # 1 hour
-# app.config['SESSION_COOKIE_SECURE'] = True   # TODO: Have this automatically on if https or reverse proxy is detected
-app.config['WTF_CSRF_CHECK_DEFAULT'] = False
-
-app.config['PROJECT_ROOT'] = PROJECT_ROOT
-app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
-app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.sqlite'
-app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
-app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
-
-# TODO: Add 'TRUSTED_HOSTS'
-
-csrf = CSRFProtect(app)
-
-
-# Logging stuff
 logging.getLogger('flask').setLevel(LOG_LEVEL)
 logging.getLogger('flask.app').setLevel(LOG_LEVEL)
-app.logger.setLevel(LOG_LEVEL)
-app.logger.propagate = True
-
-
-# Cache cleanup stuff
-_cleanup_lock = threading.Lock()
-_last_cleanup: float = 0.0
-
-
-# IP filtering stuff
-
-class RateLimiter:
-    def __init__(self, max_failures: int = 5, block_window: int = 300):
-
-        self._lock = threading.Lock()
-
-        self._store: Dict[str, List[float]] = defaultdict(list)
-
-        self._max_failures = max_failures
-        self._block_window = block_window
-
-    def is_blocked(self, ip: str) -> bool:
-        """Check if an IP is currently blocked."""
-
-        if ip in LOOPBACK_IPS:
-            app.logger.debug(f'IP {ip} is in the loopback IPs list, ignoring rate limiting check.')
-            return False
-
-        now = time.monotonic()
-        with self._lock:
-            attempts = self._store.get(ip)
-            if not attempts:
-                return False
-
-            recent = [t for t in attempts if now - t < self._block_window]
-            if not recent:
-                self._store.pop(ip, None)
-                return False
-
-            self._store[ip] = recent
-            exceeds = len(recent) >= self._max_failures
-            return exceeds
-
-    def record(self, ip: str):
-        """Log a failed attempt for an IP."""
-        if ip in LOOPBACK_IPS:
-            app.logger.debug(f'IP {ip} is in the loopback IPs list, skipping rate limiting record.')
-            return
-
-        now = time.monotonic()
-        with self._lock:
-            self._store[ip].append(now)
-
-    def reset(self, ip: str):
-        """Clear failures for an IP."""
-        with self._lock:
-            self._store.pop(ip, None)
-
-    def sweep(self):
-        """Remove all stale IPs from memory."""
-        now = time.monotonic()
-        with self._lock:
-            stale_ips = [
-                ip for ip, attempts in self._store.items()
-                if not attempts or (now - max(attempts) > self._block_window)
-            ]
-            for ip in stale_ips:
-                self._store.pop(ip, None)
-
-
-class IPFilter:
-    def __init__(self,
-                 whitelist: Optional[Sequence[str]] = None,
-                 blacklist: Optional[Sequence[str]] = None
-        ):
-
-        self._whitelist = set(whitelist) if whitelist else set()
-        self._blacklist = set(blacklist) if blacklist else set()
-
-    def is_allowed(self, ip: str) -> bool:
-
-        if ip in LOOPBACK_IPS:
-            return True
-
-        if ip in self._blacklist:
-            app.logger.info(f'IP {ip}: access denied (blacklist).')
-            return False
-
-        if self._whitelist and ip not in self._whitelist:
-            app.logger.info(f'IP {ip}: access denied (not in whitelist).')
-            return False
-
-        return True
-
-    def allow(self, ip: str):
-        app.logger.debug(f'IP {ip} added to whitelist.')
-        self._whitelist.add(ip)
-
-    def disallow(self, ip: str):
-        app.logger.debug(f'IP {ip} removed from whitelist.')
-        self._whitelist.discard(ip)
-
-    def ban(self, ip: str):
-        app.logger.debug(f'IP {ip} added to blacklist.')
-        self._blacklist.add(ip)
-
-    def unban(self, ip: str):
-        app.logger.debug(f'IP {ip} removed from blacklist.')
-        self._blacklist.discard(ip)
-
-    @property
-    def whitelist(self) -> Set[str]:
-        return self._whitelist
-
-    @whitelist.setter
-    def whitelist(self, whitelisted_ips: str | Sequence[str]):
-        if isinstance(whitelisted_ips, str):
-            whitelisted_ips = [whitelisted_ips] if whitelisted_ips else []
-        self._whitelist = set(whitelisted_ips) if whitelisted_ips else set()
-        app.logger.debug(f'Loaded new whitelist: {self._whitelist}.')
-
-    @property
-    def blacklist(self) -> Set[str]:
-        return self._blacklist
-
-    @blacklist.setter
-    def blacklist(self, blacklisted_ips: str | Sequence[str]):
-        if isinstance(blacklisted_ips, str):
-            blacklisted_ips = [blacklisted_ips] if blacklisted_ips else []
-        self._blacklist = set(blacklisted_ips) if blacklisted_ips else set()
-        app.logger.debug(f'Loaded new blacklist: {self._blacklist}.')
-
-
-rate_limiter = RateLimiter(max_failures=5, block_window=300)
-IP_filter = IPFilter()
-
-
-def _run_periodic_things():
-    """
-    Runs housekeeping periodically.
-    Deletes old cached thumbnails, purges rate limiting store.
-    """
-
-    global _last_cleanup
-
-    now = time.time()
-    if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
-        return
-
-    if not _cleanup_lock.acquire(blocking=False):
-        return  # another thread already doing it
-
-    try:
-        # check inside the lock if another thread may have just finished
-        if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
-            return
-        _last_cleanup = now
-    finally:
-        _cleanup_lock.release()
-
-    def _background_maintenance():
-        app.logger.info(f"[{datetime.fromtimestamp(now)}] Starting background maintenance...")
-
-        rate_limiter.sweep()
-
-        # Tidy cache
-        cache_dir = app.config['THUMBNAIL_CACHE_PATH']
-        if cache_dir.exists():
-            max_age_seconds = MAX_CACHE_AGE_DAYS * 86400
-            try:
-                for f in cache_dir.iterdir():
-                    if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
-                        f.unlink(missing_ok=True)
-            except Exception as e:
-                app.logger.error(f"Error cleaning thumbnail cache: {e}")
-
-        app.logger.info(f"[{datetime.fromtimestamp(now)}] Background maintenance complete.")
-
-    thread = threading.Thread(target=_background_maintenance, daemon=True)
-    thread.start()
-
-
-@app.before_request
-def _before_request():
-    from beetsplug.beetstreamnext.utils import safe_str
-
-    r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=safe_str)
-
-    if flask.request.path == '/':
-        return
-
-    if flask.request.path.rstrip('/') in ('/rest/getOpenSubsonicExtensions', '/rest/getOpenSubsonicExtensions.view'):
-        return
-
-    client_ip = str(flask.request.remote_addr) or 'unknown'
-
-    from beetsplug.beetstreamnext.utils import subsonic_error
-    from beetsplug.beetstreamnext.users import authenticate, load_user_roles
-
-    if not IP_filter.is_allowed(client_ip):
-        return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
-
-    if rate_limiter.is_blocked(client_ip):
-        return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
-
-    # Attempt authentication
-    ok, error_code, username = authenticate(r)
-    if not ok:
-        rate_limiter.record(client_ip)
-        return subsonic_error(error_code, resp_fmt=resp_fmt)
-
-    rate_limiter.reset(client_ip)
-
-    from beetsplug.beetstreamnext.utils import grab_auth_params
-
-    g.lib = app.config['lib']
-    g.username = username
-    g.user_data = load_user_roles(username)
-    g.playlist_provider = app.config['playlist_provider']
-    g._art_base_url = flask.url_for('endpoint_get_cover_art', _external=True, **grab_auth_params())
-
-    _run_periodic_things()
-
-
-@app.after_request
-def _add_security_headers(response):
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['Referrer-Policy'] = 'no-referrer'
-    return response
 
 
 @app.route('/')
@@ -360,7 +56,6 @@ def home():
     except OSError:
         app.logger.error("Can't find logo in images directory")
         logo_svg = ''
-    # TODO - more colours for the indicator dot: http / https / unencrypted db -> orange / red
     return render_template_string(template_content, stats=stats, logo_svg=logo_svg)
 
 

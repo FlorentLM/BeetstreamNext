@@ -20,10 +20,10 @@ import flask
 from sqlite3 import Connection
 from beets.dbcore.db import Transaction
 
-from beetsplug.beetstreamnext.constants import SUBSONIC_API_VERSION, ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF, \
+from beetsplug.beetstreamnext.constants import (
+    SUBSONIC_API_VERSION, ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF,
     BEETS_MULTI_DELIM, GENRES_DELIM, ASCII_TRANSLATE_TABLE, BEETSTREAMNEXT_VERSION
-
-# Prefixes for BeetstreamNext's internal IDs
+)
 
 
 FFMPEG_BIN = shutil.which("ffmpeg") is not None

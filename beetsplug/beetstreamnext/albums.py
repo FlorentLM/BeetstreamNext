@@ -3,7 +3,7 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_albums
 from beetsplug.beetstreamnext.utils import (

@@ -1,5 +1,7 @@
 from typing import Optional, List
+
 import flask
+
 from beetsplug.beetstreamnext.db import database
 from beetsplug.beetstreamnext.utils import chunked_query, beets_to_sub_artist, beets_to_sub_album, beets_to_sub_song
 

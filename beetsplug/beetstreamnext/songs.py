@@ -2,7 +2,7 @@ from typing import List, Tuple, Dict
 
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.external import query_lastfm
 from beetsplug.beetstreamnext.userdata_caching import preload_songs

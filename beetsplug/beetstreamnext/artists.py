@@ -7,7 +7,7 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.userdata_caching import preload_artists
 from beetsplug.beetstreamnext.utils import (

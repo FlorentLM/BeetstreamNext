@@ -1,7 +1,7 @@
 import flask
 
 from beets.plugins import find_plugins
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, safe_str
 
 

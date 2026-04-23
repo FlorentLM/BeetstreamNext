@@ -6,7 +6,7 @@ from urllib.parse import unquote
 
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
 from beetsplug.beetstreamnext.db import get_cipher, database
 from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, api_bool, safe_str

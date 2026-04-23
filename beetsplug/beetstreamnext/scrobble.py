@@ -1,11 +1,12 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext import app
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, api_bool, \
-    safe_str
+from beetsplug.beetstreamnext.utils import (
+    subsonic_response, subsonic_error, sub_to_beets_song, api_bool, safe_str
+)
 from beetsplug.beetstreamnext.mappings import map_song
 
 

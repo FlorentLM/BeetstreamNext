@@ -62,17 +62,5 @@ def _add_security_headers(response):
 
 @app.route('/')
 def home():
-    lib = app.config.get('lib')
-    with lib.transaction() as tx:
-        stats = {
-            "artists": tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0],
-            "albums": tx.query("SELECT COUNT(*) FROM albums")[0][0],
-            "songs": tx.query("SELECT COUNT(*) FROM items")[0][0],
-            "status": "Online"
-        }
-    try:
-        logo_svg = (app.config['IMAGES_PATH'] / 'logo.svg').read_text(encoding='utf-8')
-    except OSError:
-        app.logger.error("Can't find logo in images directory")
-        logo_svg = ''
-    return flask.render_template('index.html', stats=stats, logo_svg=logo_svg)
+    stats = get_server_info(extended=False)
+    return flask.render_template('index.html', stats=stats)

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import json
 from urllib.parse import unquote
 import xml.etree.ElementTree as ET
+import beets
 # from xml.dom import minidom
 import flask
 from sqlite3 import Connection
@@ -78,7 +79,7 @@ def sub_to_beets_song(subsonic_song_id) -> int | None:
 
 
 ##
-# General flask helpers
+# General helpers
 
 def grab_auth_params() -> Dict[str, str]:
     r = flask.request.values
@@ -88,6 +89,29 @@ def grab_auth_params() -> Dict[str, str]:
     auth_params.update(other_auth_params)
 
     return auth_params
+
+
+def get_server_info(extended: bool = False) -> Dict[str, str]:
+    lib = app.config['lib']
+    stats = {}
+    with lib.transaction() as tx:
+        stats['artists'] = tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0]
+        stats['albums'] = tx.query("SELECT COUNT(*) FROM albums")[0][0]
+        stats['songs'] = tx.query("SELECT COUNT(*) FROM items")[0][0]
+
+    if extended:
+        additional_info = {
+            'version': BEETSTREAMNEXT_VER,
+            'beets_version': beets.__version__,
+            'python_version': platform.python_version(),
+            'os': platform.system(),
+            'db_path': str(app.config.get('DB_PATH')),
+            'library_path': str(app.config.get('BEETS_DB_PATH')),
+            'stats': stats,
+        }
+        stats.update(additional_info)
+
+    return stats
 
 
 ##

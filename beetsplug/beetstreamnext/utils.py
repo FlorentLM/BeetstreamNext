@@ -24,7 +24,7 @@ from beets.dbcore.db import Transaction
 from .application import app
 from .constants import (
     SUBSONIC_API_VER, BEETS_MULTI_DELIM, GENRES_DELIM, ASCII_TRANSLATE_TABLE, BEETSTREAMNEXT_VER,
-    ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF
+    ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF, ALPHANUM_CHARS
 )
 
 
@@ -242,7 +242,9 @@ def dict_to_xml(tag: str, data) -> ET.Element[str]:
 
 def jsonpify(format: str, data: dict) -> flask.Response:
     if format == 'jsonp':
-        callback = flask.request.values.get("callback")
+        callback = flask.request.values.get('callback', default='callback', type=safe_str)
+        if not re.match(ALPHANUM_CHARS, callback):
+            return flask.Response("Invalid callback parameter", status=400)
         return flask.Response(f"{callback}({json.dumps(data)});", mimetype='application/javascript')
     else:
         return flask.jsonify(data)

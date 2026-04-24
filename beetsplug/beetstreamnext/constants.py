@@ -45,6 +45,8 @@ ASCII_TRANSLATE_TABLE = {
     ord('\u202f'): ' ', ord('\u2026'): '...',
 }
 
+ALPHANUM_CHARS = re.compile(r'^[a-zA-Z0-9_]+$')
+
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 
 NOW_PLAYING_TIMEOUT_SEC = 600   # stale after 10 min

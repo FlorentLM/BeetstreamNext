@@ -1,9 +1,10 @@
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.playlistprovider import Playlist
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, sub_to_beets_song, safe_str
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str, sub_to_beets_song
 from beetsplug.beetstreamnext.mappings import map_playlist
 
 

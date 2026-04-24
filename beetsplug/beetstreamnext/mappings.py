@@ -4,22 +4,18 @@ from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
 import flask
 from beets.library import LibModel, Item
 
-from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.userdata_caching import (
-    preload_songs, preload_albums,
-    one_rating, one_like, one_play_stats
+from .constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
+from .application import app
+from .userdata_caching import preload_songs, preload_albums, one_rating, one_like, one_play_stats
+from .utils import (
+    get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query,
+    beets_to_sub_artist, sub_to_beets_artist, beets_to_sub_album, sub_to_beets_album, beets_to_sub_song,
+    sub_to_beets_song
 )
-from beetsplug.beetstreamnext.utils import (
-    get_mimetype, timestamp_to_iso,
-    sub_to_beets_song, beets_to_sub_song,
-    sub_to_beets_album, beets_to_sub_album,
-    sub_to_beets_artist, beets_to_sub_artist,
-    genres_formatter, split_beets_multi, chunked_query, imageart_url
-)
-from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
+from .images import image_url
 
 if TYPE_CHECKING:
-    from beetsplug.beetstreamnext.playlistprovider import Playlist
+    from .playlistprovider import Playlist
 
 
 ##
@@ -112,7 +108,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
         # 'version': 'Deluxe Edition', # TODO: items table has 'media' that contains "Vinyl", "CD", "Digital Media", etc
                         # TODO: also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
         'coverArt': subsonic_album_id,
-        'userRating': userdata_caching.one_rating(subsonic_album_id),
+        'userRating': one_rating(subsonic_album_id),
         'isCompilation': bool(data.get('comp', False)),
 
         # These are only needed when part of a directory response
@@ -390,7 +386,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
         'albumCount': album_count,
         'coverArt': subsonic_artist_id,
         'userRating': one_rating(subsonic_artist_id),
-        'artistImageUrl': imageart_url(subsonic_artist_id),
+        'artistImageUrl': image_url(subsonic_artist_id),
         'mediaType': 'artist'
     }
 

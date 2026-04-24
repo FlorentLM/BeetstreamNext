@@ -1,18 +1,18 @@
-import binascii
-import string
-from typing import Optional, Dict, List, Tuple, Any, Sequence
-import threading
-import os
-import shutil
-import platform
-import importlib
-from functools import lru_cache
-from datetime import datetime, timezone
-import re
-import json
 import base64
+import binascii
+import os
+import platform
+import threading
+import ctypes
+import re
+import string
 import mimetypes
 import unicodedata
+from pathlib import Path
+from typing import Optional, Dict, List, Tuple, Any, Sequence
+from functools import lru_cache
+from datetime import datetime, timezone
+import json
 from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 # from xml.dom import minidom
@@ -20,19 +20,61 @@ import flask
 from sqlite3 import Connection
 from beets.dbcore.db import Transaction
 
-from beetsplug.beetstreamnext.constants import (
-    SUBSONIC_API_VERSION, ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF,
-    BEETS_MULTI_DELIM, GENRES_DELIM, ASCII_TRANSLATE_TABLE, BEETSTREAMNEXT_VERSION
+from .application import app
+from .constants import (
+    SUBSONIC_API_VER, BEETS_MULTI_DELIM, GENRES_DELIM, ASCII_TRANSLATE_TABLE, BEETSTREAMNEXT_VER,
+    ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF
 )
 
 
-FFMPEG_BIN = shutil.which("ffmpeg") is not None
-FFMPEG_PYTHON = importlib.util.find_spec("ffmpeg") is not None
+##
 
-if FFMPEG_PYTHON:
-    import ffmpeg
-elif FFMPEG_BIN:
-    ffmpeg = None
+def beets_to_sub_artist(name_or_mbid: str, is_mbid: bool = True) -> str:
+    encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
+    prefix = ART_MBID_PREF if is_mbid else ART_NAME_PREF
+    return f"{prefix}{encoded}"
+
+
+def sub_to_beets_artist(subsonic_artist_id: str) -> Tuple[str, bool]:
+    sid = str(subsonic_artist_id)
+
+    if sid.startswith(ART_MBID_PREF):
+        payload = sid[len(ART_MBID_PREF):]
+        is_mbid = True
+    elif sid.startswith(ART_NAME_PREF):
+        payload = sid[len(ART_NAME_PREF):]
+        is_mbid = False
+    else:
+        return '', False
+
+    padding = (4 - len(payload) % 4) % 4
+    try:
+        value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
+        return value, is_mbid
+    except (binascii.Error, UnicodeDecodeError):
+        return '', False
+
+
+def beets_to_sub_album(beet_album_id) -> str:
+    return f'{ALB_ID_PREF}{beet_album_id}'
+
+
+def sub_to_beets_album(subsonic_album_id) -> int | None:
+    try:
+        return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
+    except (ValueError, IndexError):
+        return None
+
+
+def beets_to_sub_song(beet_song_id) -> str:
+    return f'{SNG_ID_PREF}{beet_song_id}'
+
+
+def sub_to_beets_song(subsonic_song_id) -> int | None:
+    try:
+        return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
+    except (ValueError, IndexError):
+        return None
 
 
 ##
@@ -46,23 +88,6 @@ def grab_auth_params() -> Dict[str, str]:
     auth_params.update(other_auth_params)
 
     return auth_params
-
-
-def imageart_url(item_id: str, size: Optional[int] = None) -> str:
-    if not item_id:
-        return ''
-
-    # check if the base URL is already built for the current request, if not, build it
-    base_url = getattr(flask.g, '_art_base_url', None)
-    if not base_url:
-        base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
-        flask.g._art_base_url = base_url
-
-    sep = '&' if '?' in base_url else '?'
-    url = f"{base_url}{sep}id={item_id}"
-    if size:
-        url += f"&size={size}"
-    return url
 
 
 ##
@@ -79,9 +104,9 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
         wrapped = {
             'subsonic-response': {
                 'status': 'failed' if failed else 'ok',
-                'version': SUBSONIC_API_VERSION,
+                'version': SUBSONIC_API_VER,
                 'type': 'BeetstreamNext',
-                'serverVersion': BEETSTREAMNEXT_VERSION,
+                'serverVersion': BEETSTREAMNEXT_VER,
                 'openSubsonic': True,
                 **data
             }
@@ -92,9 +117,9 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
         root = dict_to_xml("subsonic-response", data)
         root.set("xmlns", "http://subsonic.org/restapi")
         root.set("status", 'failed' if failed else 'ok')
-        root.set("version", SUBSONIC_API_VERSION)
+        root.set("version", SUBSONIC_API_VER)
         root.set("type", 'BeetstreamNext')
-        root.set("serverVersion", BEETSTREAMNEXT_VERSION)
+        root.set("serverVersion", BEETSTREAMNEXT_VER)
         root.set("openSubsonic", 'true')
 
         xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
@@ -129,61 +154,6 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml') -> f
     }
 
     return subsonic_response(err_payload, resp_fmt=resp_fmt, failed=True)
-
-
-##
-# BeetstreamNext internal IDs mappers
-
-def beets_to_sub_artist(name_or_mbid: str, is_mbid: bool = True) -> str:
-    encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
-    prefix = ART_MBID_PREF if is_mbid else ART_NAME_PREF
-    return f"{prefix}{encoded}"
-
-
-def sub_to_beets_artist(subsonic_artist_id: str) -> Tuple[str, bool]:
-    sid = str(subsonic_artist_id)
-
-    if sid.startswith(ART_MBID_PREF):
-        payload = sid[len(ART_MBID_PREF):]
-        is_mbid = True
-    elif sid.startswith(ART_NAME_PREF):
-        payload = sid[len(ART_NAME_PREF):]
-        is_mbid = False
-    else:
-        return '', False
-
-    padding = (4 - len(payload) % 4) % 4
-    try:
-        value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
-        return value, is_mbid
-    except (binascii.Error, UnicodeDecodeError):
-        return '', False
-
-def beets_to_sub_album(beet_album_id) -> str:
-    return f'{ALB_ID_PREF}{beet_album_id}'
-
-def sub_to_beets_album(subsonic_album_id) -> int | None:
-    try:
-        return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
-    except (ValueError, IndexError):
-        return None
-
-def beets_to_sub_song(beet_song_id) -> str:
-    return f'{SNG_ID_PREF}{beet_song_id}'
-
-def sub_to_beets_song(subsonic_song_id) -> int | None:
-    try:
-        return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
-    except (ValueError, IndexError):
-        return None
-
-
-##
-
-
-##
-# Mapping functions to translate Beets to OpenSubsonic dict-like structures
-# TODO - Support multiartists lists!!! See https://opensubsonic.netlify.app/docs/responses/child/
 
 
 ## Requests format conversions
@@ -487,3 +457,12 @@ def chunked_query(
             chunk_results = db_obj.execute(sql, params).fetchall()
         results.extend(chunk_results)
     return results
+
+
+def make_hidden(filepath: Path) -> None:
+    """Marks a file as hidden on Windows."""
+    if platform.system() == "Windows":
+        try:
+            ctypes.windll.kernel32.SetFileAttributesW(str(filepath), 2)     # 2 is FILE_ATTRIBUTE_HIDDEN
+        except Exception as e:
+            app.logger.warning(f"Could not set file as hidden on Windows: {e}")

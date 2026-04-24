@@ -2,17 +2,16 @@ from typing import List, Tuple, Dict
 
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
+from beetsplug.beetstreamnext.constants import ART_ID_PREF, BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.external import query_lastfm
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error,
-    sub_to_beets_song,
-    get_beets_schema, safe_str, escape_like
+    subsonic_response, subsonic_error, get_beets_schema, safe_str, escape_like, sub_to_beets_song
 )
-from beetsplug.beetstreamnext.constants import ART_ID_PREF, BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
 
 

@@ -2,11 +2,11 @@ from typing import Tuple, List
 
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
-    subsonic_error, subsonic_response,
-    remove_accents, safe_str
+    subsonic_error, subsonic_response, remove_accents, safe_str
 )
 from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, get_song_counts
 

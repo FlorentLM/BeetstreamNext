@@ -3,15 +3,17 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext import api_bp
-from beetsplug.beetstreamnext.db import dual_database
-from beetsplug.beetstreamnext.userdata_caching import preload_albums
-from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, sub_to_beets_album, subsonic_response, subsonic_error,
-    safe_str, sub_to_beets_song, beets_to_sub_album, imageart_url
-)
+from . import api_bp
+
 from beetsplug.beetstreamnext.constants import SNG_ID_PREF
+from beetsplug.beetstreamnext.db import dual_database
+from beetsplug.beetstreamnext.utils import (
+    get_beets_schema, subsonic_response, subsonic_error,
+    safe_str, beets_to_sub_album, sub_to_beets_album, sub_to_beets_song
+)
+from beetsplug.beetstreamnext.images import image_url
 from beetsplug.beetstreamnext.mappings import map_album, get_song_counts
+from beetsplug.beetstreamnext.userdata_caching import preload_albums
 
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> Dict:
@@ -82,9 +84,9 @@ def endpoint_get_album_info() -> flask.Response:
         tag: {
             'musicBrainzId': album.get('mb_albumid', ''),
             'lastFmUrl': lastfm_url,
-            'smallImageUrl': imageart_url(image_id, size=250),
-            'mediumImageUrl': imageart_url(image_id, size=500),
-            'largeImageUrl': imageart_url(image_id, size=1200)
+            'smallImageUrl': image_url(image_id, size=250),
+            'mediumImageUrl': image_url(image_id, size=500),
+            'largeImageUrl': image_url(image_id, size=1200)
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

@@ -7,10 +7,12 @@ from typing import Generator
 
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils import (
-    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg, get_mimetype, subsonic_error, sub_to_beets_song, api_bool, safe_str
+    get_mimetype, subsonic_error, api_bool, safe_str, sub_to_beets_song
 )
 
 

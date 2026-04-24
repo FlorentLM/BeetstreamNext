@@ -1,11 +1,11 @@
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error,
-    sub_to_beets_artist, chunked_query, safe_str,
+    subsonic_response, subsonic_error, chunked_query, safe_str, sub_to_beets_artist,
 )
 from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, get_song_counts
 

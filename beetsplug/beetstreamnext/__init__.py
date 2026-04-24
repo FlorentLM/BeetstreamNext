@@ -1,3 +1,17 @@
+"""
+BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
+"""
+
+from .application import app
+
+# Register middleware with before_request, after_request and home  # TODO: Move home somewhere else?
+from . import middleware  # noqa: F401
+
+from .api import api_bp
+app.register_blueprint(admin_bp)
+
+
+##
 # -*- coding: utf-8 -*-
 # This file is part of beets.
 # Copyright 2016, Adrian Sampson.
@@ -13,76 +27,35 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
-"""
-BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
-"""
 import os
 import shutil
-from pathlib import Path
-import logging
 import getpass
+import logging
+from pathlib import Path
 
+import beets
 from beets.plugins import BeetsPlugin
-from beets import config
-from beets import ui
 
-from flask import Blueprint, render_template_string
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
+from waitress import serve
+from paste.translogger import TransLogger
 
-from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, LOOPBACK_IPS
-from beetsplug.beetstreamnext.application import app, IP_filter, rate_limiter, LOG_LEVEL, cache_location
-from beetsplug.beetstreamnext.db import close_database
-from beetsplug.beetstreamnext.console import TermColors, print_box
+from .constants import LOG_LEVEL, LOOPBACK_IPS
+from .application import ip_filter, cache_location
+from .utils import safe_str
+from .console import print_box, TermColors
+from .db import initialise_db, rotate_session_key, ensure_secret
+from .user_management import update_user, delete_user, load_all_users, create_user
+from .playlistprovider import PlaylistProvider
 
+# TODO: Why does this fail when it's in a different file??
 
-logging.getLogger('flask').setLevel(LOG_LEVEL)
-logging.getLogger('flask.app').setLevel(LOG_LEVEL)
-
-
-api_bp = Blueprint('api', __name__, url_prefix='/rest')
-
-@app.route('/')
-def home():
-    lib = app.config.get('lib')
-    with lib.transaction() as tx:
-        stats = {
-            "artists": tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0],
-            "albums": tx.query("SELECT COUNT(*) FROM albums")[0][0],
-            "songs": tx.query("SELECT COUNT(*) FROM items")[0][0],
-            "status": "Online"
-        }
-    template_content = (PROJECT_ROOT / 'index.html').read_text(encoding='utf-8')
-    try:
-        logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').read_text(encoding='utf-8')
-    except OSError:
-        app.logger.error("Can't find logo in images directory")
-        logo_svg = ''
-    return render_template_string(template_content, stats=stats, logo_svg=logo_svg)
-
-
-import beetsplug.beetstreamnext.albums
-import beetsplug.beetstreamnext.artists
-import beetsplug.beetstreamnext.coverart
-import beetsplug.beetstreamnext.likes
-import beetsplug.beetstreamnext.ratings
-import beetsplug.beetstreamnext.playlists
-import beetsplug.beetstreamnext.playqueue
-import beetsplug.beetstreamnext.bookmarks
-import beetsplug.beetstreamnext.search
-import beetsplug.beetstreamnext.songs
-import beetsplug.beetstreamnext.stream
-import beetsplug.beetstreamnext.scrobble
-import beetsplug.beetstreamnext.lyrics
-import beetsplug.beetstreamnext.users
-import beetsplug.beetstreamnext.general
-
-
-# Plugin hook
 class BeetstreamNextPlugin(BeetsPlugin):
 
     def __init__(self):
         super(BeetstreamNextPlugin, self).__init__()
+
         self.config.add({
             'host': '0.0.0.0',
             'port': 8080,
@@ -106,7 +79,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
     item_types = {}
 
     def commands(self):
-        cmd = ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
+        cmd = beets.ui.Subcommand('beetstreamnext', help='run BeetstreamNext server, exposing OpenSubsonic API')
 
         # Server options
         cmd.parser.add_option('--debug', dest='debug', action='store_true', default=False, help='Run server in debug mode')
@@ -126,13 +99,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         def func(lib, opts, args):
 
-            app.config['BEETS_DB_PATH'] = Path(config['library'].get())
+            app.config['BEETS_DB_PATH'] = Path(beets.config['library'].get())
             app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
 
-            IP_filter.whitelist = self.config['ip_whitelist'].get(list)
-            IP_filter.blacklist = self.config['ip_blacklist'].get(list)
-
-            from beetsplug.beetstreamnext.db import ensure_secret, rotate_session_key
+            ip_filter.whitelist = self.config['ip_whitelist'].get(list)
+            ip_filter.blacklist = self.config['ip_blacklist'].get(list)
 
             ensure_secret(app.config['DB_PATH'])
             app.config['SECRET_KEY'] = rotate_session_key(cache_location())
@@ -150,11 +121,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             # Create user
             if opts.create_user:
-                from beetsplug.beetstreamnext import db
-                from beetsplug.beetstreamnext.utils import safe_str
-
                 with app.app_context():
-                    db.initialise_db()
+                    initialise_db()
 
                     unsername_ok = False
                     while not unsername_ok:
@@ -172,7 +140,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     is_admin = input('Admin? [y/n]: ').lower() == 'y'
 
                     try:
-                        api_key = users.create_user(username, password, admin=is_admin)
+                        api_key = create_user(username, password, admin=is_admin)
                     except ValueError as e:
                         print(f"\n[ERROR] {e}")
                         return
@@ -197,7 +165,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     username = opts.delete_user
                     confirm = input(f"Are you sure you want to delete '{username}'? [y/N]: ")
                     if confirm.lower() == 'y':
-                        if users.delete_user(username):
+                        if delete_user(username):
                             print(f"User '{username}' deleted.")
                         else:
                             print("User not found.")
@@ -206,7 +174,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             # List users
             if opts.list_users:
                 with app.app_context():
-                    all_users = users.load_all_users()
+                    all_users = load_all_users()
                     header = f"{'Username':<15} | {'Admin':<12} | {'Can stream':<12} | {'Can download':<12}"
                     print(header)
                     print("-" * len(header))
@@ -225,7 +193,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     username = opts.passwd_user
                     new_pw = getpass.getpass(f"New password for '{username}': ")
                     try:
-                        users.update_user(username, password=new_pw)
+                        update_user(username, password=new_pw)
                         print("Password updated successfully.")
                     except ValueError as e:
                         print(f"Error: {e}")
@@ -237,7 +205,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
             app.config['lib'] = lib
-            app.config['root_directory'] = Path(config['directory'].get())
+            app.config['root_directory'] = Path(beets.config['directory'].get())
             app.config['legacy_auth'] = self.config['legacy_auth'].get(bool)
             app.config['lastfm_api_key'] = self.config['lastfm_api_key'].get(str)
             app.config['never_transcode'] = self.config['never_transcode'].get(bool)
@@ -286,8 +254,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             possible_paths = [
                 (0, self.config['playlist_dir'].as_str()),  # BeetstreamNext's own
-                (1, config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
-                (2, config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
+                (1, beets.config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
+                (2, beets.config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
             ]
 
             playlist_dirs = {}
@@ -340,19 +308,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 )
 
             with app.app_context():
-                from beetsplug.beetstreamnext import db
-                from beetsplug.beetstreamnext.playlistprovider import PlaylistProvider
-
-                db.initialise_db()
+                initialise_db()
                 app.config['playlist_provider'] = PlaylistProvider()
 
             if debug:
                 app.run(host=host, port=port, debug=True, threaded=True)
 
             else:
-                from waitress import serve
-                from paste.translogger import TransLogger
-
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 if LOG_LEVEL > logging.INFO:
                     print(f"BeetstreamNext server running on http://{host}:{port}...")

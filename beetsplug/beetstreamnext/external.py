@@ -5,14 +5,8 @@ from typing import Optional, Dict
 import requests
 from requests_cache import CachedSession
 
-from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import BEETSTREAMNEXT_VERSION
-
-try:
-    import wikipediaapi
-    WIKI_API = True
-except ImportError:
-    WIKI_API = False
+from .application import app
+from .constants import WIKI_API, BEETSTREAMNEXT_VER
 
 
 _http_session = None
@@ -71,7 +65,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
 
     search_endpoint += '&limit=5&index=0'
 
-    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
+    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
 
     try:
         response = http_session().get(search_endpoint, headers=headers, timeout=8)
@@ -108,7 +102,7 @@ def query_musicbrainz(mbid: str, type: str) -> Dict:
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
 
-    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
+    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
     params = {'fmt': 'json'}
 
     if types_mb[type] == 'artist':
@@ -143,7 +137,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) 
     elif q and type != 'user':
         params[type] = q
 
-    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'}
+    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
     try:
         response = http_session().get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
         if response.from_cache:
@@ -161,13 +155,15 @@ def query_wikipedia(q: str, cache_ttl_hash=None) -> str | None:
     if not WIKI_API:
         return None
 
+    import wikipediaapi
+
     from beetsplug.beetstreamnext.utils import standard_ascii, remove_accents
     q = standard_ascii(q)
     q = remove_accents(q)
     if not q:
         return None
 
-    user_agent = f'BeetstreamNext/{BEETSTREAMNEXT_VERSION} ( https://github.com/FlorentLM/BeetstreamNext )'
+    user_agent = f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'
     wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language='en', timeout=8)
     page = wiki.page(q)
 

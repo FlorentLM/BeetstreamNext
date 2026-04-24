@@ -1,12 +1,12 @@
 import time
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
 from beetsplug.beetstreamnext.db import dual_database, database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error,
-    sub_to_beets_song, timestamp_to_iso, safe_str
+    subsonic_response, subsonic_error, timestamp_to_iso, safe_str, sub_to_beets_song
 )
 from beetsplug.beetstreamnext.mappings import map_song
 

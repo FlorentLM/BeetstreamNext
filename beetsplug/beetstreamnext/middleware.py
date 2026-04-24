@@ -1,10 +1,11 @@
 import secrets
 import flask
 
-from beetsplug.beetstreamnext.application import app, rate_limiter, IP_filter
-from beetsplug.beetstreamnext.maintenance import run_periodic
-from beetsplug.beetstreamnext.users import load_user_roles, authenticate
-from beetsplug.beetstreamnext.utils import grab_auth_params, subsonic_error, safe_str
+from .application import app, rate_limiter, ip_filter
+from .constants import PROJECT_ROOT
+from .maintenance import run_periodic
+from .user_management import load_user_roles, authenticate
+from .utils import grab_auth_params, subsonic_error, safe_str
 
 
 @app.before_request
@@ -21,7 +22,7 @@ def _before_request():
 
     client_ip = str(flask.request.remote_addr) or 'unknown'
 
-    if not IP_filter.is_allowed(client_ip):
+    if not ip_filter.is_allowed(client_ip):
         return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
 
     if rate_limiter.is_blocked(client_ip):
@@ -59,3 +60,21 @@ def _add_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
     return response
+
+@app.route('/')
+def home():
+    lib = app.config.get('lib')
+    with lib.transaction() as tx:
+        stats = {
+            "artists": tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0],
+            "albums": tx.query("SELECT COUNT(*) FROM albums")[0][0],
+            "songs": tx.query("SELECT COUNT(*) FROM items")[0][0],
+            "status": "Online"
+        }
+    template_content = (PROJECT_ROOT / 'index.html').read_text(encoding='utf-8')
+    try:
+        logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').read_text(encoding='utf-8')
+    except OSError:
+        app.logger.error("Can't find logo in images directory")
+        logo_svg = ''
+    return flask.render_template_string(template_content, stats=stats, logo_svg=logo_svg)

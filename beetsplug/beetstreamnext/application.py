@@ -1,4 +1,3 @@
-import logging
 import os
 import platform
 import threading
@@ -10,12 +9,8 @@ from typing import Dict, List, Optional, Sequence, Set
 import flask
 from flask_wtf.csrf import CSRFProtect
 
-from beetsplug.beetstreamnext.constants import PROJECT_ROOT, LOOPBACK_IPS
-from beetsplug.beetstreamnext.db import close_database
-
-# LOG_LEVEL = logging.ERROR
-# LOG_LEVEL = logging.INFO
-LOG_LEVEL = logging.DEBUG
+from .constants import PROJECT_ROOT, LOOPBACK_IPS, LOG_LEVEL
+from .db import close_database
 
 
 def cache_location() -> Path:
@@ -31,31 +26,6 @@ def cache_location() -> Path:
     return final_path
 
 
-app = flask.Flask(__name__)
-
-app.teardown_appcontext(close_database)
-
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600   # 1 hour
-# app.config['SESSION_COOKIE_SECURE'] = True   # TODO: Have this automatically on if https or reverse proxy is detected
-app.config['WTF_CSRF_CHECK_DEFAULT'] = False
-
-app.config['PROJECT_ROOT'] = PROJECT_ROOT
-app.config['IMAGES_PATH'] = PROJECT_ROOT / 'images'
-app.config['HTTP_CACHE_PATH'] = cache_location() / 'httpcache.sqlite'
-app.config['THUMBNAIL_CACHE_PATH'] = cache_location() / 'thumbnails'
-app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
-
-# TODO: Add 'TRUSTED_HOSTS'
-
-csrf = CSRFProtect(app)
-
-app.logger.setLevel(LOG_LEVEL)
-app.logger.propagate = True
-
-
-# IP filtering stuff
 class RateLimiter:
 
     def __init__(self, max_failures: int = 5, block_window: int = 300):
@@ -179,5 +149,28 @@ class IPFilter:
         app.logger.debug(f'Loaded new blacklist: {self._blacklist}.')
 
 
-IP_filter = IPFilter()
+##
+
+app = flask.Flask(__name__)
+app.teardown_appcontext(close_database)
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=3600,   # 1 hour
+    # SESSION_COOKIE_SECURE=True,   # TODO: Have this automatically on if https or reverse proxy is detected
+    WTF_CSRF_CHECK_DEFAULT=False,
+    PROJECT_ROOT=PROJECT_ROOT,
+    IMAGES_PATH=PROJECT_ROOT / 'images',
+    HTTP_CACHE_PATH=cache_location() / 'httpcache.sqlite',
+    THUMBNAIL_CACHE_PATH=cache_location() / 'thumbnails',
+)
+app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
+# TODO: Add 'TRUSTED_HOSTS'
+
+app.logger.setLevel(LOG_LEVEL)
+app.logger.propagate = True
+
+csrf = CSRFProtect(app)
+ip_filter = IPFilter()
 rate_limiter = RateLimiter(max_failures=5, block_window=300)

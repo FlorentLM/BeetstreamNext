@@ -13,7 +13,8 @@ from functools import lru_cache
 
 import flask
 
-from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
+from .console import print_box, TermColors
+from .constants import SESSION_KEY_ROTATION_DAYS
 
 
 ##
@@ -56,9 +57,6 @@ def ensure_secret(db_path: Path) -> None:
         load_dotenv(override=False)
 
     is_first_run = not db_path.exists()
-
-    from beetsplug.beetstreamnext import print_box
-    from beetsplug.beetstreamnext import TermColors
 
     if is_first_run:
         existing_lines = env_path.read_text().splitlines() if env_path.exists() else []

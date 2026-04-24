@@ -1,9 +1,26 @@
 import os
 import re
+import shutil
+import importlib
+import logging
 from pathlib import Path
 
-SUBSONIC_API_VERSION = '1.16.1'
-BEETSTREAMNEXT_VERSION = '1.6.0-dev'
+
+SUBSONIC_API_VER = '1.16.1'
+BEETSTREAMNEXT_VER = '1.6.0-dev'
+
+
+# LOG_LEVEL = logging.ERROR
+# LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
+logging.getLogger('flask').setLevel(LOG_LEVEL)
+logging.getLogger('flask.app').setLevel(LOG_LEVEL)
+
+
+FFMPEG_BIN = shutil.which('ffmpeg') is not None
+FFMPEG_PYTHON = importlib.util.find_spec('ffmpeg') is not None
+WIKI_API = importlib.util.find_spec('wikipediaapi') is not None
+
 
 ART_ID_PREF   = 'ar-'
 ART_MBID_PREF = 'ar-m-'  # ar-m-<base64url(mbid)>  preferred if mbid is known

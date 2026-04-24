@@ -1,6 +1,4 @@
-import ctypes
 import hashlib
-import platform
 import re
 import subprocess
 import os
@@ -10,18 +8,11 @@ from typing import Optional
 from io import BytesIO
 from PIL import Image
 import flask
-from requests import RequestException
 
-from beetsplug.beetstreamnext import api_bp
-from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.external import http_session, query_deezer, query_coverartarchive
-from beetsplug.beetstreamnext.utils import (
-    FFMPEG_PYTHON, FFMPEG_BIN, ffmpeg,
-    get_mimetype, sub_to_beets_artist, sub_to_beets_album, sub_to_beets_song, customstrip, subsonic_error, safe_str
-)
-from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES
-
-have_ffmpeg = FFMPEG_PYTHON or FFMPEG_BIN
+from .application import app
+from .external import http_session, query_deezer, query_coverartarchive
+from .utils import get_mimetype, customstrip, make_hidden, grab_auth_params, sub_to_beets_artist
+from .constants import ART_ID_PREF, IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
@@ -29,7 +20,24 @@ _ART_PRIORITY = [
 ]
 
 
-def _thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = None) -> Path:
+def image_url(item_id: str, size: Optional[int] = None) -> str:
+    if not item_id:
+        return ''
+
+    # check if the base URL is already built for the current request, if not, build it
+    base_url = getattr(flask.g, '_art_base_url', None)
+    if not base_url:
+        base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
+        flask.g._art_base_url = base_url
+
+    sep = '&' if '?' in base_url else '?'
+    url = f"{base_url}{sep}id={item_id}"
+    if size:
+        url += f"&size={size}"
+    return url
+
+
+def thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = None) -> Path:
     """Generates unique path for a cached thumbnail."""
     if mtime is None:
         mtime = os.path.getmtime(original_path)
@@ -40,19 +48,7 @@ def _thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float =
     return app.config['THUMBNAIL_CACHE_PATH'] / f'.{file_hash}.jpg'
 
 
-def _make_hidden(filepath: Path) -> None:
-    """Marks a file as hidden on Windows."""
-    if platform.system() == "Windows":
-        try:
-            ctypes.windll.kernel32.SetFileAttributesW(str(filepath), 2)     # 2 is FILE_ATTRIBUTE_HIDDEN
-        except Exception as e:
-            app.logger.warning(f"Could not set file as hidden on Windows: {e}")
-
-
-##
-# Resizing
-
-def _round_size(requested_size: Optional[int]) -> int | None:
+def round_image_size(requested_size: Optional[int]) -> int | None:
     """Rounds requested image size up to nearest allowed size to limit cache bloat."""
     if not requested_size:
         return None
@@ -64,7 +60,7 @@ def _round_size(requested_size: Optional[int]) -> int | None:
     return ALLOWED_THUMBNAIL_SIZES[-1]   # max size if client asks for something huge
 
 
-def _resize_image(data: BytesIO, size: int) -> BytesIO:
+def resize_image(data: BytesIO, size: int) -> BytesIO:
     img = Image.open(data)
     img = img.convert('RGB')
     img.thumbnail((size, size))
@@ -80,19 +76,19 @@ def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> str 
         return None
 
     if isinstance(source_file, BytesIO):
-        return _resize_image(source_file, size)
+        return resize_image(source_file, size)
 
     full_path = Path(os.fsdecode(source_file))
     if not full_path.is_file():
         return None
 
-    thumb_path = _thumbnail_path(full_path, size)
+    thumb_path = thumbnail_path(full_path, size)
     if thumb_path.is_file():
         return str(thumb_path)
 
     try:  # Generate and save thumbnail
         with open(full_path, 'rb') as f:
-            resized_buffer = _resize_image(BytesIO(f.read()), size)
+            resized_buffer = resize_image(BytesIO(f.read()), size)
 
         fd, tmp_path = tempfile.mkstemp(dir=thumb_path.parent)
 
@@ -100,16 +96,13 @@ def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> str 
             tf.write(resized_buffer.getbuffer())
 
         os.replace(tmp_path, thumb_path)
-        _make_hidden(thumb_path)
+        make_hidden(thumb_path)
         return str(thumb_path)
 
     except Exception as e:
         app.logger.error(f"Failed to create thumbnail for {full_path}: {e}")
         return None
 
-
-##
-# Image fetching
 
 def _image_from_folder(album_dir: str | Path) -> Path | None:
     if not album_dir:
@@ -134,9 +127,11 @@ def _image_from_folder(album_dir: str | Path) -> Path | None:
     return images[0]
 
 
-def _image_from_song(path: str | Path) -> BytesIO | None:
+def image_from_song(path: str | Path) -> BytesIO | None:
 
     if FFMPEG_PYTHON:
+        import ffmpeg
+
         try:
             img_bytes, _ = (
                 ffmpeg
@@ -229,7 +224,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
                         app.logger.warning(f"Could not save album art to {save_path}: {e}")
 
             if size:
-                return flask.send_file(_resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
+                return flask.send_file(resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     return None # TODO - send a placeholder instead of 404ing
@@ -307,97 +302,11 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
                     response = http_session().get(artist_image_url, timeout=5)
                     if response.ok:
                         if size and size != target_size:
-                            cover = _resize_image(BytesIO(response.content), size)
+                            cover = resize_image(BytesIO(response.content), size)
                             return flask.send_file(cover, mimetype='image/jpeg')
 
                         return flask.send_file(BytesIO(response.content), mimetype='image/jpeg')
 
-                except RequestException:
+                except requests.exceptions.RequestException:
                     pass
     return None
-
-
-##
-# Endpoints
-
-# Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
-@api_bp.route('/getCoverArt', methods=["GET", "POST"])
-@api_bp.route('/getCoverArt.view', methods=["GET", "POST"])
-def endpoint_get_cover_art() -> flask.Response:
-    r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=safe_str)
-    req_id = r.get('id', default='', type=safe_str)      # Required
-    req_size = r.get('size', default=0, type=int)
-
-    # TODO: Return placeholder images
-
-    if not req_id:
-        return subsonic_error(10, resp_fmt=resp_fmt)
-
-    size = _round_size(req_size)
-
-    # root folder ID or name: serve BeetstreamNext's logo
-    if req_id == app.config['root_directory'].name or req_id == 'm-0':
-        return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.png', mimetype='image/png')
-
-    # album requests
-    if req_id.startswith(ALB_ID_PREF):
-        album_id = sub_to_beets_album(req_id)
-        response = send_album_art(album_id, size)
-        if response is not None:
-            return response
-
-    # song requests
-    elif req_id.startswith(SNG_ID_PREF):
-        item_id = sub_to_beets_song(req_id)
-        item = flask.g.lib.get_item(item_id)
-        if not item:
-            return subsonic_error(70, resp_fmt=resp_fmt)
-
-        album_id = item.get('album_id')
-        if album_id:
-            response = send_album_art(album_id, size)
-            if response is not None:
-                return response
-
-        # Fallback: try to extract cover from the song file
-        if have_ffmpeg:
-            song_path = os.fsdecode(item.path)
-            try:
-                song_mtime = os.path.getmtime(song_path)
-            except OSError:
-                song_mtime = 0.0
-
-            thumb_path = _thumbnail_path(song_path, size or 0, mtime=song_mtime)
-            if thumb_path.is_file():
-                return flask.send_file(thumb_path, mimetype='image/jpeg')
-
-            cover_io = _image_from_song(song_path)
-            if cover_io is not None:
-                image_bytes = cover_io.getvalue()
-
-                if size:
-                    cover_io = _resize_image(BytesIO(image_bytes), size)
-                    image_bytes = cover_io.getvalue()
-
-                # Save for next time
-                try:
-                    with open(thumb_path, 'wb') as f:
-                        f.write(image_bytes)
-                    _make_hidden(thumb_path)
-                    return flask.send_file(thumb_path, mimetype='image/jpeg')
-
-                except Exception as e:
-                    app.logger.warning(f"Failed to cache extracted ffmpeg art: {e}")
-                    # can still serve from memory if disk write failed
-                    return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
-
-    # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
-
-    # artist requests
-    else:  # some clients ask with artist ID, others ask with artist name, so this catches both
-        response = send_artist_image(req_id, size=size)
-        if response is not None:
-            return response
-
-    return subsonic_error(70, resp_fmt=resp_fmt)

@@ -7,15 +7,15 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext import api_bp
+from . import api_bp
+
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.userdata_caching import preload_artists
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error,
-    sub_to_beets_artist, beets_to_sub_artist,
-    trim_text, remove_accents, safe_str, imageart_url
+    subsonic_response, subsonic_error, trim_text, remove_accents, safe_str, beets_to_sub_artist, sub_to_beets_artist
 )
+from beetsplug.beetstreamnext.images import image_url
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_album, map_artist, get_song_counts
 
 
@@ -224,9 +224,9 @@ def endpoint_artist_info() -> flask.Response:
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
             'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
-            'largeImageUrl': imageart_url(image_id, size=1200),
-            'mediumImageUrl': imageart_url(image_id, size=500),
-            'smallImageUrl': imageart_url(image_id, size=250)
+            'largeImageUrl': image_url(image_id, size=1200),
+            'mediumImageUrl': image_url(image_id, size=500),
+            'smallImageUrl': image_url(image_id, size=250)
         }
     }
 

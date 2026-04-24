@@ -2,16 +2,16 @@ from typing import Dict
 
 import flask
 
-from beetsplug.beetstreamnext import api_bp
-from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.artists import artist_payload
-from beetsplug.beetstreamnext.albums import album_payload
-from beetsplug.beetstreamnext.songs import song_payload
-from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, subsonic_response, genres_formatter, subsonic_error,
-    beets_to_sub_artist, safe_str
-)
+from . import api_bp
+
 from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
+from beetsplug.beetstreamnext.api.albums import album_payload
+from beetsplug.beetstreamnext.api.artists import artist_payload
+from beetsplug.beetstreamnext.api.songs import song_payload
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.utils import (
+    get_beets_schema, subsonic_response, genres_formatter, subsonic_error, safe_str, beets_to_sub_artist
+)
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:
@@ -130,7 +130,7 @@ def endpoint_get_music_folders() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    payload = musicdirectory_payload(subsonic_musicdirectory_id='m-0', with_artists=False)
+    payload = musicdirectory_payload(subsonic_musicdirectory_id='m-0')
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -173,7 +173,7 @@ def endpoint_get_music_directory() -> flask.Response:
                 """
             )
 
-        payload = musicdirectory_payload('m-0', with_artists=True)
+        payload = musicdirectory_payload('m-0')
         payload['directory'] = payload.pop('musicFolders')['musicFolder'][0]
 
         children = []

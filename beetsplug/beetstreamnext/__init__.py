@@ -8,7 +8,7 @@ from .application import app
 from . import middleware  # noqa: F401
 
 from .api import api_bp
-app.register_blueprint(admin_bp)
+app.register_blueprint(api_bp)
 
 
 ##

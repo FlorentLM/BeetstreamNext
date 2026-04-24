@@ -1,0 +1,58 @@
+:root {
+    --primary: #954039;
+    --primary-hover: #b34d45;
+    --bg: #180100;
+    --card-bg: #260201;
+    --input-bg: rgba(0, 0, 0, 0.4);
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --border: rgba(255, 255, 255, 0.1);
+    --logo-glow: rgba(243, 112, 33, 0.3);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    min-height: 100vh;
+}
+
+h1, h2 {
+    letter-spacing: -0.025em;
+    margin: 0;
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+a:hover { opacity: 0.8; }
+
+/* Logo sizing */
+.logo-large  { width: 120px; height: auto; filter: drop-shadow(0 0 20px var(--logo-glow)); }
+.logo-medium { width: 80px;  height: auto; filter: drop-shadow(0 0 15px var(--logo-glow)); }
+.logo-small  { width: 40px;  height: auto; filter: drop-shadow(0 0 10px rgba(243, 112, 33, 0.2)); }
+
+/* Flash messages */
+.flash {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    animation: slideIn 0.3s ease-out;
+}
+.flash-success { background: rgba(74,  222, 128, 0.1); color: #4ade80; border: 1px solid rgba(74,  222, 128, 0.2); }
+.flash-error   { background: rgba(239,  68,  68, 0.1); color: #f87171; border: 1px solid rgba(239,  68,  68, 0.2); }
+.flash-info    { background: rgba(56,  189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56,  189, 248, 0.2); }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

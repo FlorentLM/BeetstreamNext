@@ -13,10 +13,16 @@ def _before_request():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
+    # Allow public homepage
     if flask.request.path == '/':
         return
 
+    # Allow these two rest endpoints as per OpenSubsonic spec
     if flask.request.path.rstrip('/') in ('/rest/getOpenSubsonicExtensions', '/rest/getOpenSubsonicExtensions.view'):
+        return
+
+    # Allow static content
+    if flask.request.path.startswith('/static'):
         return
 
     client_ip = str(flask.request.remote_addr) or 'unknown'
@@ -59,6 +65,7 @@ def _add_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
     return response
+
 
 @app.route('/')
 def home():

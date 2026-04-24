@@ -2,7 +2,6 @@ import secrets
 import flask
 
 from .application import app, rate_limiter, ip_filter
-from .constants import PROJECT_ROOT
 from .maintenance import run_periodic
 from .user_management import load_user_roles, authenticate
 from .utils import grab_auth_params, subsonic_error, safe_str
@@ -71,10 +70,9 @@ def home():
             "songs": tx.query("SELECT COUNT(*) FROM items")[0][0],
             "status": "Online"
         }
-    template_content = (PROJECT_ROOT / 'index.html').read_text(encoding='utf-8')
     try:
-        logo_svg = (app.config['IMAGES_PATH'] / 'beetstreamnext_logo.svg').read_text(encoding='utf-8')
+        logo_svg = (app.config['IMAGES_PATH'] / 'logo.svg').read_text(encoding='utf-8')
     except OSError:
         app.logger.error("Can't find logo in images directory")
         logo_svg = ''
-    return flask.render_template_string(template_content, stats=stats, logo_svg=logo_svg)
+    return flask.render_template('index.html', stats=stats, logo_svg=logo_svg)

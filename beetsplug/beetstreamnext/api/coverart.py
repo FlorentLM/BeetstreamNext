@@ -31,7 +31,7 @@ def endpoint_get_cover_art() -> flask.Response:
 
     # root folder ID or name: serve BeetstreamNext's logo
     if req_id == app.config['root_directory'].name or req_id == 'm-0':
-        return flask.send_file(app.config['IMAGES_PATH'] / 'beetstreamnext_logo.png', mimetype='image/png')
+        return flask.send_file(app.config['IMAGES_PATH'] / 'logo.png', mimetype='image/png')
 
     # album requests
     if req_id.startswith(ALB_ID_PREF):

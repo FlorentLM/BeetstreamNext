@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set
 
-import flask
+from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
 from .constants import PROJECT_ROOT, LOOPBACK_IPS, LOG_LEVEL
@@ -151,7 +151,11 @@ class IPFilter:
 
 ##
 
-app = flask.Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder='templates',
+    static_folder='static',
+)
 app.teardown_appcontext(close_database)
 
 app.config.update(
@@ -161,7 +165,7 @@ app.config.update(
     # SESSION_COOKIE_SECURE=True,   # TODO: Have this automatically on if https or reverse proxy is detected
     WTF_CSRF_CHECK_DEFAULT=False,
     PROJECT_ROOT=PROJECT_ROOT,
-    IMAGES_PATH=PROJECT_ROOT / 'images',
+    IMAGES_PATH=PROJECT_ROOT / 'static' / 'images',
     HTTP_CACHE_PATH=cache_location() / 'httpcache.sqlite',
     THUMBNAIL_CACHE_PATH=cache_location() / 'thumbnails',
 )

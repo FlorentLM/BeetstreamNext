@@ -45,7 +45,9 @@ def _before_request():
     ok, error_code, username = authenticate(r)
     if not ok:
         rate_limiter.record(client_ip)
-        return subsonic_error(error_code, resp_fmt=resp_fmt)
+        if is_api:
+            return subsonic_error(error_code, resp_fmt=resp_fmt)
+        flask.abort(401)
 
     rate_limiter.reset(client_ip)
 

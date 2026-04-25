@@ -3,8 +3,9 @@ from beets.plugins import find_plugins
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str, stb_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str
 from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.mappings import IDMapper
 
 
 def _fetch_lyrics(item) -> str | None:
@@ -80,7 +81,7 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = stb_song(req_id)
+    beets_id = IDMapper.sub_to_song(req_id)
     item = flask.g.lib.get_item(beets_id)
 
     if not item:

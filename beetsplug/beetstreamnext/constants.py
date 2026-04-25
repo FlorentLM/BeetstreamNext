@@ -23,12 +23,6 @@ FFMPEG_BIN = shutil.which('ffmpeg') is not None
 FFMPEG_PYTHON = importlib.util.find_spec('ffmpeg') is not None
 WIKI_API = importlib.util.find_spec('wikipediaapi') is not None
 
-
-ART_ID_PREF   = 'ar-'
-ART_MBID_PREF = 'ar-m-'  # ar-m-<base64url(mbid)>  preferred if mbid is known
-ART_NAME_PREF = 'ar-n-'  # ar-n-<base64url(name)>  fallback
-ALB_ID_PREF   = 'al-'
-SNG_ID_PREF   = 'sg-'
 PLY_ID_PREF   = 'pl-'
 
 BEETS_MULTI_DELIM = '\\\u2400'  # what's used in beets' db to separate multiple artists, multiple genres etc

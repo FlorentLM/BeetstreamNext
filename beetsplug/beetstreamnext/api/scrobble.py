@@ -6,8 +6,8 @@ from . import api_bp
 from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, api_bool, safe_str, stb_song
-from beetsplug.beetstreamnext.mappings import map_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, api_bool, safe_str
+from beetsplug.beetstreamnext.mappings import IDMapper, map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
@@ -29,7 +29,7 @@ def endpoint_scrobble() -> flask.Response:
 
     if not submission:
         # if not submission it's just a "Now playing"
-        beets_id = stb_song(song_ids[0])
+        beets_id = IDMapper.sub_to_song(song_ids[0])
         with database() as db:
             db.execute(
                 """
@@ -45,7 +45,7 @@ def endpoint_scrobble() -> flask.Response:
 
     with database() as db:
         for i, song_id in enumerate(song_ids):
-            beets_id = stb_song(song_id)
+            beets_id = IDMapper.sub_to_song(song_id)
 
             try:
                 played_at = times_ms[i] / 1000.0

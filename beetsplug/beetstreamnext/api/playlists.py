@@ -3,8 +3,8 @@ import flask
 from . import api_bp
 
 from beetsplug.beetstreamnext.playlistprovider import Playlist
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str, stb_song
-from beetsplug.beetstreamnext.mappings import map_playlist
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str
+from beetsplug.beetstreamnext.mappings import IDMapper, map_playlist
 from beetsplug.beetstreamnext.constants import bsn_logger
 
 
@@ -64,7 +64,7 @@ def endpoint_create_playlist() -> flask.Response:
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = [flask.g.lib.get_item(stb_song(sid)) for sid in songs_ids if sid]
+    songs = [flask.g.lib.get_item(IDMapper.sub_to_song(sid)) for sid in songs_ids if sid]
     try:
         playlist = Playlist.from_songs(name, songs)
     except FileExistsError as e:
@@ -128,7 +128,7 @@ def endpoint_update_playlist() -> flask.Response:
             beets_items = []
 
             for s_id in to_add:
-                item = flask.g.lib.get_item(stb_song(s_id))
+                item = flask.g.lib.get_item(IDMapper.sub_to_song(s_id))
                 if item:
                     beets_items.append(item)
             playlist.add_songs(beets_items)

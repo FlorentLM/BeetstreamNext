@@ -3,19 +3,17 @@ import flask
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.constants import ART_ID_PREF, BEETS_MULTI_DELIM
+from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.external import query_lastfm
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
-from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error, get_beets_schema, safe_str, escape_like, stb_song
-)
-from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, get_beets_schema, safe_str, escape_like
+from beetsplug.beetstreamnext.mappings import IDMapper, resolve_artist, map_song
 
 
 def song_payload(subsonic_song_id: str) -> Dict:
-    beets_song_id = stb_song(subsonic_song_id)
+    beets_song_id = IDMapper.sub_to_song(subsonic_song_id)
     song_item = flask.g.lib.get_item(beets_song_id)
     if not song_item:
         return {}
@@ -190,7 +188,7 @@ def endpoint_get_top_songs() -> flask.Response:
     req_artist_name = r.get('artist', default='', type=safe_str)     # Required
     count = r.get('count', default=50, type=int)
 
-    lookup = req_artist_id if req_artist_id.startswith(ART_ID_PREF) else req_artist_name
+    lookup = req_artist_id if IDMapper.get_type(req_artist_id) == 'artist' else req_artist_name
     resolved = resolve_artist(lookup)
     if not resolved:
         empty_payload = { 'topSongs': { 'song': [] } }

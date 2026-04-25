@@ -5,8 +5,8 @@ from . import api_bp
 
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
-from beetsplug.beetstreamnext.utils import subsonic_response, timestamp_to_iso, safe_str, bts_song, stb_song
-from beetsplug.beetstreamnext.mappings import map_song
+from beetsplug.beetstreamnext.utils import subsonic_response, timestamp_to_iso, safe_str
+from beetsplug.beetstreamnext.mappings import IDMapper, map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
@@ -52,7 +52,7 @@ def endpoint_get_play_queue() -> flask.Response:
     payload = {
         'playQueue': {
             'entry': songs,
-            'current': bts_song(current_beets_id) if current_beets_id else '',
+            'current': IDMapper.song_to_sub(current_beets_id) if current_beets_id else '',
             'position': int(position or 0),
             'changed': timestamp_to_iso(changed) if changed else '',
             'changedBy': changed_by or '',
@@ -74,8 +74,8 @@ def endpoint_save_play_queue() -> flask.Response:
 
     username = flask.g.username
 
-    beets_song_ids = [stb_song(sid) for sid in song_ids if sid]
-    current_beets_sid = stb_song(current_sid) if current_sid else None
+    beets_song_ids = [IDMapper.sub_to_song(sid) for sid in song_ids if sid]
+    current_beets_sid = IDMapper.sub_to_song(current_sid) if current_sid else None
 
     now = time.time()
 

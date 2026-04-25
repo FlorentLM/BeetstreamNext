@@ -6,13 +6,15 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 from io import BytesIO
+import requests
 from PIL import Image
 import flask
 
 from .application import app
 from .external import http_session, query_deezer, query_coverartarchive
-from .utils import get_mimetype, customstrip, make_hidden, grab_auth_params, stb_artist
-from .constants import ART_ID_PREF, IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
+from .mappings import IDMapper
+from .utils import get_mimetype, customstrip, make_hidden, grab_auth_params
+from .constants import IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
@@ -173,6 +175,9 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     Uses the local file first, then falls back to coverartarchive.org
     """
 
+    if album_id is None:
+        return None
+
     album = flask.g.lib.get_album(album_id)
     if not album:
         return None
@@ -233,8 +238,8 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 def send_artist_image(artist, size=None) -> flask.Response | None:
 
     artist = customstrip(artist)
-    if artist.startswith(ART_ID_PREF):
-        value, is_mbid = stb_artist(artist)
+    if IDMapper.get_type(artist) == 'artist':
+        value, is_mbid = IDMapper.sub_to_artist(artist)
 
         if is_mbid:
             with flask.g.lib.transaction() as tx:

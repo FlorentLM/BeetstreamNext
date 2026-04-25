@@ -1,23 +1,97 @@
 import os
+import base64
+import binascii
 from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
-
 import flask
 from beets.library import LibModel, Item
 
-from .constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, bsn_logger
-from .userdata_caching import preload_songs, preload_albums, one_rating, one_like, one_play_stats
-from .utils import (
-    get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query,
-    bts_artist, stb_artist, bts_album, stb_album, bts_song,
-    stb_song
-)
-from .images import image_url
+from .constants import bsn_logger
+from .utils import get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query
 
 if TYPE_CHECKING:
     from .playlistprovider import Playlist
 
+# TODO: Fix the circular imports in this module, the map_ functions import stuff in their namespace and it's shite
 
-##
+
+class IDMapper:
+    """
+    Handles translation between Beets internal IDs and Subsonic REST IDs.
+    """
+
+    ART_MBID_PREF = 'ar-m-'  # ar-m-<base64url(mbid)>  preferred if mbid is known
+    ART_NAME_PREF = 'ar-n-'  # ar-n-<base64url(name)>  fallback
+    ALB_ID_PREF = 'al-'
+    SNG_ID_PREF = 'sg-'
+    PLY_ID_PREF = 'pl-'
+
+    @classmethod
+    def artist_to_sub(cls, name_or_mbid: Any, is_mbid: bool = True) -> str:
+        encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
+        prefix = cls.ART_MBID_PREF if is_mbid else cls.ART_NAME_PREF
+        return f"{prefix}{encoded}"
+
+    @classmethod
+    def sub_to_artist(cls, subsonic_id: str) -> Tuple[str, bool]:
+        sid = str(subsonic_id)
+        if sid.startswith(cls.ART_MBID_PREF):
+            payload, is_mbid = sid[len(cls.ART_MBID_PREF):], True
+        elif sid.startswith(cls.ART_NAME_PREF):
+            payload, is_mbid = sid[len(cls.ART_NAME_PREF):], False
+        else:
+            return '', False
+
+        padding = (4 - len(payload) % 4) % 4
+        try:
+            value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
+            return value, is_mbid
+        except (binascii.Error, UnicodeDecodeError):
+            return '', False
+
+    @staticmethod
+    def _to_beets_int(subsonic_id: str, prefix: str) -> Optional[int]:
+        sid = str(subsonic_id)
+        if not sid.startswith(prefix):
+            return None
+        try:
+            return int(sid[len(prefix):])
+        except (ValueError, IndexError):
+            return None
+
+    @classmethod
+    def album_to_sub(cls, beets_id: int) -> str:
+        return f"{cls.ALB_ID_PREF}{beets_id}"
+
+    @classmethod
+    def sub_to_album(cls, subsonic_id: str) -> Optional[int]:
+        return cls._to_beets_int(subsonic_id, cls.ALB_ID_PREF)
+
+    @classmethod
+    def song_to_sub(cls, beets_id: int) -> str:
+        return f"{cls.SNG_ID_PREF}{beets_id}"
+
+    @classmethod
+    def sub_to_song(cls, subsonic_id: str) -> Optional[int]:
+        return cls._to_beets_int(subsonic_id, cls.SNG_ID_PREF)
+
+    @classmethod
+    def playlist_to_sub(cls, beets_id: int) -> str:
+        return f"{cls.PLY_ID_PREF}{beets_id}"
+
+    @classmethod
+    def sub_to_playlist(cls, subsonic_id: str) -> Optional[int]:
+        return cls._to_beets_int(subsonic_id, cls.PLY_ID_PREF)
+
+    @classmethod
+    def get_type(cls, subsonic_id: str) -> Optional[str]:
+        """Returns the type of object this ID represents."""
+        sid = str(subsonic_id)
+        if sid.startswith((cls.ART_MBID_PREF, cls.ART_NAME_PREF)): return 'artist'
+        if sid.startswith(cls.ALB_ID_PREF): return 'album'
+        if sid.startswith(cls.SNG_ID_PREF): return 'song'
+        if sid.startswith(cls.PLY_ID_PREF): return 'playlist'
+        return None
+
 
 def standardise_datadict(obj: Dict | LibModel | Item | Any) -> Dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
@@ -41,13 +115,10 @@ def map_media(beets_object: Dict | LibModel) -> Dict:
 
     track_artist_name = data.get('artist') or data.get('albumartist') or ''
 
-    main_artist_name = data.get('albumartist') or data.get('artist') or ''
-    main_artist_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
+    main_ar_name = data.get('albumartist') or data.get('artist') or ''
+    main_ar_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
 
-    if main_artist_mbid:
-        artist_id = bts_artist(main_artist_mbid)
-    else:
-        artist_id = bts_artist(main_artist_name, is_mbid=False)
+    artist_id = IDMapper.artist_to_sub(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
 
     artists, album_artists, contributors, display_composer = get_artists(data)
 
@@ -61,7 +132,7 @@ def map_media(beets_object: Dict | LibModel) -> Dict:
         'artist': track_artist_name,
         'artistId': artist_id,
         'displayArtist': track_artist_name,
-        'displayAlbumArtist': main_artist_name,
+        'displayAlbumArtist': main_ar_name,
         'artists': artists,
         'albumArtists': album_artists,
         'contributors': contributors,
@@ -91,10 +162,12 @@ def map_media(beets_object: Dict | LibModel) -> Dict:
 
 def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
 
+    from .userdata_caching import preload_songs, one_rating, one_like
+
     data = standardise_datadict(album_object)
 
     beets_album_id = data.get('id', 0)
-    subsonic_album_id = bts_album(beets_album_id)
+    subsonic_album_id = IDMapper.album_to_sub(beets_album_id)
     album_name = data.get('album', '')
 
     subsonic_album = map_media(data)
@@ -209,16 +282,18 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
 
 def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
 
+    from .userdata_caching import one_rating, one_like, one_play_stats
+
     data = standardise_datadict(song_object)
 
     beets_song_id = data.get('id', 0)
-    song_id = bts_song(beets_song_id)
+    song_id = IDMapper.song_to_sub(beets_song_id)
     song_title = data.get('title') or ''
 
     subsonic_song = map_media(data)
 
     song_filepath = os.fsdecode(data.get('path', b''))
-    album_id = bts_album(data.get('album_id', 0))
+    album_id = IDMapper.album_to_sub(data.get('album_id', 0))
 
     song_specific = {
         'id': song_id,
@@ -332,6 +407,9 @@ def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dic
 
 def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> Dict:
 
+    from .userdata_caching import preload_albums, one_rating, one_like
+    from .images import image_url
+
     # Priority: prefetched -> album query (when with_albums) -> standalone db query
     mbid = ''
     sort_name = artist_name
@@ -370,10 +448,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     sort_name = sort_name if sort_name != artist_name else meta['sort_name']
     roles = meta['roles']
 
-    if mbid:
-        subsonic_artist_id = bts_artist(mbid)
-    else:
-        subsonic_artist_id = bts_artist(artist_name, is_mbid=False)
+    subsonic_artist_id = IDMapper.artist_to_sub(mbid or artist_name, is_mbid=bool(mbid))
 
     subsonic_artist = {
         'id': subsonic_artist_id,
@@ -491,8 +566,8 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
     Returns (name, mbid) for an artist from any subsonic ID (artist, album, or song)
     (or None if ID can't be resolved)
     """
-    if req_id.startswith(SNG_ID_PREF):
-        item = flask.g.lib.get_item(stb_song(req_id))
+    if IDMapper.get_type(req_id) == 'song':
+        item = flask.g.lib.get_item(IDMapper.sub_to_song(req_id))
         if not item:
             return None
 
@@ -504,8 +579,8 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
 
         return name, mbid
 
-    if req_id.startswith(ALB_ID_PREF):
-        album = flask.g.lib.get_album(stb_album(req_id))
+    if IDMapper.get_type(req_id) == 'album':
+        album = flask.g.lib.get_album(IDMapper.sub_to_album(req_id))
         if not album:
             return None
 
@@ -517,8 +592,8 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
 
         return name, mbid
 
-    if req_id.startswith(ART_ID_PREF):
-        value, is_mbid = stb_artist(req_id)
+    if IDMapper.get_type(req_id) == 'artist':
+        value, is_mbid = IDMapper.sub_to_artist(req_id)
     else:
         value, is_mbid = req_id, False
 
@@ -604,8 +679,7 @@ def get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
                 meta = _artist_metadata(name)
                 mbid = meta['mbid']
 
-            contributor_id = bts_artist(mbid, True) if mbid else bts_artist(name, False)
-
+            contributor_id = IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid))
             if is_contributor:
                 dedup_key = (contributor_id, role)
                 if dedup_key not in seen_set:

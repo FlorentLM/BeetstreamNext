@@ -4,12 +4,13 @@ import flask
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.constants import ALB_ID_PREF, SNG_ID_PREF, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.images import (
     round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image
 )
-from beetsplug.beetstreamnext.utils import subsonic_error, safe_str, make_hidden, stb_album, stb_song
+from beetsplug.beetstreamnext.utils import subsonic_error, safe_str, make_hidden
+from beetsplug.beetstreamnext.mappings import IDMapper
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
@@ -33,15 +34,15 @@ def endpoint_get_cover_art() -> flask.Response:
         return flask.send_file(app.config['IMAGES_PATH'] / 'logo.png', mimetype='image/png')
 
     # album requests
-    if req_id.startswith(ALB_ID_PREF):
-        album_id = stb_album(req_id)
+    if IDMapper.get_type(req_id) == 'album':
+        album_id = IDMapper.sub_to_album(req_id)
         response = send_album_art(album_id, size)
         if response is not None:
             return response
 
     # song requests
-    elif req_id.startswith(SNG_ID_PREF):
-        item_id = stb_song(req_id)
+    elif IDMapper.get_type(req_id) == 'song':
+        item_id = IDMapper.sub_to_song(req_id)
         item = flask.g.lib.get_item(item_id)
         if not item:
             return subsonic_error(70, resp_fmt=resp_fmt)

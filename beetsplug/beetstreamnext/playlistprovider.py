@@ -7,9 +7,9 @@ from beets.util import bytestring_path
 
 from .application import app
 from .userdata_caching import preload_songs
-from .utils import genres_formatter, creation_date, chunked_query, stb_song
+from .utils import genres_formatter, creation_date, chunked_query
 from .constants import PLY_ID_PREF, bsn_logger
-from .mappings import map_song
+from .mappings import map_song, IDMapper
 
 if TYPE_CHECKING:
     from beets.library import Item
@@ -258,7 +258,7 @@ class Playlist:
                     continue
                 path = os.fsdecode(path)
 
-                song_id = stb_song(song.get('id', ''))
+                song_id = IDMapper.sub_to_song(song.get('id', ''))
                 length = song.get('duration') or song.get('length', 0)
                 info = f"#EXTINF:{round(length)} id={song_id}"
 

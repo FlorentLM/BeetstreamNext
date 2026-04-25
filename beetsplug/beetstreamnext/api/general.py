@@ -3,14 +3,12 @@ import flask
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
 from beetsplug.beetstreamnext.api.albums import album_payload
 from beetsplug.beetstreamnext.api.artists import artist_payload
 from beetsplug.beetstreamnext.api.songs import song_payload
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, subsonic_response, genres_formatter, subsonic_error, safe_str, bts_artist
-)
+from beetsplug.beetstreamnext.utils import get_beets_schema, subsonic_response, genres_formatter, subsonic_error, safe_str
+from beetsplug.beetstreamnext.mappings import IDMapper
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:
@@ -147,17 +145,17 @@ def endpoint_get_music_directory() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if req_id.startswith(ART_ID_PREF):
+    if IDMapper.get_type(req_id) == 'artist':
         payload = artist_payload(req_id, with_albums=True)
         payload['directory'] = payload.pop('artist')
         payload['directory']['child'] = payload['directory'].pop('album')
 
-    elif req_id.startswith(ALB_ID_PREF):
+    elif IDMapper.get_type(req_id) == 'album':
         payload = album_payload(req_id, include_songs=True)
         payload['directory'] = payload.pop('album')
         payload['directory']['child'] = payload['directory'].pop('song')
 
-    elif req_id.startswith(SNG_ID_PREF):
+    elif IDMapper.get_type(req_id) == 'song':
         payload = song_payload(req_id)
         payload['directory'] = payload.pop('song')
 
@@ -178,10 +176,8 @@ def endpoint_get_music_directory() -> flask.Response:
         children = []
         for row in rows:
             artist_name, artist_mbid = row
-            if artist_mbid:
-                artist_id = bts_artist(artist_mbid)
-            else:
-                artist_id = bts_artist(artist_name, is_mbid=False)
+            artist_id = IDMapper.artist_to_sub(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+
             children.append({
                 'id': artist_id,
                 'title': artist_name,

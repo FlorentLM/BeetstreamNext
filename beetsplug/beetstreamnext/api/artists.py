@@ -11,16 +11,14 @@ from . import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.userdata_caching import preload_artists
-from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error, trim_text, remove_accents, safe_str, bts_artist, stb_artist
-)
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, trim_text, remove_accents, safe_str
 from beetsplug.beetstreamnext.images import image_url
-from beetsplug.beetstreamnext.mappings import resolve_artist, map_album, map_artist, get_song_counts
+from beetsplug.beetstreamnext.mappings import IDMapper, resolve_artist, map_album, map_artist, get_song_counts
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> Dict:
 
-    value, is_mbid = stb_artist(subsonic_artist_id)
+    value, is_mbid = IDMapper.sub_to_artist(subsonic_artist_id)
     if not value:
         return {}
 
@@ -213,10 +211,7 @@ def endpoint_artist_info() -> flask.Response:
     tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
 
     # image id is the artist id, but input may have been song or album
-    if artist_mbid:
-        image_id = bts_artist(artist_mbid)
-    else:
-        image_id = bts_artist(artist_name, is_mbid=False)
+    image_id = IDMapper.artist_to_sub(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
 
     payload = {
         tag: {

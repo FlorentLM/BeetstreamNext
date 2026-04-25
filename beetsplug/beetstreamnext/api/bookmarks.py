@@ -5,8 +5,8 @@ from . import api_bp
 
 from beetsplug.beetstreamnext.db import dual_database, database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, timestamp_to_iso, safe_str, stb_song
-from beetsplug.beetstreamnext.mappings import map_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, timestamp_to_iso, safe_str
+from beetsplug.beetstreamnext.mappings import IDMapper, map_song
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
@@ -62,7 +62,7 @@ def endpoint_create_bookmark() -> flask.Response:
     if not song_id or position < 0.0:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = stb_song(song_id)
+    beets_id = IDMapper.sub_to_song(song_id)
     username = flask.g.username
     now = time.time()
 
@@ -91,7 +91,7 @@ def endpoint_delete_bookmark() -> flask.Response:
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = stb_song(song_id)
+    beets_id = IDMapper.sub_to_song(song_id)
     username = flask.g.username
 
     with database() as db:

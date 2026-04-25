@@ -4,8 +4,8 @@ from . import api_bp
 
 from beetsplug.beetstreamnext.db import database, dual_database
 from beetsplug.beetstreamnext.userdata_caching import preload_songs, preload_albums, preload_artists
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, chunked_query, safe_str, stb_artist
-from beetsplug.beetstreamnext.mappings import map_album, map_song, map_artist, get_song_counts
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, chunked_query, safe_str
+from beetsplug.beetstreamnext.mappings import IDMapper, map_album, map_song, map_artist, get_song_counts
 
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:
@@ -117,7 +117,7 @@ def endpoint_get_starred() -> flask.Response:
     mbids_to_resolve = []
     beets_artist_names = []
     for row in artist_rows:
-        val, is_mbid = stb_artist(row[0])
+        val, is_mbid = IDMapper.sub_to_artist(row[0])
         if val and is_mbid:
             mbids_to_resolve.append(val)
         elif val:

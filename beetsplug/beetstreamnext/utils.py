@@ -1,5 +1,3 @@
-import base64
-import binascii
 import os
 import platform
 import threading
@@ -24,59 +22,8 @@ from beets.dbcore.db import Transaction
 from .application import app
 from .constants import (
     SUBSONIC_API_VER, BEETS_MULTI_DELIM, GENRES_DELIM, ASCII_TRANSLATE_TABLE, BEETSTREAMNEXT_VER,
-    ART_MBID_PREF, ART_NAME_PREF, ALB_ID_PREF, SNG_ID_PREF, ALPHANUM_CHARS, bsn_logger
+    ALPHANUM_CHARS, bsn_logger
 )
-
-
-##
-
-def bts_artist(name_or_mbid: str, is_mbid: bool = True) -> str:
-    encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
-    prefix = ART_MBID_PREF if is_mbid else ART_NAME_PREF
-    return f"{prefix}{encoded}"
-
-
-def stb_artist(subsonic_artist_id: str) -> Tuple[str, bool]:
-    sid = str(subsonic_artist_id)
-
-    if sid.startswith(ART_MBID_PREF):
-        payload = sid[len(ART_MBID_PREF):]
-        is_mbid = True
-    elif sid.startswith(ART_NAME_PREF):
-        payload = sid[len(ART_NAME_PREF):]
-        is_mbid = False
-    else:
-        return '', False
-
-    padding = (4 - len(payload) % 4) % 4
-    try:
-        value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
-        return value, is_mbid
-    except (binascii.Error, UnicodeDecodeError):
-        return '', False
-
-
-def bts_album(beet_album_id) -> str:
-    return f'{ALB_ID_PREF}{beet_album_id}'
-
-
-def stb_album(subsonic_album_id) -> int | None:
-    try:
-        return int(str(subsonic_album_id)[len(ALB_ID_PREF):])
-    except (ValueError, IndexError):
-        return None
-
-
-def bts_song(beet_song_id) -> str:
-    return f'{SNG_ID_PREF}{beet_song_id}'
-
-
-def stb_song(subsonic_song_id) -> int | None:
-    try:
-        return int(str(subsonic_song_id)[len(SNG_ID_PREF):])
-    except (ValueError, IndexError):
-        return None
-
 
 ##
 # General helpers

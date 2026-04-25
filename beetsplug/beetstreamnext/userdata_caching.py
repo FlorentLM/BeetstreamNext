@@ -1,9 +1,9 @@
 from typing import Optional, List
-
 import flask
 
 from .db import database
-from .utils import chunked_query, bts_artist, bts_album, bts_song
+from .mappings import IDMapper
+from .utils import chunked_query
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
@@ -161,7 +161,7 @@ def preload_songs(beets_items: list):
     if not beets_items:
         return
     beets_ids = [s['id'] for s in beets_items]
-    sub_ids = [bts_song(i) for i in beets_ids]
+    sub_ids = [IDMapper.song_to_sub(i) for i in beets_ids]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -171,7 +171,7 @@ def preload_songs(beets_items: list):
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
-    sub_ids = [bts_album(a['id']) for a in beets_albums]
+    sub_ids = [IDMapper.album_to_sub(a['id']) for a in beets_albums]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -186,22 +186,17 @@ def preload_artists(artists_data):
     if isinstance(artists_data, dict):
         for name, data in artists_data.items():
             mbid = data.get('mbid')
-            if mbid:
-                sub_ids.append(bts_artist(mbid, is_mbid=True))
-            else:
-                sub_ids.append(bts_artist(name, is_mbid=False))
+            sub_ids.append(IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid)))
 
     elif isinstance(artists_data, list):
         for item in artists_data:
             if isinstance(item, str):
-                sub_ids.append(bts_artist(item, is_mbid=False))
+                sub_ids.append(IDMapper.artist_to_sub(item, is_mbid=False))
+
             elif isinstance(item, dict) or hasattr(item, 'keys'):
                 name = item.get('albumartist') or item.get('artist') or ''
                 mbid = item.get('mb_albumartistid') or item.get('mb_artistid') or ''
-                if mbid:
-                    sub_ids.append(bts_artist(mbid, is_mbid=True))
-                elif name:
-                    sub_ids.append(bts_artist(name, is_mbid=False))
+                sub_ids.append(IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid)))
 
     if sub_ids:
         batch_likes(sub_ids)

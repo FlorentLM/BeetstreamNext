@@ -27,7 +27,6 @@ def run_periodic():
         return  # another thread already doing it
 
     try:
-        # check inside the lock if another thread may have just finished
         if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
             return
         _last_cleanup = now

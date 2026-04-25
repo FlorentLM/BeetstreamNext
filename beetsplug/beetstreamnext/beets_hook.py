@@ -85,22 +85,32 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         def func(lib, opts, args):
 
-            app.config['BEETS_DB_PATH'] = Path(beets.config['library'].get())
-            app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
+            beets_db_path = Path(beets.config['library'].get())
+            if not beets_db_path.is_file():
+                raise RuntimeError(f'Beets database not found at `{beets_db_path}`.')
+
+            app.config.update(
+                BEETS_DB_PATH=beets_db_path,
+                DB_PATH=beets_db_path.parent / 'beetstreamnext.db'  # TODO: Debatable whether this should be stored here
+            )
 
             ip_filter.whitelist = self.config['ip_whitelist'].as_str_seq()
             ip_filter.blacklist = self.config['ip_blacklist'].as_str_seq()
 
             ensure_secret(app.config['DB_PATH'])
-            app.config['SECRET_KEY'] = rotate_session_key(CACHE_LOCATION)
+            app.config.update(SECRET_KEY=rotate_session_key(CACHE_LOCATION))
 
             # Cache clearing
             if opts.clear_cache:
-                shutil.rmtree(app.config['THUMBNAIL_CACHE_PATH'], ignore_errors=True)
-                try:
-                    os.remove(app.config['HTTP_CACHE_PATH'])
-                except OSError:
-                    pass
+                thumbnails_path = app.config['THUMBNAIL_CACHE_PATH']
+                cache_path = app.config['HTTP_CACHE_PATH']
+
+                shutil.rmtree(thumbnails_path, ignore_errors=True)
+                if cache_path:
+                    try:
+                        os.remove(cache_path)
+                    except OSError:
+                        pass
                 print("Thumbnail cache cleared.")
                 print("Admin session key cleared, any active admin sessions have been invalidated.")
                 return
@@ -190,14 +200,16 @@ class BeetstreamNextPlugin(BeetsPlugin):
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
-            app.config['lib'] = lib
-            app.config['root_directory'] = Path(beets.config['directory'].get())
-            app.config['legacy_auth'] = self.config['legacy_auth'].get(bool)
-            app.config['lastfm_api_key'] = self.config['lastfm_api_key'].get(str)
-            app.config['never_transcode'] = self.config['never_transcode'].get(bool)
-            app.config['fetch_artists_images'] = self.config['fetch_artists_images'].get(bool)
-            app.config['save_artists_images'] = self.config['save_artists_images'].get(bool)
-            app.config['save_album_art'] = self.config['save_album_art'].get(bool)
+            app.config.update(
+                lib=lib,
+                root_directory=Path(beets.config['directory'].get()),
+                legacy_auth=self.config['legacy_auth'].get(bool),
+                lastfm_api_key=self.config['lastfm_api_key'].get(str),
+                never_transcode=self.config['never_transcode'].get(bool),
+                fetch_artists_images=self.config['fetch_artists_images'].get(bool),
+                save_artists_images=self.config['save_artists_images'].get(bool),
+                save_album_art=self.config['save_album_art'].get(bool)
+            )
 
             if debug and host not in LOOPBACK_IPS:
                 if force_trust_host:
@@ -252,7 +264,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     used_paths.add(path)
                 else:
                     playlist_dirs[k] = None
-            app.config['playlist_dirs'] = playlist_dirs
+            app.config.update(playlist_dirs=playlist_dirs)
 
             # Enable CORS if required
             cors_origin = self.config['cors'].get(str)
@@ -266,7 +278,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         '',
                         f"CORS is set to allow all origins ('*') WITH credentials.",
                         f"This could allow any malicious website you visit to silently interact",
-                        f"with your BeetstreamNext server in the background."
+                        f"with your BeetstreamNext server in the background.",
                         '',
                         "It is highly recommended to only allow your specific player's URL.",
                         ''
@@ -274,10 +286,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 else:
                     bsn_logger.info(f"Enabling CORS for origin(s): {cors_origin}")
 
-                app.config['CORS_ALLOW_HEADERS'] = "Content-Type"
                 origins_list = [o.strip() for o in cors_origin.split(',')] if ',' in cors_origin else cors_origin
-
-                app.config['CORS_RESOURCES'] = {r"/*": {"origins": origins_list}}
+                app.config.update(
+                    CORS_ALLOW_HEADERS='Content-Type',
+                    CORS_RESOURCES={r"/*": {"origins": origins_list}}
+                )
                 CORS(app, supports_credentials=supports_creds)
             else:
                 bsn_logger.info("CORS is disabled (secure default). Web-based clients will be blocked by browsers.")
@@ -292,10 +305,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     x_port=1,
                     x_prefix=1
                 )
+                app.config.update(SESSION_COOKIE_SECURE=True)
 
             with app.app_context():
                 initialise_db()
-                app.config['playlist_provider'] = PlaylistProvider()
+                app.config.update(playlist_provider=PlaylistProvider())
 
             if debug:
                 app.run(host=host, port=port, debug=True, threaded=True)
@@ -309,4 +323,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 serve(logged_app, host=host, port=port, threads=8)
 
         cmd.func = func
+
+        print(app.config.items())
+
         return [cmd]

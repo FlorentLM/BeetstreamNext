@@ -58,6 +58,10 @@ def _before_request():
     flask.g.playlist_provider = app.config['playlist_provider']
     flask.g._art_base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
 
+    # just to be sure
+    if flask.request.is_secure and not app.config.get('SESSION_COOKIE_SECURE', False):
+        app.config.update(SESSION_COOKIE_SECURE=True)
+
     run_periodic()
 
 

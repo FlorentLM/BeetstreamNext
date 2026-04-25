@@ -20,7 +20,6 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=3600,   # 1 hour
-    # SESSION_COOKIE_SECURE=True,   # TODO: Have this automatically on if https or reverse proxy is detected
     WTF_CSRF_CHECK_DEFAULT=False,
     PROJECT_ROOT=PROJECT_ROOT,
     IMAGES_PATH=PROJECT_ROOT / 'static' / 'images',

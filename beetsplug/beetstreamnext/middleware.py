@@ -9,17 +9,23 @@ from .utils import grab_auth_params, subsonic_error, safe_str, get_server_info
 
 @app.before_request
 def _before_request():
-
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=safe_str)
+    is_api = flask.request.path.startswith('/rest')
+
+    if is_api:
+        resp_fmt = r.get('f', default='xml', type=safe_str)
 
     client_ip = str(flask.request.remote_addr) or 'unknown'
 
     if not ip_filter.is_allowed(client_ip):
-        return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt), 401
+        if is_api:
+            return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
+        flask.abort(403)
 
     if rate_limiter.is_blocked(client_ip):
-        return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt), 401
+        if is_api:
+            return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
+        flask.abort(403)
 
     # Allow public homepage
     if flask.request.path == '/':
@@ -67,9 +73,3 @@ def _add_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
     return response
-
-
-@app.route('/')
-def home():
-    stats = get_server_info(extended=False)
-    return flask.render_template('index.html', stats=stats)

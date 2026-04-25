@@ -8,8 +8,9 @@ from .application import app
 from . import middleware  # noqa: F401
 
 from .api import api_bp
+from .public import public_bp
 app.register_blueprint(api_bp)
-
+app.register_blueprint(public_bp)
 
 ##
 # -*- coding: utf-8 -*-

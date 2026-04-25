@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import secrets
 from typing import TYPE_CHECKING, Sequence, Optional, Dict
-from urllib.parse import unquote
 
 from .application import app
 from .db import get_cipher, database
@@ -121,7 +120,6 @@ def create_user(username, password, admin=False, **kwargs):
     api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
 
     username = safe_str(username)
-    password = unquote(password)
 
     user_data = {
         'username': username,
@@ -222,12 +220,6 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
     token = r.get('t', default='', type=str)
     salt = r.get('s', default='', type=str)
     clearpass = r.get('p', default='', type=str)
-
-    api_key = unquote(api_key)
-    user = unquote(user)
-    token = unquote(token)
-    salt = unquote(salt)
-    clearpass = unquote(clearpass)
 
     if token and len(token) < 32:
         token = token.zfill(32)  # some clients strip leading zeros...

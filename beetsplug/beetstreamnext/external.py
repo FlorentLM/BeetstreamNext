@@ -46,21 +46,19 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     if not artist and not album:
         return {}
 
-    artist_unquot = str(artist)
-
-    if artist:
-        artist = urllib.parse.quote_plus(artist)
-    if album:
-        album = urllib.parse.quote_plus(album)
+    artist = str(artist)
+    album = str(album)
+    artist_quot = urllib.parse.quote_plus(artist)
+    album_quot = urllib.parse.quote_plus(album)
 
     base_search = 'https://api.deezer.com/search/'
 
-    if artist and album:
-        search_endpoint = base_search + f'?q=artist:"{artist}" album:"{album}"'
-    elif artist:
-        search_endpoint = base_search + f'artist?q={artist}'
-    elif album:
-        search_endpoint = base_search + f'album?q={album}'
+    if artist_quot and album_quot:
+        search_endpoint = base_search + f'?q=artist:"{artist_quot}" album:"{album_quot}"'
+    elif artist_quot:
+        search_endpoint = base_search + f'artist?q={artist_quot}'
+    elif album_quot:
+        search_endpoint = base_search + f'album?q={album_quot}'
 
     search_endpoint += '&limit=5&index=0'
 
@@ -74,9 +72,9 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
         if response.ok:
             candidates = response.json().get('data', [])
 
-            if candidates and artist_unquot:
+            if candidates and artist:
                 # Prefer exact name matches
-                exact_matches = [c for c in candidates if c.get('name', '').lower() == artist_unquot.lower()]
+                exact_matches = [c for c in candidates if c.get('name', '').lower() == artist.lower()]
                 pool = exact_matches if exact_matches else candidates
                 if len(pool) == 1:
                     return pool[0]

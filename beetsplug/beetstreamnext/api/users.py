@@ -1,4 +1,3 @@
-from urllib.parse import unquote
 import flask
 
 from . import api_bp
@@ -42,8 +41,6 @@ def endpoint_get_user():
     resp_fmt = r.get('f', default='xml', type=safe_str)
     username = r.get('username', default=flask.g.username, type=safe_str)    # Required
     # (defaults to flask.g.username so non-admins can only query themselves)
-
-    username = unquote(username)
 
     requesting_user_data = flask.g.user_data
     if not requesting_user_data:
@@ -90,8 +87,8 @@ def endpoint_create_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     username = r.get('username', default='', type=safe_str)         # Required
-    password = unquote(r.get('password', default='', type=str))     # Required
-    # email = r.get('email', default='', type=safe_str)             # Required??? uhhh no thanks
+    password = r.get('password', default='', type=str)              # Required
+    # email = r.get('email', default='', type=safe_str)             # Required? yes but no
 
     if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -126,7 +123,7 @@ def endpoint_update_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     username = r.get('username', default='', type=safe_str)     # Required
-    password = unquote(r.get('password', default='', type=str))
+    password = r.get('password', default='', type=str)
     # email = r.get('email', default='', type=safe_str)
 
     if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
@@ -163,7 +160,6 @@ def endpoint_delete_user():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     target_user = r.get('username', default='', type=safe_str)   # Required
-    target_user = unquote(target_user)
 
     if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -186,10 +182,8 @@ def endpoint_delete_user():
 def endpoint_change_password():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    target_user = r.get('username', default=flask.g.username, type=safe_str)     # Required
-    new_password =  r.get('password', default='', type=str)                 # Required
-    target_user = unquote(target_user)
-    new_password = unquote(new_password)
+    target_user = r.get('username', default=flask.g.username, type=safe_str)    # Required
+    new_password =  r.get('password', default='', type=str)                     # Required
 
     # User can change their own password, admin can change anyone's
     is_self = (target_user == flask.g.username)

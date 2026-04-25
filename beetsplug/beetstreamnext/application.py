@@ -5,7 +5,6 @@ from flask_wtf.csrf import CSRFProtect
 
 from .constants import PROJECT_ROOT, CACHE_LOCATION, LOG_LEVEL, bsn_logger
 from .db import close_database
-from .security import RateLimiter, IPFilter
 
 ##
 
@@ -37,5 +36,3 @@ logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
 bsn_logger.propagate = True
 
 csrf = CSRFProtect(app)
-ip_filter = IPFilter()
-rate_limiter = RateLimiter(max_failures=5, block_window=300)

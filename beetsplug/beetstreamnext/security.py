@@ -3,7 +3,9 @@ import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Sequence, Set
 
-from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, bsn_logger
+from beetsplug.beetstreamnext.constants import (
+    LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW, bsn_logger
+)
 
 
 class RateLimiter:
@@ -134,3 +136,11 @@ class IPFilter:
     def blacklist(self, blacklisted_ips: str | Sequence[str]):
         self._blacklist = self._parse_input(blacklisted_ips)
         bsn_logger.debug(f'Loaded new blacklist: {self._blacklist}.')
+
+
+##
+# Instanciate shared objects
+
+ip_filter = IPFilter()
+
+rate_limiter = RateLimiter(max_failures=RATE_LIMIT_MAX_FAILURES, block_window=RATE_LIMIT_BLOCK_WINDOW)

@@ -65,6 +65,9 @@ def cache_location() -> Path:
 
 CACHE_LOCATION = cache_location()
 
+RATE_LIMIT_MAX_FAILURES = 5
+RATE_LIMIT_BLOCK_WINDOW = 300
+
 NOW_PLAYING_TIMEOUT_SEC = 600   # stale after 10 min
 CLEANUP_INTERVAL_SEC = 86400    # clean once per day
 MAX_CACHE_AGE_DAYS = 30

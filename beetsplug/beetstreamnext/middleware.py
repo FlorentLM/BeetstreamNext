@@ -1,7 +1,8 @@
 import secrets
 import flask
 
-from .application import app, rate_limiter, ip_filter
+from .application import app
+from .security import rate_limiter, ip_filter
 from .maintenance import run_periodic
 from .user_management import load_user_roles, authenticate
 from .utils import grab_auth_params, subsonic_error, safe_str

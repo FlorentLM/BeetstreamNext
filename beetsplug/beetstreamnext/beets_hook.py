@@ -28,7 +28,8 @@ from waitress import serve
 from paste.translogger import TransLogger
 
 from .constants import LOG_LEVEL, CACHE_LOCATION, LOOPBACK_IPS, bsn_logger
-from .application import app, ip_filter
+from .application import app
+from .security import ip_filter
 from .utils import safe_str
 from .console import print_box, TermColors
 from .db import initialise_db, rotate_session_key, ensure_secret

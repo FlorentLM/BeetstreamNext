@@ -25,7 +25,7 @@ def _before_request():
     if rate_limiter.is_blocked(client_ip):
         if is_api:
             return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
-        flask.abort(403)
+        flask.abort(429)
 
     # Allow public homepage
     if flask.request.path == '/':

@@ -13,6 +13,14 @@ def _before_request():
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
+    client_ip = str(flask.request.remote_addr) or 'unknown'
+
+    if not ip_filter.is_allowed(client_ip):
+        return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt), 401
+
+    if rate_limiter.is_blocked(client_ip):
+        return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt), 401
+
     # Allow public homepage
     if flask.request.path == '/':
         return
@@ -25,13 +33,7 @@ def _before_request():
     if flask.request.path.startswith('/static'):
         return
 
-    client_ip = str(flask.request.remote_addr) or 'unknown'
 
-    if not ip_filter.is_allowed(client_ip):
-        return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
-
-    if rate_limiter.is_blocked(client_ip):
-        return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
 
     # Attempt authentication
     ok, error_code, username = authenticate(r)

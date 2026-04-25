@@ -1,9 +1,10 @@
 import hashlib
 import hmac
 import secrets
-from typing import TYPE_CHECKING, Sequence, Optional, Dict
+from typing import TYPE_CHECKING, Sequence, Optional, Dict, Tuple, List
 
 from .application import app
+from .constants import EXISTING_USER_FIELDS
 from .db import get_cipher, database
 from .utils import safe_str
 
@@ -11,30 +12,39 @@ if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
 
 
-SAFE_USER_FIELDS = frozenset({
-    'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
-    'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
-    'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
-})
+# Dummy strings comparison when username not found
+_DUMMY_PASSWORD = secrets.token_urlsafe(24)
+_DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
 
-# Dummy password for constant-time comparison when username not found
-_DUMMY_PASSWORD = secrets.token_urlsafe(12)
+def _dummy_stored_password() -> str:
+    """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
+    global _DUMMY_TOKEN
+    cipher = get_cipher()
+    if cipher is None:
+        return _DUMMY_PASSWORD
+    if _DUMMY_TOKEN is None:
+        _DUMMY_TOKEN = cipher.encrypt(_DUMMY_PASSWORD.encode('utf-8'))
+    try:
+        return cipher.decrypt(_DUMMY_TOKEN).decode('utf-8')
+    except Exception:
+        return _DUMMY_PASSWORD
 
 
-def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) -> Optional[Dict]:
-
+def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, include_password: bool = False) -> Dict:
+    
+    existing_fields = set(EXISTING_USER_FIELDS) if include_password else set(EXISTING_USER_FIELDS) - {'password'}
+    
     if fields is None:
         # return all safe fields
-        safe_fields = sorted(list(SAFE_USER_FIELDS))
+        column_names = sorted(list(existing_fields))
     elif isinstance(fields, str):
-        safe_fields = [fields] if fields in SAFE_USER_FIELDS else []
+        column_names = [fields] if fields in existing_fields else []
     else:
-        safe_fields = sorted(list(set(fields).intersection(SAFE_USER_FIELDS)))
+        column_names = sorted(list(set(fields).intersection(existing_fields)))
 
-    if not safe_fields:
-        return None
+    if not column_names:
+        return {}
 
-    column_names = ['username'] + safe_fields
     columns_str = ', '.join(column_names)
 
     with database() as db:
@@ -47,7 +57,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) ->
         ).fetchone()
 
     if not row:
-        return None
+        return {}
 
     user_dict = dict(zip(column_names, row))
 
@@ -71,7 +81,7 @@ def _store_userdata(user_dict: Dict):
     if not username:
         raise ValueError("User dict must have the 'username' key!")
 
-    filtered_dict = {k: v for k, v in _user_dict.items() if k in SAFE_USER_FIELDS}
+    filtered_dict = {k: v for k, v in _user_dict.items() if k in EXISTING_USER_FIELDS}
 
     cipher = get_cipher()
     if 'password' in filtered_dict and cipher:
@@ -108,12 +118,12 @@ def _store_userdata(user_dict: Dict):
 def create_user(username, password, admin=False, **kwargs):
     """Core logic to create a user. Returns the raw API key."""
 
-    if get_userdata(username, fields=['adminRole']):   # any field, doesnt matter
+    if get_userdata(username, fields=['adminRole']):   # any field, doesn't matter
         raise ValueError(f"Username '{username}' already exists.")
 
     filtered_roles = {
         k: v for k, v in kwargs.items()
-        if k in SAFE_USER_FIELDS and k != 'password'  # 'username' and 'password' are handled explicitly
+        if k in EXISTING_USER_FIELDS and k not in ('username', 'password')  # 'username' and 'password' are handled explicitly
     }
 
     raw_api_key = secrets.token_urlsafe(32)
@@ -124,18 +134,16 @@ def create_user(username, password, admin=False, **kwargs):
     user_data = {
         'username': username,
         'password': password,   # store_userdata handles the encryption
-        'adminRole': int(admin),
+        'adminRole': admin,
+
+        # Some defaults
+        'scrobblingEnabled': True,
+        'playlistRole': True,
+        'settingsRole': True,
+        'streamRole': True,
+        'commentRole': True,
+        'maxBitRate': False
     }
-    some_defaults = {
-        'scrobblingEnabled': 1,
-        'playlistRole': 1,
-        'settingsRole': 1,
-        'streamRole': 1,
-        'commentRole': 1,
-        'maxBitRate': 0
-    }
-    for k, v in some_defaults.items():
-        user_data.setdefault(k, v)
 
     user_data.update(filtered_roles)
     _store_userdata(user_data)
@@ -146,7 +154,8 @@ def create_user(username, password, admin=False, **kwargs):
             """
             UPDATE users
             SET api_key_hash = ?
-            WHERE username = ?""", (api_key_hash, username)
+            WHERE username = ?
+            """, (api_key_hash, username)
         )
 
     return raw_api_key
@@ -155,10 +164,10 @@ def create_user(username, password, admin=False, **kwargs):
 def update_user(username: str, **updates):
     """Core logic to update an existing user. """
 
-    if not get_userdata(username, fields=['adminRole']):   # any field, doesnt matter
+    if not get_userdata(username, fields=['username']):   # any field, doesnt matter
         raise ValueError(f"User '{username}' does not exist.")
 
-    filtered_updates = {k: v for k, v in updates.items() if k in SAFE_USER_FIELDS}
+    filtered_updates = {k: v for k, v in updates.items() if k in EXISTING_USER_FIELDS}
     filtered_updates['username'] = username
 
     _store_userdata(filtered_updates)
@@ -189,10 +198,10 @@ def load_username(api_key_hash: str) -> str:
     return row[0] if row else None
 
 
-def load_all_users() -> list[dict]:
-    """Load roles/metadata for all users. Excludes password."""
-    fields = list(SAFE_USER_FIELDS - {'password'})
-    columns = ['username'] + fields
+def load_all_users() -> List[Dict]:
+    """Load roles/metadata for all users. Explicitly excludes password."""
+
+    columns = sorted(list(EXISTING_USER_FIELDS - {'password'}))
     columns_str = ', '.join(columns)
 
     with database() as db:
@@ -206,12 +215,48 @@ def load_all_users() -> list[dict]:
     return [dict(zip(columns, row)) for row in rows]
 
 
-def load_user_roles(username: str) -> Optional[Dict]:
+def load_user_roles(username: str) -> Dict:
     """Load all user fields except password, safe to cache in g."""
-    return get_userdata(username, fields=set(SAFE_USER_FIELDS - {'password'}))
+    return get_userdata(username)
 
 
 ##
+
+def _check_password(
+        username: str,
+        token: Optional[str] = None,
+        salt: Optional[str] = None,
+        clearpass: Optional[str] = None
+    ) -> Tuple[bool, int, Optional[str]]:
+
+    stored_password = get_userdata(username, fields=['password'], include_password=True).get('password')
+    if not stored_password:
+        stored_password = _dummy_stored_password()
+        user_found = False
+    else:
+        user_found = True
+
+    ok = False
+    if token and salt:
+        expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
+        ok = hmac.compare_digest(token, expected)
+
+    elif clearpass:
+        if clearpass.startswith('enc:'):
+            try:
+                decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
+                ok = hmac.compare_digest(decoded, stored_password)
+            except ValueError:
+                ok = hmac.compare_digest(clearpass, stored_password)
+        else:
+            ok = hmac.compare_digest(clearpass, stored_password)
+
+    if ok and user_found:
+        return True, 0, username
+
+    # 40: "Wrong username or password."
+    return False, 40, None
+
 
 def authenticate(flask_req_values: 'CombinedMultiDict'):
     r = flask_req_values
@@ -227,64 +272,30 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
     # API Key (modern)
     if api_key:
         if user or token or salt or clearpass:
+            # 43: "Multiple conflicting authentication mechanisms provided."
             return False, 43, None
 
         api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         found_user = load_username(api_key_hash)
         if found_user:
             return True, 0, found_user
+
+        # 40: "Wrong username or password."
         return False, 40, None
 
     # Legacy (MD5 / password)
     else:
         if clearpass and (token or salt):
+            # 43: "Multiple conflicting authentication mechanisms provided."
             return False, 43, None
 
         if not app.config.get('legacy_auth', True):
+            # 42: "Provided authentication mechanism not supported."
             return False, 42, None
 
         if not user:
+            # 10: "Required parameter is missing."
             return False, 10, None
-
-        user_data = get_userdata(user, fields=['password'])
-        if not user_data:
-            get_userdata('', fields=['password'])  # dummy DB round-trip
-
-            dummy_pw = _DUMMY_PASSWORD
-
-            if token and salt:
-                expected = hashlib.md5(f"{dummy_pw}{salt}".encode('utf-8')).hexdigest().lower()
-                _ = hmac.compare_digest(token, expected)
-
-            elif clearpass:
-                if clearpass.startswith('enc:'):
-                    try:
-                        decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
-                    except ValueError:
-                        return False, 40, None
-                    _ = hmac.compare_digest(decoded, dummy_pw)
-                else:
-                    _ = hmac.compare_digest(clearpass, dummy_pw)
-
-            return False, 40, None
-
-        stored_password = user_data['password']
-        if token and salt:
-            expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
-            if hmac.compare_digest(token, expected):
-                return True, 0, user
-
-        elif clearpass:
-            if clearpass.startswith('enc:'):
-                try:
-                    decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
-                except ValueError:
-                    return False, 40, None
-                ok = hmac.compare_digest(decoded, stored_password)
-            else:
-                ok = hmac.compare_digest(clearpass, stored_password)
-            if ok:
-                return True, 0, user
-
-    return False, 40, None
-
+        
+        success, code, username = _check_password(user, token, salt, clearpass)
+        return success, code, username

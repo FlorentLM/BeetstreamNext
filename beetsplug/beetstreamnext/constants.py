@@ -69,6 +69,11 @@ SESSION_KEY_ROTATION_DAYS = 30
 
 LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 
+EXISTING_USER_FIELDS = frozenset({
+    'username', 'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
+    'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
+    'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
+})
 ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.bmp'}

@@ -2,9 +2,9 @@ import flask
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
+from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES, EXISTING_USER_FIELDS
 from beetsplug.beetstreamnext.user_management import (
-    SAFE_USER_FIELDS, create_user, update_user, delete_user, get_userdata, load_all_users
+    create_user, update_user, delete_user, get_userdata, load_all_users
 )
 from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, api_bool, safe_str
 
@@ -98,7 +98,7 @@ def endpoint_create_user():
 
     try:
         params = {}
-        for field in SAFE_USER_FIELDS:
+        for field in EXISTING_USER_FIELDS:
             if field in r:
                 if field == 'maxBitRate':
                     val = r.get(field, default=0, type=int)
@@ -142,7 +142,7 @@ def endpoint_update_user():
             br = r.get('maxBitRate', default=0, type=int)
             updates['maxBitRate'] = br if br in ALLOWED_BITRATES else 0
 
-        for field in SAFE_USER_FIELDS:
+        for field in EXISTING_USER_FIELDS:
             if field in r and field not in ('password', 'maxBitRate'):
                 updates[field] = int(r.get(field, default=False, type=api_bool))
 

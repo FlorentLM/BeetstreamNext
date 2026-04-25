@@ -6,8 +6,7 @@ import requests
 from requests_cache import CachedSession
 
 from .application import app
-from .constants import WIKI_API, BEETSTREAMNEXT_VER
-
+from .constants import WIKI_API, BEETSTREAMNEXT_VER, bsn_logger
 
 _http_session = None
 
@@ -70,7 +69,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     try:
         response = http_session().get(search_endpoint, headers=headers, timeout=8)
         if response.from_cache:
-            app.logger.debug(f"Cache hit for Deezer: {artist}")
+            bsn_logger.debug(f"Cache hit for Deezer: {artist}")
 
         if response.ok:
             candidates = response.json().get('data', [])
@@ -111,7 +110,7 @@ def query_musicbrainz(mbid: str, type: str) -> Dict:
     try:
         response = http_session().get(endpoint, headers=headers, params=params, timeout=8)
         if response.from_cache:
-            app.logger.debug(f"Cache hit for MusicBrainz: {mbid}")
+            bsn_logger.debug(f"Cache hit for MusicBrainz: {mbid}")
         return response.json() if response.ok else {}
 
     except requests.exceptions.RequestException:
@@ -141,7 +140,7 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) 
     try:
         response = http_session().get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
         if response.from_cache:
-            app.logger.debug(f"Cache hit for Last.fm: {q}")
+            bsn_logger.debug(f"Cache hit for Last.fm: {q}")
         return response.json() if response.ok else {}
 
     except requests.exceptions.RequestException:
@@ -182,7 +181,7 @@ def query_coverartarchive(mbid: str) -> bytes:
     try:
         response = http_session().get(art_url, timeout=8)
         if response.from_cache:
-            app.logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
+            bsn_logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
 
         return response.content if (response.ok and response.content) else b''
 

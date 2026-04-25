@@ -1,5 +1,4 @@
 from typing import Dict
-
 import flask
 
 from . import api_bp
@@ -10,7 +9,7 @@ from beetsplug.beetstreamnext.api.artists import artist_payload
 from beetsplug.beetstreamnext.api.songs import song_payload
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils import (
-    get_beets_schema, subsonic_response, genres_formatter, subsonic_error, safe_str, beets_to_sub_artist
+    get_beets_schema, subsonic_response, genres_formatter, subsonic_error, safe_str, bts_artist
 )
 
 
@@ -180,9 +179,9 @@ def endpoint_get_music_directory() -> flask.Response:
         for row in rows:
             artist_name, artist_mbid = row
             if artist_mbid:
-                artist_id = beets_to_sub_artist(artist_mbid)
+                artist_id = bts_artist(artist_mbid)
             else:
-                artist_id = beets_to_sub_artist(artist_name, is_mbid=False)
+                artist_id = bts_artist(artist_name, is_mbid=False)
             children.append({
                 'id': artist_id,
                 'title': artist_name,

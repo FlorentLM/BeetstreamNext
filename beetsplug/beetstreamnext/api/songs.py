@@ -1,5 +1,4 @@
 from typing import List, Tuple, Dict
-
 import flask
 
 from . import api_bp
@@ -10,13 +9,13 @@ from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.external import query_lastfm
 from beetsplug.beetstreamnext.userdata_caching import preload_songs
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error, get_beets_schema, safe_str, escape_like, sub_to_beets_song
+    subsonic_response, subsonic_error, get_beets_schema, safe_str, escape_like, stb_song
 )
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_song
 
 
 def song_payload(subsonic_song_id: str) -> Dict:
-    beets_song_id = sub_to_beets_song(subsonic_song_id)
+    beets_song_id = stb_song(subsonic_song_id)
     song_item = flask.g.lib.get_item(beets_song_id)
     if not song_item:
         return {}

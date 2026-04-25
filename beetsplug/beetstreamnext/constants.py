@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import shutil
 import importlib
@@ -13,8 +14,9 @@ BEETSTREAMNEXT_VER = '1.6.0-dev'
 # LOG_LEVEL = logging.ERROR
 # LOG_LEVEL = logging.INFO
 LOG_LEVEL = logging.DEBUG
-logging.getLogger('flask').setLevel(LOG_LEVEL)
-logging.getLogger('flask.app').setLevel(LOG_LEVEL)
+
+logging.basicConfig(encoding='utf-8', level=LOG_LEVEL)
+bsn_logger = logging.getLogger('beetstreamnext')
 
 
 FFMPEG_BIN = shutil.which('ffmpeg') is not None
@@ -48,6 +50,20 @@ ASCII_TRANSLATE_TABLE = {
 ALPHANUM_CHARS = re.compile(r'^[a-zA-Z0-9_]+$')
 
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
+
+def cache_location() -> Path:
+    if platform.system() == "Windows":
+        cache_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    elif platform.system() == "Darwin":
+        cache_dir = Path.home() / "Library" / "Caches"
+    else:
+        cache_dir = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+
+    final_path = cache_dir / "beetstreamnext"
+    final_path.mkdir(parents=True, exist_ok=True)
+    return final_path
+
+CACHE_LOCATION = cache_location()
 
 NOW_PLAYING_TIMEOUT_SEC = 600   # stale after 10 min
 CLEANUP_INTERVAL_SEC = 86400    # clean once per day

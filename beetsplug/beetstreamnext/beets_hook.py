@@ -27,8 +27,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from waitress import serve
 from paste.translogger import TransLogger
 
-from .constants import LOG_LEVEL, LOOPBACK_IPS
-from .application import app, ip_filter, cache_location
+from .constants import LOG_LEVEL, CACHE_LOCATION, LOOPBACK_IPS, bsn_logger
+from .application import app, ip_filter
 from .utils import safe_str
 from .console import print_box, TermColors
 from .db import initialise_db, rotate_session_key, ensure_secret
@@ -91,7 +91,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             ip_filter.blacklist = self.config['ip_blacklist'].as_str_seq()
 
             ensure_secret(app.config['DB_PATH'])
-            app.config['SECRET_KEY'] = rotate_session_key(cache_location())
+            app.config['SECRET_KEY'] = rotate_session_key(CACHE_LOCATION)
 
             # Cache clearing
             if opts.clear_cache:
@@ -271,7 +271,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         ''
                     ], color=TermColors.WARNING)
                 else:
-                    app.logger.info(f"Enabling CORS for origin(s): {cors_origin}")
+                    bsn_logger.info(f"Enabling CORS for origin(s): {cors_origin}")
 
                 app.config['CORS_ALLOW_HEADERS'] = "Content-Type"
                 origins_list = [o.strip() for o in cors_origin.split(',')] if ',' in cors_origin else cors_origin
@@ -279,7 +279,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 app.config['CORS_RESOURCES'] = {r"/*": {"origins": origins_list}}
                 CORS(app, supports_credentials=supports_creds)
             else:
-                app.logger.info("CORS is disabled (secure default). Web-based clients will be blocked by browsers.")
+                bsn_logger.info("CORS is disabled (secure default). Web-based clients will be blocked by browsers.")
 
             # Allow serving behind a reverse proxy
             if self.config['reverse_proxy']:

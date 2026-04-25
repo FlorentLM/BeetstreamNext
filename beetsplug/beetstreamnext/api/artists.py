@@ -4,7 +4,6 @@ import urllib.parse
 from collections import defaultdict
 from functools import partial
 from typing import Dict
-
 import flask
 
 from . import api_bp
@@ -13,7 +12,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.userdata_caching import preload_artists
 from beetsplug.beetstreamnext.utils import (
-    subsonic_response, subsonic_error, trim_text, remove_accents, safe_str, beets_to_sub_artist, sub_to_beets_artist
+    subsonic_response, subsonic_error, trim_text, remove_accents, safe_str, bts_artist, stb_artist
 )
 from beetsplug.beetstreamnext.images import image_url
 from beetsplug.beetstreamnext.mappings import resolve_artist, map_album, map_artist, get_song_counts
@@ -21,7 +20,7 @@ from beetsplug.beetstreamnext.mappings import resolve_artist, map_album, map_art
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> Dict:
 
-    value, is_mbid = sub_to_beets_artist(subsonic_artist_id)
+    value, is_mbid = stb_artist(subsonic_artist_id)
     if not value:
         return {}
 
@@ -215,9 +214,9 @@ def endpoint_artist_info() -> flask.Response:
 
     # image id is the artist id, but input may have been song or album
     if artist_mbid:
-        image_id = beets_to_sub_artist(artist_mbid)
+        image_id = bts_artist(artist_mbid)
     else:
-        image_id = beets_to_sub_artist(artist_name, is_mbid=False)
+        image_id = bts_artist(artist_name, is_mbid=False)
 
     payload = {
         tag: {

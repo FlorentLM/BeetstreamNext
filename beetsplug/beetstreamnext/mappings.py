@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
 import flask
 from beets.library import LibModel, Item
 
-from .constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF
-from .application import app
+from .constants import ART_ID_PREF, ALB_ID_PREF, SNG_ID_PREF, bsn_logger
 from .userdata_caching import preload_songs, preload_albums, one_rating, one_like, one_play_stats
 from .utils import (
     get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query,
-    beets_to_sub_artist, sub_to_beets_artist, beets_to_sub_album, sub_to_beets_album, beets_to_sub_song,
-    sub_to_beets_song
+    bts_artist, stb_artist, bts_album, stb_album, bts_song,
+    stb_song
 )
 from .images import image_url
 
@@ -46,9 +45,9 @@ def map_media(beets_object: Dict | LibModel) -> Dict:
     main_artist_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
 
     if main_artist_mbid:
-        artist_id = beets_to_sub_artist(main_artist_mbid)
+        artist_id = bts_artist(main_artist_mbid)
     else:
-        artist_id = beets_to_sub_artist(main_artist_name, is_mbid=False)
+        artist_id = bts_artist(main_artist_name, is_mbid=False)
 
     artists, album_artists, contributors, display_composer = get_artists(data)
 
@@ -95,7 +94,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
     data = standardise_datadict(album_object)
 
     beets_album_id = data.get('id', 0)
-    subsonic_album_id = beets_to_sub_album(beets_album_id)
+    subsonic_album_id = bts_album(beets_album_id)
     album_name = data.get('album', '')
 
     subsonic_album = map_media(data)
@@ -187,7 +186,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
                         if entry.is_file():
                             song_filesizes[entry.path] = entry.stat().st_size
             except Exception as e:
-                app.logger.debug(f"Filesize prefetch failed: {e}")
+                bsn_logger.debug(f"Filesize prefetch failed: {e}")
 
         songs.sort(key=lambda s: (s.get('disc', 1), s.get('track', 1)))
         subsonic_album['song'] = [map_song(s, prefetched_sizes=song_filesizes) for s in songs]
@@ -213,13 +212,13 @@ def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dic
     data = standardise_datadict(song_object)
 
     beets_song_id = data.get('id', 0)
-    song_id = beets_to_sub_song(beets_song_id)
+    song_id = bts_song(beets_song_id)
     song_title = data.get('title') or ''
 
     subsonic_song = map_media(data)
 
     song_filepath = os.fsdecode(data.get('path', b''))
-    album_id = beets_to_sub_album(data.get('album_id', 0))
+    album_id = bts_album(data.get('album_id', 0))
 
     song_specific = {
         'id': song_id,
@@ -372,9 +371,9 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     roles = meta['roles']
 
     if mbid:
-        subsonic_artist_id = beets_to_sub_artist(mbid)
+        subsonic_artist_id = bts_artist(mbid)
     else:
-        subsonic_artist_id = beets_to_sub_artist(artist_name, is_mbid=False)
+        subsonic_artist_id = bts_artist(artist_name, is_mbid=False)
 
     subsonic_artist = {
         'id': subsonic_artist_id,
@@ -493,7 +492,7 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
     (or None if ID can't be resolved)
     """
     if req_id.startswith(SNG_ID_PREF):
-        item = flask.g.lib.get_item(sub_to_beets_song(req_id))
+        item = flask.g.lib.get_item(stb_song(req_id))
         if not item:
             return None
 
@@ -506,7 +505,7 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
         return name, mbid
 
     if req_id.startswith(ALB_ID_PREF):
-        album = flask.g.lib.get_album(sub_to_beets_album(req_id))
+        album = flask.g.lib.get_album(stb_album(req_id))
         if not album:
             return None
 
@@ -519,7 +518,7 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
         return name, mbid
 
     if req_id.startswith(ART_ID_PREF):
-        value, is_mbid = sub_to_beets_artist(req_id)
+        value, is_mbid = stb_artist(req_id)
     else:
         value, is_mbid = req_id, False
 
@@ -605,7 +604,7 @@ def get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
                 meta = _artist_metadata(name)
                 mbid = meta['mbid']
 
-            contributor_id = beets_to_sub_artist(mbid, True) if mbid else beets_to_sub_artist(name, False)
+            contributor_id = bts_artist(mbid, True) if mbid else bts_artist(name, False)
 
             if is_contributor:
                 dedup_key = (contributor_id, role)

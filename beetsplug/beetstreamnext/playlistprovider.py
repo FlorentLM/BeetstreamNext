@@ -7,8 +7,8 @@ from beets.util import bytestring_path
 
 from .application import app
 from .userdata_caching import preload_songs
-from .utils import genres_formatter, creation_date, chunked_query, sub_to_beets_song
-from .constants import PLY_ID_PREF
+from .utils import genres_formatter, creation_date, chunked_query, stb_song
+from .constants import PLY_ID_PREF, bsn_logger
 from .mappings import map_song
 
 if TYPE_CHECKING:
@@ -164,7 +164,7 @@ class Playlist:
 
         if path.is_file():
             err = f'Playlist {path.name} already exists!'
-            app.logger.warning(err)
+            bsn_logger.warning(err)
             raise FileExistsError(err)
 
         instance.name = safe_name
@@ -258,7 +258,7 @@ class Playlist:
                     continue
                 path = os.fsdecode(path)
 
-                song_id = sub_to_beets_song(song.get('id', ''))
+                song_id = stb_song(song.get('id', ''))
                 length = song.get('duration') or song.get('length', 0)
                 info = f"#EXTINF:{round(length)} id={song_id}"
 
@@ -298,7 +298,7 @@ class PlaylistProvider:
         self._playlists = {}
 
         if not self.playlist_dirs or all(v is None for v in self.playlist_dirs.values()):
-            app.logger.warning('No playlist directories could be found.')
+            bsn_logger.warning('No playlist directories could be found.')
         else:
             for dir_id, dir_path in self.playlist_dirs.items():
                 if dir_path is not None:
@@ -307,9 +307,9 @@ class PlaylistProvider:
                         try:
                             self._load_playlist(dir_id, path)
                         except Exception as e:
-                            app.logger.error(f"Failed to load playlist {path.name}: {e}")
+                            bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
 
-            app.logger.debug(f"Loaded {len(self._playlists)} playlists.")
+            bsn_logger.debug(f"Loaded {len(self._playlists)} playlists.")
 
     def _load_playlist(self, dir_id, filepath) -> Playlist:
         """Load playlist data from a file, or return the cached version if still current."""
@@ -394,7 +394,7 @@ class PlaylistProvider:
                     try:
                         self._load_playlist(dir_id, path)
                     except Exception as e:
-                        app.logger.error(f"Failed to load playlist {path.name}: {e}")
+                        bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
 
             return list(self._playlists.values())
 
@@ -417,7 +417,7 @@ class PlaylistProvider:
                 os.remove(path)
             except FileNotFoundError:
                 err = f"Playlist {path.name} does not exist in {path.parent}."
-                app.logger.warning(err)
+                bsn_logger.warning(err)
                 raise FileNotFoundError(err)
             finally:
                 self.deregister(playlist_id) # always remove from cache

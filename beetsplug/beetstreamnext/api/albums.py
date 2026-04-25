@@ -1,6 +1,5 @@
 import urllib.parse
 from typing import Dict
-
 import flask
 
 from . import api_bp
@@ -9,7 +8,7 @@ from beetsplug.beetstreamnext.constants import SNG_ID_PREF
 from beetsplug.beetstreamnext.db import dual_database
 from beetsplug.beetstreamnext.utils import (
     get_beets_schema, subsonic_response, subsonic_error,
-    safe_str, beets_to_sub_album, sub_to_beets_album, sub_to_beets_song
+    safe_str, bts_album, stb_album, stb_song
 )
 from beetsplug.beetstreamnext.images import image_url
 from beetsplug.beetstreamnext.mappings import map_album, get_song_counts
@@ -18,7 +17,7 @@ from beetsplug.beetstreamnext.userdata_caching import preload_albums
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> Dict:
 
-    beets_album_id = sub_to_beets_album(subsonic_album_id)
+    beets_album_id = stb_album(subsonic_album_id)
     album_object = flask.g.lib.get_album(beets_album_id)
     if not album_object:
         return {}
@@ -62,14 +61,14 @@ def endpoint_get_album_info() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     if req_id.startswith(SNG_ID_PREF):
-        item = flask.g.lib.get_item(sub_to_beets_song(req_id))
+        item = flask.g.lib.get_item(stb_song(req_id))
         beets_album_id = item.get('album_id') if item else None
 
         album = flask.g.lib.get_album(beets_album_id) if beets_album_id else None
-        image_id = beets_to_sub_album(beets_album_id) if beets_album_id else req_id
+        image_id = bts_album(beets_album_id) if beets_album_id else req_id
 
     else:
-        album = flask.g.lib.get_album(sub_to_beets_album(req_id))
+        album = flask.g.lib.get_album(stb_album(req_id))
         image_id = req_id
 
     if not album:

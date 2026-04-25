@@ -2,7 +2,7 @@ import threading
 import time
 from datetime import datetime
 
-from .constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS
+from .constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, bsn_logger
 from .application import app, rate_limiter
 
 
@@ -34,7 +34,7 @@ def run_periodic():
         _cleanup_lock.release()
 
     def _background_maintenance():
-        app.logger.info(f"[{datetime.fromtimestamp(now)}] Starting background maintenance...")
+        bsn_logger.info(f"[{datetime.fromtimestamp(now)}] Starting background maintenance...")
 
         rate_limiter.sweep()
 
@@ -47,9 +47,9 @@ def run_periodic():
                     if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
                         f.unlink(missing_ok=True)
             except Exception as e:
-                app.logger.error(f"Error cleaning thumbnail cache: {e}")
+                bsn_logger.error(f"Error cleaning thumbnail cache: {e}")
 
-        app.logger.info(f"[{datetime.fromtimestamp(now)}] Background maintenance complete.")
+        bsn_logger.info(f"[{datetime.fromtimestamp(now)}] Background maintenance complete.")
 
     thread = threading.Thread(target=_background_maintenance, daemon=True)
     thread.start()

@@ -1,5 +1,4 @@
 from urllib.parse import unquote
-
 import flask
 
 from . import api_bp

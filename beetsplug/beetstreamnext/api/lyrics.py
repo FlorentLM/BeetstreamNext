@@ -3,8 +3,8 @@ from beets.plugins import find_plugins
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str, sub_to_beets_song
+from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str, stb_song
+from beetsplug.beetstreamnext.constants import bsn_logger
 
 
 def _fetch_lyrics(item) -> str | None:
@@ -23,7 +23,7 @@ def _fetch_lyrics(item) -> str | None:
             if item.lyrics:
                 return str(item.lyrics)
         except Exception as e:
-            app.logger.error(f'Error fetching lyrics via beets plugin: {e}')
+            bsn_logger.error(f'Error fetching lyrics via beets plugin: {e}')
 
     return None
 
@@ -80,7 +80,7 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = sub_to_beets_song(req_id)
+    beets_id = stb_song(req_id)
     item = flask.g.lib.get_item(beets_id)
 
     if not item:

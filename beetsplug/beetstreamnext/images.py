@@ -11,8 +11,8 @@ import flask
 
 from .application import app
 from .external import http_session, query_deezer, query_coverartarchive
-from .utils import get_mimetype, customstrip, make_hidden, grab_auth_params, sub_to_beets_artist
-from .constants import ART_ID_PREF, IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN
+from .utils import get_mimetype, customstrip, make_hidden, grab_auth_params, stb_artist
+from .constants import ART_ID_PREF, IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
@@ -100,7 +100,7 @@ def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> str 
         return str(thumb_path)
 
     except Exception as e:
-        app.logger.error(f"Failed to create thumbnail for {full_path}: {e}")
+        bsn_logger.error(f"Failed to create thumbnail for {full_path}: {e}")
         return None
 
 
@@ -186,7 +186,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
             return flask.send_file(art_path, mimetype=get_mimetype(art_path))
         except Exception as e:
-            app.logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
+            bsn_logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
 
     # Check disk
     album_dir = os.fsdecode(album.item_dir())
@@ -205,7 +205,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
                 return flask.send_file(found_art, mimetype=get_mimetype(found_art))
             except Exception as e:
-                app.logger.warning(f"Failed to serve folder art for album {album_id} ({found_art}): {e}")
+                bsn_logger.warning(f"Failed to serve folder art for album {album_id} ({found_art}): {e}")
 
     # Proxy from CoverArtArchive
     mbid = album.get('mb_albumid')
@@ -219,9 +219,9 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
                     try:
                         img = Image.open(BytesIO(image_bytes))
                         img.save(save_path, format='JPEG')
-                        app.logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
+                        bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
                     except Exception as e:
-                        app.logger.warning(f"Could not save album art to {save_path}: {e}")
+                        bsn_logger.warning(f"Could not save album art to {save_path}: {e}")
 
             if size:
                 return flask.send_file(resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
@@ -234,7 +234,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
 
     artist = customstrip(artist)
     if artist.startswith(ART_ID_PREF):
-        value, is_mbid = sub_to_beets_artist(artist)
+        value, is_mbid = stb_artist(artist)
 
         if is_mbid:
             with flask.g.lib.transaction() as tx:
@@ -278,7 +278,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
                             img = Image.open(BytesIO(response.content))
                             img.save(local_image_path)
                     except Exception as e:
-                        app.logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
+                        bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
 
         # Serve local if it exists now
         if os.path.isfile(local_image_path):

@@ -4,16 +4,14 @@ from pathlib import Path
 import queue
 import threading
 from typing import Generator
-
 import flask
 
 from . import api_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import (
-    get_mimetype, subsonic_error, api_bool, safe_str, sub_to_beets_song
-)
+from beetsplug.beetstreamnext.utils import get_mimetype, subsonic_error, api_bool, safe_str, stb_song
+
 
 
 def _send_direct(file_path) -> flask.Response | None:
@@ -200,7 +198,7 @@ def endpoint_stream_song() -> flask.Response | None:
     if user_max_bitrate > 0:
         max_bitrate = min(user_max_bitrate, max_bitrate) if max_bitrate > 0 else user_max_bitrate
 
-    beets_song_id = sub_to_beets_song(song_id)
+    beets_song_id = stb_song(song_id)
     song = flask.g.lib.get_item(beets_song_id)
     song_path = os.fsdecode(song.get('path', b'')) if song else ''
 
@@ -234,7 +232,7 @@ def endpoint_stream_song() -> flask.Response | None:
         if response is not None:
             return response
 
-        app.logger.warning(f"Direct play of song '{Path(song_path).name}' failed.")
+        bsn_logger.warning(f"Direct play of song '{Path(song_path).name}' failed.")
 
     return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -253,7 +251,7 @@ def endpoint_download_song() -> flask.Response | None:
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_song_id = sub_to_beets_song(song_id)
+    beets_song_id = stb_song(song_id)
     item = flask.g.lib.get_item(beets_song_id)
 
     song_path = os.fsdecode(item.get('path', b'')) if item else ''

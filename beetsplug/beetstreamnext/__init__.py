@@ -102,8 +102,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config['BEETS_DB_PATH'] = Path(beets.config['library'].get())
             app.config['DB_PATH'] = app.config['BEETS_DB_PATH'].parent / 'beetstreamnext.db'
 
-            ip_filter.whitelist = self.config['ip_whitelist'].get(list)
-            ip_filter.blacklist = self.config['ip_blacklist'].get(list)
+            ip_filter.whitelist = self.config['ip_whitelist'].as_str_seq()
+            ip_filter.blacklist = self.config['ip_blacklist'].as_str_seq()
 
             ensure_secret(app.config['DB_PATH'])
             app.config['SECRET_KEY'] = rotate_session_key(cache_location())

@@ -95,6 +95,17 @@ class IPFilter:
         self._whitelist = set(whitelist) if whitelist else set()
         self._blacklist = set(blacklist) if blacklist else set()
 
+    @staticmethod
+    def _parse_input(values: Optional[str | Sequence[str]] = None) -> Set[str]:
+        """Belt and suspenders parser to grab config values."""
+        if not values:
+            values = []
+        if isinstance(values, str):
+            values = [v.strip() for v in values.split(',')]
+        else:
+            values = [vv.strip(',') for v in values for vv in v.split(',')]
+        return {v for v in values if v}
+
     def is_allowed(self, ip: str) -> bool:
 
         if ip in LOOPBACK_IPS:
@@ -132,9 +143,7 @@ class IPFilter:
 
     @whitelist.setter
     def whitelist(self, whitelisted_ips: str | Sequence[str]):
-        if isinstance(whitelisted_ips, str):
-            whitelisted_ips = [whitelisted_ips] if whitelisted_ips else []
-        self._whitelist = set(whitelisted_ips) if whitelisted_ips else set()
+        self._whitelist = self._parse_input(whitelisted_ips)
         app.logger.debug(f'Loaded new whitelist: {self._whitelist}.')
 
     @property
@@ -143,9 +152,7 @@ class IPFilter:
 
     @blacklist.setter
     def blacklist(self, blacklisted_ips: str | Sequence[str]):
-        if isinstance(blacklisted_ips, str):
-            blacklisted_ips = [blacklisted_ips] if blacklisted_ips else []
-        self._blacklist = set(blacklisted_ips) if blacklisted_ips else set()
+        self._blacklist = self._parse_input(blacklisted_ips)
         app.logger.debug(f'Loaded new blacklist: {self._blacklist}.')
 
 

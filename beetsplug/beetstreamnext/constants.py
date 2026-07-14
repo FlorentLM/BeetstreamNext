@@ -12,8 +12,8 @@ BEETSTREAMNEXT_VER = '1.6.0-dev'
 
 
 # LOG_LEVEL = logging.ERROR
-# LOG_LEVEL = logging.INFO
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
+# LOG_LEVEL = logging.DEBUG
 
 logging.basicConfig(encoding='utf-8', level=LOG_LEVEL)
 bsn_logger = logging.getLogger('beetstreamnext')

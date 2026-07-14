@@ -324,6 +324,4 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         cmd.func = func
 
-        print(app.config.items())
-
         return [cmd]

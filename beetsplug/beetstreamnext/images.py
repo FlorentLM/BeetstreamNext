@@ -184,18 +184,28 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
     # Check Beets db
     art_path = os.fsdecode(album.get('artpath') or b'')
-    if art_path and os.path.isfile(art_path):
-        try:
-            if size:
-                return flask.send_file(_cached_resize(art_path, size), mimetype='image/jpeg')
+    if art_path:
+        path_obj = Path(art_path)
+        if not path_obj.is_absolute():
+            art_path = str(app.config['root_directory'] / path_obj)
 
-            return flask.send_file(art_path, mimetype=get_mimetype(art_path))
-        except Exception as e:
-            bsn_logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
+        if os.path.isfile(art_path):
+            try:
+                if size:
+                    return flask.send_file(_cached_resize(art_path, size), mimetype='image/jpeg')
+
+                return flask.send_file(art_path, mimetype=get_mimetype(art_path))
+            except Exception as e:
+                bsn_logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
 
     # Check disk
-    album_dir = os.fsdecode(album.item_dir())
-    if album_dir:
+    album_dir_raw = os.fsdecode(album.item_dir() or b'')
+    album_dir = None
+    if album_dir_raw:
+        album_dir = Path(album_dir_raw)
+        if not album_dir.is_absolute():
+            album_dir = app.config['root_directory'] / album_dir
+
         found_art = _image_from_folder(album_dir)
 
         if found_art:
@@ -269,7 +279,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     if local_folder.is_dir():
         # Try to fetch+save from Deezer if enabled and not already cached
         if app.config['fetch_artists_images'] and not local_image_path.is_file():
-            dz_data = query_deezer(artist_quot=artist_name)
+            dz_data = query_deezer(artist=artist_name)
 
             if dz_data and dz_data.get('type', '') == 'artist':
                 img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']

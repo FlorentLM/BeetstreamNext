@@ -36,7 +36,7 @@ def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[s
     delim = BEETS_MULTI_DELIM
 
     for field in name_fields:
-        if field == 'artists':
+        if field in ('artists', 'composers', 'lyricists'):
             # Four shapes: sole value, first, last, or somewhere in the middle.
             conditions.extend([
                 f"{field} = ?",
@@ -51,7 +51,7 @@ def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[s
                 f"%{delim}{escaped}{delim}%",
             ])
         else:
-            # artist / composer / lyricist are single-valued in beets
+            # artist / composer / lyricist are single-valued in older beets schema
             conditions.append(f"{field} = ?")
             params.append(name)
     return conditions, params
@@ -296,7 +296,7 @@ def endpoint_get_similar_songs() -> flask.Response:
     # Filter to columns that actually exist in current beets library
     available_cols = set(get_beets_schema('items'))
     mbid_fields = [f for f in ['mb_artistid', 'mb_artistids'] if f in available_cols]
-    name_fields = [f for f in ['artist', 'artists', 'composer', 'lyricist'] if f in available_cols]
+    name_fields = [f for f in ['artist', 'artists', 'composer', 'composers', 'lyricist', 'lyricists'] if f in available_cols]
 
     # Safety cap to stay under SQLite 999 param limit
     # (last.fm scores by similarity anyway so the top N are fine)

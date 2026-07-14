@@ -6,7 +6,7 @@ import flask
 from beets.library import LibModel, Item
 
 from .constants import bsn_logger
-from .utils import get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query
+from .utils import get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query, get_beets_schema
 
 if TYPE_CHECKING:
     from .playlistprovider import Playlist
@@ -542,13 +542,35 @@ def _artist_metadata(name: str) -> Dict:
 
         # Check for secondary roles
         if not roles:
-            if tx.query("""SELECT 1 FROM items WHERE artists LIKE ? LIMIT 1""", (f"%{name}%",)):
+            if tx.query(
+                    """
+                    SELECT 1
+                    FROM items
+                    WHERE artists LIKE ?
+                    LIMIT 1
+                    """, (f"%{name}%",)):
                 roles.append('artist')
 
-        if tx.query("""SELECT 1 FROM items WHERE composer = ? OR composer LIKE ? LIMIT 1""", (name, f"%{name}%")):
+        cols = get_beets_schema('items')
+
+        comp_col = 'composers' if 'composers' in cols else ('composer' if 'composer' in cols else None)
+        if comp_col and tx.query(
+                f"""
+                SELECT 1 FROM items 
+                WHERE {comp_col} = ? OR {comp_col} 
+                LIKE ? 
+                LIMIT 1
+                """, (name, f"%{name}%")):
             roles.append('composer')
 
-        if tx.query("""SELECT 1 FROM items WHERE lyricist = ? OR lyricist LIKE ? LIMIT 1""", (name, f"%{name}%")):
+        lyr_col = 'lyricists' if 'lyricists' in cols else ('lyricist' if 'lyricist' in cols else None)
+        if lyr_col and tx.query(
+                f"""
+                SELECT 1 FROM items 
+                WHERE {lyr_col} = ? OR {lyr_col} 
+                LIKE ? 
+                LIMIT 1
+                """, (name, f"%{name}%")):
             roles.append('lyricist')
 
     result = {
@@ -705,10 +727,10 @@ def get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
     _process(data.get('artists') or '', data.get('mb_artistids') or '', artists_array, seen_artists)
     _process(data.get('albumartists') or '', data.get('mb_albumartistids') or '', album_artists_array, seen_album_artists)
 
-    _process(data.get('composer') or '', '', contributors_array, seen_contributors, True, 'composer')
-    _process(data.get('lyricist') or '', '', contributors_array, seen_contributors, True, 'lyricist')
-    _process(data.get('remixer') or '', '', contributors_array, seen_contributors, True, 'remixer')
-    _process(data.get('arranger') or '', '', contributors_array, seen_contributors, True, 'arranger')
+    _process(data.get('composers') or data.get('composer') or '', '', contributors_array, seen_contributors, True, 'composer')
+    _process(data.get('lyricists') or data.get('lyricist') or '', '', contributors_array, seen_contributors, True, 'lyricist')
+    _process(data.get('remixers') or data.get('remixer') or '', '', contributors_array, seen_contributors, True, 'remixer')
+    _process(data.get('arrangers') or data.get('arranger') or '', '', contributors_array, seen_contributors, True, 'arranger')
 
     display_composer = ", ".join(composers)
 

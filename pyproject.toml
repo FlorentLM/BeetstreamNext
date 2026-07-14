@@ -13,28 +13,28 @@ repository = "https://github.com/FlorentLM/BeetstreamNext"
 packages = [{include = "beetsplug"}]
 
 [tool.poetry.dependencies]
-python = ">3.10,<4.0"
-beets = ">=2.0.0"
-flask-cors = ">=6.0.1"
-cryptography = ">=45.0.6"
-pillow = ">=11.3.0"
-requests = ">=2.33.0"
+python = ">=3.13,<3.15"
+beets = ">=2.12.0"
+flask-cors = ">=6.0.5"
+cryptography = ">=46.0.7"
+pillow = ">=12.3.0"
+requests = ">=2.34.2"
 waitress = ">=3.0.2"
 paste = ">=0.2.1"
-requests-cache = ">=1.3.1"
+requests-cache = ">=1.3.3"
 python-dotenv = ">=1.2.2"
 ffmpeg-python = {version = ">=0.2.0", optional = true}
-wikipedia-api = {version = ">=0.11.0", optional = true}
+wikipedia-api = {version = ">=0.15.0", optional = true}
 
 [tool.poetry.extras]
 transcode = ["ffmpeg-python"]
 wiki = ["wikipedia-api"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = ">=7.4.0"
-ruff = ">=0.1.0"
-poethepoet = ">=0.24.0"
-pre-commit = ">=3.5.0"
+pytest = ">=9.1.1"
+ruff = ">=0.15.21"
+poethepoet = ">=0.48.0"
+pre-commit = ">=4.6.0"
 
 [tool.ruff]
 # same line length as beets for consistency

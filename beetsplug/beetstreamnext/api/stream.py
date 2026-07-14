@@ -14,10 +14,11 @@ from beetsplug.beetstreamnext.utils import get_mimetype, subsonic_error, api_boo
 from beetsplug.beetstreamnext.mappings import IDMapper
 
 
-def _send_direct(file_path) -> flask.Response | None:
+def _send_direct(file_path: str | Path) -> flask.Response | None:
     try:
         return flask.send_file(file_path, mimetype=get_mimetype(file_path))
-    except OSError:
+    except OSError as e:
+        bsn_logger.error(f"Failed to serve file '{file_path}': {e}")
         return None
 
 
@@ -203,6 +204,10 @@ def endpoint_stream_song() -> flask.Response | None:
     song_path = os.fsdecode(song.get('path', b'')) if song else ''
 
     if song_path:
+        path_obj = Path(song_path)
+        if not path_obj.is_absolute():
+            song_path = str(app.config['root_directory'] / path_obj)
+
         song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
 
         needs_transcode = False
@@ -255,6 +260,11 @@ def endpoint_download_song() -> flask.Response | None:
     item = flask.g.lib.get_item(beets_song_id)
 
     song_path = os.fsdecode(item.get('path', b'')) if item else ''
+    if song_path:
+        path_obj = Path(song_path)
+        if not path_obj.is_absolute():
+            song_path = str(app.config['root_directory'] / path_obj)
+
     if not song_path:
         return subsonic_error(70, resp_fmt=resp_fmt)
 

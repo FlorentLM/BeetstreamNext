@@ -1,5 +1,6 @@
 import os
 from io import BytesIO
+from pathlib import Path
 import flask
 
 from . import api_bp
@@ -56,6 +57,9 @@ def endpoint_get_cover_art() -> flask.Response:
         # Fallback: try to extract cover from the song file
         if FFMPEG_PYTHON or FFMPEG_BIN:
             song_path = os.fsdecode(item.path)
+            path_obj = Path(song_path)
+            if not path_obj.is_absolute():
+                song_path = str(app.config['root_directory'] / path_obj)
             try:
                 song_mtime = os.path.getmtime(song_path)
             except OSError:

@@ -67,6 +67,55 @@ class RateLimiter:
             for ip in stale_ips:
                 self._store.pop(ip, None)
 
+    def purge(self) -> int:
+        """Forget every recorded failure. Returns the number of IPs cleared."""
+        with self._lock:
+            n = len(self._store)
+            self._store.clear()
+        return n
+
+    def report(self) -> Dict:
+        """Snapshot of the current state  for diagnostics."""
+        now = time.monotonic()
+        entries = []
+        with self._lock:
+            for ip, attempts in self._store.items():
+                recent = [t for t in attempts if now - t < self._block_window]
+                if not recent:
+                    continue
+                entries.append({
+                    'ip': ip,
+                    'failures': len(recent),
+                    'blocked': len(recent) >= self._max_failures,
+                    'oldest_failure_age_sec': round(now - min(recent), 1),
+                })
+            max_failures = self._max_failures
+            block_window = self._block_window
+
+        entries.sort(key=lambda r: (-r['failures'], r['ip']))
+        return {
+            'max_failures': max_failures,
+            'block_window_sec': block_window,
+            'entries': entries,
+        }
+
+    # Tunable at runtime by the settings store
+    @property
+    def max_failures(self) -> int:
+        return self._max_failures
+
+    @max_failures.setter
+    def max_failures(self, value: int):
+        self._max_failures = int(value)
+
+    @property
+    def block_window(self) -> int:
+        return self._block_window
+
+    @block_window.setter
+    def block_window(self, value: int):
+        self._block_window = int(value)
+
 
 class IPFilter:
     def __init__(self,

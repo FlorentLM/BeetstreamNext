@@ -126,6 +126,8 @@ def endpoint_update_user():
     password = r.get('password', default='', type=str)
     # email = r.get('email', default='', type=safe_str)
 
+    # TODO: This endpoint should not allow an admin to demote themselves
+    
     if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 

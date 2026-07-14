@@ -7,6 +7,8 @@ from beetsplug.beetstreamnext.constants import (
     LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW, bsn_logger
 )
 
+# TODO: Support CIDR
+
 
 class RateLimiter:
 

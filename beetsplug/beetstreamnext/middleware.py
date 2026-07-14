@@ -40,6 +40,9 @@ def _before_request():
     if flask.request.path.startswith('/static'):
         return
 
+    # Unknown path: raise 404
+    if flask.request.url_rule is None:
+        return
 
 
     # Attempt authentication

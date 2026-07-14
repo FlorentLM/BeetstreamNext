@@ -115,6 +115,29 @@ def _store_userdata(user_dict: Dict):
 ##
 # Core logic used by endpoints and CLI
 
+def _set_api_key(username: str) -> str:
+    """Generate a new API key for a user, store its hash, return the raw key."""
+    raw_api_key = secrets.token_urlsafe(32)
+    api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
+
+    with database() as db:
+        db.execute(
+            """
+            UPDATE users
+            SET api_key_hash = ?
+            WHERE username = ?
+            """, (api_key_hash, username)
+        )
+    return raw_api_key
+
+
+def regenerate_api_key(username: str) -> str:
+    """Rotate a user's API key (invalidating the previous one), return the raw key."""
+    if not get_userdata(username, fields=['username']):
+        raise ValueError(f"User '{username}' does not exist.")
+    return _set_api_key(username)
+
+
 def create_user(username, password, admin=False, **kwargs):
     """Core logic to create a user. Returns the raw API key."""
 
@@ -125,9 +148,6 @@ def create_user(username, password, admin=False, **kwargs):
         k: v for k, v in kwargs.items()
         if k in EXISTING_USER_FIELDS and k not in ('username', 'password')  # 'username' and 'password' are handled explicitly
     }
-
-    raw_api_key = secrets.token_urlsafe(32)
-    api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
 
     username = safe_str(username)
 
@@ -148,17 +168,8 @@ def create_user(username, password, admin=False, **kwargs):
     user_data.update(filtered_roles)
     _store_userdata(user_data)
 
-    # Manually set api_key_hash because store_userdata excludes it for safety
-    with database() as db:
-        db.execute(
-            """
-            UPDATE users
-            SET api_key_hash = ?
-            WHERE username = ?
-            """, (api_key_hash, username)
-        )
-
-    return raw_api_key
+    # api_key_hash is set separately because _store_userdata excludes it (for safety)
+    return _set_api_key(username)
 
 
 def update_user(username: str, **updates):

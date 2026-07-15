@@ -2,9 +2,10 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.db import database, dual_database
+from beetsplug.beetstreamnext.core.database import database, dual_database
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists
-from beetsplug.beetstreamnext.utils import chunked_query, safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_album, map_song, map_artist, get_song_counts
 

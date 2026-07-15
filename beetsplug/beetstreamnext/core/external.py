@@ -154,7 +154,8 @@ def query_wikipedia(q: str, cache_ttl_hash=None) -> str | None:
 
     import wikipediaapi
 
-    from beetsplug.beetstreamnext.utils import standard_ascii, remove_accents
+    from beetsplug.beetstreamnext.utils.text import standard_ascii
+    from beetsplug.beetstreamnext.utils.text import remove_accents
     q = standard_ascii(q)
     q = remove_accents(q)
     if not q:

@@ -10,7 +10,8 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.images import (
     round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image
 )
-from beetsplug.beetstreamnext.utils import safe_str, make_hidden
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.system import make_hidden
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 

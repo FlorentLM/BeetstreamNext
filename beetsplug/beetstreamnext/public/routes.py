@@ -2,7 +2,7 @@ from flask import render_template
 
 from . import public_bp
 
-from beetsplug.beetstreamnext.utils import get_server_info
+from beetsplug.beetstreamnext.utils.general import get_server_info
 
 
 @public_bp.route('/')

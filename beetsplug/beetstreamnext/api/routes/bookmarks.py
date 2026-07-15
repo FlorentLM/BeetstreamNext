@@ -3,9 +3,10 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.db import dual_database, database
+from beetsplug.beetstreamnext.core.database import dual_database, database
 from beetsplug.beetstreamnext.core.cache import preload_songs
-from beetsplug.beetstreamnext.utils import timestamp_to_iso, safe_str
+from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
 

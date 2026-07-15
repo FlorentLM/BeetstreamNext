@@ -4,11 +4,12 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.utils import get_beets_schema, safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.api.serializers import map_album, get_song_counts, IDMapper
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.images import image_url
-from beetsplug.beetstreamnext.core.db import dual_database
+from beetsplug.beetstreamnext.core.database import dual_database
 from beetsplug.beetstreamnext.core.cache import preload_albums
 
 

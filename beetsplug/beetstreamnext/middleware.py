@@ -5,7 +5,8 @@ from .application import app
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate
-from .utils import grab_auth_params, safe_str
+from beetsplug.beetstreamnext.utils.general import grab_auth_params
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 
 

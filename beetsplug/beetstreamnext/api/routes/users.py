@@ -6,7 +6,8 @@ from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES, EXISTING_USER_F
 from beetsplug.beetstreamnext.core.users_crud import (
     create_user, update_user, delete_user, get_userdata, load_all_users
 )
-from beetsplug.beetstreamnext.utils import api_bool, safe_str
+from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 
 

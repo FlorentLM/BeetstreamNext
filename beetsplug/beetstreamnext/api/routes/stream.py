@@ -10,7 +10,9 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import get_mimetype, api_bool, safe_str
+from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 

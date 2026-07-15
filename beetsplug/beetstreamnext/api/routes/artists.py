@@ -9,7 +9,7 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import trim_text, remove_accents, safe_str
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str
 from beetsplug.beetstreamnext.core.external import WIKI_API, query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import image_url

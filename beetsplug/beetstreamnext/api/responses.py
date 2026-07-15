@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 import flask
 
 from beetsplug.beetstreamnext.constants import SUBSONIC_API_VER, BEETSTREAMNEXT_VER, ALPHANUM_CHARS
-from beetsplug.beetstreamnext.utils import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str
 
 
 def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed: bool = False) -> flask.Response:

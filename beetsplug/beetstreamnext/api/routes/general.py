@@ -7,7 +7,9 @@ from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import get_beets_schema, genres_formatter, safe_str
+from beetsplug.beetstreamnext.utils.general import genres_formatter
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 

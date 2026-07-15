@@ -5,8 +5,9 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.db import database
-from beetsplug.beetstreamnext.utils import api_bool, safe_str
+from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
 

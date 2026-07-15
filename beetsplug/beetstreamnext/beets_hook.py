@@ -30,9 +30,9 @@ from paste.translogger import TransLogger
 from .constants import LOG_LEVEL, CACHE_LOCATION, LOOPBACK_IPS, bsn_logger
 from .application import app
 from beetsplug.beetstreamnext.core.security import ip_filter
-from .utils import safe_str
-from .console import print_box, TermColors
-from beetsplug.beetstreamnext.core.db import initialise_db, rotate_session_key, ensure_secret
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.console import print_box, TermColors
+from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session_key, ensure_secret
 from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
 

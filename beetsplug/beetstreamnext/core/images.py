@@ -13,9 +13,11 @@ import flask
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.external import http_session, query_deezer, query_coverartarchive
 from beetsplug.beetstreamnext.api.serializers import IDMapper
-from beetsplug.beetstreamnext.utils import get_mimetype, customstrip, make_hidden, grab_auth_params
+from beetsplug.beetstreamnext.utils.general import grab_auth_params
+from beetsplug.beetstreamnext.utils.text import customstrip
+from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
 from beetsplug.beetstreamnext.constants import (
-    IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger, TARGET_AVATAR_DIM
+    IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 )
 
 _ART_PRIORITY = [

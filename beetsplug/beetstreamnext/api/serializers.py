@@ -6,7 +6,10 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.constants import bsn_logger
-from beetsplug.beetstreamnext.utils import get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query, get_beets_schema
+from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
+from beetsplug.beetstreamnext.utils.text import split_beets_multi
+from beetsplug.beetstreamnext.utils.system import get_mimetype
+from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.playlists import Playlist

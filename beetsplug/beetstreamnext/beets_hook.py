@@ -27,11 +27,12 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from waitress import serve
 from paste.translogger import TransLogger
 
-from .constants import LOG_LEVEL, CACHE_LOCATION, LOOPBACK_IPS, bsn_logger
-from .application import app
-from beetsplug.beetstreamnext.core.security import ip_filter
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.constants import LOG_LEVEL, CACHE_LOCATION, LOOPBACK_IPS, bsn_logger
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
+from beetsplug.beetstreamnext.core.security import ip_filter
+from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session_key, ensure_secret
 from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
@@ -102,17 +103,17 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             # Cache clearing
             if opts.clear_cache:
-                thumbnails_path = app.config['THUMBNAIL_CACHE_PATH']
-                cache_path = app.config['HTTP_CACHE_PATH']
-
-                shutil.rmtree(thumbnails_path, ignore_errors=True)
-                if cache_path:
-                    try:
-                        os.remove(cache_path)
-                    except OSError:
-                        pass
-                print("Thumbnail cache cleared.")
-                print("Admin session key cleared, any active admin sessions have been invalidated.")
+                try:
+                    cleared = clear_caches(
+                        app.config['THUMBNAIL_CACHE_PATH'],
+                        app.config['HTTP_CACHE_PATH']
+                    )
+                    if cleared:
+                        print(f"Cleared: {', '.join(cleared)}.")
+                    else:
+                        print('Nothing to clear.')
+                except RuntimeError as e:
+                    print(str(e))
                 return
 
             # Create user

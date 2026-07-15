@@ -1,10 +1,12 @@
 import hashlib
 import hmac
 import secrets
+import time
+from io import BytesIO
 from typing import TYPE_CHECKING, Sequence, Optional, Dict, Tuple, List
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import EXISTING_USER_FIELDS
+from beetsplug.beetstreamnext.constants import ALL_USER_FIELDS, PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.core.database import get_cipher, database
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -15,6 +17,7 @@ if TYPE_CHECKING:
 # Dummy strings comparison when username not found
 _DUMMY_PASSWORD = secrets.token_urlsafe(24)
 _DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
+
 
 def _dummy_stored_password() -> str:
     """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
@@ -32,7 +35,7 @@ def _dummy_stored_password() -> str:
 
 def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, include_password: bool = False) -> Dict:
     
-    existing_fields = set(EXISTING_USER_FIELDS) if include_password else set(EXISTING_USER_FIELDS) - {'password'}
+    existing_fields = set(ALL_USER_FIELDS) if include_password else set(ALL_USER_FIELDS) - {'password'}
     
     if fields is None:
         # return all safe fields
@@ -81,7 +84,7 @@ def _store_userdata(user_dict: Dict):
     if not username:
         raise ValueError("User dict must have the 'username' key!")
 
-    filtered_dict = {k: v for k, v in _user_dict.items() if k in EXISTING_USER_FIELDS}
+    filtered_dict = {k: v for k, v in _user_dict.items() if k in ALL_USER_FIELDS}
 
     cipher = get_cipher()
     if 'password' in filtered_dict and cipher:
@@ -146,7 +149,7 @@ def create_user(username, password, admin=False, **kwargs):
 
     filtered_roles = {
         k: v for k, v in kwargs.items()
-        if k in EXISTING_USER_FIELDS and k not in ('username', 'password')  # 'username' and 'password' are handled explicitly
+        if k in ALL_USER_FIELDS and k not in ('username', 'password')  # 'username' and 'password' are handled explicitly
     }
 
     username = safe_str(username)
@@ -178,7 +181,7 @@ def update_user(username: str, **updates):
     if not get_userdata(username, fields=['username']):   # any field, doesnt matter
         raise ValueError(f"User '{username}' does not exist.")
 
-    filtered_updates = {k: v for k, v in updates.items() if k in EXISTING_USER_FIELDS}
+    filtered_updates = {k: v for k, v in updates.items() if k in ALL_USER_FIELDS}
     filtered_updates['username'] = username
 
     _store_userdata(filtered_updates)
@@ -209,26 +212,64 @@ def load_username(api_key_hash: str) -> str:
     return row[0] if row else None
 
 
-def load_all_users() -> List[Dict]:
-    """Load roles/metadata for all users. Explicitly excludes password."""
+def load_all_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
+    """
+    Load roles/metadata for all users. Defaults to public user fields only.
+    """
+    if fields is None:
+        column_names = sorted(list(PUBLIC_USER_FIELDS))
+    else:
+        column_names = sorted(list(set(fields).intersection(ALL_USER_FIELDS)))
 
-    columns = sorted(list(EXISTING_USER_FIELDS - {'password'}))
-    columns_str = ', '.join(columns)
+    if not column_names:
+        return []
+
+    columns_str = ', '.join(column_names)
 
     with database() as db:
         rows = db.execute(
-            f"""
-            SELECT {columns_str} 
-            FROM users
-            """
+            f"""SELECT {columns_str} FROM users"""
         ).fetchall()
 
-    return [dict(zip(columns, row)) for row in rows]
+    return [dict(zip(column_names, row)) for row in rows]
 
 
 def load_user_roles(username: str) -> Dict:
     """Load all user fields except password, safe to cache in g."""
     return get_userdata(username)
+
+
+def set_user_avatar(username: str, blob: Optional[bytes | BytesIO] = None) -> bool:
+    """Updates a user's avatar. If blob is None, deletes the avatar. Returns True if user found."""
+
+    if isinstance(blob, BytesIO):
+        blob = blob.read()
+
+    with database() as db:
+        cur = db.execute(
+            """
+            UPDATE users
+            SET avatar = ?,
+                avatarLastChanged = ?
+            WHERE username = ?
+            """, (blob, time.time() if blob else time.time(), username)
+        )
+    return cur.rowcount > 0
+
+
+def get_user_avatar(username: str) -> Tuple[Optional[bytes], Optional[float]]:
+    """Returns (blob_bytes, last_changed_timestamp)."""
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT avatar, avatarLastChanged 
+            FROM users 
+            WHERE username = ?
+            """, (username,)
+        ).fetchone()
+    if row and row['avatar']:
+        return row['avatar'], row['avatarLastChanged']
+    return None, None
 
 
 ##

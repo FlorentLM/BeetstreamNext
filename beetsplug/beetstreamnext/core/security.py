@@ -1,5 +1,6 @@
 import threading
 import time
+import ipaddress
 from collections import defaultdict
 from typing import Dict, List, Optional, Sequence, Set
 
@@ -130,14 +131,24 @@ class IPFilter:
 
     @staticmethod
     def _parse_input(values: Optional[str | Sequence[str]] = None) -> Set[str]:
-        """Belt and suspenders parser to grab config values."""
         if not values:
-            values = []
+            return set()
+
         if isinstance(values, str):
-            values = [v.strip() for v in values.split(',')]
+            raw_items = [v.strip() for v in values.split(',')]
         else:
-            values = [vv.strip(',') for v in values for vv in v.split(',')]
-        return {v for v in values if v}
+            raw_items = [vv.strip(',') for v in values for vv in v.split(',')]
+
+        final_ips = set()
+        for item in raw_items:
+            if not item: continue
+            try:
+                ipaddress.ip_address(item)
+                final_ips.add(item)
+            except ValueError:
+                bsn_logger.warning(f'Ignoring invalid IP address: {item}')
+                raise ValueError(f"'{item}' is not a valid IP.")
+        return final_ips
 
     def is_allowed(self, ip: str) -> bool:
 

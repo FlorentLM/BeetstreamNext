@@ -1,6 +1,8 @@
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
+from typing import List
 
 from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, bsn_logger
 from beetsplug.beetstreamnext.application import app
@@ -9,6 +11,39 @@ from beetsplug.beetstreamnext.core.security import rate_limiter
 
 _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
+
+
+def clear_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
+    """Clears thumbnails and HTTP cache. Returns a list of what was cleared."""
+    cleared = []
+
+    thumb_dir = Path(thumb_dir)
+    http_cache = Path(http_cache)
+
+    # Thumbnails
+    if thumb_dir.exists():
+        try:
+            n = 0
+            for f in thumb_dir.iterdir():
+                if f.is_file() and f.suffix == '.jpg':
+                    f.unlink(missing_ok=True)
+                    n += 1
+            if n > 0:
+                cleared.append(f'{n} thumbnail(s)')
+        except Exception as e:
+            bsn_logger.error(f'Thumbnail cache clear failed: {e}')
+            raise RuntimeError(f'Error clearing thumbnail cache: {e}')
+
+    # HTTP cache
+    if http_cache.exists():
+        try:
+            http_cache.unlink()
+            cleared.append('HTTP cache')
+        except Exception as e:
+            bsn_logger.error(f'HTTP cache clear failed: {e}')
+            raise RuntimeError(f"Error clearing HTTP cache: {e}")
+
+    return cleared
 
 
 def run_periodic():

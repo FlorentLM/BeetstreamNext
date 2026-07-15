@@ -75,7 +75,7 @@ def endpoint_get_cover_art() -> flask.Response:
                 image_bytes = cover_io.getvalue()
 
                 if size:
-                    cover_io = resize_image(BytesIO(image_bytes), size)
+                    cover_io = resize_image(image_bytes, size)
                     image_bytes = cover_io.getvalue()
 
                 # Save for next time

@@ -4,7 +4,7 @@ import subprocess
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from io import BytesIO
 import requests
 from PIL import Image, ImageOps
@@ -23,6 +23,7 @@ _ART_PRIORITY = [
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
 
+
 def sniff_image(data: bytes) -> str | None:
     """Identify jpeg/png/webp from magic bytes. The client mimetype is not trusted."""
     if data[:3] == b'\xff\xd8\xff':
@@ -32,21 +33,6 @@ def sniff_image(data: bytes) -> str | None:
     if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
         return 'image/webp'
     return None
-
-
-def process_avatar(data: bytes) -> bytes:
-    """Re-encode to a TARGET_AVATAR_DIM square jpg, handling EXIF orientation."""
-    try:
-        img = Image.open(BytesIO(data))
-        img = ImageOps.exif_transpose(img)
-        img = img.convert('RGB')
-        img = ImageOps.fit(img, (TARGET_AVATAR_DIM, TARGET_AVATAR_DIM), method=Image.LANCZOS)
-        out = BytesIO()
-        img.save(out, format='JPEG', quality=85, optimize=True)
-        return out.getvalue()
-    except Exception as e:
-        bsn_logger.warning(f'Avatar processing failed ({e}), storing as-is.')
-        return data
 
 
 def image_url(item_id: str, size: Optional[int] = None) -> str:
@@ -89,14 +75,32 @@ def round_image_size(requested_size: Optional[int]) -> int | None:
     return ALLOWED_THUMBNAIL_SIZES[-1]   # max size if client asks for something huge
 
 
-def resize_image(data: BytesIO, size: int) -> BytesIO:
+def resize_image(data: Union[bytes, BytesIO], size: int, crop: bool = False) -> BytesIO:
+    """
+    Applies EXIF rotation, converts to RGB, optionally crops to square, resizes.
+    """
+    if isinstance(data, bytes):
+        data = BytesIO(data)
+
     img = Image.open(data)
+    img = ImageOps.exif_transpose(img)
     img = img.convert('RGB')
-    img.thumbnail((size, size))
-    buf = BytesIO()
-    img.save(buf, format='JPEG')
-    buf.seek(0)
-    return buf
+
+    try:
+        if crop:
+            # Crop to centered square
+            img = ImageOps.fit(img, (size, size), method=Image.LANCZOS)
+        else:
+            # Resize (maintaining aspect ratio)
+            img.thumbnail((size, size), resample=Image.LANCZOS)
+    except Exception as e:
+        bsn_logger.warning(f'Image resizing failed ({e}), storing as-is.')
+
+    out = BytesIO()
+    img.save(out, format='JPEG', quality=85, optimize=True)
+    out.seek(0)
+
+    return out
 
 
 def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> str | BytesIO | None:
@@ -117,7 +121,7 @@ def _cached_resize(source_file: Path | str | bytes | BytesIO, size: int) -> str 
 
     try:  # Generate and save thumbnail
         with open(full_path, 'rb') as f:
-            resized_buffer = resize_image(BytesIO(f.read()), size)
+            resized_buffer = resize_image(f.read(), size)
 
         fd, tmp_path = tempfile.mkstemp(dir=thumb_path.parent)
 
@@ -266,7 +270,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
                         bsn_logger.warning(f"Could not save album art to {save_path}: {e}")
 
             if size:
-                return flask.send_file(resize_image(BytesIO(image_bytes), size), mimetype='image/jpeg')
+                return flask.send_file(resize_image(image_bytes, size), mimetype='image/jpeg')
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     return None # TODO - send a placeholder instead of 404ing
@@ -344,7 +348,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
                     response = http_session().get(artist_image_url, timeout=5)
                     if response.ok:
                         if size and size != target_size:
-                            cover = resize_image(BytesIO(response.content), size)
+                            cover = resize_image(response.content, size)
                             return flask.send_file(cover, mimetype='image/jpeg')
 
                         return flask.send_file(BytesIO(response.content), mimetype='image/jpeg')

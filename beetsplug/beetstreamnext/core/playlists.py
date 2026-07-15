@@ -5,11 +5,11 @@ from pathlib import Path
 import flask
 from beets.util import bytestring_path
 
-from .application import app
-from .userdata_caching import preload_songs
-from .utils import genres_formatter, creation_date, chunked_query
-from .constants import PLY_ID_PREF, bsn_logger
-from .mappings import map_song, IDMapper
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.cache import preload_songs
+from beetsplug.beetstreamnext.utils import genres_formatter, creation_date, chunked_query
+from beetsplug.beetstreamnext.constants import PLY_ID_PREF, bsn_logger
+from beetsplug.beetstreamnext.api.serializers import map_song, IDMapper
 
 if TYPE_CHECKING:
     from beets.library import Item

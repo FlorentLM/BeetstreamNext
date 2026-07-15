@@ -1,14 +1,15 @@
 from typing import Dict
 import flask
 
-from . import api_bp
+from .. import api_bp
 
-from beetsplug.beetstreamnext.api.albums import album_payload
-from beetsplug.beetstreamnext.api.artists import artist_payload
-from beetsplug.beetstreamnext.api.songs import song_payload
+from beetsplug.beetstreamnext.api.routes.albums import album_payload
+from beetsplug.beetstreamnext.api.routes.artists import artist_payload
+from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils import get_beets_schema, subsonic_response, genres_formatter, subsonic_error, safe_str
-from beetsplug.beetstreamnext.mappings import IDMapper
+from beetsplug.beetstreamnext.utils import get_beets_schema, genres_formatter, safe_str
+from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.api.serializers import IDMapper
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:

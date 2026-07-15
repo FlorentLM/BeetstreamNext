@@ -1,12 +1,13 @@
 import flask
 
-from . import api_bp
+from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES, EXISTING_USER_FIELDS
-from beetsplug.beetstreamnext.user_management import (
+from beetsplug.beetstreamnext.core.users_crud import (
     create_user, update_user, delete_user, get_userdata, load_all_users
 )
-from beetsplug.beetstreamnext.utils import subsonic_error, subsonic_response, api_bool, safe_str
+from beetsplug.beetstreamnext.utils import api_bool, safe_str
+from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 
 
 def user_payload(user_data: dict) -> dict:
@@ -127,7 +128,7 @@ def endpoint_update_user():
     # email = r.get('email', default='', type=safe_str)
 
     # TODO: This endpoint should not allow an admin to demote themselves
-    
+
     if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 

@@ -1,9 +1,9 @@
 from typing import Optional, List
 import flask
 
-from .db import database
-from .mappings import IDMapper
-from .utils import chunked_query
+from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.core.db import database
+from beetsplug.beetstreamnext.utils import chunked_query
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 

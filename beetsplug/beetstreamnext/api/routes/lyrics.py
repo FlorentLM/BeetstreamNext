@@ -1,11 +1,12 @@
 import flask
 from beets.plugins import find_plugins
 
-from . import api_bp
+from .. import api_bp
 
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str
+from beetsplug.beetstreamnext.utils import safe_str
+from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.constants import bsn_logger
-from beetsplug.beetstreamnext.mappings import IDMapper
+from beetsplug.beetstreamnext.api.serializers import IDMapper
 
 
 def _fetch_lyrics(item) -> str | None:

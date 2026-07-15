@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
 import flask
 from beets.library import LibModel, Item
 
-from .constants import bsn_logger
-from .utils import get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query, get_beets_schema
+from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.utils import get_mimetype, timestamp_to_iso, genres_formatter, split_beets_multi, chunked_query, get_beets_schema
 
 if TYPE_CHECKING:
-    from .playlistprovider import Playlist
+    from beetsplug.beetstreamnext.core.playlists import Playlist
 
 # TODO: Fix the circular imports in this module, the map_ functions import stuff in their namespace and it's shite
 
@@ -162,7 +162,7 @@ def map_media(beets_object: Dict | LibModel) -> Dict:
 
 def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
 
-    from .userdata_caching import preload_songs, one_rating, one_like
+    from beetsplug.beetstreamnext.core.cache import preload_songs, one_rating, one_like
 
     data = standardise_datadict(album_object)
 
@@ -282,7 +282,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
 
 def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
 
-    from .userdata_caching import one_rating, one_like, one_play_stats
+    from beetsplug.beetstreamnext.core.cache import one_rating, one_like, one_play_stats
 
     data = standardise_datadict(song_object)
 
@@ -407,8 +407,8 @@ def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dic
 
 def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> Dict:
 
-    from .userdata_caching import preload_albums, one_rating, one_like
-    from .images import image_url
+    from beetsplug.beetstreamnext.core.cache import preload_albums, one_rating, one_like
+    from beetsplug.beetstreamnext.core.images import image_url
 
     # Priority: prefetched -> album query (when with_albums) -> standalone db query
     mbid = ''

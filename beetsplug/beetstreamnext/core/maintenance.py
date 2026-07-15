@@ -2,9 +2,9 @@ import threading
 import time
 from datetime import datetime
 
-from .constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, bsn_logger
-from .application import app
-from .security import rate_limiter
+from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, bsn_logger
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.security import rate_limiter
 
 
 _cleanup_lock = threading.Lock()

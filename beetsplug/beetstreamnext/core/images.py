@@ -7,19 +7,46 @@ from pathlib import Path
 from typing import Optional
 from io import BytesIO
 import requests
-from PIL import Image
+from PIL import Image, ImageOps
 import flask
 
-from .application import app
-from .external import http_session, query_deezer, query_coverartarchive
-from .mappings import IDMapper
-from .utils import get_mimetype, customstrip, make_hidden, grab_auth_params
-from .constants import IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.external import http_session, query_deezer, query_coverartarchive
+from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.utils import get_mimetype, customstrip, make_hidden, grab_auth_params
+from beetsplug.beetstreamnext.constants import (
+    IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger, TARGET_AVATAR_DIM
+)
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
+
+def sniff_image(data: bytes) -> str | None:
+    """Identify jpeg/png/webp from magic bytes. The client mimetype is not trusted."""
+    if data[:3] == b'\xff\xd8\xff':
+        return 'image/jpeg'
+    if data[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'image/png'
+    if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
+
+
+def process_avatar(data: bytes) -> bytes:
+    """Re-encode to a TARGET_AVATAR_DIM square jpg, handling EXIF orientation."""
+    try:
+        img = Image.open(BytesIO(data))
+        img = ImageOps.exif_transpose(img)
+        img = img.convert('RGB')
+        img = ImageOps.fit(img, (TARGET_AVATAR_DIM, TARGET_AVATAR_DIM), method=Image.LANCZOS)
+        out = BytesIO()
+        img.save(out, format='JPEG', quality=85, optimize=True)
+        return out.getvalue()
+    except Exception as e:
+        bsn_logger.warning(f'Avatar processing failed ({e}), storing as-is.')
+        return data
 
 
 def image_url(item_id: str, size: Optional[int] = None) -> str:

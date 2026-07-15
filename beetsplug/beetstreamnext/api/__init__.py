@@ -2,7 +2,7 @@ from flask import Blueprint
 
 api_bp = Blueprint('api', __name__, url_prefix='/rest')
 
-from . import (
+from .routes import (
     albums,
     artists,
     bookmarks,

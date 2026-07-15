@@ -78,3 +78,6 @@ ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192,
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.bmp'}
 ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
+
+TARGET_AVATAR_DIM = 512
+MAX_AVATAR_BYTES = 1 * 1024 * 1024   # 1 MB

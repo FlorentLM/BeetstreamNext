@@ -13,8 +13,8 @@ from functools import lru_cache
 
 import flask
 
-from .console import print_box, TermColors
-from .constants import SESSION_KEY_ROTATION_DAYS
+from beetsplug.beetstreamnext.console import print_box, TermColors
+from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
 
 
 ##

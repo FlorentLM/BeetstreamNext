@@ -1,10 +1,11 @@
 import time
 import flask
 
-from . import api_bp
+from .. import api_bp
 
-from beetsplug.beetstreamnext.db import database
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, safe_str
+from beetsplug.beetstreamnext.core.db import database
+from beetsplug.beetstreamnext.utils import safe_str
+from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/

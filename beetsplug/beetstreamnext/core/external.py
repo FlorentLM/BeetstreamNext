@@ -5,8 +5,8 @@ from typing import Optional, Dict
 import requests
 from requests_cache import CachedSession
 
-from .application import app
-from .constants import WIKI_API, BEETSTREAMNEXT_VER, bsn_logger
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, bsn_logger
 
 _http_session = None
 

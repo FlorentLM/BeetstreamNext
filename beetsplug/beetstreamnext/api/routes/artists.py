@@ -6,14 +6,16 @@ from functools import partial
 from typing import Dict
 import flask
 
-from . import api_bp
+from .. import api_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.external import WIKI_API, query_lastfm, query_wikipedia
-from beetsplug.beetstreamnext.userdata_caching import preload_artists
-from beetsplug.beetstreamnext.utils import subsonic_response, subsonic_error, trim_text, remove_accents, safe_str
-from beetsplug.beetstreamnext.images import image_url
-from beetsplug.beetstreamnext.mappings import IDMapper, resolve_artist, map_album, map_artist, get_song_counts
+from beetsplug.beetstreamnext.utils import trim_text, remove_accents, safe_str
+from beetsplug.beetstreamnext.core.external import WIKI_API, query_lastfm, query_wikipedia
+from beetsplug.beetstreamnext.core.cache import preload_artists
+from beetsplug.beetstreamnext.core.images import image_url
+
+from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.api.serializers import IDMapper, resolve_artist, map_album, map_artist, get_song_counts
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> Dict:

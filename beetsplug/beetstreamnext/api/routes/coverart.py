@@ -3,15 +3,16 @@ from io import BytesIO
 from pathlib import Path
 import flask
 
-from . import api_bp
+from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.images import (
+from beetsplug.beetstreamnext.core.images import (
     round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image
 )
-from beetsplug.beetstreamnext.utils import subsonic_error, safe_str, make_hidden
-from beetsplug.beetstreamnext.mappings import IDMapper
+from beetsplug.beetstreamnext.utils import safe_str, make_hidden
+from beetsplug.beetstreamnext.api.responses import subsonic_error
+from beetsplug.beetstreamnext.api.serializers import IDMapper
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/

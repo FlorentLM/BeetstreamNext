@@ -3,10 +3,10 @@ import hmac
 import secrets
 from typing import TYPE_CHECKING, Sequence, Optional, Dict, Tuple, List
 
-from .application import app
-from .constants import EXISTING_USER_FIELDS
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.constants import EXISTING_USER_FIELDS
 from .db import get_cipher, database
-from .utils import safe_str
+from beetsplug.beetstreamnext.utils import safe_str
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict

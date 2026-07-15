@@ -3,8 +3,8 @@ import logging
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
-from .constants import PROJECT_ROOT, CACHE_LOCATION, LOG_LEVEL, bsn_logger
-from .db import close_database
+from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_LOCATION, LOG_LEVEL, bsn_logger
+from beetsplug.beetstreamnext.core.db import close_database
 
 ##
 

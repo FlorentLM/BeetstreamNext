@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %} - Login{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="login-wrapper">
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
+    </div>
+    <div class="login-card">
+        <h2>Login</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, msg in messages %}
+                <div class="flash flash-error">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+        <form method="POST">
+            {{ form.csrf_token }}
+            <div class="input-group">
+                {{ form.username(placeholder="Username", autofocus=True, required=True) }}
+            </div>
+            <div class="input-group">
+                {{ form.password(placeholder="Password", required=True) }}
+            </div>
+            <button type="submit" class="btn-submit">Log In</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

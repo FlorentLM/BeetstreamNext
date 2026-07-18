@@ -9,6 +9,12 @@ body {
 
 .logo-container { margin-bottom: 2rem; }
 
+.top-nav {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+}
+
 h1 {
     font-weight: 800;
     font-size: 2.5rem;

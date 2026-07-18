@@ -34,6 +34,7 @@ from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session_key, ensure_secret
 from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
+from beetsplug.beetstreamnext.settings import settings_store
 
 
 class BeetstreamNextPlugin(BeetsPlugin):
@@ -199,16 +200,26 @@ class BeetstreamNextPlugin(BeetsPlugin):
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
-            app.config.update(
-                lib=lib,
-                root_directory=Path(beets.config['directory'].get()),
-                legacy_auth=self.config['legacy_auth'].get(bool),
-                lastfm_api_key=self.config['lastfm_api_key'].get(str),
-                never_transcode=self.config['never_transcode'].get(bool),
-                fetch_artists_images=self.config['fetch_artists_images'].get(bool),
-                save_artists_images=self.config['save_artists_images'].get(bool),
-                save_album_art=self.config['save_album_art'].get(bool)
-            )
+            yaml_defaults = {
+                'cors_origins': self.config['cors'].get(str),
+                'cors_supports_credentials': self.config['cors_supports_credentials'].get(bool),
+                'reverse_proxy': self.config['reverse_proxy'].get(bool),
+                'legacy_auth': self.config['legacy_auth'].get(bool),
+                'never_transcode': self.config['never_transcode'].get(bool),
+                'fetch_artists_images': self.config['fetch_artists_images'].get(bool),
+                'save_artists_images': self.config['save_artists_images'].get(bool),
+                'save_album_art': self.config['save_album_art'].get(bool),
+                'lastfm_api_key': self.config['lastfm_api_key'].get(str),
+                'ip_whitelist': self.config['ip_whitelist'].as_str_seq(),
+                'ip_blacklist': self.config['ip_blacklist'].as_str_seq(),
+            }
+
+            with app.app_context():
+                initialise_db()
+                app.config.update(playlist_provider=PlaylistProvider())
+
+                # Read db, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING
+                settings_store.initialise(yaml_defaults)
 
             if debug and host not in LOOPBACK_IPS:
                 if force_trust_host:
@@ -234,7 +245,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     ], color=TermColors.FAIL)
                     return
 
-            if app.config['legacy_auth'] and not self.config['reverse_proxy']:
+            if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
                 if host not in LOOPBACK_IPS:
                     print_box([
                         '',
@@ -263,12 +274,19 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     used_paths.add(path)
                 else:
                     playlist_dirs[k] = None
-            app.config.update(playlist_dirs=playlist_dirs)
+
+            # App-level things that don't belong in db settings
+            app.config.update(
+                lib=lib,
+                root_directory=Path(beets.config['directory'].get()),
+                playlist_dirs=playlist_dirs
+            )
+
+            # Handle "requires restart" settings
+            cors_origin = settings_store.get('cors_origins')
+            supports_creds = settings_store.get('cors_supports_credentials')
 
             # Enable CORS if required
-            cors_origin = self.config['cors'].get(str)
-            supports_creds = self.config['cors_supports_credentials'].get(bool)
-
             if cors_origin:
                 if cors_origin == '*' and supports_creds:
                     print_box([
@@ -295,7 +313,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 bsn_logger.info('CORS is disabled (secure default). Web-based clients will be blocked by browsers.')
 
             # Allow serving behind a reverse proxy
-            if self.config['reverse_proxy']:
+            if settings_store.get('reverse_proxy'):
                 app.wsgi_app = ProxyFix(
                     app.wsgi_app,
                     x_for=1,
@@ -306,9 +324,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 )
                 app.config.update(SESSION_COOKIE_SECURE=True)
 
-            with app.app_context():
-                initialise_db()
-                app.config.update(playlist_provider=PlaylistProvider())
 
             if debug:
                 app.run(host=host, port=port, debug=True, threaded=True)

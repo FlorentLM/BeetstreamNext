@@ -128,16 +128,20 @@ class SettingsStore:
         if 'validator' in spec:
             value = spec['validator'](value)
 
+        serializable_value = list(value) if isinstance(value, set) else value
+
         # Persist to db
         cipher = get_cipher()
         is_sensitive = spec.get('sensitive', False)
 
         if is_sensitive and cipher:
-            stored_val, encrypted_flag = cipher.encrypt(json.dumps(value).encode()).decode(), 1
+            stored_val = cipher.encrypt(json.dumps(serializable_value).encode()).decode()
+            encrypted_flag = 1
         else:
             if is_sensitive:
                 bsn_logger.warning(f"Storing sensitive setting '{key}' unencrypted (no key).")
-            stored_val, encrypted_flag = json.dumps(value), 0
+            stored_val = json.dumps(serializable_value)
+            encrypted_flag = 0
 
         with database() as db:
             db.execute(

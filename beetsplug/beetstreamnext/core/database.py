@@ -15,6 +15,7 @@ import flask
 
 from beetsplug.beetstreamnext.console import print_box, TermColors
 from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
+from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 
 
 ##
@@ -218,6 +219,23 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS settings
+        (
+            key        TEXT PRIMARY KEY,
+            value      TEXT,
+            encrypted  INTEGER NOT NULL DEFAULT 0,
+            updated_at REAL    NOT NULL DEFAULT (unixepoch())
+        )
+        """
+    )
+
+    role_columns_sql = ",\n            ".join([
+        f'{name} INTEGER DEFAULT {1 if default else 0}'
+        for name, _, default in USER_ROLES_SCHEMA
+    ])
+
+    cur.execute(
+        f"""
         CREATE TABLE IF NOT EXISTS users
         (
             username            TEXT PRIMARY KEY,
@@ -226,21 +244,9 @@ def initialise_db() -> None:
             email               TEXT,
             avatar              BLOB,
             avatarLastChanged   REAL,
-            scrobblingEnabled   INTEGER DEFAULT 1,
-            adminRole           INTEGER DEFAULT 0,
-            settingsRole        INTEGER DEFAULT 1,
-            streamRole          INTEGER DEFAULT 1,
-            jukeboxRole         INTEGER DEFAULT 0,
-            downloadRole        INTEGER DEFAULT 0,
-            uploadRole          INTEGER DEFAULT 0,
-            coverArtRole        INTEGER DEFAULT 0,
-            playlistRole        INTEGER DEFAULT 1,
-            commentRole         INTEGER DEFAULT 1,
-            podcastRole         INTEGER DEFAULT 0,
-            shareRole           INTEGER DEFAULT 0,
-            videoConversionRole INTEGER DEFAULT 0,
             folder              INTEGER DEFAULT 0,
-            maxBitRate          INTEGER DEFAULT 0  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
+            maxBitRate          INTEGER DEFAULT 0,  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
+            {role_columns_sql}
         )
         """
     )

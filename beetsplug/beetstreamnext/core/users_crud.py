@@ -6,7 +6,7 @@ from io import BytesIO
 from typing import TYPE_CHECKING, Sequence, Optional, Dict, Tuple, List
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import ALL_USER_FIELDS, PUBLIC_USER_FIELDS
+from beetsplug.beetstreamnext.schemas import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.core.database import get_cipher, database
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -158,15 +158,12 @@ def create_user(username, password, admin=False, **kwargs):
         'username': username,
         'password': password,   # store_userdata handles the encryption
         'adminRole': admin,
-
-        # Some defaults
-        'scrobblingEnabled': True,
-        'playlistRole': True,
-        'settingsRole': True,
-        'streamRole': True,
-        'commentRole': True,
-        'maxBitRate': False
+        'maxBitRate': 0,        # 'no limit'
     }
+
+    for role_name, _, default_val in USER_ROLES_SCHEMA:
+        if role_name not in user_data:
+            user_data[role_name] = default_val
 
     user_data.update(filtered_roles)
     _store_userdata(user_data)

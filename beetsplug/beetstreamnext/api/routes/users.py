@@ -2,10 +2,8 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES, ALL_USER_FIELDS
-from beetsplug.beetstreamnext.core.users_crud import (
-    create_user, update_user, delete_user, get_userdata, load_all_users
-)
+from beetsplug.beetstreamnext.schemas import ALL_USER_FIELDS, ALLOWED_BITRATES
+from beetsplug.beetstreamnext.core.users_crud import create_user, update_user, delete_user, get_userdata, load_all_users
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error

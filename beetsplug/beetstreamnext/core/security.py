@@ -130,7 +130,7 @@ class IPFilter:
         self._blacklist = set(blacklist) if blacklist else set()
 
     @staticmethod
-    def _parse_input(values: Optional[str | Sequence[str]] = None) -> Set[str]:
+    def parse_ips(values: Optional[str | Sequence[str]] = None) -> Set[str]:
         if not values:
             return set()
 
@@ -187,7 +187,7 @@ class IPFilter:
 
     @whitelist.setter
     def whitelist(self, whitelisted_ips: str | Sequence[str]):
-        self._whitelist = self._parse_input(whitelisted_ips)
+        self._whitelist = self.parse_ips(whitelisted_ips)
         bsn_logger.debug(f'Loaded new whitelist: {self._whitelist}.')
 
     @property
@@ -196,7 +196,7 @@ class IPFilter:
 
     @blacklist.setter
     def blacklist(self, blacklisted_ips: str | Sequence[str]):
-        self._blacklist = self._parse_input(blacklisted_ips)
+        self._blacklist = self.parse_ips(blacklisted_ips)
         bsn_logger.debug(f'Loaded new blacklist: {self._blacklist}.')
 
 

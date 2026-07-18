@@ -16,9 +16,8 @@ from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
 from beetsplug.beetstreamnext.utils.text import customstrip
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
-from beetsplug.beetstreamnext.constants import (
-    IMAGE_EXTENSIONS, ALLOWED_THUMBNAIL_SIZES, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
-)
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
+from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches

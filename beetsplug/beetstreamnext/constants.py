@@ -70,11 +70,10 @@ ALPHANUM_CHARS = re.compile(r'^[a-zA-Z0-9_]+$')
 
 ## Security
 
-RATE_LIMIT_MAX_FAILURES = 5
-RATE_LIMIT_BLOCK_WINDOW = 300
-
 LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 
+RATE_LIMIT_MAX_FAILURES = 5
+RATE_LIMIT_BLOCK_WINDOW = 300
 
 ## Maintenance timings
 
@@ -84,23 +83,7 @@ MAX_CACHE_AGE_DAYS = 30
 SESSION_KEY_ROTATION_DAYS = 30
 
 
-## User data fields
-
-ALL_USER_FIELDS = frozenset({
-    'username', 'password', 'email', 'avatar', 'avatarLastChanged', 'scrobblingEnabled', 'adminRole', 'settingsRole',
-    'streamRole', 'jukeboxRole', 'downloadRole', 'uploadRole', 'coverArtRole', 'playlistRole', 'commentRole',
-    'podcastRole', 'shareRole', 'videoConversionRole', 'folder', 'maxBitRate'
-})
-PRIVATE_USER_FIELDS = frozenset({'password', 'avatar', 'api_key_hash'})
-PUBLIC_USER_FIELDS = ALL_USER_FIELDS - PRIVATE_USER_FIELDS
-
-ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
-
-
 ## Images
-
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.bmp'}
-ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
 
 MAX_AVATAR_DIM = 512
 MAX_AVATAR_BYTES = 1 * 1024 * 1024   # 1 MB

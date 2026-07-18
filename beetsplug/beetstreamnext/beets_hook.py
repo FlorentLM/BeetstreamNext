@@ -12,9 +12,7 @@
 #
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-
 import os
-import shutil
 import getpass
 import logging
 from pathlib import Path
@@ -28,7 +26,7 @@ from waitress import serve
 from paste.translogger import TransLogger
 
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.constants import LOG_LEVEL, CACHE_LOCATION, LOOPBACK_IPS, bsn_logger
+from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, LOG_LEVEL, bsn_logger, CACHE_LOCATION
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
 from beetsplug.beetstreamnext.core.security import ip_filter
@@ -92,7 +90,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             app.config.update(
                 BEETS_DB_PATH=beets_db_path,
-                DB_PATH=beets_db_path.parent / 'beetstreamnext.db'  # TODO: Debatable whether this should be stored here
+                DB_PATH=beets_db_path.parent / 'beetstreamnext.db'
             )
 
             ip_filter.whitelist = self.config['ip_whitelist'].as_str_seq()
@@ -139,7 +137,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     try:
                         api_key = create_user(username, password, admin=is_admin)
                     except ValueError as e:
-                        print(f"\n[ERROR] {e}")
+                        print(f'\n[ERROR] {e}')
                         return
 
                     print_box([
@@ -165,7 +163,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         if delete_user(username):
                             print(f"User '{username}' deleted.")
                         else:
-                            print("User not found.")
+                            print('User not found.')
                     return
 
             # List users
@@ -174,7 +172,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     all_users = load_all_users()
                     header = f"{'Username':<15} | {'Admin':<12} | {'Can stream':<12} | {'Can download':<12}"
                     print(header)
-                    print("-" * len(header))
+                    print('-' * len(header))
                     for u in all_users:
                         print(
                             f"{u['username']:<15} |"
@@ -191,9 +189,9 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     new_pw = getpass.getpass(f"New password for '{username}': ")
                     try:
                         update_user(username, password=new_pw)
-                        print("Password updated successfully.")
+                        print('Password updated successfully.')
                     except ValueError as e:
-                        print(f"Error: {e}")
+                        print(f'Error: {e}')
                     return
 
             host = opts.host or self.config['host'].as_str()
@@ -243,8 +241,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
                         '',
                         f'Legacy authentication is enabled, and the server',
-                        f"is listening on http://{host}:{port}",
-                        f"without a reverse proxy.",
+                        f'is listening on http://{host}:{port}',
+                        f'without a reverse proxy.',
                         '',
                         'Passwords from legacy clients may be',
                         'transmitted in cleartext over HTTP.',
@@ -278,14 +276,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
                         '',
                         f"CORS is set to allow all origins ('*') WITH credentials.",
-                        f"This could allow any malicious website you visit to silently interact",
-                        f"with your BeetstreamNext server in the background.",
+                        f'This could allow any malicious website you visit to silently interact',
+                        f'with your BeetstreamNext server in the background.',
                         '',
                         "It is highly recommended to only allow your specific player's URL.",
                         ''
                     ], color=TermColors.WARNING)
                 else:
-                    bsn_logger.info(f"Enabling CORS for origin(s): {cors_origin}")
+                    bsn_logger.info(f'Enabling CORS for origin(s): {cors_origin}')
 
                 origins_list = [o.strip() for o in cors_origin.split(',')] if ',' in cors_origin else cors_origin
                 app.config.update(
@@ -294,7 +292,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 )
                 CORS(app, supports_credentials=supports_creds)
             else:
-                bsn_logger.info("CORS is disabled (secure default). Web-based clients will be blocked by browsers.")
+                bsn_logger.info('CORS is disabled (secure default). Web-based clients will be blocked by browsers.')
 
             # Allow serving behind a reverse proxy
             if self.config['reverse_proxy']:
@@ -318,7 +316,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             else:
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 if LOG_LEVEL > logging.INFO:
-                    print(f"BeetstreamNext server running on http://{host}:{port}...")
+                    print(f'BeetstreamNext server running on http://{host}:{port}...')
                 logged_app = TransLogger(app, setup_console_handler=True)
 
                 serve(logged_app, host=host, port=port, threads=8)

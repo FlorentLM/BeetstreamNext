@@ -14,9 +14,6 @@
 
 ## Missing
 
-### User management via API
-- `getAvatar`
-
 ### Social stuff
 - `getShares` / `createShare` / `updateShare` / `deleteShare`
 - `getChatMessages` / `addChatMessage`

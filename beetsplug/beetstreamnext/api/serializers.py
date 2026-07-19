@@ -363,11 +363,14 @@ def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dic
     ap = data.get('rg_album_peak')
 
     if tg is not None or ag is not None:
+        track_peak = min(max(float(tp or 1.0), 0.0), 1.0)
+        album_peak = min(max(float(ap or 1.0), 0.0), 1.0)
+
         subsonic_song['replayGain'] = {
             'trackGain': round(float(tg or 0.0), 2),
             'albumGain': round(float(ag or 0.0), 2),
-            'trackPeak': float(tp or 0.0),
-            'albumPeak': float(ap or 0.0),
+            'trackPeak': track_peak,
+            'albumPeak': album_peak,
             'baseGain': 0.0
         }
 

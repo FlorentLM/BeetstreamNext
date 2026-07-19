@@ -19,6 +19,9 @@ from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS, bsn_lo
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 
 
+CURRENT_SCHEMA_VERSION = 0      # Last updated: 19/07/2026 13:44 (introduction of the versioning)
+
+
 ##
 # Secrets management
 
@@ -168,6 +171,15 @@ def initialise_db() -> None:
     cur.execute("PRAGMA journal_mode = WAL;")
     cur.execute("PRAGMA synchronous = NORMAL;")
     cur.execute("PRAGMA foreign_keys = ON;")
+
+    # Metadata table for version tracking
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS db_metadata (key TEXT PRIMARY KEY, value TEXT)
+        """
+    )
+    row = cur.execute("""SELECT value FROM db_metadata WHERE key = 'version'""").fetchone()
+    version = int(row[0]) if row else 0
 
     cur.execute(
         """

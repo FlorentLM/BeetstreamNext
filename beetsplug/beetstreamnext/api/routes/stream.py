@@ -395,8 +395,10 @@ def endpoint_download_song() -> flask.Response | None:
 def endpoint_get_transcode_decision() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    media_id = r.get('mediaId', default='', type=safe_str)          # Required
-    media_type = r.get('mediaType', default='song', type=safe_str)  # Required
+    media_id = r.get('mediaId', default='', type=safe_str)              # Required
+    media_type = r.get('mediaType', default='song', type=safe_str)      # Required
+
+    # TODO: media_type can be podcast once podcassts are supported by BSN
 
     client_info = flask.request.get_json(silent=True) or {}
     if not media_id or not media_type:
@@ -429,7 +431,8 @@ def endpoint_get_transcode_decision() -> flask.Response:
     can_direct_play = True
 
     # Server constraints
-    if get_normalization_filter(item):
+    norm_filter = get_normalization_filter(item)
+    if norm_filter:
         can_direct_play = False
         reasons.append('ServerSideProcessingRequired')
 
@@ -515,14 +518,79 @@ def endpoint_get_transcode_decision() -> flask.Response:
             'audioBitdepth': 16 if not target_lossless else source_stream['audioBitdepth']
         }
 
+        # Encode transcode instructions into a opaque string for getTranscodeStream
+        tx_params = f'{target_container}|{target_br}|{int(bool(norm_filter))}'
+
+    decision = {
+        'canDirectPlay': can_direct_play,
+        'canTranscode': bool(transcode_stream),  # true only if valid path found
+        'transcodeReason': reasons,
+    }
+
+    if source_stream:
+        decision['sourceStream'] = source_stream
+
+    if transcode_stream:
+        decision['transcodeStream'] = transcode_stream
+        decision['transcodeParams'] = tx_params
+
     payload = {
-        'transcodeDecision': {
-            'canDirectPlay': can_direct_play,
-            'canTranscode': can_transcode and not can_direct_play,
-            'transcodeReason': reasons,
-            'sourceStream': source_stream,
-            'transcodeStream': transcode_stream
-        }
+        'transcodeDecision': decision
     }
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/gettranscodestream/
+@api_bp.route('/getTranscodeStream', methods=["GET", "POST"])
+@api_bp.route('/getTranscodeStream.view', methods=["GET", "POST"])
+def endpoint_get_transcode_stream() -> flask.Response | None:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    media_id = r.get('mediaId', default='', type=safe_str)              # Required
+    media_type = r.get('mediaType', default='song', type=safe_str)      # Required
+    offset = r.get('offset', default=0.0, type=float)
+    tx_params_raw = r.get('transcodeParams', default='', type=str)      # Required
+
+    # TODO: media_type can be podcast once podcassts are supported by BSN
+
+    if not bool(flask.g.user_data.get('streamRole')):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not media_id or not tx_params_raw:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    try:
+        # container | bitrate | norm
+        parts = tx_params_raw.split('|')
+        req_format = parts[0]
+        max_bitrate = int(float(parts[1]) / 1000) # bps to kbps
+        apply_norm = parts[2] == '1'
+    except (IndexError, ValueError):
+        return subsonic_error(0, 'Invalid transcodeParams', resp_fmt=resp_fmt)
+
+    beets_song_id = IDMapper.sub_to_song(media_id)
+    song = flask.g.lib.get_item(beets_song_id)
+    if not song:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    song_path = os.fsdecode(song.get('path', b''))
+    if not song_path:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    path_obj = Path(song_path)
+    if not path_obj.is_absolute():
+        song_path = str(app.config['root_directory'] / path_obj)
+
+    norm_filter = get_normalization_filter(song) if apply_norm else None
+
+    return try_transcode(
+        song_path,
+        start_at=offset,
+        max_bitrate=max_bitrate,
+        req_format=req_format,
+        duration=song.get('length') or 0.0,
+        estimate_length=True,
+        audio_filters=norm_filter
+    )

@@ -3,6 +3,7 @@ from wtforms import PasswordField, BooleanField, SelectField, StringField
 from wtforms.validators import DataRequired, Length, Optional, Email
 
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, BITRATE_CHOICES_STR
+from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
@@ -19,7 +20,7 @@ class UserForm(FlaskForm):
     Form for creating a new user.
     """
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=4)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=MIN_PASSWORD_LEN)])
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
 
@@ -28,7 +29,7 @@ class EditUserForm(FlaskForm):
     """
     Form for editing an existing user.
     """
-    password = PasswordField('New password (leave blank to keep current)', validators=[Optional(), Length(min=4)])
+    password = PasswordField('New password (leave blank to keep current)', validators=[Optional(), Length(min=MIN_PASSWORD_LEN)])
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
 

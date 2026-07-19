@@ -75,6 +75,8 @@ LOOPBACK_IPS = frozenset({'127.0.0.1', 'localhost', '::1'})
 RATE_LIMIT_MAX_FAILURES = 5
 RATE_LIMIT_BLOCK_WINDOW = 300
 
+MIN_PASSWORD_LEN = 8
+
 ## Maintenance timings
 
 NOW_PLAYING_TIMEOUT_SEC = 600   # stale after 10 min

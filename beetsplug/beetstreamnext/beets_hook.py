@@ -27,7 +27,7 @@ from paste.translogger import TransLogger
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, LOG_LEVEL, bsn_logger, CACHE_LOCATION
+from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, LOG_LEVEL, CACHE_LOCATION, MIN_PASSWORD_LEN, bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
 from beetsplug.beetstreamnext.core.security import ip_filter
@@ -134,7 +134,16 @@ class BeetstreamNextPlugin(BeetsPlugin):
                                                  f"Use '{username_cleaned}' instead? [y/n]: ").lower() == 'y'
                         else:
                             unsername_ok = True
-                    password = getpass.getpass('Password: ')
+
+                    password_ok = False
+                    pw_hint = 'Password: '
+                    while not password_ok:
+                        password = getpass.getpass(pw_hint)
+                        if len(password) < MIN_PASSWORD_LEN:
+                            pw_hint = f'Password (at least {MIN_PASSWORD_LEN} chars): '
+                        else:
+                            password_ok = True
+
                     is_admin = input('Admin? [y/n]: ').lower() == 'y'
 
                     try:

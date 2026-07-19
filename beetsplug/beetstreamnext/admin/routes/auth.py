@@ -4,7 +4,7 @@ from werkzeug.datastructures import MultiDict
 from .. import admin_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.security import ip_filter, rate_limiter
+from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate
 from beetsplug.beetstreamnext.admin.forms import LoginForm
 
@@ -23,7 +23,7 @@ def route_login() -> flask.Response:
     if form.validate_on_submit():
         client_ip = flask.request.remote_addr or 'unknown'
 
-        # ip_filter / rate_limiter run in before_request for /admin too. But still record/reset failures here.
+        # ip_filter / rate_limiter run in before_request, but still record/reset failures here.
 
         # Build auth dict (simulating a Subsonic API request)
         auth_params = MultiDict(

@@ -218,7 +218,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
     if version:
         subsonic_album['version'] = version
         if app.config.get('save_album_version'):
-            write_beets_field('album', data['id'], 'version', version)
+            write_beets_field('album', data['id'], 'version', version, allow_flex=True)
 
     # Add labels if possible
     label = data.get('label', '')

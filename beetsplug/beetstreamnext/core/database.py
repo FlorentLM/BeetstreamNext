@@ -15,8 +15,9 @@ from functools import lru_cache
 import flask
 
 from beetsplug.beetstreamnext.console import print_box, TermColors
-from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS, bsn_logger
+from beetsplug.beetstreamnext.constants import ALPHANUM_CHARS, SESSION_KEY_ROTATION_DAYS, bsn_logger
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.utils.db import get_beets_schema
 
 
 ##
@@ -105,7 +106,6 @@ def ensure_secret(db_path: str | Path) -> None:
                 f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP FAILED: Missing required secret  {TermColors.ENDC}',
                 '',
                 f'Add the {TermColors.BOLD}BEETSTREAMNEXT_KEY{TermColors.ENDC} to:',
-                # '',
                 f'{env_path}',
                 '',
                 'If you have lost the BEETSTREAMNEXT_KEY, stored passwords',
@@ -217,9 +217,9 @@ def initialise_db() -> None:
             elif stored_hash != get_key_hash():
                 conn.close()
                 raise RuntimeError(
-                    "BEETSTREAMNEXT_KEY has changed since the database was initialised. "
-                    "Stored passwords are unrecoverable with the current key.\n"
-                    f"Restore the original key, or delete the database "
+                    'BEETSTREAMNEXT_KEY has changed since the database was initialised. '
+                    'Stored passwords are unrecoverable with the current key.\n'
+                    f'Restore the original key, or delete the database '
                     f"(`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
                 )
 
@@ -227,8 +227,8 @@ def initialise_db() -> None:
             # Cipher gone but db has encrypted passwords: no good
             conn.close()
             raise RuntimeError(
-                "Database contains encrypted passwords but BEETSTREAMNEXT_KEY is not set. "
-                "Passwords cannot be decrypted."
+                'Database contains encrypted passwords but BEETSTREAMNEXT_KEY is not set. '
+                'Passwords cannot be decrypted.'
             )
 
     cur.execute(
@@ -431,10 +431,10 @@ def database() -> sqlite3.Connection:
     """Get internal database connection."""
     if 'db' not in flask.g:
         flask.g.db = sqlite3.connect(flask.current_app.config['DB_PATH'])
-        flask.g.db.execute("PRAGMA main.journal_mode = WAL;")
-        flask.g.db.execute("PRAGMA synchronous = NORMAL;")
-        flask.g.db.execute("PRAGMA busy_timeout = 5000;")
-        flask.g.db.execute("PRAGMA foreign_keys = ON;")
+        flask.g.db.execute("""PRAGMA main.journal_mode = WAL;""")
+        flask.g.db.execute("""PRAGMA synchronous = NORMAL;""")
+        flask.g.db.execute("""PRAGMA busy_timeout = 5000;""")
+        flask.g.db.execute("""PRAGMA foreign_keys = ON;""")
         flask.g.db.row_factory = sqlite3.Row
     return flask.g.db
 
@@ -447,7 +447,7 @@ def dual_database() -> sqlite3.Connection:
         if not beets_path.is_file():
             raise RuntimeError(f"Beets database not found at '{beets_path}'")
 
-        db.execute("ATTACH DATABASE ? AS beets", (str(beets_path),))
+        db.execute("""ATTACH DATABASE ? AS beets""", (str(beets_path),))
         flask.g.beets_attached = True
     return db
 
@@ -461,41 +461,57 @@ def close_database(_e: Optional[Any] = None) -> None:
 
 ##
 
-def write_beets_field(entity_type: str, entity_id: int, key: str, value: any) -> None:
+def write_beets_field(
+    entity_type: str,
+    entity_id: int,
+    key: str,
+    value: Any,
+    allow_flex: bool = False,
+) -> None:
     """
     Writes a field in the beets database.
     """
+
     if entity_type not in ('item', 'album'):
         raise ValueError("entity_type must be 'item' or 'album'")
+
+    if not isinstance(key, str) or not ALPHANUM_CHARS.match(key):
+        raise ValueError(f'Invalid field name: {key!r}')
+
+    entity_id = int(entity_id)
 
     core_table = 'items' if entity_type == 'item' else 'albums'
     attr_table = f'{entity_type}_attributes'
 
     db = dual_database()
-    try:
+
+    if key in get_beets_schema(core_table):
         db.execute(
             f"""
-            UPDATE beets.{core_table} SET {key} = ? 
+            UPDATE beets.{core_table} 
+            SET {key} = ? 
             WHERE id = ?
-            """, (value, entity_id)
+            """, (value, entity_id),
         )
         db.commit()
 
         # If that worked but changed 0 rows (wrong ID), user should know
         if db.total_changes == 0:
             bsn_logger.warning(f'No beets {entity_type} found with ID {entity_id}')
+        return
 
-    except sqlite3.OperationalError as e:
-        if 'no such column' in str(e).lower():
-            # Update or insert into flexible attributes table
-            db.execute(
-                f"""
-                INSERT INTO beets.{attr_table} (entity_id, key, value)
-                VALUES (?, ?, ?)
-                ON CONFLICT(entity_id, key) DO UPDATE SET value = excluded.value
-                """, (entity_id, key, str(value))
-            )
-            db.commit()
-        else:
-            bsn_logger.error(f'Database error while updating beets {key}: {e}')
-            raise
+    if not allow_flex:
+        raise ValueError(
+            f"'{key}' is not a column of beets.{core_table}. "
+            f"Pass allow_flex=True to write it as a flexible attribute."
+        )
+
+    db.execute(
+        f"""
+        INSERT INTO beets.{attr_table} (entity_id, key, value)
+        VALUES (?, ?, ?)
+        ON CONFLICT(entity_id, key) DO UPDATE SET value = excluded.value
+        """,
+        (entity_id, key, str(value)),
+    )
+    db.commit()

@@ -197,7 +197,7 @@ I tested it and confirmed it working with:
 
 ## Missing endpoints
 
-See [here](missing-endpoints.md) a (non-exhaustive) list
+See [here](OpenSubsonic_endpoints.md)
 
 ## License
 

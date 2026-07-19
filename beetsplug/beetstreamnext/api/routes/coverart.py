@@ -18,8 +18,8 @@ from beetsplug.beetstreamnext.core.images import (
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
-@api_bp.route('/getCoverArt', methods=["GET", "POST"])
-@api_bp.route('/getCoverArt.view', methods=["GET", "POST"])
+@api_bp.route('/getCoverArt', methods=['GET', 'POST'])
+@api_bp.route('/getCoverArt.view', methods=['GET', 'POST'])
 def endpoint_get_cover_art() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

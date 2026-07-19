@@ -10,16 +10,16 @@ from beetsplug.beetstreamnext.api.serializers import map_album, map_song, map_ar
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
-@api_bp.route('/search', methods=["GET", "POST"])
-@api_bp.route('/search.view', methods=["GET", "POST"])
+@api_bp.route('/search', methods=['GET', 'POST'])
+@api_bp.route('/search.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search2/
-@api_bp.route('/search2', methods=["GET", "POST"])
-@api_bp.route('/search2.view', methods=["GET", "POST"])
+@api_bp.route('/search2', methods=['GET', 'POST'])
+@api_bp.route('/search2.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search3/
-@api_bp.route('/search3', methods=["GET", "POST"])
-@api_bp.route('/search3.view', methods=["GET", "POST"])
+@api_bp.route('/search3', methods=['GET', 'POST'])
+@api_bp.route('/search3.view', methods=['GET', 'POST'])
 def endpoint_search() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

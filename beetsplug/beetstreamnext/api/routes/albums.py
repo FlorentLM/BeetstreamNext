@@ -29,8 +29,8 @@ def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbum/
-@api_bp.route('/getAlbum', methods=["GET", "POST"])
-@api_bp.route('/getAlbum.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbum', methods=['GET', 'POST'])
+@api_bp.route('/getAlbum.view', methods=['GET', 'POST'])
 def endpoint_get_album() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -44,12 +44,12 @@ def endpoint_get_album() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo/
-@api_bp.route('/getAlbumInfo', methods=["GET", "POST"])
-@api_bp.route('/getAlbumInfo.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumInfo', methods=['GET', 'POST'])
+@api_bp.route('/getAlbumInfo.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo2/
-@api_bp.route('/getAlbumInfo2', methods=["GET", "POST"])
-@api_bp.route('/getAlbumInfo2.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumInfo2', methods=['GET', 'POST'])
+@api_bp.route('/getAlbumInfo2.view', methods=['GET', 'POST'])
 def endpoint_get_album_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -90,12 +90,12 @@ def endpoint_get_album_info() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList/
-@api_bp.route('/getAlbumList', methods=["GET", "POST"])
-@api_bp.route('/getAlbumList.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumList', methods=['GET', 'POST'])
+@api_bp.route('/getAlbumList.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList2/
-@api_bp.route('/getAlbumList2', methods=["GET", "POST"])
-@api_bp.route('/getAlbumList2.view', methods=["GET", "POST"])
+@api_bp.route('/getAlbumList2', methods=['GET', 'POST'])
+@api_bp.route('/getAlbumList2.view', methods=['GET', 'POST'])
 def endpoint_get_album_list() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

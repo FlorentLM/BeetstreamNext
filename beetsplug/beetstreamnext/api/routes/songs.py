@@ -63,8 +63,8 @@ def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[s
 # Endpoints
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSong/
-@api_bp.route('/getSong', methods=["GET", "POST"])
-@api_bp.route('/getSong.view', methods=["GET", "POST"])
+@api_bp.route('/getSong', methods=['GET', 'POST'])
+@api_bp.route('/getSong.view', methods=['GET', 'POST'])
 def endpoint_get_song() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -81,8 +81,8 @@ def endpoint_get_song() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSongsByGenre/
-@api_bp.route('/getSongsByGenre', methods=["GET", "POST"])
-@api_bp.route('/getSongsByGenre.view', methods=["GET", "POST"])
+@api_bp.route('/getSongsByGenre', methods=['GET', 'POST'])
+@api_bp.route('/getSongsByGenre.view', methods=['GET', 'POST'])
 def endpoint_songs_by_genre() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -129,8 +129,8 @@ def endpoint_songs_by_genre() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getRandomSongs/
-@api_bp.route('/getRandomSongs', methods=["GET", "POST"])
-@api_bp.route('/getRandomSongs.view', methods=["GET", "POST"])
+@api_bp.route('/getRandomSongs', methods=['GET', 'POST'])
+@api_bp.route('/getRandomSongs.view', methods=['GET', 'POST'])
 def endpoint_get_random_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -181,8 +181,8 @@ def endpoint_get_random_songs() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getTopSongs/
-@api_bp.route('/getTopSongs', methods=["GET", "POST"])
-@api_bp.route('/getTopSongs.view', methods=["GET", "POST"])
+@api_bp.route('/getTopSongs', methods=['GET', 'POST'])
+@api_bp.route('/getTopSongs.view', methods=['GET', 'POST'])
 def endpoint_get_top_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -253,12 +253,12 @@ def endpoint_get_top_songs() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs/
-@api_bp.route('/getSimilarSongs', methods=["GET", "POST"])
-@api_bp.route('/getSimilarSongs.view', methods=["GET", "POST"])
+@api_bp.route('/getSimilarSongs', methods=['GET', 'POST'])
+@api_bp.route('/getSimilarSongs.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs2/
-@api_bp.route('/getSimilarSongs2', methods=["GET", "POST"])
-@api_bp.route('/getSimilarSongs2.view', methods=["GET", "POST"])
+@api_bp.route('/getSimilarSongs2', methods=['GET', 'POST'])
+@api_bp.route('/getSimilarSongs2.view', methods=['GET', 'POST'])
 def endpoint_get_similar_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

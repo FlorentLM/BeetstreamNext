@@ -94,8 +94,8 @@ def _fetch_lyrics_data(item) -> dict | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyrics/
-@api_bp.route('/getLyrics', methods=["GET", "POST"])
-@api_bp.route('/getLyrics.view', methods=["GET", "POST"])
+@api_bp.route('/getLyrics', methods=['GET', 'POST'])
+@api_bp.route('/getLyrics.view', methods=['GET', 'POST'])
 def endpoint_get_lyrics() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -134,8 +134,8 @@ def endpoint_get_lyrics() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyricsBySongId/
-@api_bp.route('/getLyricsBySongId', methods=["GET", "POST"])
-@api_bp.route('/getLyricsBySongId.view', methods=["GET", "POST"])
+@api_bp.route('/getLyricsBySongId', methods=['GET', 'POST'])
+@api_bp.route('/getLyricsBySongId.view', methods=['GET', 'POST'])
 def endpoint_get_lyrics_by_song_id() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

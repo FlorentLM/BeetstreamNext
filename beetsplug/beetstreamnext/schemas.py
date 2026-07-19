@@ -100,7 +100,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
     },
 
-    # Library / playback
+    # Library
     'never_transcode': {
         'type': 'bool',
         'default': False,
@@ -137,8 +137,45 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'sensitive': True,
     },
+    # 'save_lyrics': {
+    #     'type': 'bool',
+    #     'default': False,
+    #     'category': 'library',
+    #     'description': 'Save fetched lyrics to the beets database.',
+    #     'requires_restart': False,
+    # },    # TODO: wire this in
 
-    # TODO: Add 'Write lyrics to beets' setting
+    # Audio
+    'replaygain_enabled': {
+        'type': 'bool',
+        'default': False,
+        'category': 'audio',
+        'description': 'Apply ReplayGain normalization on the server side.',
+        'requires_restart': False,
+    },
+    'replaygain_preamp': {
+        'type': 'int',
+        'default': 0,
+        'category': 'audio',
+        'description': 'Additional gain (dB) to apply.',
+        'requires_restart': False,
+        'validator': _int_range(-20, 20),
+    },
+    'replaygain_fallback': {
+        'type': 'int',
+        'default': -6,
+        'category': 'audio',
+        'description': "Gain (dB) to apply to tracks without ReplayGain tags in beets' library.",
+        'requires_restart': False,
+        'validator': _int_range(-20, 0),
+    },
+    'audio_peak_limit': {
+        'type': 'bool',
+        'default': False,
+        'category': 'audio',
+        'description': 'Always prevent audio peaks from exceeding 0 dB (prevent clipping).',
+        'requires_restart': False,
+    },
 
     # Security
     'ip_whitelist': {

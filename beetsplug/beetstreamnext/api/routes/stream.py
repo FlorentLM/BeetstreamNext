@@ -1,9 +1,10 @@
 import os
 import subprocess
+import math
 from pathlib import Path
 import queue
 import threading
-from typing import Generator
+from typing import Generator, Optional
 import flask
 
 from .. import api_bp
@@ -15,6 +16,46 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
+
+
+def get_normalization_filter(item) -> str | None:
+    """
+    Calculates the ReplayGain adjustment and peak limiting.
+    Returns an FFmpeg audio filter string.
+    """
+    if not app.config.get('replaygain_enabled', True):
+        return None
+
+    # Beets stores these as floats
+    # rg_track_gain is in dB
+    # rg_track_peak is a ratio
+    gain = item.get('rg_track_gain')
+    peak = item.get('rg_track_peak')
+
+    # Fallback for files without ReplayGain tags
+    if gain is None:
+        gain = app.config.get('replaygain_fallback', -6.0)
+
+    # Apply user preamp
+    gain += app.config.get('replaygain_preamp', 0.0)
+
+    # Safety peak limiting
+    if app.config.get('audio_peak_limit', True):
+        # Must ensure that: 10^(gain/20) * peak <= 1.0
+        # If peak is missing, assume 1.0 (safe default)
+        track_peak = peak if peak is not None else 1.0
+
+        if track_peak > 0:
+            requested_gain_factor = 10 ** (gain / 20.0)
+            max_allowed_gain_factor = 1.0 / track_peak
+
+            if requested_gain_factor > max_allowed_gain_factor:
+                # Reduce gain to the absolute ceiling to prevent clipping
+                gain = 20 * math.log10(max_allowed_gain_factor)
+                bsn_logger.debug(f"Peak limit triggered for {item.get('title')}: clamped gain to {gain:.2f}dB")
+
+    # Final filter: volume adjustment + a hard limiter at -0.1dB as a safety net
+    return f'volume={gain:.2f}dB,alimiter=limit=0.99'
 
 
 def _send_direct(file_path: str | Path) -> flask.Response | None:
@@ -31,13 +72,14 @@ def _send_transcode(
         max_bitrate: int = 128,
         req_format: str = 'mp3',
         duration: float = 0.0,
-        estimate_length: bool = False
+        estimate_length: bool = False,
+        audio_filters: Optional[str] = None
     ) -> flask.Response | None:
 
     format_map = {
         'mp3': {'f': 'mp3', 'c': 'libmp3lame', 'mime': 'audio/mpeg'},
         'ogg': {'f': 'ogg', 'c': 'libvorbis', 'mime': 'audio/ogg'},
-        'opus': {'f': 'ogg', 'c': 'libopus', 'mime': 'audio/ogg'},
+        'opus': {'f': 'opus', 'c': 'libopus', 'mime': 'audio/ogg'},
         'aac': {'f': 'adts', 'c': 'aac', 'mime': 'audio/aac'},
         'm4a': {'f': 'mp4', 'c': 'aac', 'mime': 'audio/aac'},   # TODO: needs ' movflags +faststart '?
         'flac': {'f': 'flac', 'c': 'flac', 'mime': 'audio/flac'}
@@ -46,18 +88,22 @@ def _send_transcode(
     target = format_map.get(req_format.lower() if req_format else 'mp3', format_map['mp3'])
 
     if FFMPEG_PYTHON:
-        input_stream = ffmpeg.input(file_path, ss=start_at) if start_at > 0 else ffmpeg.input(file_path)
+        input_stream = ffmpeg.input(str(file_path), ss=start_at) if start_at > 0 else ffmpeg.input(str(file_path))
+
+        output_args = {
+            'format': target['f'],
+            'acodec': target['c'],
+            'audio_bitrate': f'{max_bitrate}k',
+            'map_metadata': '-1'
+        }
+
+        if audio_filters:
+            output_args['af'] = audio_filters
 
         output_stream = (
             input_stream
             .audio
-            .output(
-                'pipe:',
-                format=target['f'],
-                acodec=target['c'],
-                audio_bitrate=f'{max_bitrate}k',
-                map_metadata='-1'
-            )
+            .output('pipe:', **output_args)
             .run_async(pipe_stdout=True, quiet=True)
         )
     elif FFMPEG_BIN:
@@ -66,8 +112,13 @@ def _send_transcode(
         if start_at > 0:
             command.extend(["-ss", f"{start_at:.2f}"])
 
+        command.extend(['-i', str(file_path)])
+
+        # Apply optional audio filters
+        if audio_filters:
+            command.extend(['-af', audio_filters])
+
         command.extend([
-            '-i', file_path,
             '-vn',  # strip cover art, otherwise many clients just crash
             '-map_metadata', '-1',
             '-f', target['f'],
@@ -134,15 +185,12 @@ def _send_transcode(
                     output_stream.wait(timeout=5)
             except Exception:
                 pass
+
     # reader is a daemon, here stdout is closed and stop_event is set, so it will exit on its own. Joining would block.
 
     response = flask.Response(flask.stream_with_context(generate()), mimetype=target['mime'])
 
     if estimate_length and max_bitrate > 0 and duration > 0:
-        # This is an estimate. Pretty sure it will be very inaccurate in many cases.
-        # but as per the spec:
-        #   "Content-Length HTTP header will be set to an estimated value for transcoded or downsampled media."
-        # so... yeah
         remaining = max(0.0, duration - start_at)
         estimated_bytes = int((max_bitrate * 1000 / 8) * remaining)
         response.headers['Content-Length'] = estimated_bytes
@@ -160,7 +208,8 @@ def try_transcode(
         max_bitrate: int = 128,
         req_format: str = 'mp3',
         duration: float = 0.0,
-        estimate_length: bool = False
+        estimate_length: bool = False,
+        audio_filters: Optional[str] = None
     ) -> flask.Response | None:
 
     if FFMPEG_PYTHON or FFMPEG_BIN:
@@ -170,7 +219,8 @@ def try_transcode(
             max_bitrate=max_bitrate,
             req_format=req_format,
             duration=duration,
-            estimate_length=estimate_length
+            estimate_length=estimate_length,
+            audio_filters=audio_filters
         )
 
     else:
@@ -212,15 +262,23 @@ def endpoint_stream_song() -> flask.Response | None:
             song_path = str(app.config['root_directory'] / path_obj)
 
         song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
-
+        norm_filter = get_normalization_filter(song)
         needs_transcode = False
 
+        # Transcode if audio normalisation is required
+        if norm_filter:
+            needs_transcode = True
+
         # Transcode if bitrate too high
-        if max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
+        elif max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
             needs_transcode = True
 
         # or if client wants different format
         elif req_format != 'raw' and req_format != song_ext and not app.config['never_transcode']:
+            needs_transcode = True
+
+        # or if seeking
+        elif time_offset > 0:
             needs_transcode = True
 
         if not needs_transcode:
@@ -234,7 +292,8 @@ def endpoint_stream_song() -> flask.Response | None:
                 max_bitrate=target_bitrate,
                 req_format=req_format if req_format != 'raw' else 'mp3',
                 duration=song.get('length') or 0.0,
-                estimate_length=estimate_length
+                estimate_length=estimate_length,
+                audio_filters=norm_filter
             )
 
         if response is not None:

@@ -53,6 +53,11 @@ class SettingsStore:
             'rate_limit_block_window': lambda v: setattr(rate_limiter, 'block_window', v),
         })
 
+        # Audio settings
+        for k in ('replaygain_enabled', 'replaygain_preamp',
+                  'replaygain_fallback', 'audio_peak_limit'):
+            self._directly_applicable[k] = lambda v, key=k: app.config.update({key: v})
+
     def initialise(self, yaml_defaults: Optional[Dict[str, Any]] = None):
         """
         Populate the in-memory cache and apply settings to live runtime stuff.

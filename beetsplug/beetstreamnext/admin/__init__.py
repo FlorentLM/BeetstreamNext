@@ -5,6 +5,7 @@ from flask import Blueprint
 
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles
 
+
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 def admin_required(f) -> Callable:
@@ -26,5 +27,8 @@ def admin_required(f) -> Callable:
 
 
 from .routes import (
-    auth
+    auth,
+    avatars,
+    settings_routes,
+    users,
 )

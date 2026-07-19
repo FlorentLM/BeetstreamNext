@@ -56,6 +56,9 @@ def _before_request() -> flask.Response | None:
     if flask.request.url_rule is None:
         return
 
+    # Allow admin panel (auth is handled differently)
+    if flask.request.path.startswith('/admin'):
+        return
 
     # Attempt authentication
     ok, error_code, username = authenticate(r)
@@ -94,4 +97,19 @@ def _add_security_headers(response):
     if flask.request.is_secure:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
+    if flask.request.path.startswith('/admin'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        nonce = getattr(flask.g, 'csp_nonce', '')
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "      # no inline styles so only need 'self' and Google Fonts
+            "font-src 'self' https://fonts.gstatic.com; "
+            "style-src 'self' https://fonts.googleapis.com; "
+            f"script-src 'self' 'nonce-{nonce}'; "
+            "img-src 'self' data:; "
+            "connect-src 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'none'; "
+            "object-src 'none'"
+        )
     return response

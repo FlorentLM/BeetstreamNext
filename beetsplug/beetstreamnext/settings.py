@@ -174,5 +174,27 @@ class SettingsStore:
 
         return value
 
+    def get_for_ui(self, category: str) -> Dict[str, Dict[str, Any]]:
+        """For UI rendering. Sensitive values are only reported as 'is_set' booleans."""
+        result = {}
+        with self._lock:
+            for key, spec in SETTINGS_SCHEMA.items():
+                if spec.get('category') != category:
+                    continue
+
+                val = self._cache.get(key, spec['default'])
+                entry = {
+                    'type': spec['type'],
+                    'description': spec.get('description', ''),
+                    'requires_restart': bool(spec.get('requires_restart')),
+                    'sensitive': bool(spec.get('sensitive')),
+                }
+                if entry['sensitive']:
+                    entry['is_set'] = bool(val)
+                else:
+                    entry['value'] = val
+                result[key] = entry
+        return result
+
 
 settings_store = SettingsStore()

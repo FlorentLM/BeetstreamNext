@@ -1,4 +1,3 @@
-from typing import Dict
 import hashlib
 import flask
 
@@ -42,13 +41,41 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
     payload = {
         'openSubsonicExtensions': [
             {
-                'name': 'transcodeOffset',
+                'name': 'apiKeyAuthentication',     # https://opensubsonic.netlify.app/docs/extensions/apikeyauth/
                 'versions': [1]
             },
+            # {
+            #     'name': 'getPodcastEpisode',    # TODO: https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
+            #     'versions': [1]
+            # },
+            # {
+            #     'name': 'formPost',    # TODO https://opensubsonic.netlify.app/docs/extensions/formpost/
+            #     'versions': [1]
+            # },
+            # {
+            #     'name': 'indexBasedQueue',    # TODO https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
+            #     'versions': [1]
+            # },
+            # {
+            #     'name': 'playbackReport',    # TODO https://opensubsonic.netlify.app/docs/extensions/playbackreport/
+            #     'versions': [1]
+            # },
             {
-                'name': 'playQueue',
+                'name': 'songLyrics',   # https://opensubsonic.netlify.app/docs/extensions/songlyrics/
                 'versions': [1]
-            }
+            },
+            # {
+            #     'name': 'sonicSimilarity',    # TODO https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/
+            #     'versions': [1]
+            # },
+            {
+                'name': 'transcodeOffset',  # https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/
+                'versions': [1]
+            },
+            # {
+            #     'name': 'transcoding',  # TODO https://opensubsonic.netlify.app/docs/extensions/transcoding/
+            #     'versions': [1]
+            # },
         ]
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

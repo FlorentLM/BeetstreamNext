@@ -114,6 +114,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Never transcode files, always stream the original.',
         'requires_restart': False,
     },
+    'lastfm_api_key': {
+        'type': 'str',
+        'default': '',
+        'category': 'library',
+        'description': 'Last.fm API key for fetching metadata.',
+        'requires_restart': False,
+        'sensitive': True,
+    },
     'fetch_artists_images': {
         'type': 'bool',
         'default': False,
@@ -126,6 +134,13 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'library',
         'description': 'Save fetched artist images to disk.',
+        'requires_restart': False,
+    },
+    'fetch_artists_biographies': {
+        'type': 'bool',
+        'default': False,
+        'category': 'library',
+        'description': 'Fetch artist short biography from Wikipedia.',
         'requires_restart': False,
     },
     'save_album_art': {

@@ -1,13 +1,15 @@
 import urllib.parse
 from datetime import timedelta
 from functools import lru_cache
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import requests
+import asyncio
 from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+
 
 _http_session = None
 
@@ -171,14 +173,26 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) 
         return {}
 
 
+async def _async_wiki_search(q: str) -> str | None:
+
+    import wikipediaapi
+
+    wiki = wikipediaapi.AsyncWikipedia(user_agent=USER_AGENT, language='en', timeout=8)
+    page = wiki.page(q)
+
+    if await page.exists():
+        summary = await page.summary
+        return summary
+
+    return None
+
+
 @lru_cache(maxsize=512)
-def query_wikipedia(q: str, cache_ttl_hash=None) -> str | None:
-    """`cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
+def query_wikipedia(q: str, _cache_ttl_hash=None) -> str | None:
+    """`_cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
 
     if not WIKI_API:
         return None
-
-    import wikipediaapi
 
     from beetsplug.beetstreamnext.utils.text import standard_ascii
     from beetsplug.beetstreamnext.utils.text import remove_accents
@@ -187,14 +201,11 @@ def query_wikipedia(q: str, cache_ttl_hash=None) -> str | None:
     if not q:
         return None
 
-    user_agent = f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'
-    wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language='en', timeout=8)
-    page = wiki.page(q)
-
-    if page.exists():
-        return page.summary
-
-    return None
+    try:
+        return asyncio.run(_async_wiki_search(q))
+    except Exception as e:
+        bsn_logger.error(f'Wikipedia query failed: {e}')
+        return None
 
 
 def query_coverartarchive(mbid: str) -> bytes:

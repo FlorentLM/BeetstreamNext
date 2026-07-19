@@ -10,14 +10,16 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
 from beetsplug.beetstreamnext.utils.text import customstrip
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, FFMPEG_BIN
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
+
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
@@ -373,4 +375,18 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
                         bsn_logger.warning(f"Bad artist image from Deezer for '{artist_name}': {e}")
             return None
 
+    return None
+
+
+def send_radio_art(station_id: int) -> flask.Response | None:
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT image FROM internet_radio_stations
+            WHERE id=?
+            """, (station_id,)
+        ).fetchone()
+
+    if row and row['image']:
+        return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']))
     return None

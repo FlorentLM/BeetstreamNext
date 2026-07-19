@@ -6,16 +6,15 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN
-from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.images import (
-    round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image
-)
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.images import (
+    round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image, send_radio_art
+)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
@@ -95,22 +94,10 @@ def endpoint_get_cover_art() -> flask.Response:
 
     elif IDMapper.get_type(req_id) == 'radio':
         radio_id = IDMapper.sub_to_radio(req_id)
-        with database() as db:
-            row = db.execute(
-                """
-                SELECT image, image_mtime 
-                FROM internet_radio_stations WHERE id=?
-                """, (radio_id,)
-            ).fetchone()
-
-        if row and row['image']:
-            img_io = BytesIO(row['image'])
-            if size:
-                img_io = resize_image(row['image'], size)
-
-            return flask.send_file(img_io, mimetype='image/jpeg')
-
-        return subsonic_error(70, resp_fmt=resp_fmt)
+        if radio_id:
+            response = send_radio_art(radio_id)
+            if response is not None:
+                return response
 
     # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
 

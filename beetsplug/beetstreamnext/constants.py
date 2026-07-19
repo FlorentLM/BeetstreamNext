@@ -8,9 +8,11 @@ from pathlib import Path
 
 ## Versions
 
+REPO_URL = 'https://github.com/FlorentLM/BeetstreamNext'
 SUBSONIC_API_VER = '1.16.1'
 BEETSTREAMNEXT_VER = '1.6.0-dev'
 
+USER_AGENT = f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( {REPO_URL} )'
 
 ## Paths and deps
 

@@ -1,7 +1,9 @@
 import time
 from typing import Optional
 
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.external import query_radio_browser, capped_image_fetch
 
 
 def create_station(
@@ -10,6 +12,13 @@ def create_station(
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None
     ) -> None:
+
+    if not image and app.config.get('fetch_radio_images'):
+        resp = query_radio_browser(name, limit=1)
+        if resp:
+            favicon_url = resp[0]['favicon_url']
+            if favicon_url:
+                image = capped_image_fetch(favicon_url)
 
     with database() as db:
         db.execute(

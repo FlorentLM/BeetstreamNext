@@ -19,6 +19,7 @@ USER_AGENT = f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( {REPO_URL} )'
 FFMPEG_BIN = shutil.which('ffmpeg') is not None
 FFMPEG_PYTHON = importlib.util.find_spec('ffmpeg') is not None
 WIKI_API = importlib.util.find_spec('wikipediaapi') is not None
+RADIO_BROWSER = importlib.util.find_spec('pyradios') is not None
 
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent
 

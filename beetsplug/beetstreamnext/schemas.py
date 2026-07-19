@@ -178,13 +178,19 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Save fetched album version info to the beets database.',
         'requires_restart': False,
     },
-    'lastfm_api_key': {
-        'type': 'str',
-        'default': '',
+    'enable_radio_discovery': {
+        'type': 'bool',
+        'default': False,
         'category': 'library',
-        'description': 'Last.fm API key for fetching metadata.',
+        'description': 'Enable Radio Browser API for station discovery.',
         'requires_restart': False,
-        'sensitive': True,
+    },
+    'fetch_radio_images': {
+        'type': 'bool',
+        'default': True,
+        'category': 'library',
+        'description': 'Automatically fetch station icons when adding from Radio Browser.',
+        'requires_restart': False,
     },
 
     # Audio

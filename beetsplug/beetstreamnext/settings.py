@@ -41,12 +41,13 @@ class SettingsStore:
         self._directly_applicable = {}
 
         # Simple app.config updates
-        for k in ('trusted_hosts', 'legacy_auth', 'never_transcode',
+        for k in ('trusted_hosts', 'legacy_auth',
+                  'never_transcode', 'lastfm_api_key',
                   'fetch_artists_images', 'save_artists_images',
-                  'save_album_art',
+                  'fetch_artists_biographies', 'save_album_art',
                   'fetch_lyrics', 'save_lyrics',
                   'fetch_album_version', 'save_album_version',
-                  'lastfm_api_key',
+                  'fetch_radio_images', 'enable_radio_discovery',
                   'replaygain_enabled', 'replaygain_preamp',
                   'replaygain_fallback', 'audio_peak_limit'):
             self._directly_applicable[k] = lambda v, key=k: app.config.update({key: v})

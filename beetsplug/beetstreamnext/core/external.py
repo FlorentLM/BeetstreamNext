@@ -7,7 +7,9 @@ import asyncio
 from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES
+from beetsplug.beetstreamnext.constants import (
+    WIKI_API, RADIO_BROWSER, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES, USER_AGENT
+)
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 
@@ -213,3 +215,31 @@ def query_coverartarchive(mbid: str) -> bytes:
     if not mbid:
         return b''
     return capped_image_fetch(f'https://coverartarchive.org/release/{mbid}/front')
+
+
+async def _async_radio_search(query: str, limit: int) -> List[dict]:
+
+    from radios import RadioBrowser
+
+    async with RadioBrowser(user_agent=USER_AGENT) as rb:
+
+        # Searching by name
+        stations = await rb.search(name=query, limit=limit)
+        return [{
+            'name': s.name,
+            'stream_url': s.url,
+            'homepage_url': s.homepage,
+            'favicon': s.favicon,
+        } for s in stations]
+
+
+def query_radio_browser(q: str, limit: int = 20) -> list:
+
+    if not RADIO_BROWSER:
+        return []
+
+    try:
+        return asyncio.run(_async_radio_search(q, limit))
+    except Exception as e:
+        bsn_logger.error(f'Radio Browser query failed: {e}')
+        return []

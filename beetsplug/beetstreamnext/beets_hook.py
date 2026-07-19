@@ -26,13 +26,14 @@ from waitress import serve
 from paste.translogger import TransLogger
 
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, LOG_LEVEL, bsn_logger, CACHE_LOCATION
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
 from beetsplug.beetstreamnext.core.security import ip_filter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session_key, ensure_secret
-from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user
+from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user, load_user_roles
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.settings import settings_store
 
@@ -152,6 +153,36 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         '',
                     ])
 
+                return
+
+            # Update user roles
+            if opts.update_user:
+                with app.app_context():
+                    username = opts.update_user
+                    current_data = load_user_roles(username)
+                    if not current_data:
+                        print(f"User '{username}' not found.")
+                        return
+
+                    print(f'Updating roles for user: {username}')
+                    print('(Press Enter to keep current value)')
+                    updates = {}
+                    for role_name, label, _ in USER_ROLES_SCHEMA:
+                        curr_status = 'Enabled' if current_data.get(role_name) else 'Disabled'
+                        val = input(f'{label} (currently {curr_status}) [y/n]: ').lower()
+                        if val == 'y':
+                            updates[role_name] = True
+                        elif val == 'n':
+                            updates[role_name] = False
+
+                    if updates:
+                        try:
+                            update_user(username, **updates)
+                            print(f"Successfully updated roles for '{username}'.")
+                        except ValueError as e:
+                            print(f'Error: {e}')
+                    else:
+                        print("No roles changed.")
                 return
 
             # Delete user

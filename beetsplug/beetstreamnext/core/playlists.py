@@ -239,7 +239,10 @@ class Playlist:
                     curr_entry['m3a'] = True
 
                 elif line.startswith('#EXTBYT:'):
-                    curr_entry['size'] = int(line[8:].strip())
+                    try:
+                        curr_entry['size'] = int(line[8:].strip())
+                    except ValueError:
+                        pass
 
                 elif line.startswith('#EXTBIN:') or line.startswith('#EXT-X-') or line.startswith('#EXTALBUMARTURL:'):
                     pass  # skip binary content, HLS fields, and album art URLs

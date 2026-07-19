@@ -256,7 +256,7 @@ def set_user_avatar(username: str, blob: Optional[bytes | BytesIO] = None) -> bo
             SET avatar = ?,
                 avatarLastChanged = ?
             WHERE username = ?
-            """, (blob, time.time() if blob else time.time(), username)
+            """, (blob, time.time() if blob else None, username)
         )
     return cur.rowcount > 0
 

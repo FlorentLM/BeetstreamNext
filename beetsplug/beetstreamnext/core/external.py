@@ -71,8 +71,8 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> d
     if not artist and not album:
         return {}
 
-    artist = str(artist)
-    album = str(album)
+    artist = str(artist) if artist else ''
+    album = str(album) if album else ''
     artist_quot = urllib.parse.quote_plus(artist)
     album_quot = urllib.parse.quote_plus(album)
 

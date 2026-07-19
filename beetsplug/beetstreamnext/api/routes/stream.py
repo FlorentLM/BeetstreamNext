@@ -26,7 +26,7 @@ def _send_direct(file_path: str | Path) -> flask.Response | None:
 
 
 def _send_transcode(
-        file_path,
+        file_path: str | Path,
         start_at: float = 0.0,
         max_bitrate: int = 128,
         req_format: str = 'mp3',
@@ -155,7 +155,7 @@ def _send_transcode(
 
 
 def try_transcode(
-        file_path,
+        file_path: str | Path,
         start_at: float = 0.0,
         max_bitrate: int = 128,
         req_format: str = 'mp3',

@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.core.database import dual_database
 from beetsplug.beetstreamnext.core.cache import preload_albums
 
 
-def album_payload(subsonic_album_id: str, include_songs: bool = True) -> Dict:
+def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
 
     beets_album_id = IDMapper.sub_to_album(subsonic_album_id)
     album_object = flask.g.lib.get_album(beets_album_id)

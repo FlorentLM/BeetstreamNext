@@ -77,7 +77,7 @@ class RateLimiter:
             self._store.clear()
         return n
 
-    def report(self) -> Dict:
+    def report(self) -> dict:
         """Snapshot of the current state  for diagnostics."""
         now = time.monotonic()
         entries = []

@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.users_crud import load_username
 
 
-def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:
+def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
 
     # Only one possible root directory in beets (?), so just return its name
     directory_name = app.config['root_directory'].name

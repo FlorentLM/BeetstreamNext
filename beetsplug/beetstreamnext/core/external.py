@@ -41,7 +41,7 @@ def _is_deezer_placeholder(artist_data: Dict) -> bool:
     return not bool(url)
 
 
-def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> Dict:
+def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> dict:
 
     if not artist and not album:
         return {}
@@ -94,7 +94,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> D
     return {}
 
 
-def query_musicbrainz(mbid: str, type: str) -> Dict:
+def query_musicbrainz(mbid: str, type: str) -> dict:
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
@@ -115,7 +115,7 @@ def query_musicbrainz(mbid: str, type: str) -> Dict:
         return {}
 
 
-def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) -> Dict:
+def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) -> dict:
 
     if not app.config['lastfm_api_key']:
         return {}

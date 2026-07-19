@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_e
 from beetsplug.beetstreamnext.api.serializers import IDMapper, resolve_artist, map_album, map_artist, get_song_counts
 
 
-def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> Dict:
+def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
 
     value, is_mbid = IDMapper.sub_to_artist(subsonic_artist_id)
     if not value:

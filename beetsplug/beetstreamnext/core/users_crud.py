@@ -33,7 +33,7 @@ def _dummy_stored_password() -> str:
         return _DUMMY_PASSWORD
 
 
-def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, include_password: bool = False) -> Dict:
+def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, include_password: bool = False) -> dict:
     
     existing_fields = set(ALL_USER_FIELDS) if include_password else set(ALL_USER_FIELDS) - {'password'}
     
@@ -231,7 +231,7 @@ def load_all_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
     return [dict(zip(column_names, row)) for row in rows]
 
 
-def load_user_roles(username: str) -> Dict:
+def load_user_roles(username: str) -> dict:
     """Load all user fields except password, safe to cache in g."""
     return get_userdata(username)
 

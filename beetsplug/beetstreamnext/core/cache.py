@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 import flask
 
 from beetsplug.beetstreamnext.api.serializers import IDMapper
@@ -47,7 +47,7 @@ def batch_likes(subsonic_ids: List[str]):
     _batch_cache('_likes', fetch, subsonic_ids)
 
 
-def one_like(item_id: str) -> Optional[float]:
+def one_like(item_id: str) -> float | None:
     cache = flask.g.setdefault('_likes', {})
 
     if item_id not in cache:
@@ -135,7 +135,7 @@ def batch_play_stats(beets_song_ids: list[int]):
     _batch_cache('_play_stats', fetch, beets_song_ids)
 
 
-def one_play_stats(beets_song_id: int) -> Optional[dict]:
+def one_play_stats(beets_song_id: int) -> dict | None:
     cache = flask.g.setdefault('_play_stats', {})
 
     if beets_song_id not in cache:

@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_e
 from beetsplug.beetstreamnext.api.serializers import IDMapper, resolve_artist, map_song
 
 
-def song_payload(subsonic_song_id: str) -> Dict:
+def song_payload(subsonic_song_id: str) -> dict:
     beets_song_id = IDMapper.sub_to_song(subsonic_song_id)
     song_item = flask.g.lib.get_item(beets_song_id)
     if not song_item:

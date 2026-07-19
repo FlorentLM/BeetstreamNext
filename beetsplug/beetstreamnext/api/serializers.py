@@ -52,7 +52,7 @@ class IDMapper:
             return '', False
 
     @staticmethod
-    def _to_beets_int(subsonic_id: str, prefix: str) -> Optional[int]:
+    def _to_beets_int(subsonic_id: str, prefix: str) -> int | None:
         sid = str(subsonic_id)
         if not sid.startswith(prefix):
             return None
@@ -66,7 +66,7 @@ class IDMapper:
         return f"{cls.ALB_ID_PREF}{beets_id}"
 
     @classmethod
-    def sub_to_album(cls, subsonic_id: str) -> Optional[int]:
+    def sub_to_album(cls, subsonic_id: str) -> int | None:
         return cls._to_beets_int(subsonic_id, cls.ALB_ID_PREF)
 
     @classmethod
@@ -74,7 +74,7 @@ class IDMapper:
         return f"{cls.SNG_ID_PREF}{beets_id}"
 
     @classmethod
-    def sub_to_song(cls, subsonic_id: str) -> Optional[int]:
+    def sub_to_song(cls, subsonic_id: str) -> int | None:
         return cls._to_beets_int(subsonic_id, cls.SNG_ID_PREF)
 
     @classmethod
@@ -82,11 +82,11 @@ class IDMapper:
         return f"{cls.PLY_ID_PREF}{beets_id}"
 
     @classmethod
-    def sub_to_playlist(cls, subsonic_id: str) -> Optional[int]:
+    def sub_to_playlist(cls, subsonic_id: str) -> int | None:
         return cls._to_beets_int(subsonic_id, cls.PLY_ID_PREF)
 
     @classmethod
-    def get_type(cls, subsonic_id: str) -> Optional[str]:
+    def get_type(cls, subsonic_id: str) -> str | None:
         """Returns the type of object this ID represents."""
         sid = str(subsonic_id)
         if sid.startswith((cls.ART_MBID_PREF, cls.ART_NAME_PREF)): return 'artist'
@@ -96,7 +96,7 @@ class IDMapper:
         return None
 
 
-def standardise_datadict(obj: Dict | LibModel | Item | Any) -> Dict:
+def standardise_datadict(obj: Dict | LibModel | Item | Any) -> dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
     if isinstance(obj, LibModel):
         data = dict(obj)
@@ -112,7 +112,7 @@ def standardise_datadict(obj: Dict | LibModel | Item | Any) -> Dict:
         return {}
 
 
-def map_media(beets_object: Dict | LibModel) -> Dict:
+def map_media(beets_object: Dict | LibModel) -> dict:
 
     data = standardise_datadict(beets_object)
 
@@ -163,7 +163,7 @@ def map_media(beets_object: Dict | LibModel) -> Dict:
     return subsonic_media
 
 
-def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> Dict:
+def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> dict:
 
     from beetsplug.beetstreamnext.core.cache import preload_songs, one_rating, one_like
 
@@ -180,8 +180,8 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
         'musicBrainzId': data.get('mb_albumid') or '',
         'name': album_name,
         'sortName': album_name,
-        # 'version': 'Deluxe Edition', # TODO: items table has 'media' that contains "Vinyl", "CD", "Digital Media", etc
-                        # TODO: also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
+        # 'version': 'Deluxe Edition', # TODO. Note: items table has 'media' that contains "Vinyl", "CD", "Digital Media", etc
+                                       #    also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
         'coverArt': subsonic_album_id,
         'userRating': one_rating(subsonic_album_id),
         'isCompilation': bool(data.get('comp', False)),
@@ -283,7 +283,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
     return subsonic_album
 
 
-def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> Dict:
+def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> dict:
 
     from beetsplug.beetstreamnext.core.cache import one_rating, one_like, one_play_stats
 
@@ -408,7 +408,7 @@ def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dic
     return subsonic_song
 
 
-def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> Dict:
+def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> dict:
 
     from beetsplug.beetstreamnext.core.cache import preload_albums, one_rating, one_like
     from beetsplug.beetstreamnext.core.images import image_url
@@ -487,7 +487,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
     return subsonic_artist
 
 
-def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> Dict:
+def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> dict:
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
@@ -509,7 +509,7 @@ def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> Dict:
 # Other more specialised utils
 
 
-def _artist_metadata(name: str) -> Dict:
+def _artist_metadata(name: str) -> dict:
     """Lookup MBID, sort name and roles for a given artist name."""
     if not name:
         return {'mbid': '', 'sort_name': '', 'roles': []}
@@ -655,7 +655,7 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
         return artist_name, meta['mbid']
 
 
-def get_song_counts(albums: List[Dict]) -> Dict:
+def get_song_counts(albums: List[Dict]) -> dict:
     """Get song counts for a list of albums in a single db query."""
 
     album_ids = [row['id'] for row in albums]

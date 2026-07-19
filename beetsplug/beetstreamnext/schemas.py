@@ -185,13 +185,13 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Enable Radio Browser API for station discovery.',
         'requires_restart': False,
     },
-    'fetch_radio_images': {
-        'type': 'bool',
-        'default': True,
-        'category': 'library',
-        'description': 'Automatically fetch station icons when adding from Radio Browser.',
-        'requires_restart': False,
-    },
+    # 'fetch_radio_images': {
+    #     'type': 'bool',
+    #     'default': True,
+    #     'category': 'library',
+    #     'description': 'Automatically fetch station icons when adding from Radio Browser.',
+    #     'requires_restart': False,
+    # },
 
     # Audio
     'replaygain_enabled': {

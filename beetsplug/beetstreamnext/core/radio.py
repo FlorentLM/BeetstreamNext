@@ -13,12 +13,13 @@ def create_station(
         image: Optional[bytes] = None
     ) -> None:
 
-    if not image and app.config.get('fetch_radio_images'):
-        resp = query_radio_browser(name, limit=1)
-        if resp:
-            favicon_url = resp[0]['favicon_url']
-            if favicon_url:
-                image = capped_image_fetch(favicon_url)
+    # TODO: This API actually mostly has broken links :(
+    # if not image and app.config.get('fetch_radio_images'):
+    #     resp = query_radio_browser(name, limit=1)
+    #     if resp:
+    #         favicon_url = resp[0]['favicon_url']
+    #         if favicon_url:
+    #             image = capped_image_fetch(favicon_url)
 
     with database() as db:
         db.execute(

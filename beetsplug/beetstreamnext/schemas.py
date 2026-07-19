@@ -129,6 +129,13 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Save fetched album art alongside music files.',
         'requires_restart': False,
     },
+    'save_lyrics': {
+            'type': 'bool',
+            'default': False,
+            'category': 'library',
+            'description': 'Save fetched lyrics to the beets library database.',
+            'requires_restart': False,
+        },
     'lastfm_api_key': {
         'type': 'str',
         'default': '',
@@ -137,13 +144,6 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'sensitive': True,
     },
-    # 'save_lyrics': {
-    #     'type': 'bool',
-    #     'default': False,
-    #     'category': 'library',
-    #     'description': 'Save fetched lyrics to the beets database.',
-    #     'requires_restart': False,
-    # },    # TODO: wire this in
 
     # Audio
     'replaygain_enabled': {

@@ -1,5 +1,6 @@
+import re
+from typing import TYPE_CHECKING, Tuple, Union
 import flask
-from beets.plugins import find_plugins
 
 from .. import api_bp
 
@@ -7,27 +8,89 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.constants import bsn_logger
 from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.application import app
+
+if TYPE_CHECKING:
+    from beetsplug.lyrics import LyricsPlugin
+    from beets.plugins import BeetsPlugin
 
 
-def _fetch_lyrics(item) -> str | None:
+# to detect LRC timestamps like [00:12.34]
+_LRC_TIMESTAMP_REGEX = re.compile(r'^\[(\d+:\d+\.\d+)\]')
 
+
+def _get_lyrics_plugin() -> Union['BeetsPlugin', 'LyricsPlugin', None]:
+    """
+    Find the beets lyrics plugin instance. Should work with any version of Beets.
+    """
+    from beets import plugins
+    for p in plugins.find_plugins():
+        if p.name == 'lyrics':
+            return p
+    try:
+        from beetsplug.lyrics import LyricsPlugin
+        return LyricsPlugin()
+    except (ImportError, Exception) as e:
+        bsn_logger.error(f'Could not load beets lyrics plugin: {e}')
+        return None
+
+
+def _parse_lyrics_content(text: str) -> Tuple[list, bool]:
+    """
+    Parses raw lyrics text.
+    Detects if it's synced (LRC) and returns structured lines.
+    """
+    lines = []
+    is_synced = False
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        match = _LRC_TIMESTAMP_REGEX.match(line)
+        if match:
+            is_synced = True
+            clean_value = _LRC_TIMESTAMP_REGEX.sub('', line).strip()
+            lines.append({'value': clean_value, 'synced': True})
+        else:
+            lines.append({'value': line})
+
+    return lines, is_synced
+
+
+def _fetch_lyrics_data(item) -> dict | None:
     if not item:
         return None
 
-    if item.get('lyrics'):
-        return str(item.lyrics)
+    # Check database first
+    lyrics_text = item.get('lyrics')
 
-    lyrics_plugin = next((p for p in find_plugins() if p.name == 'lyrics'), None)
-    if lyrics_plugin:
-        try:
-            lyrics_plugin.add_item_lyrics(item, False)
-            # TODO: This is the only non-read operation on the Beets database... probably should be disableable
-            if item.lyrics:
-                return str(item.lyrics)
-        except Exception as e:
-            bsn_logger.error(f'Error fetching lyrics via beets plugin: {e}')
+    if not lyrics_text:
+        lyrics_plugin = _get_lyrics_plugin()
+        if lyrics_plugin:
+            try:
+                if app.config.get('save_lyrics'):
+                    lyrics_plugin.add_item_lyrics(item, write=False)  # write is 'write to song file' so NOPE
+                    lyrics_text = item.get('lyrics')
+                else:
+                    lyrics = lyrics_plugin.find_lyrics(item)
+                    lyrics_text = lyrics.text
+            except Exception as e:
+                bsn_logger.error(f'Error calling lyrics plugin: {e}')
+        else:
+            bsn_logger.info(f'Lyrics plugin not found in beets. Is it enabled?')
 
-    return None
+    if not lyrics_text:
+        return None
+
+    return {
+        'text': str(lyrics_text),
+        'lang': item.get('lyrics_language') or 'xxx',   # OpenSubsonic's fallback for unknown language is xxx
+        'instrumental': bool(item.get('lyrics_instrumental')),
+        'artist': item.get('artist') or '',
+        'title': item.get('title') or ''
+    }
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyrics/
@@ -45,27 +108,26 @@ def endpoint_get_lyrics() -> flask.Response:
     with flask.g.lib.transaction() as tx:
         rows = tx.query(
             """
-            SELECT id
-            FROM items
-            WHERE (lower(artist) = lower(?) AND lower(title) = lower(?))
-               OR (lower(albumartist) = lower(?) AND lower(title) = lower(?))
+            SELECT id FROM items 
+            WHERE lower(artist) = lower(?) AND lower(title) = lower(?) 
             LIMIT 1
-            """, (artist, title, artist, title)
+            """, (artist, title)
         )
 
     if not rows:
         return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)
 
     item = flask.g.lib.get_item(rows[0][0])
-    lyrics_text = _fetch_lyrics(item)
-    if not lyrics_text:
+    data = _fetch_lyrics_data(item)
+
+    if not data:
         return subsonic_error(70, message='Lyrics not found.', resp_fmt=resp_fmt)
 
     payload = {
         'lyrics': {
-            'artist': artist,
-            'title': title,
-            'value': lyrics_text
+            'artist': data['artist'],
+            'title': data['title'],
+            'value': data['text']
         }
     }
     return subsonic_response(payload, resp_fmt)
@@ -88,20 +150,21 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     if not item:
         return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)
 
-    lyrics_text = _fetch_lyrics(item)
-    if not lyrics_text:
+    data = _fetch_lyrics_data(item)
+    if not data:
         return subsonic_error(70, message='Lyrics not found.', resp_fmt=resp_fmt)
 
-    lines = [{'value': line} for line in lyrics_text.split('\n')]
+    lines, has_timestamps = _parse_lyrics_content(data['text'])
+
     payload = {
         'lyricsList': {
             'structuredLyrics': [
                 {
                     'kind': 'main',
-                    'displayArtist': item.get('artist') or '',
-                    'displayTitle': item.get('title') or '',
-                    'lang': item.get('language') or 'xxx',  # OpenSubsonic's fallback for unknown language is xxx
-                    'synced': False,
+                    'displayArtist': data['artist'],
+                    'displayTitle': data['title'],
+                    'lang': data['lang'],
+                    'synced': has_timestamps,
                     'line': lines
                 }
             ]

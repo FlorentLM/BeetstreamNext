@@ -42,7 +42,10 @@ class SettingsStore:
 
         # Simple app.config updates
         for k in ('legacy_auth', 'never_transcode', 'fetch_artists_images',
-                  'save_artists_images', 'save_album_art', 'lastfm_api_key'):
+                  'save_artists_images', 'save_album_art', 'save_lyrics',
+                  'lastfm_api_key',
+                  'replaygain_enabled', 'replaygain_preamp',
+                  'replaygain_fallback', 'audio_peak_limit'):
             self._directly_applicable[k] = lambda v, key=k: app.config.update({key: v})
 
         # Security object updates
@@ -52,11 +55,6 @@ class SettingsStore:
             'rate_limit_max_failures': lambda v: setattr(rate_limiter, 'max_failures', v),
             'rate_limit_block_window': lambda v: setattr(rate_limiter, 'block_window', v),
         })
-
-        # Audio settings
-        for k in ('replaygain_enabled', 'replaygain_preamp',
-                  'replaygain_fallback', 'audio_peak_limit'):
-            self._directly_applicable[k] = lambda v, key=k: app.config.update({key: v})
 
     def initialise(self, yaml_defaults: Optional[Dict[str, Any]] = None):
         """

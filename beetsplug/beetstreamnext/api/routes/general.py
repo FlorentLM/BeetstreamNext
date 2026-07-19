@@ -52,12 +52,12 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
             #     'name': 'formPost',    # TODO https://opensubsonic.netlify.app/docs/extensions/formpost/
             #     'versions': [1]
             # },
-            # {
-            #     'name': 'indexBasedQueue',    # TODO https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
-            #     'versions': [1]
-            # },
             {
-                'name': 'playbackReport',    # TODO https://opensubsonic.netlify.app/docs/extensions/playbackreport/
+                'name': 'indexBasedQueue',    # https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
+                'versions': [1]
+            },
+            {
+                'name': 'playbackReport',    # https://opensubsonic.netlify.app/docs/extensions/playbackreport/
                 'versions': [1]
             },
             {

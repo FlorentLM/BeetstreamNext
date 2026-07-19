@@ -91,12 +91,18 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Server is behind a reverse proxy (Nginx, Caddy, Traefik, etc.).',
         'requires_restart': True,
     },
+    'trusted_hosts': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': 'Allowed Host headers (domain names/IPs, comma-separated). If empty, all hosts are allowed. Loopback is always allowed.',
+        'requires_restart': False,
+    },
     'legacy_auth': {
         'type': 'bool',
         'default': True,
         'category': 'server',
-        'description': 'Allow legacy MD5 token / cleartext password authentication. '
-                       'API-key authentication always works.',
+        'description': 'Allow legacy MD5 token / cleartext password authentication. API-key authentication always works.',
         'requires_restart': False,
     },
 

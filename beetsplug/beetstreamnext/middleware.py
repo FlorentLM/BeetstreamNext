@@ -1,7 +1,8 @@
 import secrets
 import flask
 
-from .application import app
+from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, bsn_logger
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate
@@ -11,7 +12,16 @@ from beetsplug.beetstreamnext.api.responses import subsonic_error
 
 
 @app.before_request
-def _before_request():
+def _before_request() -> flask.Response | None:
+    trusted_raw = app.config.get('trusted_hosts', '')
+    if trusted_raw:
+        allowed = {h.strip() for h in trusted_raw.split(',') if h.strip()}      # TODO: Better parser / validator
+        request_host = flask.request.host.split(':')[0]
+
+        if request_host not in allowed and request_host not in LOOPBACK_IPS:
+            bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')
+            flask.abort(403, description='Access Denied: Host not in TRUSTED_HOSTS.')
+
     r = flask.request.values
     is_api = flask.request.path.startswith('/rest')
 
@@ -71,7 +81,7 @@ def _before_request():
 
 
 @app.before_request
-def _csp_nonce():
+def _csp_nonce() -> None:
     if flask.request.path.startswith('/admin'):
         flask.g.csp_nonce = secrets.token_urlsafe(16)
 

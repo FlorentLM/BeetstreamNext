@@ -25,9 +25,9 @@ app.config.update(
     IMAGES_PATH=PROJECT_ROOT / 'static' / 'images',
     HTTP_CACHE_PATH=CACHE_LOCATION / 'httpcache.sqlite',
     THUMBNAIL_CACHE_PATH=CACHE_LOCATION / 'thumbnails',
+    TRUSTED_HOSTS='',
 )
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
-# TODO: Add 'TRUSTED_HOSTS'
 
 app.logger.setLevel(LOG_LEVEL)
 logging.getLogger('flask').setLevel(LOG_LEVEL)

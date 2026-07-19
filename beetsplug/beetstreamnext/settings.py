@@ -41,7 +41,7 @@ class SettingsStore:
         self._directly_applicable = {}
 
         # Simple app.config updates
-        for k in ('legacy_auth', 'never_transcode',
+        for k in ('trusted_hosts', 'legacy_auth', 'never_transcode',
                   'fetch_artists_images', 'save_artists_images',
                   'save_album_art',
                   'fetch_lyrics', 'save_lyrics',

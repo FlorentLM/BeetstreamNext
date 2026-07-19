@@ -18,7 +18,6 @@ from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
 
-
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
@@ -338,7 +337,8 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
                 if artist_image_url:
                     try:
                         content = capped_image_fetch(artist_image_url, timeout=5)
-                        if content and app.config['save_artists_images']:
+                        name_is_safe = artist_name not in ('.', '..') and not set(artist_name) & set('/\\')
+                        if content and app.config['save_artists_images'] and name_is_safe:
                             img = _safe_open_image(content)
                             img.save(local_image_path)
                     except Exception as e:

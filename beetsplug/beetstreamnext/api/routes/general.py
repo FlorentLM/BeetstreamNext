@@ -269,12 +269,3 @@ def endpoint_get_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     return subsonic_error(0, message='Podcast feature is not supported.', resp_fmt=resp_fmt)
-
-
-# Spec: https://opensubsonic.netlify.app/docs/endpoints/getInternetRadioStations/
-@api_bp.route('/getInternetRadioStations', methods=["GET", "POST"])
-@api_bp.route('/getInternetRadioStations.view', methods=["GET", "POST"])
-def endpoint_get_radios() -> flask.Response:
-    r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=safe_str)
-    return subsonic_error(0, message='Radio feature is not supported.', resp_fmt=resp_fmt)

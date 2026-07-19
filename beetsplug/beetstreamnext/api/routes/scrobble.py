@@ -20,10 +20,10 @@ def endpoint_scrobble() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     submission = r.get('submission', default=True, type=api_bool)
     client = r.get('c', default='', type=safe_str)
-    song_ids = r.getlist('id', type=safe_str)        # Required
+    playing_ids = r.getlist('id', type=safe_str)        # Required
     times_ms = r.getlist('time', type=int)
 
-    if not song_ids:
+    if not playing_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     username = flask.g.username
@@ -31,42 +31,45 @@ def endpoint_scrobble() -> flask.Response:
 
     if not submission:
         # if not submission it's just a "Now playing"
-        beets_id = IDMapper.sub_to_song(song_ids[0])
+        p_id = playing_ids[0]
+
         with database() as db:
             db.execute(
                 """
-                INSERT INTO now_playing (username, song_id, started_at, player_name)
+                INSERT INTO now_playing (username, item_id, started_at, player_name)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT (username) DO UPDATE SET
-                    song_id     = excluded.song_id,
+                    item_id     = excluded.item_id,
                     started_at  = excluded.started_at,
                     player_name = excluded.player_name
-                """, (username, beets_id, now, client)
+                """, (username, p_id, now, client)
             )
         return subsonic_response({}, resp_fmt=resp_fmt)
 
     with database() as db:
-        for i, song_id in enumerate(song_ids):
-            beets_id = IDMapper.sub_to_song(song_id)
+        for i, p_id in enumerate(playing_ids):
 
-            try:
-                played_at = times_ms[i] / 1000.0
-            except (IndexError, ValueError):
-                played_at = now
+            if IDMapper.get_type(p_id) == 'song':       # only keep count of songs played, not radios
+                beets_id = IDMapper.sub_to_song(p_id)
 
-            db.execute(
-                """
-                INSERT INTO play_stats (username, song_id, play_count, last_played)
-                VALUES (?, ?, 1, ?)
-                ON CONFLICT (username, song_id)
-                DO UPDATE SET
-                    play_count  = play_count + 1,
-                    last_played = excluded.last_played
-                """, (username, beets_id, played_at)
-            )
+                try:
+                    played_at = times_ms[i] / 1000.0
+                except (IndexError, ValueError):
+                    played_at = now
+
+                db.execute(
+                    """
+                    INSERT INTO play_stats (username, song_id, play_count, last_played)
+                    VALUES (?, ?, 1, ?)
+                    ON CONFLICT (username, song_id)
+                    DO UPDATE SET
+                        play_count  = play_count + 1,
+                        last_played = excluded.last_played
+                    """, (username, beets_id, played_at)
+                )
 
     if app.config.get('lastfm_api_key') and flask.g.user_data.get('scrobblingEnabled'):
-        # TODO: Lastfm scrobble (optional)
+        # TODO: Lastfm scrobble
         pass
 
     return subsonic_response({}, resp_fmt=resp_fmt)
@@ -90,23 +93,31 @@ def endpoint_get_now_playing() -> flask.Response:
         )
         rows = db.execute(
             """
-            SELECT username, song_id, started_at, player_name 
+            SELECT username, item_id, started_at, player_name 
             FROM now_playing
             """
         ).fetchall()
 
     for row in rows:
-        username, song_id, started_at, player_name = row
-        item = flask.g.lib.get_item(song_id)
-        if not item:
-            continue
+        p_id = row['item_id']
+        entry = None
 
-        entry = map_song(item)
-        entry['username'] = username
-        entry['minutesAgo'] = int((now - started_at) / 60)
-        entry['playerName'] = player_name
-        entry['playerId'] = 0   # this is a required field
-        entries.append(entry)
+        if p_id.startswith('sg-'):
+            beets_id = IDMapper.sub_to_song(p_id)
+            item = flask.g.lib.get_item(beets_id)
+            if item:
+                entry = map_song(item)
+
+        # elif item_id.startswith('ir-'):    # TODO: Now playing radio
+
+        if entry:
+            entry.update({
+                'username': row['username'],
+                'minutesAgo': int((time.time() - row['started_at']) / 60),
+                'playerName': row['player_name'],
+                'playerId': 0   # this is a required field
+            })
+            entries.append(entry)
 
     payload = {
         'nowPlaying': {

@@ -17,5 +17,6 @@ from .routes import (
     search,
     songs,
     stream,
-    users
+    users,
+    radio
 )

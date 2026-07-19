@@ -7,6 +7,7 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import (
     round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image
 )
@@ -90,6 +91,25 @@ def endpoint_get_cover_art() -> flask.Response:
                     bsn_logger.warning(f"Failed to cache extracted ffmpeg art: {e}")
                     # can still serve from memory if disk write failed
                     return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+
+    elif IDMapper.get_type(req_id) == 'radio':
+        radio_id = IDMapper.sub_to_radio(req_id)
+        with database() as db:
+            row = db.execute(
+                """
+                SELECT image, image_mtime 
+                FROM internet_radio_stations WHERE id=?
+                """, (radio_id,)
+            ).fetchone()
+
+        if row and row['image']:
+            img_io = BytesIO(row['image'])
+            if size:
+                img_io = resize_image(row['image'], size)
+
+            return flask.send_file(img_io, mimetype='image/jpeg')
+
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
 

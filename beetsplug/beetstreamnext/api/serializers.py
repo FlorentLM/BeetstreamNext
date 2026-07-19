@@ -31,6 +31,7 @@ class IDMapper:
     ALB_ID_PREF = 'al-'
     SNG_ID_PREF = 'sg-'
     PLY_ID_PREF = 'pl-'
+    RAD_ID_PREF = 'ir-'
 
     @classmethod
     def artist_to_sub(cls, name_or_mbid: Any, is_mbid: bool = True) -> str:
@@ -90,6 +91,14 @@ class IDMapper:
         return cls._to_beets_int(subsonic_id, cls.PLY_ID_PREF)
 
     @classmethod
+    def radio_to_sub(cls, db_id: int) -> str:
+        return f'{cls.RAD_ID_PREF}{db_id}'
+
+    @classmethod
+    def sub_to_radio(cls, subsonic_id: str) -> int | None:
+        return cls._to_beets_int(subsonic_id, cls.RAD_ID_PREF)
+
+    @classmethod
     def get_type(cls, subsonic_id: str) -> str | None:
         """Returns the type of object this ID represents."""
         sid = str(subsonic_id)
@@ -97,6 +106,7 @@ class IDMapper:
         if sid.startswith(cls.ALB_ID_PREF): return 'album'
         if sid.startswith(cls.SNG_ID_PREF): return 'song'
         if sid.startswith(cls.PLY_ID_PREF): return 'playlist'
+        if sid.startswith(cls.RAD_ID_PREF): return 'radio'
         return None
 
 
@@ -518,6 +528,18 @@ def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> dict:
         subsonic_playlist['entry'] = playlist.songs
 
     return subsonic_playlist
+
+
+def map_radio_station(row: dict) -> dict:
+    """Used for getInternetRadioStations response"""
+    station_id = IDMapper.radio_to_sub(row['id'])
+    return {
+        'id': str(row['id']),
+        'name': row['name'],
+        'streamUrl': row['stream_url'],
+        'homePageUrl': row['homepage_url'] or '',
+        'coverArt': station_id
+    }
 
 
 ##

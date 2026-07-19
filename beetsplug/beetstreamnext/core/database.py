@@ -21,6 +21,17 @@ from beetsplug.beetstreamnext.utils.db import get_beets_schema
 
 
 ##
+
+def _write_secret_file(path: Path, content: str) -> None:
+    """Write a secret to disk, 0o600 from creation."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(content)
+    except Exception:
+        os.close(fd)   # only for if fdopen failed
+        raise
+
 # Secrets management
 
 def rotate_session_key(cache_dir: str | Path) -> str:
@@ -34,6 +45,7 @@ def rotate_session_key(cache_dir: str | Path) -> str:
 
     if key_file.exists():
         try:
+            key_file.chmod(0o600)
             data = json.loads(key_file.read_text())
             age_days = (time.time() - data['generated_at']) / 86400
             if age_days < SESSION_KEY_ROTATION_DAYS:
@@ -43,8 +55,7 @@ def rotate_session_key(cache_dir: str | Path) -> str:
 
     new_key = secrets.token_urlsafe(32)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    key_file.write_text(json.dumps({'key': new_key, 'generated_at': time.time()}))
-    key_file.chmod(0o600)
+    _write_secret_file(key_file, json.dumps({'key': new_key, 'generated_at': time.time()}))
     return new_key
 
 
@@ -79,8 +90,7 @@ def ensure_secret(db_path: str | Path) -> None:
         else:
             enc_key = os.environ['BEETSTREAMNEXT_KEY']   # was loaded by load_dotenv above
 
-        env_path.write_text('\n'.join(new_lines) + '\n')
-        env_path.chmod(0o600)
+        _write_secret_file(env_path, '\n'.join(new_lines) + '\n')
 
         print_box([
             '',

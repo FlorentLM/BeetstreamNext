@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.schemas import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.core.database import get_cipher, database
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
@@ -144,6 +145,9 @@ def regenerate_api_key(username: str) -> str:
 def create_user(username, password, admin=False, **kwargs):
     """Core logic to create a user. Returns the raw API key."""
 
+    if len(password) < MIN_PASSWORD_LEN:
+        raise ValueError(f'Password must be at least {MIN_PASSWORD_LEN} characters.')
+
     if get_userdata(username, fields=['adminRole']):   # any field, doesn't matter
         raise ValueError(f"Username '{username}' already exists.")
 
@@ -180,6 +184,9 @@ def update_user(username: str, **updates):
 
     filtered_updates = {k: v for k, v in updates.items() if k in ALL_USER_FIELDS}
     filtered_updates['username'] = username
+
+    if 'password' in filtered_updates and len(filtered_updates['password']) < MIN_PASSWORD_LEN:
+        raise ValueError(f'Password must be at least {MIN_PASSWORD_LEN} characters.')
 
     _store_userdata(filtered_updates)
 

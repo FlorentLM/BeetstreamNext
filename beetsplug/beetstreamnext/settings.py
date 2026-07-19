@@ -41,8 +41,11 @@ class SettingsStore:
         self._directly_applicable = {}
 
         # Simple app.config updates
-        for k in ('legacy_auth', 'never_transcode', 'fetch_artists_images',
-                  'save_artists_images', 'save_album_art', 'save_lyrics',
+        for k in ('legacy_auth', 'never_transcode',
+                  'fetch_artists_images', 'save_artists_images',
+                  'save_album_art',
+                  'fetch_lyrics', 'save_lyrics',
+                  'fetch_album_version', 'save_album_version',
                   'lastfm_api_key',
                   'replaygain_enabled', 'replaygain_preamp',
                   'replaygain_fallback', 'audio_peak_limit'):

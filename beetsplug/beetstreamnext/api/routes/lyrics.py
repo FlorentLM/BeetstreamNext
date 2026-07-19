@@ -66,7 +66,7 @@ def _fetch_lyrics_data(item) -> dict | None:
     # Check database first
     lyrics_text = item.get('lyrics')
 
-    if not lyrics_text:
+    if not lyrics_text and app.config.get('fetch_lyrics'):
         lyrics_plugin = _get_lyrics_plugin()
         if lyrics_plugin:
             try:

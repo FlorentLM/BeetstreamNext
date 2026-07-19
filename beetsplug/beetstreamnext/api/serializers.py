@@ -6,10 +6,12 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
 from beetsplug.beetstreamnext.utils.text import split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
+from beetsplug.beetstreamnext.core.external import query_musicbrainz
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.playlists import Playlist
@@ -180,8 +182,6 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
         'musicBrainzId': data.get('mb_albumid') or '',
         'name': album_name,
         'sortName': album_name,
-        # 'version': 'Deluxe Edition', # TODO. Note: items table has 'media' that contains "Vinyl", "CD", "Digital Media", etc
-                                       #    also Musicbrainz puts stuff like "special collector's edition" in 'disambiguation'
         'coverArt': subsonic_album_id,
         'userRating': one_rating(subsonic_album_id),
         'isCompilation': bool(data.get('comp', False)),
@@ -197,6 +197,17 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
         'mediaType': 'album'
     }
     subsonic_album.update(album_specific)
+
+    version = data.get('version')  # 'Deluxe Edition', 'Japanese Expanded Edition', etc.
+    if not version and subsonic_album['musicBrainzId'] and app.config.get('fetch_album_version'):
+        mb_data = query_musicbrainz(subsonic_album['musicBrainzId'], 'album')
+        version = mb_data.get('disambiguation')
+
+    if version:
+        subsonic_album['version'] = version
+        if app.config.get('save_album_version'):
+            # TODO: Write to beets database
+            pass
 
     # Add labels if possible
     label = data.get('label', '')

@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+{% block title %} - Admin Dashboard{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+{% endblock %}
+
+{# Macros #}
+
+{% macro render_setting_field(key, info) -%}
+    {%- if info.type == 'bool' -%}
+        <label class="setting-toggle">
+            <input type="checkbox" name="{{ key }}" {% if info.value %}checked{% endif %}>
+            <span class="setting-toggle-key">{{ key }}</span>
+        </label>
+    {%- elif info.type == 'int' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="number" name="{{ key }}" value="{{ info.value }}">
+    {%- elif info.type == 'str' and info.sensitive -%}
+        <label class="setting-row-label" for="set-{{ key }}">
+            {{ key }}
+            {% if info.is_set %}<span class="setting-meta-badge">currently set</span>{% endif %}
+        </label>
+        <div class="setting-input-row">
+            <input id="set-{{ key }}" type="password" name="{{ key }}" autocomplete="new-password"
+                   placeholder="{% if info.is_set %}Leave blank to keep current{% else %}Not set{% endif %}">
+            {% if info.is_set %}
+                <button type="submit"
+                        form="clear-{{ key }}-form"
+                        class="action-link action-link-delete">Clear</button>
+            {% endif %}
+        </div>
+    {%- elif info.type == 'str' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}">
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro render_settings_form(category, settings) %}
+    <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
+          class="settings-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for key, info in settings.items() if info.type != 'list[str]' %}
+            <div class="setting-row">
+                <div class="setting-row-control">
+                    {{ render_setting_field(key, info) }}
+                </div>
+                <div class="setting-row-meta">
+                    <p class="setting-description">{{ info.description }}</p>
+                    {% if info.requires_restart %}
+                        <p class="setting-restart-note">&#10227; Requires server restart</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+        <div class="settings-form-actions">
+            <button type="submit" class="btn btn-primary">Save {{ category|capitalize }} settings</button>
+        </div>
+    </form>
+
+    {# Hidden forms for clearing sensitive settings (linked with 'form' attrib) #}
+    {% for key, info in settings.items() if info.sensitive and info.is_set %}
+        <form id="clear-{{ key }}-form" method="POST"
+              action="{{ url_for('admin.route_clear_setting', category=category, key=key) }}"
+              data-confirm="Clear '{{ key }}'? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+    {% endfor %}
+{% endmacro %}
+
+{% macro render_ip_list(list_type, title, hint, placeholder, ips) %}
+    <div class="card">
+        <div class="table-header"><h2>{{ title }}</h2></div>
+        <p class="card-hint">{{ hint }}</p>
+        <form method="POST"
+              action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
+              class="ip-add-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="ip" placeholder="{{ placeholder }}" required>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+        <ul class="ip-list">
+            {% for ip in ips %}
+            <li>
+                <code>{{ ip }}</code>
+                <form method="POST"
+                      action="{{ url_for('admin.route_ip_remove', list_type=list_type) }}"
+                      class="form-inline"
+                      data-confirm="Remove {{ ip }} from {{ list_type }}?">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ip" value="{{ ip }}">
+                    <button type="submit" class="action-link action-link-delete">Remove</button>
+                </form>
+            </li>
+            {% else %}
+            <li class="empty-state">{{ title }} is empty.</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endmacro %}
+
+{% block body %}
+<div class="dashboard-container">
+
+    <header class="header">
+        <div class="brand-section">
+            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" class="logo-small">
+            <h1>BeetstreamNext <span class="brand-subtitle">/ Admin</span></h1>
+        </div>
+        <div class="header-actions">
+            <span class="session-user">Signed in as <strong>{{ current_username }}</strong></span>
+            <form action="{{ url_for('admin.route_logout') }}" method="POST" class="form-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline">Log out</button>
+            </form>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+            <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ users|length }}</span>
+            <span class="stat-label">Total Users</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ server_info.stats.artists }}</span>
+            <span class="stat-label">Library Artists</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ server_info.stats.albums }}</span>
+            <span class="stat-label">Library Albums</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ server_info.stats.songs }}</span>
+            <span class="stat-label">Library Songs</span>
+        </div>
+    </div>
+
+    <nav class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="users" aria-controls="tab-users">Users</button>
+        {% for cat in settings_categories %}
+        <button class="tab" role="tab" data-tab="{{ cat }}" aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
+        {% endfor %}
+        <button class="tab" role="tab" data-tab="maintenance" aria-controls="tab-maintenance">Maintenance</button>
+    </nav>
+
+    {# Users tab #}
+    <section class="tab-content" id="tab-users" data-tab-content="users" role="tabpanel">
+        <div class="card">
+            <div class="table-header">
+                <h2>User Directory</h2>
+                <button class="btn btn-primary" data-action="open-modal" data-target="createModal">
+                    + Add New User
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Active Roles</th>
+                            <th class="cell-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>
+                                <div class="username-cell">
+                                    {% if u.hasAvatar %}
+                                        <img class="user-avatar"
+                                             src="{{ url_for('admin.route_serve_avatar', username=u.username) }}?v={{ (u.avatarLastChanged or 0)|int }}"
+                                             alt="">
+                                    {% else %}
+                                        <span class="user-avatar user-avatar-placeholder">{{ u.username[0]|upper }}</span>
+                                    {% endif %}
+                                    <div>
+                                        <div class="username-name">
+                                            {{ u.username }}
+                                            {% if u.username == current_username %}<span class="badge badge-you">You</span>{% endif %}
+                                        </div>
+                                        {% if u.email %}<div class="email-cell">{{ u.email }}</div>{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="roles-cell">
+                                    {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
+                                    {% for name, label in role_fields %}
+                                        {% if name != 'adminRole' and u[name] %}<span class="badge">{{ label }}</span>{% endif %}
+                                    {% endfor %}
+                                    {% if u.maxBitRate %}<span class="badge badge-limit">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
+                                </div>
+                            </td>
+                            <td class="actions-cell">
+                                <button class="action-link"
+                                        data-action="edit-user"
+                                        data-user="{{ u | tojson | forceescape }}">Edit</button>
+
+                                <form action="{{ url_for('admin.route_regenerate_api_key', username=u.username) }}"
+                                      method="POST"
+                                      class="form-inline"
+                                      data-confirm="Generate a new API key for {{ u.username | e }}? The current key will stop working immediately.">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-link">Update API key</button>
+                                </form>
+
+                                {% if u.username != current_username %}
+                                <form action="{{ url_for('admin.route_delete_user', username=u.username) }}"
+                                      method="POST"
+                                      class="form-inline"
+                                      data-confirm="Delete user {{ u.username | e }}? This also removes their stars, ratings, bookmarks and play history.">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-link action-link-delete">Delete</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="empty-state">No users yet. Add the first one to get started.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    {# Settings tabs #}
+    {% for cat in settings_categories %}
+    <section class="tab-content" id="tab-{{ cat }}" data-tab-content="{{ cat }}" role="tabpanel">
+        <div class="card">
+            <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
+            {% if loop.first %}
+            <p class="card-hint">Values saved here are stored in the database and override
+               the beets YAML config on the next startup.</p>
+            {% endif %}
+            {{ render_settings_form(cat, settings_by_category[cat]) }}
+        </div>
+
+        {% if cat == 'security' %}
+            {{ render_ip_list('whitelist', 'IP Whitelist',
+                              'If non-empty, only listed IPs can reach the server. Loopback IPs always pass.',
+                              'e.g. 192.168.1.42', settings_by_category.security['ip_whitelist'].value) }}
+            {{ render_ip_list('blacklist', 'IP Blacklist',
+                              'Listed IPs are denied access regardless of whitelist.',
+                              'e.g. 203.0.113.5', settings_by_category.security['ip_blacklist'].value) }}
+        {% endif %}
+    </section>
+    {% endfor %}
+
+    {# Maintenance tab #}
+    <section class="tab-content" id="tab-maintenance" data-tab-content="maintenance" role="tabpanel">
+
+        <div class="card">
+            <div class="table-header"><h2>Caches</h2></div>
+            <p class="card-hint">Clears thumbnails on disk and the HTTP response cache. Active streams are unaffected.</p>
+            <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
+                  class="card-body-form"
+                  data-confirm="Clear all cached thumbnails and the HTTP cache?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline">Clear caches</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-header">
+                <h2>Rate Limit State</h2>
+                <button class="btn btn-outline" data-action="refresh-rate-limits"
+                        data-url="{{ url_for('admin.route_rate_limits') }}">Refresh</button>
+            </div>
+            <div id="rate-limit-state" class="rate-limit-state">
+                <p class="empty-state">Click <em>Refresh</em> to load current state.</p>
+            </div>
+            <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
+                  data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
+                  class="rate-limit-clear">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="action-link action-link-delete">Clear all rate-limit failures</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-header"><h2>Server Info</h2></div>
+            <dl class="kv-grid">
+                <dt>BeetstreamNext</dt><dd>v{{ server_info.version }}</dd>
+                <dt>Beets</dt>          <dd>v{{ server_info.beets_version }}</dd>
+                <dt>Python</dt>         <dd>{{ server_info.python_version }}</dd>
+                <dt>OS</dt>             <dd>{{ server_info.os }}</dd>
+                <dt>DB path</dt>        <dd><code>{{ server_info.db_path }}</code></dd>
+                <dt>Library path</dt>   <dd><code>{{ server_info.library_path }}</code></dd>
+            </dl>
+        </div>
+    </section>
+</div>
+
+<!-- Confirmation modal -->
+<div class="modal-overlay modal-confirm" id="confirmModal" data-action="modal-backdrop">
+    <div class="modal-content modal-content-small">
+        <h2 id="confirmTitle">Confirm Action</h2>
+        <p id="confirmMessage" class="confirm-text"></p>
+        <div class="confirm-actions">
+            <button type="button" class="btn btn-outline" data-action="close-modal" data-target="confirmModal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmProceed">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- User create modal -->
+<div class="modal-overlay" id="createModal" data-action="modal-backdrop">
+    <div class="modal-content">
+        <button class="close-modal" data-action="close-modal" data-target="createModal" aria-label="Close">&times;</button>
+        <h2>Add New User</h2>
+        <form action="{{ url_for('admin.route_create_user') }}" method="POST" id="createForm">
+            {{ create_form.csrf_token }}
+            <div class="form-group">
+                <label>Username</label>
+                {{ create_form.username(placeholder="Enter username", autocomplete="off") }}
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                {{ create_form.password(placeholder="••••••••", autocomplete="new-password") }}
+            </div>
+            <div class="form-group">
+                <label>Email <span class="label-hint">(optional)</span></label>
+                {{ create_form.email(placeholder="user@example.com", autocomplete="off") }}
+            </div>
+            <div class="form-group">
+                <div class="roles-header">
+                    <label class="label-inline">Roles &amp; Permissions</label>
+                    <div class="roles-actions">
+                        <button type="button" class="text-btn" data-action="roles-toggle"
+                                data-target="createForm" data-value="true" data-skip="adminRole">Select all</button>
+                        <span class="roles-sep">|</span>
+                        <button type="button" class="text-btn text-btn-muted" data-action="roles-toggle"
+                                data-target="createForm" data-value="false">Clear</button>
+                    </div>
+                </div>
+                <div class="roles-grid">
+                    {% for name, label in role_fields %}
+                    <label class="role-item">{{ create_form[name]() }} {{ label }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group form-row">
+                <div>
+                    <label>Bitrate limit</label>
+                    {{ create_form.maxBitRate() }}
+                </div>
+                <label class="role-item role-item-standalone">{{ create_form.scrobblingEnabled() }} Scrobbling</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Create account</button>
+        </form>
+    </div>
+</div>
+
+<!-- User edit modal -->
+<div class="modal-overlay" id="editModal" data-action="modal-backdrop">
+    <div class="modal-content">
+        <button class="close-modal" data-action="close-modal" data-target="editModal" aria-label="Close">&times;</button>
+        <h2>Edit User</h2>
+        <form method="POST" id="editForm" data-update-url="{{ url_for('admin.route_update_user', username='__USERNAME__') }}">
+            {{ edit_form.csrf_token }}
+            <p class="modal-username" id="editModalUsername"></p>
+            <div class="form-group">
+                <label>Password</label>
+                {{ edit_form.password(placeholder="Leave blank to keep current password", autocomplete="new-password") }}
+            </div>
+            <div class="form-group">
+                <label>Email <span class="label-hint">(optional)</span></label>
+                {{ edit_form.email(placeholder="user@example.com", autocomplete="off") }}
+            </div>
+            <div class="form-group">
+                <div class="roles-header">
+                    <label class="label-inline">Roles &amp; Permissions</label>
+                    <div class="roles-actions">
+                        <button type="button" class="text-btn" data-action="roles-toggle"
+                                data-target="editForm" data-value="true" data-skip="adminRole">Select all</button>
+                        <span class="roles-sep">|</span>
+                        <button type="button" class="text-btn text-btn-muted" data-action="roles-toggle"
+                                data-target="editForm" data-value="false">Clear</button>
+                    </div>
+                </div>
+                <div class="roles-grid">
+                    {% for name, label in role_fields %}
+                    <label class="role-item">{{ edit_form[name]() }} {{ label }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group form-row">
+                <div>
+                    <label>Bitrate limit</label>
+                    {{ edit_form.maxBitRate() }}
+                </div>
+                <label class="role-item role-item-standalone">{{ edit_form.scrobblingEnabled() }} Scrobbling</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Save changes</button>
+        </form>
+
+        {# Avatar: separate forms because upload is multipart #}
+        <hr class="modal-separator">
+        <div class="form-group">
+            <div class="avatar-section-header">
+                <label class="label-inline">Avatar</label>
+                <img id="editAvatarPreview" class="user-avatar hidden" alt=""
+                     data-avatar-url="{{ url_for('admin.route_serve_avatar', username='__USERNAME__') }}">
+            </div>
+            <form method="POST" id="avatarUploadForm" enctype="multipart/form-data" class="avatar-upload-form"
+                  data-update-url="{{ url_for('admin.route_upload_avatar', username='__USERNAME__') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required>
+                <button type="submit" class="btn btn-outline">Upload</button>
+            </form>
+            <form method="POST" id="avatarDeleteForm" class="form-inline hidden"
+                  data-confirm="Remove avatar?"
+                  data-update-url="{{ url_for('admin.route_delete_avatar', username='__USERNAME__') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="action-link action-link-delete">Remove avatar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if new_api_key %}
+<!-- One-time API key display: rendered on this page load only -->
+<div class="modal-overlay" id="apiKeyModal" data-autoshow="true">
+    <div class="modal-content">
+        <button class="close-modal" data-action="close-modal" data-target="apiKeyModal" aria-label="Close">&times;</button>
+        <h2>API key for {{ new_api_key.username }}</h2>
+        <p class="api-key-hint">
+            Enter this key in a Subsonic client instead of a password.
+            It is shown <strong>only once</strong> — copy it now and store it safely.
+        </p>
+        <div class="api-key-box">
+            <code id="apiKeyValue">{{ new_api_key.key }}</code>
+            <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
+        </div>
+        <button type="button" class="btn btn-primary btn-full" data-action="close-modal" data-target="apiKeyModal">
+            I've saved the key
+        </button>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

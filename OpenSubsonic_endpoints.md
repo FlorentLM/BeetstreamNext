@@ -72,7 +72,7 @@
 - [ ] [jukeboxControl](https://opensubsonic.netlify.app/docs/endpoints/jukeboxcontrol/)
 - [x] [ping](https://opensubsonic.netlify.app/docs/endpoints/ping/)
 - [ ] [refreshPodcasts](https://opensubsonic.netlify.app/docs/endpoints/refreshpodcasts/)
-- [ ] [reportPlayback](https://opensubsonic.netlify.app/docs/endpoints/reportplayback/)
+- [x] [reportPlayback](https://opensubsonic.netlify.app/docs/endpoints/reportplayback/)
 - [x] [savePlayQueue](https://opensubsonic.netlify.app/docs/endpoints/saveplayqueue/)
 - [ ] [savePlayQueueByIndex](https://opensubsonic.netlify.app/docs/endpoints/saveplayqueuebyindex/)
 - [x] [scrobble](https://opensubsonic.netlify.app/docs/endpoints/scrobble/)

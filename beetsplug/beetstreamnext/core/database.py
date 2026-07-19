@@ -377,10 +377,14 @@ def initialise_db() -> None:
         """
         CREATE TABLE IF NOT EXISTS now_playing
         (
-            username    TEXT PRIMARY KEY,
-            item_id     INTEGER NOT NULL,
-            started_at  REAL    NOT NULL,
-            player_name TEXT    NOT NULL DEFAULT '',
+            username      TEXT PRIMARY KEY,
+            item_id       TEXT NOT NULL,
+            started_at    REAL NOT NULL,
+            player_name   TEXT NOT NULL DEFAULT '',
+            position_ms   INTEGER DEFAULT 0,
+            state         TEXT DEFAULT 'stopped',
+            playback_rate REAL DEFAULT 1.0,
+            scrobbled     INTEGER DEFAULT 0,  -- flag to prevent double scrobbles
             FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """

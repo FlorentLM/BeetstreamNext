@@ -115,7 +115,10 @@ def endpoint_get_now_playing() -> flask.Response:
                 'username': row['username'],
                 'minutesAgo': int((time.time() - row['started_at']) / 60),
                 'playerName': row['player_name'],
-                'playerId': 0   # this is a required field
+                'playerId': 0,      # this is a required field
+                'positionMs': row['position_ms'],
+                'state': row['state'],
+                'playbackRate': row['playback_rate']
             })
             entries.append(entry)
 
@@ -126,3 +129,104 @@ def endpoint_get_now_playing() -> flask.Response:
     }
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/reportplayback/
+@api_bp.route('/reportPlayback', methods=['GET', 'POST'])
+@api_bp.route('/reportPlayback.view', methods=['GET', 'POST'])
+def endpoint_report_playback() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    media_id = r.get('mediaId', default='', type=safe_str)          # Required
+    media_type = r.get('mediaType', default='song', type=safe_str)
+    position_ms = r.get('positionMs', default=0, type=int)          # Required
+    state = r.get('state', default='playing', type=safe_str)        # Required
+    playback_rate = r.get('playbackRate', default=1.0, type=float)
+    ignore_scrobble = r.get('ignoreScrobble', default=False, type=api_bool)
+    client = r.get('c', default='', type=safe_str)
+
+    # TODO: media_type can be podcast once podcassts are supported by BSN
+
+    if not media_id or not state:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    username = flask.g.username
+    now = time.time()
+
+    # Update "now playing" state
+    with database() as db:
+        # starting, so reset 'scrobbled' flag for this session
+        if state == 'starting':
+            db.execute(
+                """
+                INSERT INTO now_playing (username, item_id, started_at, player_name, position_ms, state, playback_rate,
+                                         scrobbled)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+                ON CONFLICT (username) DO UPDATE SET item_id       = excluded.item_id,
+                                                     started_at    = excluded.started_at,
+                                                     player_name   = excluded.player_name,
+                                                     position_ms   = excluded.position_ms,
+                                                     state         = excluded.state,
+                                                     playback_rate = excluded.playback_rate,
+                                                     scrobbled     = 0
+                """, (username, media_id, now, client, position_ms, state, playback_rate)
+            )
+        else:
+            db.execute(
+                """
+                UPDATE now_playing
+                SET item_id       = ?,
+                    position_ms   = ?,
+                    state         = ?,
+                    playback_rate = ?,
+                    player_name   = ?
+                WHERE username = ?
+                """, (media_id, position_ms, state, playback_rate, client, username)
+            )
+
+    # Check for scrobble threshold: played for 4 minutes or 50% of total length
+    if not ignore_scrobble and state == 'playing' and IDMapper.get_type(media_id) == 'song':
+        beets_id = IDMapper.sub_to_song(media_id)
+        item = flask.g.lib.get_item(beets_id)
+
+        if item:
+            duration_ms = (item.get('length') or 0) * 1000
+            threshold = min(4 * 60 * 1000, duration_ms * 0.5)
+
+            if position_ms >= threshold:
+                # Check if already scrobbled this session
+                with database() as db:
+                    session = db.execute(
+                        """
+                        SELECT scrobbled 
+                        FROM now_playing 
+                        WHERE username = ?
+                        """, (username,)
+                    ).fetchone()
+
+                    if session and not session['scrobbled']:
+                        # Update play stats
+                        db.execute(
+                            """
+                            INSERT INTO play_stats (username, song_id, play_count, last_played)
+                            VALUES (?, ?, 1, ?)
+                            ON CONFLICT (username, song_id)
+                                DO UPDATE SET play_count  = play_count + 1,
+                                              last_played = excluded.last_played
+                            """, (username, beets_id, now)
+                        )
+                        # Mark as scrobbled to not count again until the next 'starting' state
+                        db.execute(
+                            """
+                            UPDATE now_playing 
+                            SET scrobbled = 1 
+                            WHERE username = ?
+                            """, (username,)
+                        )
+
+                        if app.config.get('lastfm_api_key') and flask.g.user_data.get('scrobblingEnabled'):
+                            # TODO: Last.fm scrobble call
+                            pass
+
+    return subsonic_response({}, resp_fmt=resp_fmt)

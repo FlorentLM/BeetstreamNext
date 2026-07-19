@@ -56,10 +56,10 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
             #     'name': 'indexBasedQueue',    # TODO https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
             #     'versions': [1]
             # },
-            # {
-            #     'name': 'playbackReport',    # TODO https://opensubsonic.netlify.app/docs/extensions/playbackreport/
-            #     'versions': [1]
-            # },
+            {
+                'name': 'playbackReport',    # TODO https://opensubsonic.netlify.app/docs/extensions/playbackreport/
+                'versions': [1]
+            },
             {
                 'name': 'songLyrics',   # https://opensubsonic.netlify.app/docs/extensions/songlyrics/
                 'versions': [1]
@@ -72,10 +72,10 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
                 'name': 'transcodeOffset',  # https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/
                 'versions': [1]
             },
-            # {
-            #     'name': 'transcoding',  # https://opensubsonic.netlify.app/docs/extensions/transcoding/
-            #     'versions': [1]
-            # },
+            {
+                'name': 'transcoding',  # https://opensubsonic.netlify.app/docs/extensions/transcoding/
+                'versions': [1]
+            },
         ]
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

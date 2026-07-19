@@ -5,19 +5,12 @@ from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.constants import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, collect_form_data
 
 
 # Helpers
-
-def _temp_stash_apikey(username: str, raw_key: str) -> None:
-    """
-    Explicitely hold a new API key for exactly 1 page load.
-    route_settings() pops it and hands it to the template.
-    """
-    flask.session['_new_api_key'] = {'username': username, 'key': raw_key}
-
 
 def _flash_multiple_errors(form: FlaskForm) -> None:
     for field_name, errors in form.errors.items():
@@ -41,7 +34,8 @@ def route_create_user() -> flask.Response:
                 **data
             )
 
-            _temp_stash_apikey(safe_str(form.username.data), raw_api_key)
+            token = temporary_store.put({'username': safe_str(form.username.data), 'key': raw_api_key})
+            flask.session['_api_key_token'] = token
 
             flask.flash(f"User '{form.username.data}' created successfully.", 'success')
 
@@ -108,7 +102,8 @@ def route_regenerate_api_key(username) -> flask.Response:
     try:
         raw_api_key = regenerate_api_key(username)
 
-        _temp_stash_apikey(username, raw_api_key)
+        token = temporary_store.put({'username': username, 'key': raw_api_key})
+        flask.session['_api_key_token'] = token
 
         flask.flash(f"API key for '{username}' regenerated. The old key no longer works.", 'success')
     except ValueError as e:

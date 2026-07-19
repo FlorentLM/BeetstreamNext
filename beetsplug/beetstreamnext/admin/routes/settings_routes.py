@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.constants import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
+from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm
 from beetsplug.beetstreamnext.settings import settings_store
@@ -186,7 +187,8 @@ def route_clear_rate_limits() -> flask.Response:
 def route_settings() -> flask.Response:
 
     # Grab the 1-time display API key
-    new_api_key = flask.session.pop('_new_api_key', None)
+    token = flask.session.pop('_api_key_token', None)
+    new_api_key = temporary_store.claim(token)
 
     settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
 

@@ -1,3 +1,4 @@
+from typing import Any, Optional
 import binascii
 import json
 import secrets
@@ -14,18 +15,20 @@ from functools import lru_cache
 import flask
 
 from beetsplug.beetstreamnext.console import print_box, TermColors
-from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
+from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS, bsn_logger
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 
 
 ##
 # Secrets management
 
-def rotate_session_key(cache_dir: Path) -> str:
+def rotate_session_key(cache_dir: str | Path) -> str:
     """
     Loads the admin session signing key from the cache directory, rotating it
     if it is older than _SESSION_KEY_ROTATION_DAYS.
     """
+
+    cache_dir = Path(cache_dir)
     key_file = cache_dir / '.beetstreamnext_session'
 
     if key_file.exists():
@@ -44,11 +47,13 @@ def rotate_session_key(cache_dir: Path) -> str:
     return new_key
 
 
-def ensure_secret(db_path: Path) -> None:
+def ensure_secret(db_path: str | Path) -> None:
     """
     Called once at startup, before initialise_db().
     Generates the BEETSTREAMNEXT_KEY, saves it to .env, displays it. Once.
     """
+
+    db_path = Path(db_path)
     env_path = db_path.parent / '.env'
 
     # Load whatever is already in the env before deciding
@@ -395,8 +400,50 @@ def dual_database() -> sqlite3.Connection:
     return db
 
 
-def close_database(e=None) -> None:
+def close_database(_e: Optional[Any] = None) -> None:
     """Closes the database at the end of the request."""
     db = flask.g.pop('db', None)
     if db is not None:
         db.close()
+
+
+##
+
+def write_beets_field(entity_type: str, entity_id: int, key: str, value: any) -> None:
+    """
+    Writes a field in the beets database.
+    """
+    if entity_type not in ('item', 'album'):
+        raise ValueError("entity_type must be 'item' or 'album'")
+
+    core_table = 'items' if entity_type == 'item' else 'albums'
+    attr_table = f'{entity_type}_attributes'
+
+    db = dual_database()
+    try:
+        db.execute(
+            f"""
+            UPDATE beets.{core_table} SET {key} = ? 
+            WHERE id = ?
+            """, (value, entity_id)
+        )
+        db.commit()
+
+        # If that worked but changed 0 rows (wrong ID), user should know
+        if db.total_changes == 0:
+            bsn_logger.warning(f'No beets {entity_type} found with ID {entity_id}')
+
+    except sqlite3.OperationalError as e:
+        if 'no such column' in str(e).lower():
+            # Update or insert into flexible attributes table
+            db.execute(
+                f"""
+                INSERT INTO beets.{attr_table} (entity_id, key, value)
+                VALUES (?, ?, ?)
+                ON CONFLICT(entity_id, key) DO UPDATE SET value = excluded.value
+                """, (entity_id, key, str(value))
+            )
+            db.commit()
+        else:
+            bsn_logger.error(f'Database error while updating beets {key}: {e}')
+            raise

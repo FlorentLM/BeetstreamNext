@@ -12,6 +12,8 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.external import query_musicbrainz
+from beetsplug.beetstreamnext.core.database import write_beets_field
+
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.playlists import Playlist
@@ -206,8 +208,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
     if version:
         subsonic_album['version'] = version
         if app.config.get('save_album_version'):
-            # TODO: Write to beets database
-            pass
+            write_beets_field('album', data['id'], 'version', version)
 
     # Add labels if possible
     label = data.get('label', '')

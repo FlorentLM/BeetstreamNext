@@ -202,8 +202,7 @@ def endpoint_artist_info() -> flask.Response:
         if lastfm_bio:
             short_bio = trim_text(lastfm_bio, char_limit=300)
 
-    if not short_bio and WIKI_API:
-        wiki_bio = query_wikipedia(artist_name, cache_ttl_hash=round(time.time() / 3600))
+    if not short_bio and app.config.get('fetch_artists_biographies'):
         wiki_bio = query_wikipedia(artist_name, _cache_ttl_hash=round(time.time() / 3600))
         if wiki_bio:
             short_bio = trim_text(wiki_bio, char_limit=300)

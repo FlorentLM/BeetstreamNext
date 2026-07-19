@@ -1,17 +1,19 @@
 from typing import Dict
+import hashlib
 import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.api.routes.albums import album_payload
-from beetsplug.beetstreamnext.api.routes.artists import artist_payload
-from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.api.routes.albums import album_payload
+from beetsplug.beetstreamnext.api.routes.artists import artist_payload
+from beetsplug.beetstreamnext.api.routes.songs import song_payload
+from beetsplug.beetstreamnext.core.users_crud import load_username
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> Dict:
@@ -210,6 +212,7 @@ def endpoint_start_scan() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
     # TODO: maybe trigger a refresh of BeetstreamNext's data (album covers, etc)?
+    #  or a beets import?
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 
@@ -230,6 +233,7 @@ def endpoint_get_scan_status() -> flask.Response:
             "count": items_count
         }
     }
+    # TODO: Maybe this should link to betanin and return whether there are songs waiting for user input?
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
@@ -243,9 +247,6 @@ def endpoint_token_info() -> flask.Response:
 
     if not api_key:
         return subsonic_error(10, resp_fmt=resp_fmt)
-
-    from beetsplug.beetstreamnext.users import load_username
-    import hashlib
 
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
     username = load_username(api_key_hash)

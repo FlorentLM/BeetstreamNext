@@ -10,7 +10,6 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.system import creation_date
 from beetsplug.beetstreamnext.utils.db import chunked_query
-from beetsplug.beetstreamnext.constants import PLY_ID_PREF
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.api.serializers import map_song, IDMapper
 
@@ -24,7 +23,7 @@ class Playlist:
         self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
-        self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.stem[:200].lower()}{self.path.suffix.lower()}"
+        self.id = f"{IDMapper.PLY_ID_PREF}{self.dir_id}-{self.path.stem[:200].lower()}{self.path.suffix.lower()}"
         self.name = self.path.stem[:200]
         self.ctime = creation_date(self.path)
         self.mtime = self.path.stat().st_mtime
@@ -130,7 +129,7 @@ class Playlist:
                 self.path.rename(new_path)
                 self.path = new_path
                 self.name = safe_name[:200]
-                self.id = f"{PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
+                self.id = f"{IDMapper.PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
                 self.mtime = self.path.stat().st_mtime
 
     def remove_songs(self, indices: List[int]) -> None:
@@ -174,7 +173,7 @@ class Playlist:
         instance.path = path
 
         instance.dir_id = 0
-        instance.id = f'{PLY_ID_PREF}{instance.dir_id}-{instance.path.stem.lower()[:200]}{instance.path.suffix.lower()}'
+        instance.id = f'{IDMapper.PLY_ID_PREF}{instance.dir_id}-{instance.path.stem.lower()[:200]}{instance.path.suffix.lower()}'
         instance.ctime = None
         instance.mtime = None
         instance.songs = [map_song(song) for song in songs]
@@ -321,7 +320,7 @@ class PlaylistProvider:
         """Load playlist data from a file, or return the cached version if still current."""
 
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f"{PLY_ID_PREF}{dir_id}-{filepath.stem.lower()[:200]}{filepath.suffix.lower()}"
+        playlist_id = f"{IDMapper.PLY_ID_PREF}{dir_id}-{filepath.stem.lower()[:200]}{filepath.suffix.lower()}"
 
         # check cache
         playlist = self._playlists.get(playlist_id)
@@ -337,7 +336,7 @@ class PlaylistProvider:
         """Get a playlist by its id, reloading from disk if file changed."""
 
         with self._lock:
-            if not playlist_id.startswith(PLY_ID_PREF):
+            if not playlist_id.startswith(IDMapper.PLY_ID_PREF):
                 return None
 
             playlist_id = playlist_id.lower()
@@ -352,7 +351,7 @@ class PlaylistProvider:
                     return loaded
 
             try:
-                parts = playlist_id.removeprefix(PLY_ID_PREF).split('-', 1)
+                parts = playlist_id.removeprefix(IDMapper.PLY_ID_PREF).split('-', 1)
                 if len(parts) < 2:
                     return None
                 dir_id = int(parts[0])

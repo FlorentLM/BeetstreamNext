@@ -3,12 +3,32 @@ import mimetypes
 import os
 import platform
 from pathlib import Path
+from importlib.metadata import version, PackageNotFoundError
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 
 ##
-# Various file access and format detection utilities
+
+def is_installed(package_name: str) -> bool:
+    try:
+        version(package_name)
+        return True
+    except PackageNotFoundError:
+        return False
+
+
+def cache_location() -> Path:
+    if platform.system() == 'Windows':
+        cache_dir = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
+    elif platform.system() == 'Darwin':
+        cache_dir = Path.home() / 'Library' / 'Caches'
+    else:
+        cache_dir = Path(os.environ.get('XDG_CACHE_HOME', Path.home() / '.cache'))
+
+    final_path = cache_dir / 'beetstreamnext'
+    final_path.mkdir(parents=True, exist_ok=True)
+    return final_path
 
 
 def creation_date(filepath) -> float:

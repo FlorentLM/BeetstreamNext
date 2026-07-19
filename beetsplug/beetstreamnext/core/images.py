@@ -337,7 +337,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
 
     # No local folder/file: proxy from Deezer (without saving) if local save is off
     if app.config['fetch_artists_images']:
-        dz_data = query_deezer(artist_quot=artist_name)
+        dz_data = query_deezer(artist=artist_name)
 
         if dz_data and dz_data.get('type', '') == 'artist':
             deezer_avail_sizes = [56, 120, 250, 500, 1000]

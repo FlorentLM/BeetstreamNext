@@ -228,7 +228,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
             if opts.passwd_user:
                 with app.app_context():
                     username = opts.passwd_user
-                    new_pw = getpass.getpass(f"New password for '{username}': ")
+                    password_ok = False
+                    pw_hint = f"New password for '{username}': "
+                    while not password_ok:
+                        new_pw = getpass.getpass(pw_hint)
+                        if len(new_pw) < MIN_PASSWORD_LEN:
+                            pw_hint = f"New password for '{username}' (at least {MIN_PASSWORD_LEN} chars): "
+                        else:
+                            password_ok = True
                     try:
                         update_user(username, password=new_pw)
                         print('Password updated successfully.')

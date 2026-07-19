@@ -23,11 +23,11 @@ from beets.plugins import BeetsPlugin
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 from waitress import serve
-from paste.translogger import TransLogger
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, LOG_LEVEL, CACHE_LOCATION, MIN_PASSWORD_LEN, bsn_logger
+from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, CACHE_LOCATION, MIN_PASSWORD_LEN
+from beetsplug.beetstreamnext.core.logging import LOG_LEVEL, bsn_logger, RedactingTransLogger, apply_logs_redaction
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
 from beetsplug.beetstreamnext.core.security import ip_filter
@@ -395,7 +395,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 )
                 app.config.update(SESSION_COOKIE_SECURE=True)
 
-
+            apply_logs_redaction()
             if debug:
                 app.run(host=host, port=port, debug=True, threaded=True)
 
@@ -403,7 +403,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 if LOG_LEVEL > logging.INFO:
                     print(f'BeetstreamNext server running on http://{host}:{port}...')
-                logged_app = TransLogger(app, setup_console_handler=True)
+                logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
                 serve(logged_app, host=host, port=port, threads=8)
 

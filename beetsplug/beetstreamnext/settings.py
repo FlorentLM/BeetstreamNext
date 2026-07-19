@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Callable
 
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.database import database, get_cipher
 from beetsplug.beetstreamnext.core.security import ip_filter, rate_limiter
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA

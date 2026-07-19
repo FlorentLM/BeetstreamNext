@@ -9,7 +9,8 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str

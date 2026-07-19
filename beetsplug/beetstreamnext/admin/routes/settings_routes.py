@@ -4,7 +4,7 @@ import flask
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.utils.general import get_server_info
-from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.users_crud import load_all_users

@@ -3,7 +3,7 @@ from flask_wtf import FlaskForm
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key

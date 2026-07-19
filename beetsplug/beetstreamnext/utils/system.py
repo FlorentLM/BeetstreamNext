@@ -4,7 +4,7 @@ import os
 import platform
 from pathlib import Path
 
-from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 
 ##

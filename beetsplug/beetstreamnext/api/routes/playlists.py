@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.core.playlists import Playlist
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_playlist
-from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/

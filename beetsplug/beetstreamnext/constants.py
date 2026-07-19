@@ -3,7 +3,6 @@ import platform
 import re
 import shutil
 import importlib
-import logging
 from pathlib import Path
 
 
@@ -11,15 +10,6 @@ from pathlib import Path
 
 SUBSONIC_API_VER = '1.16.1'
 BEETSTREAMNEXT_VER = '1.6.0-dev'
-
-
-## Logging
-
-# LOG_LEVEL = logging.ERROR
-LOG_LEVEL = logging.INFO
-# LOG_LEVEL = logging.DEBUG
-logging.basicConfig(encoding='utf-8', level=LOG_LEVEL)
-bsn_logger = logging.getLogger('beetstreamnext')
 
 
 ## Paths and deps
@@ -76,6 +66,7 @@ RATE_LIMIT_MAX_FAILURES = 5
 RATE_LIMIT_BLOCK_WINDOW = 300
 
 MIN_PASSWORD_LEN = 8
+
 
 ## Maintenance timings
 

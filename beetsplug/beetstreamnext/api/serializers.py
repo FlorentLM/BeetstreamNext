@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
 import flask
 from beets.library import LibModel, Item
 
-from beetsplug.beetstreamnext.constants import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
 from beetsplug.beetstreamnext.utils.text import split_beets_multi

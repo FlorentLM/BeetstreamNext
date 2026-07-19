@@ -1,8 +1,9 @@
 import secrets
 import flask
 
-from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, bsn_logger
+from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate

@@ -1,9 +1,8 @@
-import logging
-
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
-from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_LOCATION, LOG_LEVEL, bsn_logger
+from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_LOCATION
+from beetsplug.beetstreamnext.core.logging import LOG_LEVEL
 from beetsplug.beetstreamnext.core.database import close_database
 
 ##
@@ -14,6 +13,9 @@ app = Flask(
     static_folder='static',
     static_url_path='/static',
 )
+
+app.logger.setLevel(LOG_LEVEL)
+
 app.teardown_appcontext(close_database)
 
 app.config.update(
@@ -28,10 +30,5 @@ app.config.update(
     TRUSTED_HOSTS='',
 )
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
-
-app.logger.setLevel(LOG_LEVEL)
-logging.getLogger('flask').setLevel(LOG_LEVEL)
-logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
-bsn_logger.propagate = True
 
 csrf = CSRFProtect(app)

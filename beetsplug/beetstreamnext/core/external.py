@@ -6,7 +6,8 @@ import requests
 from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, bsn_logger, MAX_REMOTE_IMAGE_BYTES
+from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 _http_session = None
 

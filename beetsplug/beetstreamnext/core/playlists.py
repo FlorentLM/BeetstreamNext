@@ -10,7 +10,8 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.system import creation_date
 from beetsplug.beetstreamnext.utils.db import chunked_query
-from beetsplug.beetstreamnext.constants import PLY_ID_PREF, bsn_logger
+from beetsplug.beetstreamnext.constants import PLY_ID_PREF
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.api.serializers import map_song, IDMapper
 
 if TYPE_CHECKING:

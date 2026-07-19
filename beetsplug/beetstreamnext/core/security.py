@@ -4,9 +4,11 @@ import ipaddress
 from collections import defaultdict
 from typing import Dict, List, Optional, Sequence, Set
 
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.constants import (
-    LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW, bsn_logger
+    LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW
 )
+
 
 # TODO: Support CIDR
 

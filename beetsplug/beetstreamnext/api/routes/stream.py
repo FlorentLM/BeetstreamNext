@@ -4,7 +4,7 @@ import math
 from pathlib import Path
 import queue
 import threading
-from typing import Generator, Optional
+from typing import Generator, Optional, Any
 import flask
 
 from .. import api_bp
@@ -15,8 +15,57 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import get_mimetype
-from beetsplug.beetstreamnext.api.responses import subsonic_error
+from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
+
+
+FORMAT_MAP = {
+    # Lossy
+    'mp3':  {'f': 'mp3',  'c': 'libmp3lame', 'mime': 'audio/mpeg',      'lossless': False},
+    'ogg':  {'f': 'ogg',  'c': 'libvorbis',  'mime': 'audio/ogg',       'lossless': False},
+    'opus': {'f': 'opus', 'c': 'libopus',    'mime': 'audio/ogg',       'lossless': False},
+    'aac':  {'f': 'adts', 'c': 'aac',         'mime': 'audio/aac',      'lossless': False},
+    'm4a':  {'f': 'mp4',  'c': 'aac',         'mime': 'audio/mp4',      'lossless': False,
+             'flags': 'frag_keyframe+empty_moov+default_base_moof'},
+    'wma':  {'f': 'asf',  'c': 'wmav2',       'mime': 'audio/x-ms-wma', 'lossless': False},
+
+    # Lossless
+    'flac': {'f': 'flac', 'c': 'flac',        'mime': 'audio/flac',     'lossless': True},
+    'alac': {'f': 'ipod', 'c': 'alac',        'mime': 'audio/mp4',      'lossless': True,
+             'flags': 'frag_keyframe+empty_moov+default_base_moof'},
+    'wav':  {'f': 'wav',  'c': 'pcm_s16le',   'mime': 'audio/wav',      'lossless': True},
+    'aiff': {'f': 'aiff', 'c': 'pcm_s16be',   'mime': 'audio/aiff',     'lossless': True},
+}
+
+def is_lossless(fmt: str) -> bool:
+    """Identify if a format key or file extension is lossless."""
+    fmt = fmt.lower()
+    if fmt in FORMAT_MAP:
+        return FORMAT_MAP[fmt]['lossless']
+    # Extensions that might be source files but not necessarily transcode targets
+    return fmt in {'flac', 'alac', 'wav', 'aiff', 'ape', 'wma lossless', 'dsf', 'dff'}
+
+
+def evaluate_limitation(actual_val: Any, limit_obj: dict) -> bool:
+    """Evaluates a ClientInfo limitation object against an actual value."""
+
+    comp = limit_obj.get('comparison')
+    values = limit_obj.get('values', [])
+    if not values:
+        return True
+
+    try:
+        if comp == 'LessThanEqual':
+            return float(actual_val) <= float(values[0])
+        if comp == 'GreaterThanEqual':
+            return float(actual_val) >= float(values[0])
+        if comp == 'Equals':
+            return str(actual_val) in [str(v) for v in values]
+        if comp == 'NotEquals':
+            return str(actual_val) not in [str(v) for v in values]
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 def get_normalization_filter(item) -> str | None:
@@ -77,16 +126,8 @@ def _send_transcode(
         audio_filters: Optional[str] = None
     ) -> flask.Response | None:
 
-    format_map = {
-        'mp3': {'f': 'mp3', 'c': 'libmp3lame', 'mime': 'audio/mpeg'},
-        'ogg': {'f': 'ogg', 'c': 'libvorbis', 'mime': 'audio/ogg'},
-        'opus': {'f': 'opus', 'c': 'libopus', 'mime': 'audio/ogg'},
-        'aac': {'f': 'adts', 'c': 'aac', 'mime': 'audio/aac'},
-        'm4a': {'f': 'mp4', 'c': 'aac', 'mime': 'audio/aac'},   # TODO: needs ' movflags +faststart '?
-        'flac': {'f': 'flac', 'c': 'flac', 'mime': 'audio/flac'}
-    }
-
-    target = format_map.get(req_format.lower() if req_format else 'mp3', format_map['mp3'])
+    target = FORMAT_MAP.get(req_format.lower() if req_format else 'mp3', FORMAT_MAP['mp3'])
+    target_lossless = target['lossless']
 
     if FFMPEG_PYTHON:
         input_stream = ffmpeg.input(str(file_path), ss=start_at) if start_at > 0 else ffmpeg.input(str(file_path))
@@ -94,9 +135,14 @@ def _send_transcode(
         output_args = {
             'format': target['f'],
             'acodec': target['c'],
-            'audio_bitrate': f'{max_bitrate}k',
             'map_metadata': '-1'
         }
+
+        if 'flags' in target:
+            output_args['movflags'] = target['flags']
+
+        if not target.get('lossless'):
+            output_args['audio_bitrate'] = f'{max_bitrate}k'
 
         if audio_filters:
             output_args['af'] = audio_filters
@@ -107,6 +153,7 @@ def _send_transcode(
             .output('pipe:', **output_args)
             .run_async(pipe_stdout=True, quiet=True)
         )
+
     elif FFMPEG_BIN:
         command = ['ffmpeg', '-hide_banner', '-loglevel', 'error']
 
@@ -120,13 +167,21 @@ def _send_transcode(
             command.extend(['-af', audio_filters])
 
         command.extend([
-            '-vn',  # strip cover art, otherwise many clients just crash
+            '-vn',          # strip cover art, otherwise many clients just crash
             '-map_metadata', '-1',
-            '-f', target['f'],
-            '-c:a', target['c'],
-            '-b:a', f'{max_bitrate}k',
-            'pipe:1'
+            '-f', str(target['f']),
+            '-c:a', str(target['c']),
         ])
+
+        if 'flags' in target:
+            command.extend(['-movflags', str(target['flags'])])
+
+        # Only apply bitrate to lossy formats
+        if not target_lossless:
+            command.extend(['-b:a', f'{max_bitrate}k'])
+
+        command.append('pipe:1')
+
         output_stream = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     else:
         return None
@@ -332,3 +387,142 @@ def endpoint_download_song() -> flask.Response | None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     return _send_direct(song_path)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/gettranscodedecision/
+@api_bp.route('/getTranscodeDecision', methods=["POST"])
+@api_bp.route('/getTranscodeDecision.view', methods=["POST"])
+def endpoint_get_transcode_decision() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    media_id = r.get('mediaId', default='', type=safe_str)          # Required
+    media_type = r.get('mediaType', default='song', type=safe_str)  # Required
+
+    client_info = flask.request.get_json(silent=True) or {}
+    if not media_id or not media_type:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    beets_id = IDMapper.sub_to_song(media_id)
+    item = flask.g.lib.get_item(beets_id)
+    if not item:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    # Source info
+    source_format = (item.format or '').lower()
+    source_bitrate = int(item.bitrate or 0)
+    source_is_lossless = is_lossless(source_format)
+
+    # User profile limit (in bps)
+    user_max_br = flask.g.user_data.get('maxBitRate', 0) * 1000
+
+    source_stream = {
+        'protocol': 'http',
+        'container': source_format,
+        'codec': source_format,
+        'audioChannels': int(item.channels or 2),
+        'audioBitrate': source_bitrate,
+        'audioSamplerate': int(item.samplerate or 44100),
+        'audioBitdepth': int(item.bitdepth or 16)
+    }
+
+    reasons = []
+    can_direct_play = True
+
+    # Server constraints
+    if get_normalization_filter(item):
+        can_direct_play = False
+        reasons.append('ServerSideProcessingRequired')
+
+    if user_max_br > 0 and source_bitrate > user_max_br:
+        can_direct_play = False
+        reasons.append('BitrateTooHigh')
+
+    # Client support (direct play)
+    if can_direct_play:
+        direct_profiles = client_info.get('directPlayProfiles', [])
+        supported_profile = next((p for p in direct_profiles if source_format in p.get('containers', [])), None)
+
+        if not supported_profile:
+            can_direct_play = False
+            reasons.append('ContainerNotSupported')
+        else:
+            codec_profiles = client_info.get('codecProfiles', [])
+            relevant_codec = next((c for c in codec_profiles if c.get('name') == source_format), None)
+            if relevant_codec:
+                for limit in relevant_codec.get('limitations', []):
+                    attr = limit.get('name')
+                    val_map = {
+                        'audioBitrate': source_bitrate,
+                        'audioChannels': source_stream['audioChannels'],
+                        'audioSamplerate': source_stream['audioSamplerate'],
+                        'audioBitdepth': source_stream['audioBitdepth']
+                    }
+                    if attr in val_map and not evaluate_limitation(val_map[attr], limit):
+                        can_direct_play = False
+                        reasons.append(f'{attr}LimitExceeded')
+
+    # Transcoding selection
+    can_transcode = (FFMPEG_BIN or FFMPEG_PYTHON)
+    transcode_stream = None
+
+    if not can_direct_play and can_transcode:
+        tx_profiles = client_info.get('transcodingProfiles', [])
+        selected_profile = None
+
+        for profile in tx_profiles:
+            target_container = profile.get('container', '').lower()
+
+            # Check if server supports this target container
+            if target_container not in FORMAT_MAP:
+                continue
+
+            target_lossless = FORMAT_MAP[target_container]['lossless']
+
+            # If user/server bitrate limit is set, do not use lossless transcoding
+            if user_max_br > 0 and target_lossless:
+                continue
+
+            # Never transcode lossy source to lossless target (wasteful)
+            if not source_is_lossless and target_lossless:
+                continue
+
+            # This is the best profile based on client preference order + server constraints
+            selected_profile = profile
+            break
+
+        target_container = selected_profile['container'].lower() if selected_profile else 'mp3'
+        target_lossless = FORMAT_MAP[target_container]['lossless']
+
+        # Target bitrate: start with client's suggested max
+        target_br = client_info.get('maxTranscodingAudioBitrate', 320000)
+
+        # Apply user limit if needed
+        if user_max_br > 0:
+            target_br = min(target_br, user_max_br)
+
+        # If transcoding lossy -> lossy, do not up-sample bitrate
+        if not source_is_lossless and not target_lossless:
+            target_br = min(target_br, source_bitrate)
+
+        transcode_stream = {
+            'protocol': selected_profile.get('protocol', 'http') if selected_profile else 'http',
+            'container': target_container,
+            'codec': selected_profile.get('audioCodec', target_container) if selected_profile else target_container,
+            'audioChannels': min(source_stream['audioChannels'], 2),
+            # Subsonic spec: bitrate is 0 or null for lossless
+            'audioBitrate': target_br if not target_lossless else 0,
+            'audioSamplerate': min(source_stream['audioSamplerate'], 48000),
+            'audioBitdepth': 16 if not target_lossless else source_stream['audioBitdepth']
+        }
+
+    payload = {
+        'transcodeDecision': {
+            'canDirectPlay': can_direct_play,
+            'canTranscode': can_transcode and not can_direct_play,
+            'transcodeReason': reasons,
+            'sourceStream': source_stream,
+            'transcodeStream': transcode_stream
+        }
+    }
+
+    return subsonic_response(payload, resp_fmt=resp_fmt)

@@ -62,7 +62,7 @@
 - [x] [getStarred](https://opensubsonic.netlify.app/docs/endpoints/getstarred/)
 - [x] [getStarred2](https://opensubsonic.netlify.app/docs/endpoints/getstarred2/)
 - [x] [getTopSongs](https://opensubsonic.netlify.app/docs/endpoints/gettopsongs/)
-- [ ] [getTranscodeDecision](https://opensubsonic.netlify.app/docs/endpoints/gettranscodedecision/)
+- [x] [getTranscodeDecision](https://opensubsonic.netlify.app/docs/endpoints/gettranscodedecision/)
 - [ ] [getTranscodeStream](https://opensubsonic.netlify.app/docs/endpoints/gettranscodestream/)
 - [x] [getUser](https://opensubsonic.netlify.app/docs/endpoints/getuser/)
 - [x] [getUsers](https://opensubsonic.netlify.app/docs/endpoints/getusers/)

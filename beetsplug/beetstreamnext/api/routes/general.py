@@ -73,7 +73,7 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
                 'versions': [1]
             },
             # {
-            #     'name': 'transcoding',  # TODO https://opensubsonic.netlify.app/docs/extensions/transcoding/
+            #     'name': 'transcoding',  # https://opensubsonic.netlify.app/docs/extensions/transcoding/
             #     'versions': [1]
             # },
         ]

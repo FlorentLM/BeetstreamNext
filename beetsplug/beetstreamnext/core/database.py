@@ -19,9 +19,6 @@ from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS, bsn_lo
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 
 
-CURRENT_SCHEMA_VERSION = 0      # Last updated: 19/07/2026 13:44 (introduction of the versioning)
-
-
 ##
 # Secrets management
 
@@ -178,8 +175,8 @@ def initialise_db() -> None:
         CREATE TABLE IF NOT EXISTS db_metadata (key TEXT PRIMARY KEY, value TEXT)
         """
     )
-    row = cur.execute("""SELECT value FROM db_metadata WHERE key = 'version'""").fetchone()
-    version = int(row[0]) if row else 0
+
+    _apply_db_migrations(cur)
 
     cur.execute(
         """
@@ -313,6 +310,19 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS internet_radio_stations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            stream_url TEXT NOT NULL,
+            homepage_url TEXT,
+            image BLOB,
+            image_mtime REAL
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS play_queue
         (
             username   TEXT PRIMARY KEY,
@@ -357,7 +367,7 @@ def initialise_db() -> None:
         CREATE TABLE IF NOT EXISTS now_playing
         (
             username    TEXT PRIMARY KEY,
-            song_id     INTEGER NOT NULL,
+            item_id     INTEGER NOT NULL,
             started_at  REAL    NOT NULL,
             player_name TEXT    NOT NULL DEFAULT '',
             FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
@@ -382,8 +392,38 @@ def initialise_db() -> None:
     conn.commit()
     conn.close()
 
-    # TODO: should add db migration for future db changes
 
+##
+
+def _apply_db_migrations(cursor: sqlite3.Cursor) -> None:
+
+    # Read current version stored in db
+    row = cursor.execute(
+        """
+        SELECT value
+        FROM db_metadata
+        WHERE key = 'version'
+        """
+    ).fetchone()
+    curr_version = int(row[0]) if row else 0
+
+    # Apply migrations
+
+    ## _________ Migration 1: Version 0 -> 1 (renamed song_id to item_id), 19/07/2026 14:40
+    MIGRATION_1_VER = 1
+
+    if curr_version < MIGRATION_1_VER:
+        cursor.execute("""DROP TABLE IF EXISTS now_playing""")
+        curr_version = MIGRATION_1_VER
+
+    ## ___________________________________________________________________
+
+    # Update version in db
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('version', ?)
+        """, (curr_version,)
+    )
 
 ##
 

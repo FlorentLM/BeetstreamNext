@@ -334,6 +334,32 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS shares
+        (
+            id          TEXT PRIMARY KEY,
+            username    TEXT NOT NULL,
+            description TEXT,
+            expires     REAL,
+            created     REAL NOT NULL DEFAULT (unixepoch()),
+            visit_count INTEGER       DEFAULT 0,
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS share_entries
+        (
+            share_id TEXT NOT NULL,
+            item_id  TEXT NOT NULL, -- sg-xxx or al-xxx
+            FOREIGN KEY (share_id) REFERENCES shares (id) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS play_queue
         (
             username   TEXT PRIMARY KEY,

@@ -1,7 +1,7 @@
 import os
 import base64
 import binascii
-from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any
+from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any, Sequence
 import flask
 from beets.library import LibModel, Item
 
@@ -13,7 +13,6 @@ from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.external import query_musicbrainz
 from beetsplug.beetstreamnext.core.database import write_beets_field
-
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.playlists import Playlist
@@ -531,15 +530,48 @@ def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> dict:
 
 
 def map_radio_station(row: dict) -> dict:
-    """Used for getInternetRadioStations response"""
     station_id = IDMapper.radio_to_sub(row['id'])
-    return {
+
+    subsonic_radio_station = {
         'id': str(row['id']),
         'name': row['name'],
         'streamUrl': row['stream_url'],
         'homePageUrl': row['homepage_url'] or '',
         'coverArt': station_id
     }
+    return subsonic_radio_station
+
+
+def map_share(row: dict, entries: Sequence[str]) -> dict:
+    songs = []
+    albums = []
+
+    for entry_id in entries:
+        entry_type = IDMapper.get_type(entry_id)
+
+        if entry_type == 'song':
+            item = flask.g.lib.get_item(IDMapper.sub_to_song(entry_id))
+            if item:
+                songs.append(map_song(item))
+
+        elif entry_type == 'album':
+            alb = flask.g.lib.get_album(IDMapper.sub_to_album(entry_id))
+            if alb:
+                albums.append(map_album(alb, include_songs=False))
+
+    share_url = flask.url_for('public.share_view', share_id=row['id'], _external=True)
+
+    subsonic_share = {
+        'id': row['id'],
+        'url': share_url,
+        'description': row['description'] or '',
+        'username': row['username'],
+        'created': timestamp_to_iso(row['created']),
+        'expires': timestamp_to_iso(row['expires']),
+        'visitCount': row['visit_count'],
+        'entry': songs + albums
+    }
+    return subsonic_share
 
 
 ##

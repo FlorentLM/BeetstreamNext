@@ -6,12 +6,11 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Union
 from io import BytesIO
-import requests
 from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.external import http_session, query_deezer, query_coverartarchive
+from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
 from beetsplug.beetstreamnext.utils.text import customstrip
@@ -334,13 +333,13 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
             if dz_data and dz_data.get('type', '') == 'artist':
                 img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
                 k = next(filter(dz_data.get, img_keys), None)
-                artist_image_url = dz_data[k] if k else None
+                artist_image_url = str(dz_data[k]) if k else None
 
                 if artist_image_url:
                     try:
-                        response = http_session().get(artist_image_url, timeout=5)
-                        if response.ok and app.config['save_artists_images']:
-                            img = _safe_open_image(response.content)
+                        content = capped_image_fetch(artist_image_url, timeout=5)
+                        if content and app.config['save_artists_images']:
+                            img = _safe_open_image(content)
                             img.save(local_image_path)
                     except Exception as e:
                         bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
@@ -363,15 +362,14 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
             artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')
 
             if artist_image_url:
-                try:
-                    response = http_session().get(artist_image_url, timeout=5)
-                    if response.ok:
+                content = capped_image_fetch(artist_image_url, timeout=5)
+                if content:
+                    try:
                         if size and size != target_size:
-                            cover = resize_image(response.content, size)
-                            return flask.send_file(cover, mimetype='image/jpeg')
+                            return flask.send_file(resize_image(content, size), mimetype='image/jpeg')
+                        return flask.send_file(BytesIO(content), mimetype='image/jpeg')
+                    except (ImageTooLarge, OSError) as e:
+                        bsn_logger.warning(f"Bad artist image from Deezer for '{artist_name}': {e}")
+            return None
 
-                        return flask.send_file(BytesIO(response.content), mimetype='image/jpeg')
-
-                except requests.exceptions.RequestException:
-                    pass
     return None

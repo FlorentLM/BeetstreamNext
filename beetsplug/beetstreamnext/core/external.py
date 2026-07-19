@@ -6,7 +6,7 @@ import requests
 from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, bsn_logger
+from beetsplug.beetstreamnext.constants import WIKI_API, BEETSTREAMNEXT_VER, bsn_logger, MAX_REMOTE_IMAGE_BYTES
 
 _http_session = None
 
@@ -27,6 +27,31 @@ def http_session() -> CachedSession:
 _DEEZER_PLACEHOLDER_HASHES = frozenset({
     'd41d8cd98f00b204e9800998ecf8427e',
 })
+
+
+def capped_image_fetch(url: str, *, max_bytes: int = MAX_REMOTE_IMAGE_BYTES, **kwargs) -> bytes:
+    """GET image bytes, refusing bodies over max_bytes. Returns b'' on failure."""
+    kwargs.setdefault('timeout', 8)
+    try:
+        resp = http_session().get(url, stream=True, **kwargs)
+    except requests.exceptions.RequestException:
+        return b''
+    try:
+        if not resp.ok:
+            return b''
+        clen = resp.headers.get('Content-Length')
+        if clen and clen.isdigit() and int(clen) > max_bytes:
+            bsn_logger.warning(f'Remote image too large ({clen} B): {url}')
+            return b''
+        buf = bytearray()
+        for chunk in resp.iter_content(8192):
+            buf += chunk
+            if len(buf) > max_bytes:
+                bsn_logger.warning(f'Remote image exceeded {max_bytes} B: {url}')
+                return b''
+        return bytes(buf)
+    finally:
+        resp.close()
 
 
 def _is_deezer_placeholder(artist_data: Dict) -> bool:
@@ -172,17 +197,7 @@ def query_wikipedia(q: str, cache_ttl_hash=None) -> str | None:
 
 
 def query_coverartarchive(mbid: str) -> bytes:
-    """Fetch image from CAA and cache the bytes. Returns b'' if not found to avoid retries."""
+    """Fetch image from CAA (size-capped) and cache the bytes. Returns b'' if not found to avoid retries."""
     if not mbid:
         return b''
-
-    art_url = f'https://coverartarchive.org/release/{mbid}/front'
-    try:
-        response = http_session().get(art_url, timeout=8)
-        if response.from_cache:
-            bsn_logger.debug(f"Cache hit for Cover Art Archive: {mbid}")
-
-        return response.content if (response.ok and response.content) else b''
-
-    except requests.exceptions.RequestException:
-        return b''
+    return capped_image_fetch(f'https://coverartarchive.org/release/{mbid}/front')

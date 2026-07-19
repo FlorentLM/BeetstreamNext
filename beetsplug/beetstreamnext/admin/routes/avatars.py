@@ -4,7 +4,7 @@ import flask
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.constants import MAX_AVATAR_BYTES, MAX_AVATAR_DIM
-from beetsplug.beetstreamnext.core.images import sniff_image, resize_image
+from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.users_crud import set_user_avatar, get_user_avatar
 
 
@@ -26,7 +26,11 @@ def route_upload_avatar(username: str) -> flask.Response:
         flask.flash('Unsupported or corrupt image. Use JPEG, PNG or WebP.', 'error')
         return flask.redirect(flask.url_for('admin.route_settings'))
 
-    blob = resize_image(data, size=MAX_AVATAR_DIM, crop=True)
+    try:
+        blob = resize_image(data, size=MAX_AVATAR_DIM, crop=True)
+    except (ImageTooLarge, OSError):
+        flask.flash('Unsupported, corrupt, or oversized image.', 'error')
+        return flask.redirect(flask.url_for('admin.route_settings'))
 
     if set_user_avatar(username, blob):
         flask.flash(f"Avatar updated for '{username}'.", 'success')

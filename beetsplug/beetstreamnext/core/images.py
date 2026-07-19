@@ -16,13 +16,31 @@ from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
 from beetsplug.beetstreamnext.utils.text import customstrip
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
+from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, FFMPEG_BIN, bsn_logger
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
+
 
 _ART_PRIORITY = [
     re.compile(r'^(cover|front|folder|album)$', re.IGNORECASE),     # exact matches
     re.compile(r'.*(cover|front|folder|album).*', re.IGNORECASE),   # partial matches
 ]
+
+Image.MAX_IMAGE_PIXELS = MAX_DECODE_PIXELS
+
+
+class ImageTooLarge(ValueError):
+    """Raised when an image's declared dimensions exceed the pixel cap."""
+
+
+def _safe_open_image(data: bytes | bytearray | BytesIO) -> Image.Image:
+    """Open an image, rejecting oversized inputs before any pixel decode."""
+    if isinstance(data, (bytes, bytearray)):
+        data = BytesIO(data)
+    img = Image.open(data)          # Image.open is lazy, no decode yet
+    w, h = img.size
+    if w * h > MAX_DECODE_PIXELS:
+        raise ImageTooLarge(f'Image dimensions too large: {w}x{h}')
+    return img
 
 
 def sniff_image(data: bytes) -> str | None:
@@ -83,7 +101,7 @@ def resize_image(data: Union[bytes, BytesIO], size: int, crop: bool = False) -> 
     if isinstance(data, bytes):
         data = BytesIO(data)
 
-    img = Image.open(data)
+    img = _safe_open_image(data)
     img = ImageOps.exif_transpose(img)
     img = img.convert('RGB')
 
@@ -264,7 +282,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
                 save_path = album_dir / 'cover.jpg'
                 if not save_path.exists():
                     try:
-                        img = Image.open(BytesIO(image_bytes))
+                        img = _safe_open_image(image_bytes)
                         img.save(save_path, format='JPEG')
                         bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
                     except Exception as e:
@@ -322,7 +340,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
                     try:
                         response = http_session().get(artist_image_url, timeout=5)
                         if response.ok and app.config['save_artists_images']:
-                            img = Image.open(BytesIO(response.content))
+                            img = _safe_open_image(response.content)
                             img.save(local_image_path)
                     except Exception as e:
                         bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")

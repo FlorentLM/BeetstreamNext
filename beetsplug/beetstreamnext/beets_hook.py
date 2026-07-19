@@ -53,6 +53,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'force_trust_host': False,
             'cors_supports_credentials': False,
             'reverse_proxy': False,
+            'proxy_hops': 1,        # TODO: Make this configurable from webui
             'legacy_auth': True,
             'never_transcode': False,
             'fetch_artists_images': False,
@@ -280,7 +281,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 if host not in LOOPBACK_IPS:
                     print_box([
                         '',
-                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
+                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
                         '',
                         f'Legacy authentication is enabled, and the server',
                         f'is listening on http://{host}:{port}',
@@ -290,6 +291,29 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         'transmitted in cleartext over HTTP.',
                         '',
                     ], color=TermColors.WARNING)
+
+            if settings_store.get('reverse_proxy'):
+                if host not in LOOPBACK_IPS:
+                    print_box([
+                        '',
+                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
+                        '',
+                        'reverse_proxy is enabled and the server is bound to',
+                        f'{host}:{port} (not loopback).',
+                        '',
+                        'Make sure this address is *not* reachable without going through the proxy.',
+                        '',
+                        'Bind to 127.0.0.1 (or a unix socket), unless a firewall',
+                        'guarantees only the proxy can reach this port.',
+                        '',
+                    ], color=TermColors.WARNING)
+
+                hops = max(1, self.config['proxy_hops'].get(int))
+                app.wsgi_app = ProxyFix(
+                    app.wsgi_app,
+                    x_for=hops, x_proto=hops, x_host=hops, x_port=hops, x_prefix=hops,
+                )
+                app.config.update(SESSION_COOKIE_SECURE=True)
 
             possible_paths = [
                 (0, self.config['playlist_dir'].as_str()),  # BeetstreamNext's own

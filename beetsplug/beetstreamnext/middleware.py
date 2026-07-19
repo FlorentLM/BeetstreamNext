@@ -16,7 +16,17 @@ def _before_request() -> flask.Response | None:
     trusted_raw = app.config.get('trusted_hosts', '')
     if trusted_raw:
         allowed = {h.strip() for h in trusted_raw.split(',') if h.strip()}      # TODO: Better parser / validator
-        request_host = flask.request.host.split(':')[0]
+
+        raw_host = flask.request.host
+        try:
+            if raw_host.startswith('['):
+                # [::1]:8080 -> ::1 (IPv6 literal, optional :port after ']')
+                request_host = raw_host[1:raw_host.index(']')]
+            else:
+                # host:port or bare host -> take the host part
+                request_host = raw_host.split(':')[0]
+        except ValueError:
+            flask.abort(400)
 
         if request_host not in allowed and request_host not in LOOPBACK_IPS:
             bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')
@@ -28,7 +38,7 @@ def _before_request() -> flask.Response | None:
     if is_api:
         resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    client_ip = str(flask.request.remote_addr) or 'unknown'
+    client_ip = flask.request.remote_addr or 'unknown'
 
     if not ip_filter.is_allowed(client_ip):
         if is_api:
@@ -75,10 +85,6 @@ def _before_request() -> flask.Response | None:
     flask.g.user_data = load_user_roles(username)
     flask.g.playlist_provider = app.config['playlist_provider']
     flask.g._art_base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
-
-    # just to be sure
-    if flask.request.is_secure and not app.config.get('SESSION_COOKIE_SECURE', False):
-        app.config.update(SESSION_COOKIE_SECURE=True)
 
     run_periodic()
 

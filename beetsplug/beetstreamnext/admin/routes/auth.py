@@ -21,7 +21,7 @@ def route_login() -> flask.Response:
 
     form = LoginForm()
     if form.validate_on_submit():
-        client_ip = str(flask.request.remote_addr) or 'unknown'
+        client_ip = flask.request.remote_addr or 'unknown'
 
         # TODO: Actually the blocked and rate-limited checks are not needed since before_request does them anyway...
         blocked = False

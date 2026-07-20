@@ -15,4 +15,10 @@ def home() -> str:
 
 @public_bp.app_errorhandler(404)
 def page_not_found(_e: Any) -> Tuple[str, int]:
-    return render_template('404.html'), 404
+    error = {
+        'code': 404,
+        'title': '*record scratches*',
+        'message': "Looks like you're lost.",
+    }
+    return render_template('error.html', error=error), error['code']
+

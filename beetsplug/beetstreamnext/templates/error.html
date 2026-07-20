@@ -3,7 +3,7 @@
 {% block title %} - Page Not Found{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/404.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
 {% endblock %}
 
 {% block body %}
@@ -14,9 +14,9 @@
         </a>
     </div>
 
-    <h1 class="error-code">404</h1>
-    <h2 class="error-title">*record scratches*</h2>
-    <p class="error-message">Looks like you're lost.</p>
+    <h1 class="error-code">{{ error.code }}</h1>
+    <h2 class="error-title">{{ error.title }}</h2>
+    <p class="error-message">{{ error.message }}</p>
 
     <a href="/" class="btn btn-primary btn-home">
         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">

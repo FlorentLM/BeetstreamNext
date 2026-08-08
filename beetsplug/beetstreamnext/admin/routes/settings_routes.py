@@ -178,7 +178,7 @@ def route_rate_limits() -> flask.Response:
 @admin_required
 def route_clear_rate_limits() -> flask.Response:
     n = rate_limiter.purge()
-    flask.flash(f'Cleared rate-limit state for {n} IP(s).', 'success')
+    flask.flash(f'Cleared rate-limit state for {n} entr{"y" if n == 1 else "ies"}.', 'success')
     return _back_to('maintenance')
 
 

@@ -2,7 +2,7 @@ import threading
 import time
 import ipaddress
 from collections import defaultdict
-from typing import Dict, List, Optional, Sequence, Set
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.constants import (
@@ -19,77 +19,81 @@ class RateLimiter:
 
         self._lock = threading.Lock()
 
-        self._store: Dict[str, List[float]] = defaultdict(list)
+        self._store: Dict[Tuple[str, str], List[float]] = defaultdict(list)
 
         self._max_failures = max_failures
         self._block_window = block_window
 
-    def is_blocked(self, ip: str) -> bool:
-        """Check if an IP is currently blocked."""
+    def is_blocked(self, ip: str, username: str = '') -> bool:
+        """Check if an (IP, username) pair is currently blocked."""
 
         if ip in LOOPBACK_IPS:
-            bsn_logger.debug(f'IP {ip} is in the loopback IPs list, ignoring rate limiting check.')
+            bsn_logger.debug(f'IP {ip} is a loopback IP, ignoring rate limiting check.')
             return False
 
+        key = (ip, username)
         now = time.monotonic()
         with self._lock:
-            attempts = self._store.get(ip)
+            attempts = self._store.get(key)
             if not attempts:
                 return False
 
             recent = [t for t in attempts if now - t < self._block_window]
             if not recent:
-                self._store.pop(ip, None)
+                self._store.pop(key, None)
                 return False
 
-            self._store[ip] = recent
+            self._store[key] = recent
             exceeds = len(recent) >= self._max_failures
             return exceeds
 
-    def record(self, ip: str):
-        """Log a failed attempt for an IP."""
+    def record(self, ip: str, username: str = ''):
+        """Log a failed attempt for an (IP, username) pair."""
         if ip in LOOPBACK_IPS:
-            bsn_logger.debug(f'IP {ip} is in the loopback IPs list, skipping rate limiting record.')
+            bsn_logger.debug(f'IP {ip} is a loopback IP, skipping rate limiting record.')
             return
 
+        key = (ip, username)
         now = time.monotonic()
         with self._lock:
-            self._store[ip].append(now)
+            self._store[key].append(now)
 
-    def reset(self, ip: str):
-        """Clear failures for an IP."""
+    def reset(self, ip: str, username: str = ''):
+        """Clear failures for an (IP, username) pair."""
+        key = (ip, username)
         with self._lock:
-            self._store.pop(ip, None)
+            self._store.pop(key, None)
 
     def sweep(self):
-        """Remove all stale IPs from memory."""
+        """Remove all stale buckets from memory."""
         now = time.monotonic()
         with self._lock:
-            stale_ips = [
-                ip for ip, attempts in self._store.items()
+            stale = [
+                key for key, attempts in self._store.items()
                 if not attempts or (now - max(attempts) > self._block_window)
             ]
-            for ip in stale_ips:
-                self._store.pop(ip, None)
+            for key in stale:
+                self._store.pop(key, None)
 
     def purge(self) -> int:
-        """Forget every recorded failure. Returns the number of IPs cleared."""
+        """Forget every recorded failure. Returns the number of buckets cleared."""
         with self._lock:
             n = len(self._store)
             self._store.clear()
         return n
 
     def report(self) -> dict:
-        """Snapshot of the current state  for diagnostics."""
+        """Snapshot of current state for the admin panel."""
         now = time.monotonic()
         entries = []
         with self._lock:
-            for ip, attempts in self._store.items():
+            for (ip, username), attempts in self._store.items():
                 recent = [t for t in attempts if now - t < self._block_window]
                 if not recent:
                     continue
                 entries.append({
                     'ip': ip,
+                    'username': username,
                     'failures': len(recent),
                     'blocked': len(recent) >= self._max_failures,
                     'oldest_failure_age_sec': round(now - min(recent), 1),
@@ -97,7 +101,7 @@ class RateLimiter:
             max_failures = self._max_failures
             block_window = self._block_window
 
-        entries.sort(key=lambda r: (-r['failures'], r['ip']))
+        entries.sort(key=lambda r: (-r['failures'], r['ip'], r['username']))
         return {
             'max_failures': max_failures,
             'block_window_sec': block_window,

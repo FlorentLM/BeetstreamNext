@@ -458,6 +458,7 @@ input:focus, select:focus { border-color: var(--primary); }
 .rate-limit-table th { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
 .rate-limit-blocked td { background: rgba(239, 68, 68, 0.08); }
 .rate-limit-clear { padding: 0 1.5rem 1.5rem; }
+.rate-limit-anon { color: var(--text-muted); }
 
 /* Server info */
 .kv-grid {

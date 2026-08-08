@@ -40,13 +40,14 @@ def _before_request() -> flask.Response | None:
         resp_fmt = r.get('f', default='xml', type=safe_str)
 
     client_ip = flask.request.remote_addr or 'unknown'
+    attempted_user = (r.get('u', default='', type=safe_str) or r.get('username', default='', type=safe_str))
 
     if not ip_filter.is_allowed(client_ip):
         if is_api:
             return subsonic_error(50, message='Access denied.', resp_fmt=resp_fmt)
         flask.abort(403)
 
-    if rate_limiter.is_blocked(client_ip):
+    if rate_limiter.is_blocked(client_ip, attempted_user):
         if is_api:
             return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
         flask.abort(429)
@@ -74,12 +75,13 @@ def _before_request() -> flask.Response | None:
     # Attempt authentication
     ok, error_code, username = authenticate(r)
     if not ok:
-        rate_limiter.record(client_ip)
+        rate_limiter.record(client_ip, attempted_user)
         if is_api:
             return subsonic_error(error_code, resp_fmt=resp_fmt)
         flask.abort(401)
 
-    rate_limiter.reset(client_ip)
+    # On success: clear pair
+    rate_limiter.reset(client_ip, attempted_user or username)
 
     flask.g.lib = app.config['lib']
     flask.g.username = username

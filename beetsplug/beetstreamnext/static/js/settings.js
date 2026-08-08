@@ -166,6 +166,7 @@
         const rows = payload.entries.map(e => `
             <tr class="${e.blocked ? 'rate-limit-blocked' : ''}">
                 <td><code>${escapeHtml(e.ip)}</code></td>
+                <td>${e.username ? escapeHtml(e.username) : '<span class="rate-limit-anon">—</span>'}</td>
                 <td>${e.failures} / ${payload.max_failures}</td>
                 <td>${e.oldest_failure_age_sec}s ago</td>
                 <td>${e.blocked ? '<span class="badge badge-admin">BLOCKED</span>' : '<span class="badge">warning</span>'}</td>
@@ -173,7 +174,7 @@
         `).join('');
         container.innerHTML = `
             <table class="rate-limit-table">
-                <thead><tr><th>IP</th><th>Failures</th><th>Oldest</th><th>Status</th></tr></thead>
+                <thead><tr><th>IP</th><th>Username</th><th>Failures</th><th>Oldest</th><th>Status</th></tr></thead>
                 <tbody>${rows}</tbody>
             </table>`;
     }

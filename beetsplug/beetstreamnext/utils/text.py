@@ -70,7 +70,7 @@ def trim_text(text: str, char_limit: int = 300) -> str:
 def safe_str(val: Any) -> str:
     if val is None:
         return ''
-    s = unquote(str(val))
+    s = str(val)
     s = unicodedata.normalize('NFC', s)
     s = standard_ascii(s)
     return customstrip(s)

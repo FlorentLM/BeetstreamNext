@@ -130,6 +130,7 @@ def _send_transcode(
     target_lossless = target['lossless']
 
     if FFMPEG_PYTHON:
+        import ffmpeg
         input_stream = ffmpeg.input(str(file_path), ss=start_at) if start_at > 0 else ffmpeg.input(str(file_path))
 
         output_args = {

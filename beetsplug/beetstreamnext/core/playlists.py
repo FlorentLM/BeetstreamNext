@@ -156,6 +156,7 @@ class Playlist:
         Create a new playlist from a list of beets songs, write it to disk, and return Playlist instance.
         """
         instance = cls.__new__(cls)
+        instance._lock = threading.RLock()
 
         safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
         base_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
@@ -177,6 +178,7 @@ class Playlist:
         instance.ctime = None
         instance.mtime = None
         instance.songs = [map_song(song) for song in songs]
+        instance.song_count = len(instance.songs)
         instance.duration = sum(int(s.get('duration', 0) or 0) for s in instance.songs)
 
         # Save the new playlist

@@ -324,6 +324,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         '',
                     ], color=TermColors.WARNING)
 
+                # Trusting 'proxy_hops' number of forwarded entries
                 hops = max(1, self.config['proxy_hops'].get(int))
                 app.wsgi_app = ProxyFix(
                     app.wsgi_app,
@@ -382,18 +383,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 CORS(app, supports_credentials=supports_creds)
             else:
                 bsn_logger.info('CORS is disabled (secure default). Web-based clients will be blocked by browsers.')
-
-            # Allow serving behind a reverse proxy
-            if settings_store.get('reverse_proxy'):
-                app.wsgi_app = ProxyFix(
-                    app.wsgi_app,
-                    x_for=1,
-                    x_proto=1,
-                    x_host=1,
-                    x_port=1,
-                    x_prefix=1
-                )
-                app.config.update(SESSION_COOKIE_SECURE=True)
 
             apply_logs_redaction()
             if debug:

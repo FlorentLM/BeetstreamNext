@@ -19,6 +19,9 @@ from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_e
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 
 
+# TODO: use X-Accel-Redirect in _send_direct when reverse_proxy is on
+
+
 FORMAT_MAP = {
     # Lossy
     'mp3':  {'f': 'mp3',  'c': 'libmp3lame', 'mime': 'audio/mpeg',      'lossless': False},

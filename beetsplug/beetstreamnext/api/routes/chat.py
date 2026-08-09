@@ -21,6 +21,9 @@ def endpoint_add_chat_message() -> flask.Response:
     if not message:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
+    if len(message) > 1000:
+        return subsonic_error(0, message='Message exceeds maximum length (1000 characters).', resp_fmt=resp_fmt)
+
     username = flask.g.username
     now_ms = int(time.time() * 1000)
 

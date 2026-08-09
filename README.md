@@ -72,7 +72,7 @@ Requires Python 3.10+ and an existing Beets library.
 
 ## Configuration
 
-Available options in your Beets `config.yaml`:
+You can set default startup options in your Beets `config.yaml`:
 
 ```yaml
 beetstreamnext:
@@ -99,6 +99,8 @@ beetstreamnext:
     - '/path/to/my/playlists'
     - '/another/path/for/playlists'
 ```
+
+All of them can then be customised in the WebUI (which then takes precedence over the yaml).
 
 ### Environment variables
 
@@ -189,8 +191,9 @@ I tested it and confirmed it working with:
 - [x] Move now_playing into the db as a volatile table
 - [x] Use MBID instead of artists names for internal ID mapping
 - [x] Support multi-artists / contributors / producers / labels properly
+- [x] Make an Admin WebUI panel to manage users
+- [ ] Add all remaining endpoints (almost done)
 - [ ] Make BeetstreamNext a standalone app, it does not _need_ to be a plugin
-- [ ] Make an Admin WebUI panel to manage users
 - [ ] Docker image
 - [ ] Add scrobbling to Last.fm and other similar services
 - [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists

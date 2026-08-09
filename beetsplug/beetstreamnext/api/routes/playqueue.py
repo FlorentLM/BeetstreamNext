@@ -76,7 +76,7 @@ def endpoint_save_play_queue() -> flask.Response:
 
     username = flask.g.username
 
-    beets_song_ids = [IDMapper.sub_to_song(sid) for sid in song_ids if sid]
+    beets_song_ids = [bid for sid in song_ids if (bid := IDMapper.sub_to_song(sid)) is not None]
     current_beets_sid = IDMapper.sub_to_song(current_sid) if current_sid else None
 
     now = time.time()
@@ -206,7 +206,12 @@ def endpoint_save_play_queue_by_index() -> flask.Response:
     if current_index < 0 or current_index >= len(song_ids):
         return subsonic_error(10, message='currentIndex out of bounds.', resp_fmt=resp_fmt)
 
-    beets_song_ids = [IDMapper.sub_to_song(sid) for sid in song_ids if sid]
+    beets_song_ids = [bid for sid in song_ids if (bid := IDMapper.sub_to_song(sid)) is not None]
+
+    # And revalidate against parsed list
+    if current_index >= len(beets_song_ids):
+        return subsonic_error(10, message='currentIndex out of bounds.', resp_fmt=resp_fmt)
+
     current_beets_id = beets_song_ids[current_index]
 
     with database() as db:

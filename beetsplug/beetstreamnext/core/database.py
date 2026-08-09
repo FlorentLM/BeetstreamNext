@@ -380,7 +380,7 @@ def initialise_db() -> None:
             position INTEGER NOT NULL,
             song_id  INTEGER NOT NULL,
             PRIMARY KEY (username, position),
-            FOREIGN KEY (username) REFERENCES play_queue (username)
+            FOREIGN KEY (username) REFERENCES play_queue (username) ON DELETE CASCADE
         )
         """
     )
@@ -457,6 +457,17 @@ def _apply_db_migrations(cursor: sqlite3.Cursor) -> None:
         cursor.execute("""DROP TABLE IF EXISTS now_playing""")
         curr_version = MIGRATION_1_VER
 
+    ## _________ Migration 2: Version 1 -> 2 (add ON DELETE CASCADE to play_queue_entries), 09/08/2026, 01:00
+    MIGRATION_2_VER = 2
+
+    if curr_version < MIGRATION_2_VER:
+        have_table = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='play_queue_entries'"""
+        ).fetchone()
+        if have_table:
+            _rebuild_play_queue_entries(cursor.connection)
+        curr_version = MIGRATION_2_VER
+
     ## ___________________________________________________________________
 
     # Update version in db
@@ -465,6 +476,43 @@ def _apply_db_migrations(cursor: sqlite3.Cursor) -> None:
         INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('version', ?)
         """, (curr_version,)
     )
+
+def _rebuild_play_queue_entries(conn: sqlite3.Connection) -> None:
+    """
+    Recreate play_queue_entries with ON DELETE CASCADE on its FK to play_queue.
+    FK enforcement must be off during the swap and toggling it can't
+    happen inside a transaction so commit/BEGIN is needed
+    """
+    conn.commit()   # close any implicit transaction before toggling FK enforcement
+    conn.execute("""PRAGMA foreign_keys = OFF""")
+    try:
+        conn.execute("""BEGIN""")
+        conn.execute(
+            """
+            CREATE TABLE play_queue_entries_new
+            (
+                username TEXT    NOT NULL,
+                position INTEGER NOT NULL,
+                song_id  INTEGER NOT NULL,
+                PRIMARY KEY (username, position),
+                FOREIGN KEY (username) REFERENCES play_queue (username) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO play_queue_entries_new (username, position, song_id)
+            SELECT username, position, song_id FROM play_queue_entries
+            """
+        )
+        conn.execute("""DROP TABLE play_queue_entries""")
+        conn.execute("""ALTER TABLE play_queue_entries_new RENAME TO play_queue_entries""")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.execute("""PRAGMA foreign_keys = ON""")
 
 ##
 

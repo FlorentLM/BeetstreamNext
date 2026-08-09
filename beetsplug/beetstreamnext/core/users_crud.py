@@ -4,6 +4,7 @@ import secrets
 import time
 from io import BytesIO
 from typing import TYPE_CHECKING, Sequence, Optional, Dict, Tuple, List
+import sqlite3
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.schemas import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
@@ -80,7 +81,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
     return user_dict
 
 
-def _store_userdata(user_dict: Dict):
+def _store_userdata(user_dict: Dict, insert_only: bool = False):
 
     _user_dict = dict(user_dict)
     username = _user_dict.pop('username', None)
@@ -108,15 +109,20 @@ def _store_userdata(user_dict: Dict):
     placeholders_str = ', '.join(placeholders)
     updates_str = ', '.join(updates)
 
+    if insert_only:
+        # Duplicate username must fail, not overwrite an existing user
+        sql = f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str})"
+    else:
+        sql = (f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str}) "
+               f"ON CONFLICT (username) DO UPDATE SET {updates_str}")
+
     with database() as db:
-        db.execute(
-            f"""
-            INSERT INTO users ({columns_str})
-            VALUES ({placeholders_str})
-            ON CONFLICT (username)
-            DO UPDATE SET {updates_str}
-            """, values
-        )
+        try:
+            db.execute(sql, values)
+        except sqlite3.IntegrityError as e:
+            if insert_only:
+                raise ValueError(f"Username '{username}' already exists.") from e
+            raise
 
 ##
 # Core logic used by endpoints and CLI
@@ -150,7 +156,9 @@ def create_user(username, password, admin=False, **kwargs):
     if len(password) < MIN_PASSWORD_LEN:
         raise ValueError(f'Password must be at least {MIN_PASSWORD_LEN} characters.')
 
-    if get_userdata(username, fields=['adminRole']):   # any field, doesn't matter
+    username = safe_str(username)
+
+    if get_userdata(username, fields=['adminRole']):  # any field, doesn't matter
         raise ValueError(f"Username '{username}' already exists.")
 
     filtered_roles = {
@@ -158,11 +166,9 @@ def create_user(username, password, admin=False, **kwargs):
         if k in ALL_USER_FIELDS and k not in ('username', 'password')  # 'username' and 'password' are handled explicitly
     }
 
-    username = safe_str(username)
-
     user_data = {
         'username': username,
-        'password': password,   # store_userdata handles the encryption
+        'password': password,   # _store_userdata handles the encryption
         'adminRole': admin,
         'maxBitRate': 0,        # 'no limit'
     }
@@ -172,7 +178,7 @@ def create_user(username, password, admin=False, **kwargs):
             user_data[role_name] = default_val
 
     user_data.update(filtered_roles)
-    _store_userdata(user_data)
+    _store_userdata(user_data, insert_only=True)
 
     # api_key_hash is set separately because _store_userdata excludes it (for safety)
     return _set_api_key(username)

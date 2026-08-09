@@ -16,6 +16,7 @@ from .routes import (
     ratings,
     scrobble,
     search,
+    shares,
     songs,
     stream,
     users,

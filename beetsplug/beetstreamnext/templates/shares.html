@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %} - Shared Files{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+<style>
+    body { padding: 3rem 1rem; display: flex; flex-direction: column; align-items: center; }
+    .share-wrapper { width: 100%; max-width: 800px; }
+    .share-meta { margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    .share-desc { font-size: 1.2rem; margin: 0.5rem 0; color: var(--text-muted); font-style: italic; }
+    .album-group { margin-bottom: 2rem; }
+    .album-title { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="share-wrapper">
+    <div class="logo-container" style="text-align: center; margin-bottom: 2rem;">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
+    </div>
+
+    <div class="share-meta">
+        <h1>Shared Content</h1>
+        {% if share.description %}
+            <p class="share-desc">"{{ share.description }}"</p>
+        {% endif %}
+        <p class="session-user">Shared by <strong>{{ share.username }}</strong></p>
+    </div>
+
+    {# Display shared albums #}
+    {% if albums %}
+        {% for album in albums %}
+        <div class="card album-group">
+            <div class="table-header">
+                <div class="album-title">
+                    <img class="user-avatar" style="border-radius: 8px; width: 44px; height: 44px;"
+                        src="{{ url_for('public.share_cover', share_id=share.id, entry_id=album.id) }}" alt="">
+                    <div>
+                        <h2 style="margin:0;">{{ album.name }}</h2>
+                        <span class="session-user">{{ album.artist }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <tbody>
+                        {% for song in album.song %}
+                        <tr>
+                            <td>{{ song.track or '' }}</td>
+                            <td class="username-cell">{{ song.title }}</td>
+                            <td class="session-user">{{ song.duration | int }}s</td>
+                            <td class="actions-cell">
+                                <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+                                   class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                                   Download
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {# Display shared songs #}
+    {% if songs %}
+        <div class="card">
+            <div class="table-header"><h2>Individual Shared Tracks</h2></div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cover</th>
+                            <th>Track Info</th>
+                            <th class="cell-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for song in songs %}
+                        <tr>
+                            <td>
+                                <img class="user-avatar" style="border-radius: 4px;"
+                                     src="{{ url_for('public.share_cover', share_id=share.id, entry_id=song.id) }}" alt="">
+                            </td>
+                            <td>
+                                <div class="username-name">{{ song.title }}</div>
+                                <div class="email-cell">{{ song.artist }} &bull; {{ song.album }}</div>
+                            </td>
+                            <td class="actions-cell">
+                                <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+                                   class="btn btn-outline">
+                                   Download
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

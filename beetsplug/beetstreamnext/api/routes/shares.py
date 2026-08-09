@@ -84,7 +84,7 @@ def endpoint_create_share() -> flask.Response:
                 """, (share_id, item_id)
             )
 
-    # Re-fetch for response
+    # Refetch for response
     with database() as db:
         row = db.execute(
             """
@@ -150,7 +150,7 @@ def endpoint_update_share() -> flask.Response:
 
         if updates:
             params.append(share_id)
-            db.execute(f"UPDATE shares SET {', '.join(updates)} WHERE id = ?", params)
+            db.execute(f"""UPDATE shares SET {', '.join(updates)} WHERE id = ?""", params)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

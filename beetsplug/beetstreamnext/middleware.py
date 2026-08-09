@@ -52,8 +52,12 @@ def _before_request() -> flask.Response | None:
             return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
         flask.abort(429)
 
-    # Allow public homepage
-    if flask.request.path == '/':
+    # Allow public homepage and public share routes
+    if flask.request.path == '/' or flask.request.path.startswith('/share/'):
+        # Anonymous guest context
+        flask.g.username = ''
+        flask.g.user_data = {}
+        flask.g.lib = app.config['lib']
         return
 
     # Allow these two rest endpoints as per OpenSubsonic spec

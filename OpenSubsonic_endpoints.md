@@ -87,5 +87,5 @@
 - [x] [unstar](https://opensubsonic.netlify.app/docs/endpoints/unstar/)
 - [x] [updateInternetRadioStation](https://opensubsonic.netlify.app/docs/endpoints/updateinternetradiostation/)
 - [x] [updatePlaylist](https://opensubsonic.netlify.app/docs/endpoints/updateplaylist/)
-- [ ] [updateShare](https://opensubsonic.netlify.app/docs/endpoints/updateshare/)
+- [x] [updateShare](https://opensubsonic.netlify.app/docs/endpoints/updateshare/)
 - [x] [updateUser](https://opensubsonic.netlify.app/docs/endpoints/updateuser/)

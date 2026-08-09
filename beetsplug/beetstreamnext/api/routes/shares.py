@@ -102,6 +102,59 @@ def endpoint_create_share() -> flask.Response:
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/updateshare/
+@api_bp.route('/updateShare', methods=['GET', 'POST'])
+@api_bp.route('/updateShare.view', methods=['GET', 'POST'])
+def endpoint_update_share() -> flask.Response:
+    r = flask.request.values
+
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    share_id = r.get('id', default='', type=safe_str)       # Required
+
+    if not flask.g.user_data.get('shareRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not share_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    description = r.get('description', default=None, type=safe_str)
+    expires_ms = r.get('expires', default=None, type=int)
+
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT username
+            FROM shares
+            WHERE id = ?
+            """, (share_id,)
+        ).fetchone()
+
+        if not row:
+            return subsonic_error(70, resp_fmt=resp_fmt)
+
+        # Only the creator or an admin can update the share
+        is_admin = bool(flask.g.user_data.get('adminRole'))
+        if row['username'] != flask.g.username and not is_admin:
+            return subsonic_error(50, resp_fmt=resp_fmt)
+
+        updates = []
+        params = []
+
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+
+        if expires_ms is not None:
+            updates.append("expires = ?")
+            params.append(expires_ms / 1000.0 if expires_ms > 0 else None)
+
+        if updates:
+            params.append(share_id)
+            db.execute(f"UPDATE shares SET {', '.join(updates)} WHERE id = ?", params)
+
+    return subsonic_response({}, resp_fmt=resp_fmt)
+
+
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteshare/
 @api_bp.route('/deleteShare', methods=['GET', 'POST'])
 @api_bp.route('/deleteShare.view', methods=['GET', 'POST'])

@@ -293,7 +293,8 @@ class Playlist:
                     path_str = Path(path).as_posix()
                 content.append(path_str)
 
-            with open(self.path.with_suffix('.m3u'), 'w', encoding='UTF-8') as f:
+            suffix = '.m3u8' if self.path.suffix == '.m3u8' else '.m3u'
+            with open(self.path.with_suffix(suffix), 'w', encoding='UTF-8') as f:
                 f.write('\n'.join(content))
 
 

@@ -22,6 +22,8 @@ _DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
 
 
 # TODO: hmac.compare_digest -> compare on encoded bytes instead?
+# TODO: _store_userdata and _set_api_key are separate transaction, but this should probably be fully atomic
+
 
 def _dummy_stored_password() -> str:
     """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""

@@ -29,7 +29,7 @@ CACHE_LOCATION: Path = cache_location()
 ## Text constants
 
 BEETS_MULTI_DELIM: str = '\\\u2400'  # what's used in beets' db to separate multiple artists, multiple genres etc
-GENRES_DELIM: re.Pattern = re.compile('|'.join([';', ',', '/', '\\|', '\u2400', '\\', '\x00']))
+GENRES_DELIM: re.Pattern = re.compile('|'.join(re.escape(d) for d in [';', ',', '/', '|', '\u2400', '\\', '\x00']))
 
 ASCII_TRANSLATE_TABLE: Dict[int, str] = {
     ord('\u2010'): '-', ord('\u2011'): '-', ord('\u2012'): '-',

@@ -25,6 +25,8 @@ RADIO_BROWSER: bool = is_installed('radios')
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()
 
+HLS_CACHE_DIR = CACHE_LOCATION / 'hls'
+HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 ## Text constants
 

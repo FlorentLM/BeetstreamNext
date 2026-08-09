@@ -83,7 +83,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
     return user_dict
 
 
-def _store_userdata(user_dict: Dict, insert_only: bool = False):
+def _store_userdata(user_dict: dict, insert_only: bool = False) -> None:
 
     _user_dict = dict(user_dict)
     username = _user_dict.pop('username', None)
@@ -96,31 +96,40 @@ def _store_userdata(user_dict: Dict, insert_only: bool = False):
     if 'password' in filtered_dict and cipher:
         filtered_dict['password'] = cipher.encrypt(filtered_dict['password'].encode("utf-8"))
 
-    columns = ['username']
-    placeholders = ['?']
-    values = [username]
-    updates = []
-
-    for key, val in filtered_dict.items():
-        columns.append(key)
-        placeholders.append('?')
-        values.append(val)
-        updates.append(f"{key} = excluded.{key}")
-
-    columns_str = ', '.join(columns)
-    placeholders_str = ', '.join(placeholders)
-    updates_str = ', '.join(updates)
-
     if insert_only:
-        # Duplicate username must fail, not overwrite an existing user
+        # Creating a new user
+        columns = ['username']
+        placeholders = ['?']
+        values = [username]
+
+        for key, val in filtered_dict.items():
+            columns.append(key)
+            placeholders.append('?')
+            values.append(val)
+
+        columns_str = ', '.join(columns)
+        placeholders_str = ', '.join(placeholders)
+
         sql = f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str})"
+        sql_values = values
     else:
-        sql = (f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str}) "
-               f"ON CONFLICT (username) DO UPDATE SET {updates_str}")
+        # Updating an existing user
+        if not filtered_dict:
+            return  # nothing to update
+
+        update_clauses = []
+        sql_values = []
+
+        for key, val in filtered_dict.items():
+            update_clauses.append(f"{key} = ?")
+            sql_values.append(val)
+
+        sql = f"UPDATE users SET {', '.join(update_clauses)} WHERE username = ?"
+        sql_values.append(username)
 
     with database() as db:
         try:
-            db.execute(sql, values)
+            db.execute(sql, sql_values)
         except sqlite3.IntegrityError as e:
             if insert_only:
                 raise ValueError(f"Username '{username}' already exists.") from e

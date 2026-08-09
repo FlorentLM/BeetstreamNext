@@ -53,7 +53,7 @@ def _before_request() -> flask.Response | None:
         flask.abort(429)
 
     # Allow public homepage and public share routes
-    if flask.request.path == '/' or flask.request.path.startswith('/share/'):
+    if flask.request.path == '/' or flask.request.path.startswith(('/share/', '/now-playing/')):
         # Anonymous guest context
         flask.g.username = ''
         flask.g.user_data = {}

@@ -28,6 +28,21 @@
     <h1>BeetstreamNext</h1>
     <p class="subtitle">Your Beets library, streaming anywhere.</p>
 
+    <!-- Now playing -->
+    {% if now_playing %}
+    <div class="now-playing-container" style="margin-top: 1rem; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: center; gap: 1.5rem; background: var(--card-bg); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
+        <img src="{{ url_for('public.now_playing_cover', size=250) }}" alt="" style="width: 80px; height: 80px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover;">
+        <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary); font-weight: 700; letter-spacing: 0.08em; margin-bottom: 0.25rem;">Now Playing</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ now_playing.title }}</div>
+            <div style="font-size: 0.9rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ now_playing.artist }} &bull; {{ now_playing.album }}</div>
+            {% if now_playing.player %}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; font-style: italic;">via {{ now_playing.player }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="stats-grid">
         <div class="stat-card">
             <span class="stat-value">{{ stats.artists }}</span>

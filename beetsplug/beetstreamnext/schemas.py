@@ -135,6 +135,13 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Allow legacy MD5 token / cleartext password authentication. API-key authentication always works.',
         'requires_restart': False,
     },
+    'public_now_playing': {
+        'type': 'bool',
+        'default': False,
+        'category': 'server',
+        'description': 'Show the currently playing song on the public home page.',
+        'requires_restart': False,
+    },
 
     # Library
     'never_transcode': {

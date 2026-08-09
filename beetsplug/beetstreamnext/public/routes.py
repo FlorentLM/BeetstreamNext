@@ -11,6 +11,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.general import get_server_info, send_file
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_album
+from beetsplug.beetstreamnext.settings import settings_store
 
 # TODO: It's maybe time to split this file into several route files like the rest api
 
@@ -29,6 +30,73 @@ def home() -> str:
     stats = get_server_info(extended=False)
     stats['status'] = 'running'
     return render_template('index.html', stats=stats)
+
+    now_playing = None
+
+    if settings_store.get('public_now_playing'):
+        with database() as db:
+            row = db.execute(
+                """
+                SELECT np.item_id, np.player_name, np.username
+                FROM now_playing np
+                         JOIN users u ON np.username = u.username
+                WHERE np.state = 'playing'
+                ORDER BY np.started_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+        if row:
+            beets_song_id = IDMapper.sub_to_song(row['item_id'])
+            song = app.config['lib'].get_item(beets_song_id)
+            if song:
+                now_playing = {
+                    'title': song.title,
+                    'artist': song.artist,
+                    'album': song.album,
+                    'player': row['player_name'],
+                    'username': row['username']
+                }
+
+
+    return render_template(
+        'index.html',
+        stats=stats,
+        now_playing=now_playing,
+    )
+
+@public_bp.route('/now-playing/cover')
+def now_playing_cover() -> flask.Response:
+    if not settings_store.get('public_now_playing'):
+        flask.abort(404)
+
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT np.item_id
+            FROM now_playing np
+                     JOIN users u ON np.username = u.username
+            WHERE np.state = 'playing'
+            ORDER BY np.started_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    if not row:
+        flask.abort(404)
+
+    from beetsplug.beetstreamnext.core.images import send_album_art, round_image_size
+    size = flask.request.args.get('size', default=0, type=int)
+    rounded_size = round_image_size(size)
+
+    beets_song_id = IDMapper.sub_to_song(row['item_id'])
+    song = app.config['lib'].get_item(beets_song_id)
+    if song and song.get('album_id'):
+        response = send_album_art(song.get('album_id'), rounded_size)
+        if response:
+            return response
+
+    flask.abort(404)
 
 
 @public_bp.route('/share/<share_id>')

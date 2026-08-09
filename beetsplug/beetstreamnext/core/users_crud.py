@@ -322,8 +322,10 @@ def authenticate(flask_req_values: 'CombinedMultiDict'):
     salt = r.get('s', default='', type=str)
     clearpass = r.get('p', default='', type=str)
 
-    if token and len(token) < 32:
-        token = token.zfill(32)  # some clients strip leading zeros...
+    if token:
+        token = token.lower()  # some clients send uppercase hex
+        if len(token) < 32:
+            token = token.zfill(32)  # some clients strip leading zeros...
 
     # API Key (modern)
     if api_key:

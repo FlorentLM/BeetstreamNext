@@ -559,7 +559,15 @@ def map_share(row: dict, entries: Sequence[str]) -> dict:
             if alb:
                 albums.append(map_album(alb, include_songs=False))
 
-    share_url = flask.url_for('public.share_view', share_id=row['id'], _external=True)
+    # Force public hostname (if set)
+    from beetsplug.beetstreamnext.settings import settings_store
+    external_host = settings_store.get('external_hostname')
+
+    if external_host:
+        scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+        share_url = f"{scheme}://{external_host}{flask.url_for('public.share_view', share_id=row['id'])}"
+    else:
+        share_url = flask.url_for('public.share_view', share_id=row['id'], _external=True)
 
     subsonic_share = {
         'id': row['id'],

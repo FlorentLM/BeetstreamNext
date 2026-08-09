@@ -70,6 +70,20 @@ def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
 
     # Server / network
+    'admin_hostname': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': 'If set, the admin panel will only be accessible when visited via this hostname (e.g. https://beetstreamnext.internal.example.com). Loopback is always allowed.',
+        'requires_restart': False,
+    },
+    'external_hostname': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': 'Your external, public hostname (e.g. https://music.example.com).',
+        'requires_restart': False,
+    },
     'threads': {
         'type': 'int',
         'default': 16,

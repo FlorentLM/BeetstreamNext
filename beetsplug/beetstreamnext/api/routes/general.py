@@ -69,6 +69,10 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
             #     'versions': [1]
             # },
             {
+                'name': 'topSongsByArtistId',  # https://opensubsonic.netlify.app/docs/extensions/topsongsbyartistid/
+                'versions': [1]
+            },
+            {
                 'name': 'transcodeOffset',  # https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/
                 'versions': [1]
             },

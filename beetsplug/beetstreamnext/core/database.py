@@ -575,7 +575,7 @@ def write_beets_field(
     db = dual_database()
 
     if key in get_beets_schema(core_table):
-        db.execute(
+        cur = db.execute(
             f"""
             UPDATE beets.{core_table} 
             SET {key} = ? 
@@ -585,7 +585,7 @@ def write_beets_field(
         db.commit()
 
         # If that worked but changed 0 rows (wrong ID), user should know
-        if db.total_changes == 0:
+        if cur.rowcount == 0:
             bsn_logger.warning(f'No beets {entity_type} found with ID {entity_id}')
         return
 

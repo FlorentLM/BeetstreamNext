@@ -206,15 +206,15 @@ def endpoint_change_password() -> flask.Response:
     try:
         update_user(target_user, password=new_password)
         return subsonic_response({}, resp_fmt)
-    except ValueError:
-        return subsonic_error(70, resp_fmt=resp_fmt)
+    except ValueError as e:
+        return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAvatar/
 @api_bp.route('/getAvatar', methods=['GET', 'POST'])
 @api_bp.route('/getAvatar.view', methods=['GET', 'POST'])
 def endpoint_get_avatar() -> flask.Response:
-    username = flask.request.args.get('username', default='', type=safe_str)    # Required
+    username = flask.request.values.get('username', default='', type=safe_str)    # Required
     if not username:
         return subsonic_error(10)
 

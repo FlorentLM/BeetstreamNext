@@ -144,11 +144,12 @@ class IPFilter:
         if isinstance(values, str):
             raw_items = [v.strip() for v in values.split(',')]
         else:
-            raw_items = [vv.strip(',') for v in values for vv in v.split(',')]
+            raw_items = [vv.strip() for v in values for vv in v.split(',')]
 
         final_ips = set()
         for item in raw_items:
-            if not item: continue
+            if not item:
+                continue
             try:
                 ipaddress.ip_address(item)
                 final_ips.add(item)

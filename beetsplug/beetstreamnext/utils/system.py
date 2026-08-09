@@ -63,10 +63,10 @@ def get_mimetype(path) -> str:
         '.mp4': 'audio/mp4',
         '.m4a': 'audio/mp4',
         '.ogg': 'audio/ogg',
-        '.opus': 'audio/opus',
-        None: 'application/octet-stream'
+        '.opus': 'audio/opus'
     }
-    return mimetypes.guess_type(path)[0] or mimetype_fallback.get(path.rsplit('.', 1)[-1], 'application/octet-stream')
+    ext = '.' + path.rsplit('.', 1)[-1].lower()
+    return mimetypes.guess_type(path)[0] or mimetype_fallback.get(ext, 'application/octet-stream')
 
 
 def make_hidden(filepath: Path) -> None:

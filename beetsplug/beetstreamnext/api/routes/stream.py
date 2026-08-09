@@ -14,9 +14,8 @@ from .. import api_bp
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, HLS_CACHE_DIR
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.general import api_bool, send_file
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 
@@ -144,14 +143,6 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
         media_path = str(app.config['root_directory'] / path_obj)
 
     return media, media_path, None
-
-
-def _send_direct(file_path: str | Path) -> flask.Response | None:
-    try:
-        return flask.send_file(file_path, mimetype=get_mimetype(file_path))
-    except OSError as e:
-        bsn_logger.error(f"Failed to serve file '{file_path}': {e}")
-        return None
 
 
 def _send_transcode(
@@ -319,7 +310,7 @@ def try_transcode(
         )
 
     else:
-        return _send_direct(file_path)
+        return send_file(file_path)
 
 
 ##
@@ -366,7 +357,7 @@ def endpoint_stream_song() -> flask.Response | None:
         needs_transcode = True
 
     if not needs_transcode:
-        response = _send_direct(song_path)
+        response = send_file(song_path)
     else:
         target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
@@ -398,7 +389,7 @@ def endpoint_download_song() -> flask.Response | None:
     if err_resp:
         return err_resp
 
-    return _send_direct(song_path)
+    return send_file(song_path)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/gettranscodedecision/

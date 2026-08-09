@@ -1,10 +1,13 @@
 import platform
+from pathlib import Path
 from typing import Optional, Dict, Tuple, Any
 from functools import lru_cache
 from datetime import datetime, timezone
 import beets
 import flask
 
+from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import GENRES_DELIM, BEETSTREAMNEXT_VER
@@ -94,3 +97,21 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
             cleaned.append(final_tag)
 
     return tuple(cleaned)
+
+
+def send_file(
+        file_path: str | Path,
+        as_attachment: bool = False,
+        download_name: Optional[str] = None
+    ) -> flask.Response | None:
+
+    try:
+        return flask.send_file(
+            file_path,
+            mimetype=get_mimetype(file_path),
+            as_attachment=as_attachment,
+            download_name=download_name
+        )
+    except OSError as e:
+        bsn_logger.error(f"Failed to serve file '{file_path}': {e}")
+        return None

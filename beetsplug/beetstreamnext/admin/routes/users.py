@@ -27,6 +27,11 @@ def route_create_user() -> flask.Response:
         try:
             data = collect_form_data(form)
             is_admin = data.pop('adminRole', False)
+            # username/password are passed positionally and csrf_token isn't a user field
+            # they are dropped them so they don't collide inside **data
+            data.pop('username', None)
+            data.pop('password', None)
+            data.pop('csrf_token', None)
             raw_api_key = create_user(
                 form.username.data,
                 form.password.data,

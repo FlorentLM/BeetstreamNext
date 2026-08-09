@@ -1,17 +1,17 @@
 import os
 import subprocess
 import math
+import hashlib
+import time
 from pathlib import Path
 import queue
 import threading
-from typing import Generator, Optional, Any
+from typing import Generator, Optional, Any, Tuple
 import flask
-import hashlib
-import time
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import HLS_CACHE_DIR, FFMPEG_PYTHON, FFMPEG_BIN
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, HLS_CACHE_DIR
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -41,6 +41,7 @@ FORMAT_MAP = {
     'wav':  {'f': 'wav',  'c': 'pcm_s16le',   'mime': 'audio/wav',      'lossless': True},
     'aiff': {'f': 'aiff', 'c': 'pcm_s16be',   'mime': 'audio/aiff',     'lossless': True},
 }
+
 
 def is_lossless(fmt: str) -> bool:
     """Identify if a format key or file extension is lossless."""
@@ -111,6 +112,38 @@ def get_normalization_filter(item) -> str | None:
 
     # Final filter: volume adjustment + a hard limiter at -0.1dB as a safety net
     return f'volume={gain:.2f}dB,alimiter=limit=0.99'
+
+
+def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional[Any], Optional[str], Optional[flask.Response]]:
+    """Helper to check permissions, IDs, and retrieve absolute track path."""
+
+    resp_fmt = req_values.get('f', default='xml', type=safe_str)
+    media_id = req_values.get('id', default='', type=safe_str)      # Required
+
+    if not bool(flask.g.user_data.get(required_role)):
+        return None, None, subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not media_id:
+        if required_role == 'streamRole':
+            # TODO: media_type can be podcast once podcassts are supported by BSN
+            media_id = req_values.get('mediaId', default='', type=safe_str)     # Required in getTranscodeDecision / getTranscodeStream
+        if not media_id:
+            return None, None, subsonic_error(10, resp_fmt=resp_fmt)
+
+    beets_id = IDMapper.sub_to_song(media_id)
+    media = flask.g.lib.get_item(beets_id)
+    if not media:
+        return None, None, subsonic_error(70, resp_fmt=resp_fmt)
+
+    media_path = os.fsdecode(media.get('path', b''))
+    if not media_path:
+        return None, None, subsonic_error(70, resp_fmt=resp_fmt)
+
+    path_obj = Path(media_path)
+    if not path_obj.is_absolute():
+        media_path = str(app.config['root_directory'] / path_obj)
+
+    return media, media_path, None
 
 
 def _send_direct(file_path: str | Path) -> flask.Response | None:
@@ -297,71 +330,60 @@ def try_transcode(
 @api_bp.route('/stream.view', methods=['GET', 'POST'])
 def endpoint_stream_song() -> flask.Response | None:
     r = flask.request.values
+
+    song, song_path, err_resp = _get_media_context(r, 'streamRole')
+    if err_resp:
+        return err_resp
+
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    song_id = r.get('id', default='', type=safe_str)             # Required
     max_bitrate = r.get('maxBitRate', default=0, type=int)
     req_format = r.get('format', default='raw', type=safe_str)
     time_offset = r.get('timeOffset', default=0.0, type=float)
     estimate_length = r.get('estimateContentLength', default=False, type=api_bool)
 
-    if not bool(flask.g.user_data.get('streamRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
-
-    if not song_id:
-        return subsonic_error(10, resp_fmt=resp_fmt)
-
     user_max_bitrate = flask.g.user_data.get('maxBitRate', 0)
     if user_max_bitrate > 0:
         max_bitrate = min(user_max_bitrate, max_bitrate) if max_bitrate > 0 else user_max_bitrate
 
-    beets_song_id = IDMapper.sub_to_song(song_id)
-    song = flask.g.lib.get_item(beets_song_id)
-    song_path = os.fsdecode(song.get('path', b'')) if song else ''
+    song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
+    norm_filter = get_normalization_filter(song)
+    needs_transcode = False
 
-    if song_path:
-        path_obj = Path(song_path)
-        if not path_obj.is_absolute():
-            song_path = str(app.config['root_directory'] / path_obj)
+    # Transcode if audio normalisation is required
+    if norm_filter:
+        needs_transcode = True
 
-        song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
-        norm_filter = get_normalization_filter(song)
-        needs_transcode = False
+    # Transcode if bitrate too high
+    elif max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
+        needs_transcode = True
 
-        # Transcode if audio normalisation is required
-        if norm_filter:
-            needs_transcode = True
+    # or if client wants different format
+    elif req_format != 'raw' and req_format != song_ext and not app.config['never_transcode']:
+        needs_transcode = True
 
-        # Transcode if bitrate too high
-        elif max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
-            needs_transcode = True
+    # or if seeking
+    elif time_offset > 0:
+        needs_transcode = True
 
-        # or if client wants different format
-        elif req_format != 'raw' and req_format != song_ext and not app.config['never_transcode']:
-            needs_transcode = True
+    if not needs_transcode:
+        response = _send_direct(song_path)
+    else:
+        target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
-        # or if seeking
-        elif time_offset > 0:
-            needs_transcode = True
+        response = try_transcode(       # TODO: Should this return a subsonic error or 404?
+            song_path,
+            start_at=time_offset,
+            max_bitrate=target_bitrate,
+            req_format=req_format if req_format != 'raw' else 'mp3',
+            duration=song.get('length') or 0.0,
+            estimate_length=estimate_length,
+            audio_filters=norm_filter
+        )
 
-        if not needs_transcode:
-            response = _send_direct(song_path)
-        else:
-            target_bitrate = max_bitrate if max_bitrate > 0 else 320
+    if response is not None:
+        return response
 
-            return try_transcode(       # TODO: Should this return a subsonic error or 404?
-                song_path,
-                start_at=time_offset,
-                max_bitrate=target_bitrate,
-                req_format=req_format if req_format != 'raw' else 'mp3',
-                duration=song.get('length') or 0.0,
-                estimate_length=estimate_length,
-                audio_filters=norm_filter
-            )
-
-        if response is not None:
-            return response
-
-        bsn_logger.warning(f"Direct play of song '{Path(song_path).name}' failed.")
+    bsn_logger.warning(f"Direct play of song '{Path(song_path).name}' failed.")
 
     return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -371,26 +393,10 @@ def endpoint_stream_song() -> flask.Response | None:
 @api_bp.route('/download.view', methods=['GET', 'POST'])
 def endpoint_download_song() -> flask.Response | None:
     r = flask.request.values
-    resp_fmt = r.get('f', default='xml', type=safe_str)
-    song_id = r.get('id', default='', type=safe_str)         # Required
 
-    if not bool(flask.g.user_data.get('downloadRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
-
-    if not song_id:
-        return subsonic_error(10, resp_fmt=resp_fmt)
-
-    beets_song_id = IDMapper.sub_to_song(song_id)
-    item = flask.g.lib.get_item(beets_song_id)
-
-    song_path = os.fsdecode(item.get('path', b'')) if item else ''
-    if song_path:
-        path_obj = Path(song_path)
-        if not path_obj.is_absolute():
-            song_path = str(app.config['root_directory'] / path_obj)
-
-    if not song_path:
-        return subsonic_error(70, resp_fmt=resp_fmt)
+    song, song_path, err_resp = _get_media_context(r, 'downloadRole')
+    if err_resp:
+        return err_resp
 
     return _send_direct(song_path)
 
@@ -400,20 +406,13 @@ def endpoint_download_song() -> flask.Response | None:
 @api_bp.route('/getTranscodeDecision.view', methods=['POST'])
 def endpoint_get_transcode_decision() -> flask.Response:
     r = flask.request.values
+
+    item, song_path, err_resp = _get_media_context(r, 'streamRole')
+    if err_resp:
+        return err_resp
+
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    media_id = r.get('mediaId', default='', type=safe_str)              # Required
-    media_type = r.get('mediaType', default='song', type=safe_str)      # Required
-
-    # TODO: media_type can be podcast once podcassts are supported by BSN
-
     client_info = flask.request.get_json(silent=True) or {}
-    if not media_id or not media_type:
-        return subsonic_error(10, resp_fmt=resp_fmt)
-
-    beets_id = IDMapper.sub_to_song(media_id)
-    item = flask.g.lib.get_item(beets_id)
-    if not item:
-        return subsonic_error(70, resp_fmt=resp_fmt)
 
     # Source info
     source_format = (item.format or '').lower()
@@ -473,6 +472,7 @@ def endpoint_get_transcode_decision() -> flask.Response:
     # Transcoding selection
     can_transcode = (FFMPEG_BIN or FFMPEG_PYTHON)
     transcode_stream = None
+    tx_params = ''
 
     if not can_direct_play and can_transcode:
         tx_profiles = client_info.get('transcodingProfiles', [])
@@ -552,19 +552,16 @@ def endpoint_get_transcode_decision() -> flask.Response:
 @api_bp.route('/getTranscodeStream.view', methods=['GET', 'POST'])
 def endpoint_get_transcode_stream() -> flask.Response | None:
     r = flask.request.values
+
+    song, song_path, err_resp = _get_media_context(r, 'streamRole')
+    if err_resp:
+        return err_resp
+
     resp_fmt = r.get('f', default='xml', type=safe_str)
-
-    media_id = r.get('mediaId', default='', type=safe_str)              # Required
-    media_type = r.get('mediaType', default='song', type=safe_str)      # Required
     offset = r.get('offset', default=0.0, type=float)
-    tx_params_raw = r.get('transcodeParams', default='', type=str)      # Required
+    tx_params_raw = r.get('transcodeParams', default='', type=str)
 
-    # TODO: media_type can be podcast once podcassts are supported by BSN
-
-    if not bool(flask.g.user_data.get('streamRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
-
-    if not media_id or not tx_params_raw:
+    if not tx_params_raw:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
@@ -575,19 +572,6 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
         apply_norm = parts[2] == '1'
     except (IndexError, ValueError):
         return subsonic_error(0, 'Invalid transcodeParams', resp_fmt=resp_fmt)
-
-    beets_song_id = IDMapper.sub_to_song(media_id)
-    song = flask.g.lib.get_item(beets_song_id)
-    if not song:
-        return subsonic_error(70, resp_fmt=resp_fmt)
-
-    song_path = os.fsdecode(song.get('path', b''))
-    if not song_path:
-        return subsonic_error(70, resp_fmt=resp_fmt)
-
-    path_obj = Path(song_path)
-    if not path_obj.is_absolute():
-        song_path = str(app.config['root_directory'] / path_obj)
 
     norm_filter = get_normalization_filter(song) if apply_norm else None
 
@@ -608,48 +592,47 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
 @api_bp.route('/hls.m3u8', methods=['GET', 'POST'])
 def endpoint_hls() -> flask.Response | None:
     r = flask.request.values
+
+    song, song_path, err_resp = _get_media_context(r, 'streamRole')
+    if err_resp:
+        return err_resp
+
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    song_id = r.get('id', default='', type=safe_str)
-    max_bitrate = r.get('bitRate', default=0, type=int)  # in kbps
 
-    if not bool(flask.g.user_data.get('streamRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
+    bitrates_raw = r.getlist('bitRate', type=safe_str)
+    bitrates = []
+    for br_raw in bitrates_raw:
+        try:
+            # Handle standard (bitRate=128) and Video format (bitRate=1000@480x360)
+            br = int(br_raw.split('@')[0])
+            if br > 0: bitrates.append(br)
+        except ValueError:
+            pass
 
-    if not song_id:
-        return subsonic_error(10, resp_fmt=resp_fmt)
+    if not bitrates:
+        max_br = r.get('maxBitRate', default=0, type=int)
+        bitrates = [max_br if max_br > 0 else 160]
 
+    # Cap at user max bitrate
     user_max_bitrate = flask.g.user_data.get('maxBitRate', 0)
     if user_max_bitrate > 0:
-        max_bitrate = min(user_max_bitrate, max_bitrate) if max_bitrate > 0 else user_max_bitrate
+        bitrates = [min(br, user_max_bitrate) for br in bitrates]
 
-    target_bitrate = max_bitrate if max_bitrate > 0 else 160
+    bitrates = sorted(list(set(bitrates)))  # dedup and sort
 
-    beets_song_id = IDMapper.sub_to_song(song_id)
-    song = flask.g.lib.get_item(beets_song_id)
-    if not song:
-        return subsonic_error(70, resp_fmt=resp_fmt)
-
-    song_path = os.fsdecode(song.get('path', b''))
-    if not song_path:
-        return subsonic_error(70, resp_fmt=resp_fmt)
-
-    path_obj = Path(song_path)
-    if not path_obj.is_absolute():
-        song_path = str(app.config['root_directory'] / path_obj)
-
-    # Unique hash for this file + bitrate combination
     try:
         mtime = os.path.getmtime(song_path)
     except OSError:
         mtime = 0.0
 
-    stream_id = hashlib.md5(f"{beets_song_id}_{target_bitrate}_{mtime}".encode()).hexdigest()
+    # Unique hash for this file + bitrates combination
+    stream_id = hashlib.md5(f"{song.id}_{'-'.join(map(str, bitrates))}_{mtime}".encode()).hexdigest()
     stream_dir = HLS_CACHE_DIR / stream_id
-    stream_dir.mkdir(exist_ok=True)
 
-    playlist_path = stream_dir / 'index.m3u8'
+    # If this specific one doesn't exist build it
+    if not stream_dir.exists():
+        stream_dir.mkdir(parents=True)
 
-    if not playlist_path.exists() or playlist_path.stat().st_size == 0:
         if not (FFMPEG_BIN or FFMPEG_PYTHON):
             return subsonic_error(0, message='FFmpeg is required for HLS streaming.', resp_fmt=resp_fmt)
 
@@ -663,48 +646,51 @@ def endpoint_hls() -> flask.Response | None:
         if norm_filter:
             command.extend(['-af', norm_filter])
 
-        command.extend([
-            '-vn',  # strip video/album art to avoid breaking players
-            '-c:a', 'aac',  # HLS expects AAC or mp3
-            '-b:a', f'{target_bitrate}k',
-            '-f', 'hls',
-            '-hls_time', '10',  # 10 second chunks
-            '-hls_list_size', '0',  # keep all chunks
-            '-hls_segment_filename', str(stream_dir / '%03d.ts'),
-            '-hls_base_url', f'hls_data/{stream_id}/'
-        ])
+        # Spawn a stream for each requested bitrate
+        for i, br in enumerate(bitrates):
+            br_dir = stream_dir / str(br)
+            br_dir.mkdir(exist_ok=True)
 
-        command.append(str(playlist_path))
+            command.extend([
+                '-map', '0:a',
+                f'-b:a:{i}', f'{br}k',
+                f'-c:a:{i}', 'aac',  # HLS expects AAC or mp3
+                '-f', 'hls',
+                '-hls_time', '10',  # 10 second chunks
+                '-hls_list_size', '0',  # keep all chunks
+                '-hls_playlist_type', 'event',  # tells player that chunks will keep arriving
+                '-hls_segment_filename', str(br_dir / '%03d.ts'),
+                '-hls_base_url', f'hls_data/{stream_id}/{br}/', # tells client where to request the chunks from
+                str(br_dir / 'index.m3u8')
+            ])
 
         subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        timeout = 10.0
-        start_time = time.time()
-        ready = False
-        while time.time() - start_time < timeout:
-            if playlist_path.exists() and playlist_path.stat().st_size > 0:
-                # Make sure at least the first chunk is generated before sending the playlist
-                if list(stream_dir.glob('*.ts')):
-                    ready = True
-                    break
-            time.sleep(0.25)
+    # generate and return a playlist pointing to the subplaylists, client will call /hls_data/.../index.m3u8
+    master_playlist = ['#EXTM3U']
+    for br in bitrates:
+        master_playlist.append(f'#EXT-X-STREAM-INF:BANDWIDTH={br * 1000},CODECS="mp4a.40.2"')
+        master_playlist.append(f'hls_data/{stream_id}/{br}/index.m3u8')
 
-        if not ready:
-            bsn_logger.error(f"HLS Transcoding failed to start in time for '{Path(song_path).name}'")
-            return subsonic_error(0, message='HLS generation failed.', resp_fmt=resp_fmt)
-
-    return flask.send_file(playlist_path, mimetype='application/vnd.apple.mpegurl')
+    master_playlist_str = "\n".join(master_playlist) + '\n'
+    return flask.Response(master_playlist_str, mimetype='application/vnd.apple.mpegurl')
 
 
-@api_bp.route('/hls_data/<stream_id>/<filename>')
-def endpoint_hls_data(stream_id: str, filename: str) -> flask.Response:
-
-    if not stream_id.isalnum() or not filename.endswith('.ts'):
+@api_bp.route('/hls_data/<stream_id>/<bitrate>/<filename>')
+def endpoint_hls_data(stream_id: str, bitrate: str, filename: str) -> flask.Response:
+    if not stream_id.isalnum() or not bitrate.isdigit() or not (filename.endswith('.ts') or filename.endswith('.m3u8')):
         flask.abort(400)
 
-    chunk_path = HLS_CACHE_DIR / stream_id / filename
+    target_path = HLS_CACHE_DIR / stream_id / bitrate / filename
 
-    if not chunk_path.exists():
+    # ffmpeg might still be generating the index.m3u8 or the first .ts chunk, so wait for it if needed
+    timeout = 10.0
+    start = time.time()
+    while not target_path.exists() and (time.time() - start < timeout):
+        time.sleep(0.25)
+
+    if not target_path.exists():
         flask.abort(404)
 
-    return flask.send_file(chunk_path, mimetype='video/MP2T')
+    mimetype = 'application/vnd.apple.mpegurl' if filename.endswith('.m3u8') else 'video/MP2T'
+    return flask.send_file(target_path, mimetype=mimetype)

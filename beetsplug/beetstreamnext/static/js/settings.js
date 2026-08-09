@@ -230,6 +230,31 @@
             case 'refresh-rate-limits':
                 refreshRateLimits(target);
                 break;
+            case 'edit-chat':
+                const msgId = target.dataset.id;
+                const oldText = target.dataset.text;
+                const newText = window.prompt("Edit user's chat message:", oldText);
+                if (newText !== null && newText.trim() !== "") {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/admin/chat/edit/${msgId}`;
+
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
+                    form.appendChild(csrfInput);
+
+                    const msgInput = document.createElement('input');
+                    msgInput.type = 'hidden';
+                    msgInput.name = 'message';
+                    msgInput.value = newText;
+                    form.appendChild(msgInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+                break;
         }
     });
 
@@ -250,6 +275,14 @@
     // Init
 
     initTabsFromHash();
+
+    // Format HLS/chat epoch timestamps to human readable format
+    document.querySelectorAll('.chat-time').forEach(el => {
+        const ms = parseInt(el.dataset.timestamp);
+        if (!isNaN(ms)) {
+            el.textContent = new Date(ms).toLocaleString();
+        }
+    });
 
     // Auto-show the one-time API key modal if the server rendered one
     // Not dismissed by backdrop click just to be sure

@@ -9,9 +9,11 @@ from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm
 from beetsplug.beetstreamnext.settings import settings_store
+from ...utils.text import safe_str
 
 
 def _back_to(anchor: str) -> flask.Response:
@@ -147,6 +149,44 @@ def route_ip_remove(list_type: str) -> flask.Response:
 
 
 ##
+# Chat moderation routes
+
+@admin_bp.route('/chat/delete/<int:msg_id>', methods=['POST'])
+@admin_required
+def route_delete_chat_message(msg_id: int) -> flask.Response:
+    with database() as db:
+        db.execute(
+            """
+            DELETE FROM chat_messages 
+            WHERE id = ?
+            """, (msg_id,)
+        )
+    flask.flash('Chat message deleted.', 'success')
+    return _back_to('chat')
+
+
+@admin_bp.route('/chat/edit/<int:msg_id>', methods=['POST'])
+@admin_required
+def route_edit_chat_message(msg_id: int) -> flask.Response:
+    new_message = safe_str(flask.request.form.get('message', '').strip())
+
+    if not new_message:
+        flask.flash('Message cannot be empty.', 'error')
+        return _back_to('chat')
+
+    with database() as db:
+        db.execute(
+            """
+            UPDATE chat_messages 
+            SET message = ? 
+            WHERE id = ?
+            """, (new_message, msg_id)
+        )
+    flask.flash('Chat message updated.', 'success')
+    return _back_to('chat')
+
+
+##
 # Maintenance
 
 @admin_bp.route('/maintenance/clear-cache', methods=['POST'])
@@ -170,7 +210,6 @@ def route_clear_cache() -> flask.Response:
 @admin_bp.route('/maintenance/rate-limits', methods=['GET'])
 @admin_required
 def route_rate_limits() -> flask.Response:
-    """Currently-blocked and warning-state IPs as JSON for the live panel."""
     return flask.jsonify(rate_limiter.report())
 
 
@@ -185,8 +224,6 @@ def route_clear_rate_limits() -> flask.Response:
 @admin_bp.route('/')
 @admin_required
 def route_settings() -> flask.Response:
-
-    # Grab the 1-time display API key
     token = flask.session.pop('_api_key_token', None)
     new_api_key = temporary_store.claim(token)
 
@@ -194,14 +231,25 @@ def route_settings() -> flask.Response:
 
     users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
     for u in users:
-        # just a bool for the UI
         u['hasAvatar'] = bool(u.get('avatarLastChanged'))
+
+    # Load chat messages for moderation
+    # TODO: Maybe only load the last 100 and add a lazy loader or a paged view?
+    with database() as db:
+        chat_messages = db.execute(
+            """
+            SELECT id, username, time, message 
+            FROM chat_messages 
+            ORDER BY time DESC
+            """
+        ).fetchall()
 
     resp = flask.make_response(
         flask.render_template(
             'settings.html',
             users=users,
-            create_form=UserForm(formdata=None),   # Must not repopulate from a failed POST
+            chat_messages=chat_messages,
+            create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),
             role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],
             server_info=get_server_info(extended=True),

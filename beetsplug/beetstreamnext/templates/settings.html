@@ -145,6 +145,7 @@
         {% for cat in settings_categories %}
         <button class="tab" role="tab" data-tab="{{ cat }}" aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
         {% endfor %}
+        <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat moderation</button>
         <button class="tab" role="tab" data-tab="maintenance" aria-controls="tab-maintenance">Maintenance</button>
     </nav>
 
@@ -224,6 +225,56 @@
                         {% else %}
                         <tr>
                             <td colspan="3" class="empty-state">No users yet. Add the first one to get started.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    {# Chat moderation tab #}
+    <section class="tab-content" id="tab-chat" data-tab-content="chat" role="tabpanel">
+        <div class="card">
+            <div class="table-header">
+                <h2>Chat Moderation</h2>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Time</th>
+                            <th>Message</th>
+                            <th class="cell-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in chat_messages %}
+                        <tr>
+                            <td class="username-cell"><strong>{{ m.username }}</strong></td>
+                            <td>
+                                <span class="chat-time" data-timestamp="{{ m.time | int }}">Loading...</span>
+                            </td>
+                            <td><span id="msg-text-{{ m.id }}">{{ m.message }}</span></td>
+                            <td class="actions-cell">
+                                <button class="action-link"
+                                        data-action="edit-chat"
+                                        data-id="{{ m.id }}"
+                                        data-text="{{ m.message | e }}">Edit</button>
+
+                                <form action="{{ url_for('admin.route_delete_chat_message', msg_id=m.id) }}"
+                                      method="POST"
+                                      class="form-inline"
+                                      data-confirm="Delete this message? This action is permanent.">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-link action-link-delete">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-state">No chat messages found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

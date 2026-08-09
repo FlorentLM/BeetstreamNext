@@ -20,6 +20,8 @@ _DUMMY_PASSWORD = secrets.token_urlsafe(24)
 _DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
 
 
+# TODO: hmac.compare_digest -> compare on encoded bytes instead?
+
 def _dummy_stored_password() -> str:
     """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
     global _DUMMY_TOKEN

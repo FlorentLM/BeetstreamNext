@@ -11,6 +11,7 @@ from beetsplug.beetstreamnext.constants import (
 
 
 # TODO: Support CIDR
+# TODO: Second limiter on IP only for repeat offenders
 
 
 class RateLimiter:

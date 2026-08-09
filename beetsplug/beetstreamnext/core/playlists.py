@@ -16,6 +16,7 @@ from beetsplug.beetstreamnext.api.serializers import map_song, IDMapper
 if TYPE_CHECKING:
     from beets.library import Item
 
+# TODO: Decode paths if foreign playlist contains %20'd spaces?
 
 class Playlist:
 

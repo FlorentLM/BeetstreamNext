@@ -8,7 +8,7 @@
 
 <h3 align="center">BeetstreamNext</h3>
   <p>
-  A modern, feature-rich OpenSubsonic API server for your Beets.io music library.
+  A fully-featured OpenSubsonic API server for Beets.io music libraries.
   <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
@@ -16,63 +16,69 @@
   </p>
 </div>
 
-BeetstreamNext is a [Beets.io](https://beets.io) plugin that exposes the [OpenSubsonic API](https://opensubsonic.netlify.app/), allowing you to stream your music library to any Subsonic-compatible client.
-I started implementing new features to Beetstream but ended up rewriting a significant part of it, so I figured it'd make more sense to keep it as a distinct project.
+BeetstreamNext exposes your [Beets](https://beets.io) music library over the [OpenSubsonic API](https://opensubsonic.netlify.app/), allowing you to stream your music to any Subsonic client. 
 
-Personally, I use Beets to manage my music library but I don't like to write metadata to the files. So with this, I can have the best of both worlds.
+## Screenshots
 
-## Features
+<p float="left">
+    <img src="beetsplug/beetstreamnext/static/images/home_screenshot.png" alt="home page screenshot" width="300">
+    <img src="beetsplug/beetstreamnext/static/images/admin_screenshot.png" alt="admin page screenshot" width="300">
+</p>
 
-- **OpenSubsonic coverage**: All essential modern endpoints are covered
-- **Multi-user system**: Bookmarks, individual ratings, favourites, play statistics, play queues (save/restore your queue across devices)...
-- **Authentication**: Supports OpenSubsonic's modern API key authentication, and the legacy MD5 token auth for older clients
-- **Transcoding**: On-the-fly transcoding (with FFmpeg). Direct play also available of course.
-- **Album artworks / Artists images**: 
-    - Grabs and serves the local album art path from your Beets library
-    - Can extract embedded album artwork from media files
-    - Can use the [Cover Art Archive](https://coverartarchive.org/) to fetch album artworks
-    - Can fetch artist images from Deezer
-- **More metadata!!**:
-    - Can fetch artist info (like biographies, top tracks, similar artists, etc) from Last.fm
-    - Fallback to Wikipedia for artists biographies if not from Last.fm
-    - Serves internal Beets lyrics or fetches them on-the-fly via the Beets `lyrics` plugin
-- **Complex queries**: Beets' advanced queries are supported in the search function. Use regex, fuzzy match, complex filters, etc. directly from your client!
-    - Just use the `beets:` (or `b:`) prefix followed by your query: for instance`beets:length:..3:30` will return all songs shorter than 3 minutes 30
-    - See Beets' [Queries reference](https://beets.readthedocs.io/en/stable/reference/query.html) for more examples
+---
 
-## Installation
+## API coverage & Features
 
-Requires Python 3.10+ and an existing Beets library.
+BeetstreamNext implements the vast majority of the OpenSubsonic API specification, **excluding video streaming and podcast management**.
 
-> [!NOTE]
-> BeetstreamNext is not yet available on PyPI. Installation currently requires cloning the source code from GitHub.
+It also introduces several structural enhancements and features.
 
-1.  **Install Beets**: If you haven't already, [install and configure Beets](https://beets.readthedocs.io/en/stable/guides/main.html). You will also need `git` installed on your system.
+*   **Authentication:** Supports modern API key authentication and legacy MD5 token authentication for older clients.
+*   **Multi-user system:** Individual bookmarks, ratings, favorites, play statistics, and play queues (allowing you to save and restore your active queue across devices).
+*   **Metadata integration:** Retrieves artist biographies, top tracks, and similar artists from Last.fm or Wikipedia.
+*   **Album artworks / Artists images**: Grabs and serves the local album art path from your Beets library, or fetches and saves the images from [Cover Art Archive](https://coverartarchive.org/) and Deezer.
+*   **Advanced Beets queries (search hook):** You can execute complex Beets queries (e.g. regex, field-specific queries, fuzzy matching) directly inside your Subsonic client's search bar. Simply prefix your query with `beets:` or `b:` (e.g. `beets:length:..3:30` to find tracks shorter than 3:30).
+*   **Zero-file-modification architecture:** Designed for users who manage metadata inside Beets but do *not* want to modify or write metadata tags directly to their media files, for archival purposes. 
+*   **Lyrics retrieval:** Serves internal Beets lyrics or fetches them on-the-fly using the Beets `lyrics` plugin.
+*   **On-the-fly transcoding:** Serves raw files directly or transcodes lossy/lossless targets on-the-fly using FFmpeg.
+*   **HTTP Live Streaming (HLS):** AAC-encoded dynamic HLS streaming with full Adaptive Bitrate (ABR) support for clients that request multi-bitrate variant playlists.
+*   **Public shares:** Generates public landing pages for shared files with a secure download endpoint.
+*   **Access controls:** Built-in IP whitelisting, blacklisting, and adaptive login rate-limiting (monitored and cleared via the admin panel).
+*   **Admin WebUI:** Settings can be changed via a rather simple but useful WebUI.
 
-2. **Install the Plugin**:
-   ```bash
-   git clone https://github.com/FlorentLM/BeetstreamNext.git
-   cd BeetstreamNext
-   pip install .
-   ```
-3. **Enable in Beets' `config.yaml`**:
-   ```yaml
-   plugins: beetstreamnext
-   ```
-4. **Create a user**:
-   ```bash
-   beet beetstreamnext --create-user
-   ```
-   *Follow the prompts to create your admin account and receive your API Key.*
+[//]: # (### Coming soon:)
 
-5. **Run the Server**:
-   ```bash
-   beet beetstreamnext
-   ```
+[//]: # ()
+[//]: # (*   **Acoustic similarity engine:** Native integration with [AudioMuse-AI]&#40;https://github.com/FlorentLM/BeetstreamNext&#41; to support OpenSubsonic's `sonicSimilarity` extension.)
+
+---
+
+## Installation & Deployment
+
+1.  **Clone and Install:**
+    ```bash
+    git clone https://github.com/FlorentLM/BeetstreamNext.git
+    cd BeetstreamNext
+    pip install .
+    ```
+2.  **Enable in Beets' `config.yaml`:**
+    ```yaml
+    plugins: beetstreamnext
+    ```
+3.  **Create your admin user:**
+    ```bash
+    beet beetstreamnext --create-user
+    ```
+4.  **Run:**
+    ```bash
+    beet beetstreamnext
+    ```
+
+---
 
 ## Configuration
 
-You can set default startup options in your Beets `config.yaml`:
+Settings can be managed initially via Beets' `config.yaml`, and subsequently adjusted directly inside the Admin WebUI (which takes precedence).
 
 ```yaml
 beetstreamnext:
@@ -80,35 +86,23 @@ beetstreamnext:
   port: 8080
   reverse_proxy: false          # Enable if running behind Nginx/Caddy
   
+  # Network & Access restrictions
+  admin_hostname: ''            # Restrict admin panel to this host (e.g., admin.local)
+  external_hostname: ''         # Force public shares to generate with this domain name
   ip_whitelist: ''              # List of IPs (space or comma-separated) to allow
   ip_blacklist: ''              # List of IPs (space or comma-separated) to block
+  cors: ''                      # Allowed CORS origins for web-based clients
   
-  debug: false                  # Enable to use debug mode (insecure)
-  force_trust_host: false       # Enable to allow any host to use debug mode (not recommended)
-  
-  legacy_auth: false            # Enable to allow old MD5-based password auth (not recommended)
-  never_transcode: false        # Force direct stream only (never re-encode files, even if a client requests it)
-  
-  # Artist images
-  fetch_artists_images: true    # Fetch artist photos from Deezer when a client requests them
-  save_artists_images: true     # Save fetched artist photos to their respective folders (if they don't exist yet)
-  save_album_art: true          # Save fetched album art images to their respective folders (if they don't exist yet)
-  
-  # Playlists configuration
-  playlist_dirs:                # A list of directories to scan for .m3u playlists.
-    - '/path/to/my/playlists'
-    - '/another/path/for/playlists'
+  # Library options
+  enable_public_now_playing: false # Toggle the public homepage widget
+  fetch_artists_images: true    # Fetch artist photos from Deezer
+  save_artists_images: true     # Save fetched artist photos to music folders
+  save_album_art: true          # Save fetched album art to music folders
 ```
 
-All of them can then be customised in the WebUI (which then takes precedence over the yaml).
-
 ### Environment variables
-
-Some features require API keys or secrets, which should be configured as environment variables.
-You can place these in a `.env` file in the directory where you run the `beet` command.
-
-- `BEETSTREAMNEXT_KEY`: Secret key used to encrypt legacy passwords at rest.
-- `LASTFM_API_KEY`: (Optional) to enable biographies, similar artist discovery, etc.
+*   `BEETSTREAMNEXT_KEY`: Secret key used to encrypt legacy passwords at rest.
+*   `LASTFM_API_KEY`: (Optional) To enable biographies, top tracks, and similar artist queries.
 
 ## Using behind a reverse proxy
 
@@ -147,7 +141,7 @@ you must allow the web player's URL in your Beets config, otherwise your web bro
 
 ```yaml
 beetstreamnext:
-    cors: 'https://app.example.com' # also accepts a comma-separated list or a wildcard '*'
+    cors: 'https://music.example.com' # also accepts a comma-separated list or a wildcard '*'
 ```
 
 If you are using a SSO gateway (Authelia, Authentik, etc.), or if the web-based player is a bit quirky, you might also
@@ -160,6 +154,8 @@ beetstreamnext:
 
 **Warning:** DO NOT set `cors: '*'` alongside `cors_supports_credentials: yes`. 
 Doing so could allow *any* malicious website you visit to silently interact with your BeetstreamNext server in the background.
+
+---
 
 ## Tested clients
 
@@ -185,22 +181,13 @@ I tested it and confirmed it working with:
 - [Feishin](https://github.com/jeffvli/feishin)
 - [Aonsoku](https://github.com/victoralvesf/aonsoku)
 
-## TODO
-- [x] User management (create/delete) via the API (instead of CLI only)
-- [x] Implement rate limiting
-- [x] Move now_playing into the db as a volatile table
-- [x] Use MBID instead of artists names for internal ID mapping
-- [x] Support multi-artists / contributors / producers / labels properly
-- [x] Make an Admin WebUI panel to manage users
-- [ ] Add all remaining endpoints (almost done)
-- [ ] Make BeetstreamNext a standalone app, it does not _need_ to be a plugin
-- [ ] Docker image
-- [ ] Add scrobbling to Last.fm and other similar services
-- [ ] Maybe provide a direct `smartplaylist` query support for virtual playlists
+---
 
 ## Missing endpoints
 
 See [here](OpenSubsonic_endpoints.md)
+
+---
 
 ## License
 

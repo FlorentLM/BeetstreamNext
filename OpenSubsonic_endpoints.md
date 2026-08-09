@@ -2,7 +2,7 @@
 
 ## All endpoints
 
-- [ ] [addChatMessage](https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/)
+- [x] [addChatMessage](https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/)
 - [x] [changePassword](https://opensubsonic.netlify.app/docs/endpoints/changepassword/)
 - [x] [createBookmark](https://opensubsonic.netlify.app/docs/endpoints/createbookmark/)
 - [x] [createInternetRadioStation](https://opensubsonic.netlify.app/docs/endpoints/createinternetradiostation/)
@@ -32,7 +32,7 @@
 - [x] [getAvatar](https://opensubsonic.netlify.app/docs/endpoints/getavatar/)
 - [x] [getBookmarks](https://opensubsonic.netlify.app/docs/endpoints/getbookmarks/)
 - [ ] [getCaptions](https://opensubsonic.netlify.app/docs/endpoints/getcaptions/)
-- [ ] [getChatMessages](https://opensubsonic.netlify.app/docs/endpoints/getchatmessages/)
+- [x] [getChatMessages](https://opensubsonic.netlify.app/docs/endpoints/getchatmessages/)
 - [x] [getCoverArt](https://opensubsonic.netlify.app/docs/endpoints/getcoverart/)
 - [x] [getGenres](https://opensubsonic.netlify.app/docs/endpoints/getgenres/)
 - [x] [getIndexes](https://opensubsonic.netlify.app/docs/endpoints/getindexes/)

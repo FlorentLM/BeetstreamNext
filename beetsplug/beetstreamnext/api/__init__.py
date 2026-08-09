@@ -6,6 +6,7 @@ from .routes import (
     albums,
     artists,
     bookmarks,
+    chat,
     coverart,
     general,
     likes,

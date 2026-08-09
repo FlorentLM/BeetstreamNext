@@ -415,6 +415,22 @@ def initialise_db() -> None:
         )
         """
     )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS chat_messages
+        (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            time     REAL NOT NULL, -- timestamp in ms
+            message  TEXT NOT NULL,
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_chat_time ON chat_messages (time);""")
+
     # ephemeral: clears on startup
     cur.execute("""DELETE FROM now_playing""")
 

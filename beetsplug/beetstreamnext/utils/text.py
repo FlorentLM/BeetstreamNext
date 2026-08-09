@@ -1,7 +1,6 @@
 import string
 import unicodedata
 from typing import Any, Sequence, List
-from urllib.parse import unquote
 
 from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
 

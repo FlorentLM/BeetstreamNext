@@ -53,7 +53,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'force_trust_host': False,
             'cors_supports_credentials': False,
             'reverse_proxy': False,
-            'proxy_hops': 1,        # TODO: Make this configurable from webui
+            'proxy_hops': 1,
             'legacy_auth': True,
             'never_transcode': False,
             'fetch_artists_images': False,
@@ -251,9 +251,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
             yaml_defaults = {
+                'threads': self.config['threads'].get(int),
                 'cors_origins': self.config['cors'].get(str),
                 'cors_supports_credentials': self.config['cors_supports_credentials'].get(bool),
                 'reverse_proxy': self.config['reverse_proxy'].get(bool),
+                'proxy_hops': self.config['proxy_hops'].get(int),
                 'legacy_auth': self.config['legacy_auth'].get(bool),
                 'never_transcode': self.config['never_transcode'].get(bool),
                 'fetch_artists_images': self.config['fetch_artists_images'].get(bool),
@@ -327,7 +329,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     ], color=TermColors.WARNING)
 
                 # Trusting 'proxy_hops' number of forwarded entries
-                hops = max(1, self.config['proxy_hops'].get(int))
+                hops = max(1, settings_store.get('proxy_hops'))
                 app.wsgi_app = ProxyFix(
                     app.wsgi_app,
                     x_for=hops, x_proto=hops, x_host=hops, x_port=hops, x_prefix=hops,
@@ -392,11 +394,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             else:
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
+                threads = settings_store.get('threads')
+                logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 if LOG_LEVEL > logging.INFO:
                     print(f'BeetstreamNext server running on http://{host}:{port}...')
                 logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
-                threads = opts.threads or self.config['threads'].get(int)
                 serve(logged_app, host=host, port=port, threads=threads)
 
                 # TODO: Add configurable channel_timeout and connection_limit?

@@ -70,6 +70,14 @@ def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
 
     # Server / network
+    'threads': {
+        'type': 'int',
+        'default': 16,
+        'category': 'server',
+        'description': 'Worker threads for serving requests.',
+        'requires_restart': True,
+        'validator': _int_range(1, 128),
+    },
     'cors_origins': {
         'type': 'str',
         'default': '',
@@ -90,6 +98,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Server is behind a reverse proxy (Nginx, Caddy, Traefik, etc.).',
         'requires_restart': True,
+    },
+    'proxy_hops': {
+        'type': 'int',
+        'default': 1,
+        'category': 'server',
+        'description': 'Number of trusted reverse proxies in front of the server. Only used if `reverse_proxy` is enabled',
+        'requires_restart': True,
+        'validator': _int_range(1, 10),
     },
     'trusted_hosts': {
         'type': 'str',

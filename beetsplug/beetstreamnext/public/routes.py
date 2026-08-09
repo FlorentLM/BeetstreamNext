@@ -29,7 +29,6 @@ def page_not_found(_e: Any) -> Tuple[str, int]:
 def home() -> str:
     stats = get_server_info(extended=False)
     stats['status'] = 'running'
-    return render_template('index.html', stats=stats)
 
     now_playing = None
 
@@ -58,11 +57,19 @@ def home() -> str:
                     'username': row['username']
                 }
 
+    # Resolve the public/external URL
+    external_host = settings_store.get('external_hostname')
+    if external_host:
+        scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+        server_url = f"{scheme}://{external_host}/"
+    else:
+        server_url = flask.request.host_url
 
     return render_template(
         'index.html',
         stats=stats,
         now_playing=now_playing,
+        server_url=server_url
     )
 
 @public_bp.route('/now-playing/cover')

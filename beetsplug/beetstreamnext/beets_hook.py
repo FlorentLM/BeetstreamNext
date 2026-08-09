@@ -60,7 +60,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'save_artists_images': False,
             'save_album_art': False,
             'lastfm_api_key': '',
-            'playlist_dir': ''
+            'playlist_dir': '',
+            'threads': 16,
         })
         self.config['lastfm_api_key'].redact = True
 
@@ -74,6 +75,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('--force_trust_host', dest='force_trust_host', action='store_true', default=False, help='Force debug mode on non-localhost')
         cmd.parser.add_option('--port', dest='port', type='int', help='Port to listen on')
         cmd.parser.add_option('--host', dest='host', help='Host to listen on')
+        cmd.parser.add_option('--threads', dest='threads', type='int', help='Waitress worker threads')
 
         # User management
         cmd.parser.add_option('-c', '--create-user', action='store_true', default=False, help='Create a new user')
@@ -394,7 +396,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     print(f'BeetstreamNext server running on http://{host}:{port}...')
                 logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
-                serve(logged_app, host=host, port=port, threads=8)
+                threads = opts.threads or self.config['threads'].get(int)
+                serve(logged_app, host=host, port=port, threads=threads)
+
+                # TODO: Add configurable channel_timeout and connection_limit?
 
         cmd.func = func
 

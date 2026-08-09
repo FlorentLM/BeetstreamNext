@@ -145,7 +145,8 @@
         {% for cat in settings_categories %}
         <button class="tab" role="tab" data-tab="{{ cat }}" aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
         {% endfor %}
-        <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat moderation</button>
+        <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat Moderation</button>
+        <button class="tab" role="tab" data-tab="shares" aria-controls="tab-shares">Shares</button>
         <button class="tab" role="tab" data-tab="maintenance" aria-controls="tab-maintenance">Maintenance</button>
     </nav>
 
@@ -275,6 +276,71 @@
                         {% else %}
                         <tr>
                             <td colspan="4" class="empty-state">No chat messages found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    {# Shares tab #}
+    <section class="tab-content" id="tab-shares" data-tab-content="shares" role="tabpanel">
+        <div class="card">
+            <div class="table-header">
+                <h2>Shares Directory</h2>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID / Link</th>
+                            <th>Creator</th>
+                            <th>Description</th>
+                            <th>Items</th>
+                            <th>Traffic</th>
+                            <th>Expires</th>
+                            <th class="cell-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in shares %}
+                        <tr>
+                            <td>
+                                <a href="{{ s.url }}" target="_blank" rel="noopener" class="username-name">
+                                    <code>{{ s.id }}</code>
+                                </a>
+                            </td>
+                            <td><strong>{{ s.username }}</strong></td>
+                            <td>
+                                {% if s.description %}
+                                    <span class="email-cell">{{ s.description }}</span>
+                                {% else %}
+                                    <span class="rate-limit-anon">—</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge">{{ s.entry_count }} {{ 'item' if s.entry_count == 1 else 'items' }}</span></td>
+                            <td><span class="badge badge-limit">{{ s.visit_count }} visits</span></td>
+                            <td>
+                                {% if s.expires %}
+                                    <span class="chat-time" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
+                                {% else %}
+                                    <span class="badge" style="background: rgba(34, 197, 94, 0.1); color: #4ade80; border-color: rgba(34, 197, 94, 0.3);">Never</span>
+                                {% endif %}
+                            </td>
+                            <td class="actions-cell">
+                                <form action="{{ url_for('admin.route_delete_share', share_id=s.id) }}"
+                                      method="POST"
+                                      class="form-inline"
+                                      data-confirm="Delete share '{{ s.id }}'? Users with this URL will immediately lose access to downloads.">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-link action-link-delete">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="empty-state">No shares created yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

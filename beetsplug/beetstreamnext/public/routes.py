@@ -48,8 +48,8 @@ def share_view(share_id: str) -> flask.Response:
     if share['expires'] and share['expires'] < time.time():
         error = {
             'code': 410,
-            'title': 'Link Expired',
-            'message': 'This shared link has expired and is no longer accessible.',
+            'title': 'Share Expired',
+            'message': 'This share has expired and is no longer accessible.',
         }
         return render_template('error.html', error=error), 410
 

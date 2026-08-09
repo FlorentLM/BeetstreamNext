@@ -187,6 +187,21 @@ def route_edit_chat_message(msg_id: int) -> flask.Response:
 
 
 ##
+# Shares deletion
+
+@admin_bp.route('/shares/delete/<share_id>', methods=['POST'])
+@admin_required
+def route_delete_share(share_id: str) -> flask.Response:
+
+    with database() as db:
+        db.execute("""DELETE FROM shares WHERE id = ?""", (share_id,))
+
+    flask.flash(f"Share '{share_id}' deleted successfully.", 'success')
+
+    return _back_to('shares')
+
+
+##
 # Maintenance
 
 @admin_bp.route('/maintenance/clear-cache', methods=['POST'])
@@ -238,17 +253,42 @@ def route_settings() -> flask.Response:
     with database() as db:
         chat_messages = db.execute(
             """
-            SELECT id, username, time, message 
-            FROM chat_messages 
+            SELECT id, username, time, message
+            FROM chat_messages
             ORDER BY time DESC
             """
         ).fetchall()
+
+    # Load active shares
+    with database() as db:
+        shares_rows = db.execute(
+            """
+            SELECT s.id, s.username, s.description, s.expires, s.created, s.visit_count,
+                   (SELECT COUNT(*) FROM share_entries se WHERE se.share_id = s.id) as entry_count
+            FROM shares s
+            ORDER BY s.created DESC
+            """
+        ).fetchall()
+
+    # build shares URLs
+    shares_list = []
+    external_host = settings_store.get('external_hostname')
+    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+
+    for r in shares_rows:
+        s_dict = dict(r)
+        if external_host:
+            s_dict['url'] = f"{scheme}://{external_host}{flask.url_for('public.share_view', share_id=r['id'])}"
+        else:
+            s_dict['url'] = flask.url_for('public.share_view', share_id=r['id'], _external=True)
+        shares_list.append(s_dict)
 
     resp = flask.make_response(
         flask.render_template(
             'settings.html',
             users=users,
             chat_messages=chat_messages,
+            shares=shares_list,
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),
             role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],

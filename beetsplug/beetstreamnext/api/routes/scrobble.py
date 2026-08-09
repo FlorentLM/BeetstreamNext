@@ -30,25 +30,35 @@ def endpoint_scrobble() -> flask.Response:
     now = time.time()
 
     if not submission:
-        # if not submission it's just a "Now playing"
+        # if submission=false, this is a "now playing" notification
         p_id = playing_ids[0]
 
         with database() as db:
             db.execute(
                 """
-                INSERT INTO now_playing (username, item_id, started_at, player_name)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO now_playing (username, item_id, started_at, player_name, state)
+                VALUES (?, ?, ?, ?, 'playing')
                 ON CONFLICT (username) DO UPDATE SET
                     item_id     = excluded.item_id,
                     started_at  = excluded.started_at,
-                    player_name = excluded.player_name
+                    player_name = excluded.player_name,
+                    state       = 'playing'
                 """, (username, p_id, now, client)
             )
         return subsonic_response({}, resp_fmt=resp_fmt)
 
+    # If submission=true, this is a completed playback
     with database() as db:
-        for i, p_id in enumerate(playing_ids):
+        # Clean up "now playing" state
+        db.execute(
+            """
+            DELETE FROM now_playing 
+            WHERE username = ?
+            """, (username,)
+        )
 
+        # Record play stats
+        for i, p_id in enumerate(playing_ids):
             if IDMapper.get_type(p_id) == 'song':       # only keep count of songs played, not radios
                 beets_id = IDMapper.sub_to_song(p_id)
 

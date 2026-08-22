@@ -99,11 +99,53 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     return tuple(cleaned)
 
 
+def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optional[str]) -> flask.Response | None:
+    """
+    Hand the file off to the reverse proxy (Nginx/Apache) instead of streaming it through
+    Python (if configured). Returns None if offloading isn't enabled/possible.
+    """
+    from beetsplug.beetstreamnext.settings import settings_store
+
+    if not settings_store.get('reverse_proxy'):
+        return None
+
+    method = settings_store.get('sendfile_method')
+    if method == 'off':
+        return None
+
+    resp = flask.Response(status=200, mimetype=get_mimetype(file_path))
+    if as_attachment:
+        resp.headers['Content-Disposition'] = f'attachment; filename="{download_name or file_path.name}"'
+
+    if method == 'x-sendfile':
+        resp.headers['X-Sendfile'] = str(file_path)
+        return resp
+
+    if method == 'x-accel-redirect':
+        root = Path(app.config['root_directory'])
+        try:
+            rel = file_path.resolve().relative_to(root.resolve())
+        except ValueError:
+            bsn_logger.warning(f"'{file_path}' is outside root_directory, can't use X-Accel-Redirect.")
+            return None
+        prefix = settings_store.get('sendfile_internal_prefix').rstrip('/')
+        resp.headers['X-Accel-Redirect'] = f'{prefix}/{rel.as_posix()}'
+        return resp
+
+    return None
+
+
 def send_file(
         file_path: str | Path,
         as_attachment: bool = False,
         download_name: Optional[str] = None
     ) -> flask.Response | None:
+
+    file_path = Path(file_path)
+
+    offloaded = _sendfile_offload(file_path, as_attachment, download_name)
+    if offloaded is not None:
+        return offloaded
 
     try:
         return flask.send_file(

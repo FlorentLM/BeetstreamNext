@@ -193,6 +193,8 @@ class SettingsStore:
                     'requires_restart': bool(spec.get('requires_restart')),
                     'sensitive': bool(spec.get('sensitive')),
                 }
+                if 'choices' in spec:
+                    entry['choices'] = spec['choices']
                 if entry['sensitive']:
                     entry['is_set'] = bool(val)
                 else:

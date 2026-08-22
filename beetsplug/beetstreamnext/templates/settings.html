@@ -15,6 +15,13 @@
                 <option value="{{ u.username }}" {% if info.value == u.username %}selected{% endif %}>{{ u.username }}</option>
             {% endfor %}
         </select>
+    {%- elif info.choices -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <select id="set-{{ key }}" name="{{ key }}">
+            {% for c in info.choices %}
+                <option value="{{ c }}" {% if info.value == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
     {%- elif info.type == 'bool' -%}
         <label class="setting-toggle">
             <input type="checkbox" name="{{ key }}" {% if info.value %}checked{% endif %}>

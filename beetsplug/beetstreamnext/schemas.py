@@ -1,4 +1,4 @@
-from typing import TypedDict, Any, Callable, Dict
+from typing import TypedDict, Any, Callable, Dict, Tuple
 
 from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts
 
@@ -56,6 +56,7 @@ class SettingDescriptor(TypedDict, total=False):
     requires_restart: bool
     sensitive: bool                     # Encrypt at rest, hide from logs, etc
     validator: Callable[[Any], Any]     # Raise ValueError on bad input
+    choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
 
 
 def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
@@ -64,6 +65,15 @@ def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
         if not lo <= n <= hi:
             raise ValueError(f'Must be between {lo} and {hi}')
         return n
+    return _v
+
+
+def _choice(*options: str) -> Callable[[Any], str]:
+    def _v(x: Any) -> str:
+        s = str(x)
+        if s not in options:
+            raise ValueError(f"Must be one of: {', '.join(options)}")
+        return s
     return _v
 
 
@@ -136,6 +146,29 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Number of trusted reverse proxies in front of the server. Only used if `reverse_proxy` is enabled',
         'requires_restart': True,
         'validator': _int_range(1, 10),
+    },
+    'sendfile_method': {
+        'type': 'str',
+        'default': 'off',
+        'category': 'server',
+        'description': (
+            "Offload direct (non-transcoded) file serving to the reverse proxy instead of streaming bytes "
+            "through Python. 'x-accel-redirect' for Nginx, 'x-sendfile' for Apache. Only takes effect when "
+            "'reverse_proxy' is enabled and the proxy is configured to honor the header."
+        ),
+        'requires_restart': False,
+        'choices': ('off', 'x-accel-redirect', 'x-sendfile'),
+        'validator': _choice('off', 'x-accel-redirect', 'x-sendfile'),
+    },
+    'sendfile_internal_prefix': {
+        'type': 'str',
+        'default': '/_bsn_internal',
+        'category': 'server',
+        'description': (
+            "Internal URI prefix your Nginx config maps, via an internal-only 'location' block, to the music "
+            "root directory. Only used when sendfile_method is 'x-accel-redirect'."
+        ),
+        'requires_restart': False,
     },
     'trusted_hosts': {
         'type': 'str',

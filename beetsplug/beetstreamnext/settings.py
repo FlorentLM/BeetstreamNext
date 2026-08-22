@@ -59,6 +59,8 @@ class SettingsStore:
             'ip_blacklist': lambda v: setattr(ip_filter, 'blacklist', v),
             'rate_limit_max_failures': lambda v: setattr(rate_limiter, 'max_failures', v),
             'rate_limit_block_window': lambda v: setattr(rate_limiter, 'block_window', v),
+            'rate_limit_ip_max_failures': lambda v: setattr(rate_limiter, 'ip_max_failures', v),
+            'rate_limit_ip_block_window': lambda v: setattr(rate_limiter, 'ip_block_window', v),
         })
 
     def initialise(self, yaml_defaults: Optional[Dict[str, Any]] = None):

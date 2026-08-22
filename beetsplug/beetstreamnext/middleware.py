@@ -16,7 +16,8 @@ from beetsplug.beetstreamnext.api.responses import subsonic_error
 def _before_request() -> flask.Response | None:
     trusted_raw = app.config.get('trusted_hosts', '')
     if trusted_raw:
-        allowed = {h.strip() for h in trusted_raw.split(',') if h.strip()}      # TODO: Better parser / validator
+
+        allowed = {h for h in trusted_raw.split(',') if h}
 
         raw_host = flask.request.host
         try:
@@ -28,6 +29,8 @@ def _before_request() -> flask.Response | None:
                 request_host = raw_host.split(':')[0]
         except ValueError:
             flask.abort(400)
+
+        request_host = request_host.lower()
 
         if request_host not in allowed and request_host not in LOOPBACK_IPS:
             bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')

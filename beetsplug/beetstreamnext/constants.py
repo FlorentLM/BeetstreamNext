@@ -56,6 +56,11 @@ LOOPBACK_IPS: frozenset[str] = frozenset({'127.0.0.1', 'localhost', '::1'})
 RATE_LIMIT_MAX_FAILURES: int = 5
 RATE_LIMIT_BLOCK_WINDOW: int = 300
 
+# Second limiter keyed on IP alone (for repeat offenders
+# spraying multiple usernames from the same address)
+RATE_LIMIT_IP_MAX_FAILURES: int = 20
+RATE_LIMIT_IP_BLOCK_WINDOW: int = 3600
+
 MIN_PASSWORD_LEN: int = 8
 
 

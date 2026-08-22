@@ -1,6 +1,6 @@
 from typing import TypedDict, Any, Callable, Dict
 
-from beetsplug.beetstreamnext.core.security import ip_filter
+from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts
 
 
 ## Allowed image formats
@@ -143,6 +143,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Allowed Host headers (domain names/IPs, comma-separated). If empty, all hosts are allowed. Loopback is always allowed.',
         'requires_restart': False,
+        'validator': validate_trusted_hosts,
     },
     'legacy_auth': {
         'type': 'bool',
@@ -310,6 +311,22 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Seconds before failures roll off.',
         'requires_restart': False,
         'validator': _int_range(10, 86400),
+    },
+    'rate_limit_ip_max_failures': {
+        'type': 'int',
+        'default': 20,
+        'category': 'security',
+        'description': 'Failed attempts from a single IP (across any usernames tried) before that IP is blocked outright. Catches attackers rotating usernames to dodge the per-user limit above.',
+        'requires_restart': False,
+        'validator': _int_range(1, 1000),
+    },
+    'rate_limit_ip_block_window': {
+        'type': 'int',
+        'default': 3600,
+        'category': 'security',
+        'description': 'Seconds before an IP-wide failure count rolls off.',
+        'requires_restart': False,
+        'validator': _int_range(10, 604800),
     },
 }
 

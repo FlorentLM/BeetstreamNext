@@ -6,8 +6,16 @@
 
 {# Macros #}
 
-{% macro render_setting_field(key, info) -%}
-    {%- if info.type == 'bool' -%}
+{% macro render_setting_field(key, info, users=None) -%}
+    {%- if key == 'ratings_writeback_user' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <select id="set-{{ key }}" name="{{ key }}">
+            <option value="" {% if not info.value %}selected{% endif %}>&mdash; Disabled &mdash;</option>
+            {% for u in (users or []) %}
+                <option value="{{ u.username }}" {% if info.value == u.username %}selected{% endif %}>{{ u.username }}</option>
+            {% endfor %}
+        </select>
+    {%- elif info.type == 'bool' -%}
         <label class="setting-toggle">
             <input type="checkbox" name="{{ key }}" {% if info.value %}checked{% endif %}>
             <span class="setting-toggle-key">{{ key }}</span>
@@ -35,14 +43,14 @@
     {%- endif -%}
 {%- endmacro %}
 
-{% macro render_settings_form(category, settings) %}
+{% macro render_settings_form(category, settings, users=None) %}
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% for key, info in settings.items() if info.type != 'list[str]' %}
             <div class="setting-row">
                 <div class="setting-row-control">
-                    {{ render_setting_field(key, info) }}
+                    {{ render_setting_field(key, info, users) }}
                 </div>
                 <div class="setting-row-meta">
                     <p class="setting-description">{{ info.description }}</p>
@@ -358,7 +366,7 @@
             <p class="card-hint">Values saved here are stored in the database and override
                the beets YAML config on the next startup.</p>
             {% endif %}
-            {{ render_settings_form(cat, settings_by_category[cat]) }}
+            {{ render_settings_form(cat, settings_by_category[cat], users) }}
         </div>
 
         {% if cat == 'security' %}

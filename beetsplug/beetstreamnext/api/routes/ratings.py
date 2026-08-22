@@ -4,8 +4,10 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.api.serializers import commit_likes
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/
@@ -44,6 +46,7 @@ def endpoint_set_rating() -> flask.Response:
                 """, (username, req_id, rating, time.time())
             )
 
-    # TODO: Maybe allow committing to Beets for single user setups?
+    if username and username == settings_store.get('ratings_writeback_user'):
+        commit_likes(req_id, 'rating', rating)
 
     return subsonic_response({}, resp_fmt=resp_fmt)

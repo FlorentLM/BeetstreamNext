@@ -232,6 +232,17 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Save fetched album version info to the beets database.',
         'requires_restart': False,
     },
+    'ratings_writeback_user': {
+        'type': 'str',
+        'default': '',
+        'category': 'library',
+        'description': (
+            "Commit this user's Likes and Ratings into the Beets library so they survive outside "
+            "BeetstreamNext. Beets has no concept of per-user data, so only one user's changes can "
+            "be committed this way. Leave unset to disable."
+        ),
+        'requires_restart': False,
+    },
     'enable_radio_discovery': {
         'type': 'bool',
         'default': False,

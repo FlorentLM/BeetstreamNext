@@ -4,10 +4,13 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.core.database import database, dual_database
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists
+from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_album, map_song, map_artist, get_song_counts
+from beetsplug.beetstreamnext.api.serializers import (
+    IDMapper, map_album, map_song, map_artist, get_song_counts, commit_likes
+)
 
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:
@@ -58,7 +61,9 @@ def endpoint_star_or_unstar() -> flask.Response:
     for id_ in to_like:
         _set_liked(username, id_,  liked)
 
-    # TODO: Maybe allow committing to Beets for single user setups?
+    if username and username == settings_store.get('ratings_writeback_user'):
+        for id_ in to_like:
+            commit_likes(id_, 'starred', int(liked))
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

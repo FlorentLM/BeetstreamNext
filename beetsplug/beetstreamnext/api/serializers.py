@@ -109,6 +109,31 @@ class IDMapper:
         return None
 
 
+def commit_likes(subsonic_id: str, key: str, value: Any) -> None:
+    """
+    Apply one user's Likes/Rating value to Beets's db. Only one user can be applied because Beets
+    is single-user.
+    Artists/playlists/radio stations have no single Beets row to attach a value to, so
+    they are silently skipped.
+    """
+    id_type = IDMapper.get_type(subsonic_id)
+
+    if id_type == 'song':
+        entity_type, beets_id = 'item', IDMapper.sub_to_song(subsonic_id)
+    elif id_type == 'album':
+        entity_type, beets_id = 'album', IDMapper.sub_to_album(subsonic_id)
+    else:
+        return
+
+    if beets_id is None:
+        return
+
+    try:
+        write_beets_field(entity_type, beets_id, key, value, allow_flex=True)
+    except Exception as e:
+        bsn_logger.warning(f"Failed to mirror '{key}' to beets {entity_type} {beets_id}: {e}")
+
+
 def standardise_datadict(obj: Dict | LibModel | Item | Any) -> dict:
     """Standardise input (Beets Item/Album or sqlite3.Row) into a dict."""
     if isinstance(obj, LibModel):

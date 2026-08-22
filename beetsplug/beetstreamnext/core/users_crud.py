@@ -21,9 +21,6 @@ _DUMMY_PASSWORD = secrets.token_urlsafe(24)
 _DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
 
 
-# TODO: _store_userdata and _set_api_key are separate transaction, but this should probably be fully atomic
-
-
 def _dummy_stored_password() -> str:
     """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
     global _DUMMY_TOKEN
@@ -82,7 +79,11 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
     return user_dict
 
 
-def _store_userdata(user_dict: dict, insert_only: bool = False) -> None:
+def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sqlite3.Connection] = None) -> None:
+    """
+    Insert or update a user row. If `db` is given, executes on that connection without
+    opening/committing here (caller owns the transaction).
+    """
 
     _user_dict = dict(user_dict)
     username = _user_dict.pop('username', None)
@@ -126,30 +127,47 @@ def _store_userdata(user_dict: dict, insert_only: bool = False) -> None:
         sql = f"UPDATE users SET {', '.join(update_clauses)} WHERE username = ?"
         sql_values.append(username)
 
-    with database() as db:
+    def _execute(conn: sqlite3.Connection) -> None:
         try:
-            db.execute(sql, sql_values)
+            conn.execute(sql, sql_values)
         except sqlite3.IntegrityError as e:
             if insert_only:
                 raise ValueError(f"Username '{username}' already exists.") from e
             raise
 
+    if db is not None:
+        _execute(db)
+    else:
+        with database() as conn:
+            _execute(conn)
+
 ##
 # Core logic used by endpoints and CLI
 
-def _set_api_key(username: str) -> str:
-    """Generate a new API key for a user, store its hash, return the raw key."""
+def _set_api_key(username: str, db: Optional[sqlite3.Connection] = None) -> str:
+    """
+    Generate a new API key for a user, store its hash, return the raw key.
+    If `db` is given, executes on that connection without
+    opening/committing here (caller owns the transaction).
+    """
     raw_api_key = secrets.token_urlsafe(32)
     api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
 
-    with database() as db:
-        db.execute(
+    def _execute(conn: sqlite3.Connection) -> None:
+        conn.execute(
             """
             UPDATE users
             SET api_key_hash = ?
             WHERE username = ?
             """, (api_key_hash, username)
         )
+
+    if db is not None:
+        _execute(db)
+    else:
+        with database() as conn:
+            _execute(conn)
+
     return raw_api_key
 
 
@@ -188,10 +206,14 @@ def create_user(username, password, admin=False, **kwargs):
             user_data[role_name] = default_val
 
     user_data.update(filtered_roles)
-    _store_userdata(user_data, insert_only=True)
 
-    # api_key_hash is set separately because _store_userdata excludes it (for safety)
-    return _set_api_key(username)
+
+    with database() as db:
+        _store_userdata(user_data, insert_only=True, db=db)
+        # api_key_hash is set separately because _store_userdata excludes it (for safety)
+        raw_api_key = _set_api_key(username, db=db)
+
+    return raw_api_key
 
 
 def update_user(username: str, **updates):

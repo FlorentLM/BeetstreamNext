@@ -278,9 +278,8 @@ def _send_transcode(
         estimated_bytes = int((max_bitrate * 1000 / 8) * remaining)
         response.headers['Content-Length'] = estimated_bytes
 
-    # TODO: Not sure if it's important to tell clients they cant seek with HTTP range headers?
-    # response.headers['Accept-Ranges'] = 'none'
-    # response.headers['Cache-Control'] = 'no-cache'
+
+    response.headers['Accept-Ranges'] = 'none'
 
     return response
 
@@ -386,7 +385,13 @@ def endpoint_download_song() -> flask.Response | None:
     if err_resp:
         return err_resp
 
-    return send_file(song_path)
+    response = send_file(song_path)
+    if response is not None:
+        return response
+
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    bsn_logger.warning(f"Download of song '{Path(song_path).name}' failed.")
+    return subsonic_error(70, resp_fmt=resp_fmt)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/gettranscodedecision/

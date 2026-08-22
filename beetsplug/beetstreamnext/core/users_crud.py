@@ -21,7 +21,6 @@ _DUMMY_PASSWORD = secrets.token_urlsafe(24)
 _DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
 
 
-# TODO: hmac.compare_digest -> compare on encoded bytes instead?
 # TODO: _store_userdata and _set_api_key are separate transaction, but this should probably be fully atomic
 
 
@@ -311,20 +310,22 @@ def _check_password(
     else:
         user_found = True
 
+    stored_password_b = stored_password.encode('utf-8')
+
     ok = False
     if token and salt:
         expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
-        ok = hmac.compare_digest(token, expected)
+        ok = hmac.compare_digest(token.encode('utf-8'), expected.encode('utf-8'))
 
     elif clearpass:
         if clearpass.startswith('enc:'):
             try:
                 decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
-                ok = hmac.compare_digest(decoded, stored_password)
+                ok = hmac.compare_digest(decoded.encode('utf-8'), stored_password_b)
             except ValueError:
-                ok = hmac.compare_digest(clearpass, stored_password)
+                ok = hmac.compare_digest(clearpass.encode('utf-8'), stored_password_b)
         else:
-            ok = hmac.compare_digest(clearpass, stored_password)
+            ok = hmac.compare_digest(clearpass.encode('utf-8'), stored_password_b)
 
     if ok and user_found:
         return True, 0, username

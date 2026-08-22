@@ -268,8 +268,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             with app.app_context():
                 initialise_db()
-                app.config.update(playlist_provider=PlaylistProvider())
-
                 # Read db, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING
                 settings_store.initialise(yaml_defaults)
 
@@ -357,6 +355,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 root_directory=Path(beets.config['directory'].get()),
                 playlist_dirs=playlist_dirs
             )
+
+            app.config.update(playlist_provider=PlaylistProvider())
 
             # Handle "requires restart" settings
             cors_origin = settings_store.get('cors_origins')

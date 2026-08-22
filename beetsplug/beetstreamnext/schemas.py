@@ -92,6 +92,22 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': True,
         'validator': _int_range(1, 128),
     },
+    'channel_timeout': {
+        'type': 'int',
+        'default': 120,
+        'category': 'server',
+        'description': 'Seconds of inactivity allowed on a connection before Waitress closes it. Lower this on low-resource environments to free up connections faster.',
+        'requires_restart': True,
+        'validator': _int_range(1, 3600),
+    },
+    'connection_limit': {
+        'type': 'int',
+        'default': 100,
+        'category': 'server',
+        'description': 'Maximum number of simultaneous connections Waitress will accept. Lower this on low-resource environments to cap memory/socket usage.',
+        'requires_restart': True,
+        'validator': _int_range(1, 10000),
+    },
     'cors_origins': {
         'type': 'str',
         'default': '',

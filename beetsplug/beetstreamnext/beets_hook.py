@@ -395,14 +395,17 @@ class BeetstreamNextPlugin(BeetsPlugin):
             else:
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 threads = settings_store.get('threads')
+                channel_timeout = settings_store.get('channel_timeout')
+                connection_limit = settings_store.get('connection_limit')
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 if LOG_LEVEL > logging.INFO:
                     print(f'BeetstreamNext server running on http://{host}:{port}...')
                 logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
-                serve(logged_app, host=host, port=port, threads=threads)
-
-                # TODO: Add configurable channel_timeout and connection_limit?
+                serve(
+                    logged_app, host=host, port=port, threads=threads,
+                    channel_timeout=channel_timeout, connection_limit=connection_limit
+                )
 
         cmd.func = func
 

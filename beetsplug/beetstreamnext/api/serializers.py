@@ -113,9 +113,9 @@ def _mint_song_id(mb_trackid: Any, mb_releasetrackid: Any, path: Any, beets_id: 
         encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
         return f"{IDMapper.SNG_MBID_PREF}{encoded}"
 
-    path_hash = path_hash(path, root_directory)
-    if path_hash:
-        return f"{IDMapper.SNG_HASH_PREF}{path_hash}"
+    hash = path_hash(path, root_directory)
+    if hash:
+        return f"{IDMapper.SNG_HASH_PREF}{hash}"
 
     return f"{IDMapper.SNG_ID_PREF}{beets_id}"
 

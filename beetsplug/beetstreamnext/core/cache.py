@@ -4,6 +4,7 @@ import flask
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.db import chunked_query
+from beetsplug.beetstreamnext.utils.text import validate_mbid
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
@@ -185,7 +186,7 @@ def preload_artists(artists_data):
     sub_ids = []
     if isinstance(artists_data, dict):
         for name, data in artists_data.items():
-            mbid = data.get('mbid')
+            mbid = validate_mbid(data.get('mbid'))
             sub_ids.append(IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid)))
 
     elif isinstance(artists_data, list):
@@ -195,7 +196,7 @@ def preload_artists(artists_data):
 
             elif isinstance(item, dict) or hasattr(item, 'keys'):
                 name = item.get('albumartist') or item.get('artist') or ''
-                mbid = item.get('mb_albumartistid') or item.get('mb_artistid') or ''
+                mbid = validate_mbid(item.get('mb_albumartistid')) or validate_mbid(item.get('mb_artistid'))
                 sub_ids.append(IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid)))
 
     if sub_ids:

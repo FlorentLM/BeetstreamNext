@@ -12,7 +12,7 @@ import flask
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
-from beetsplug.beetstreamnext.utils.text import customstrip
+from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, FFMPEG_BIN
 from beetsplug.beetstreamnext.core.logging import bsn_logger
@@ -274,7 +274,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
                 bsn_logger.warning(f"Failed to serve folder art for album {album_id} ({found_art}): {e}")
 
     # Proxy from CoverArtArchive
-    mbid = album.get('mb_albumid')
+    mbid = validate_mbid(album.get('mb_albumid'))
     if mbid:
         image_bytes = query_coverartarchive(mbid)
         if image_bytes:

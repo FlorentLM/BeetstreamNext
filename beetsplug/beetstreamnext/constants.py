@@ -51,6 +51,7 @@ ASCII_TRANSLATE_TABLE: Dict[int, str] = {
 
 ALPHANUM_CHARS: re.Pattern = re.compile(r'^[a-zA-Z0-9_]+$')
 
+MBID_VALIDATOR = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
 
 ## Security
 

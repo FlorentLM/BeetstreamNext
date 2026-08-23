@@ -2,11 +2,17 @@ import string
 import unicodedata
 from typing import Any, Sequence, List
 
-from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
+from beetsplug.beetstreamnext.constants import MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
 
 
 ##
 # Text utilities
+
+
+def validate_mbid(value: Any) -> str:
+    """Return value if it looks like a genuine MusicBrainz UUID, else ''."""
+    v = str(value or '').strip()
+    return v if MBID_VALIDATOR.match(v) else ''
 
 
 def remove_accents(text: Any) -> str:

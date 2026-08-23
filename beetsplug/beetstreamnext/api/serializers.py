@@ -8,7 +8,7 @@ from beets.library import LibModel, Item
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
-from beetsplug.beetstreamnext.utils.text import split_beets_multi
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.external import query_musicbrainz
@@ -157,7 +157,7 @@ def map_media(beets_object: Dict | LibModel) -> dict:
     track_artist_name = data.get('artist') or data.get('albumartist') or ''
 
     main_ar_name = data.get('albumartist') or data.get('artist') or ''
-    main_ar_mbid = data.get('mb_albumartistid') or data.get('mb_artistid') or ''
+    main_ar_mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
 
     artist_id = IDMapper.artist_to_sub(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
 
@@ -215,7 +215,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
 
     album_specific = {
         'id': subsonic_album_id,
-        'musicBrainzId': data.get('mb_albumid') or '',
+        'musicBrainzId': validate_mbid(data.get('mb_albumid')),
         'name': album_name,
         'sortName': album_name,
         'coverArt': subsonic_album_id,
@@ -346,7 +346,7 @@ def map_song(song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dic
 
     song_specific = {
         'id': song_id,
-        'musicBrainzId': data.get('mb_releasetrackid') or data.get('mb_trackid') or '',
+        'musicBrainzId': validate_mbid(data.get('mb_releasetrackid')) or validate_mbid(data.get('mb_trackid')),
         'name': song_title,
         'sortName': song_title,
         'albumId': album_id,
@@ -496,7 +496,7 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
             album_count, mbid, sort_name = row[0], row[1] or '', row[2] or artist_name
 
     meta = _artist_metadata(artist_name)
-    mbid = mbid or meta['mbid']
+    mbid = validate_mbid(mbid) or meta['mbid']  # meta['mbid'] is already validated by _artist_metadata()
     sort_name = sort_name if sort_name != artist_name else meta['sort_name']
     roles = meta['roles']
 
@@ -558,7 +558,7 @@ def map_radio_station(row: dict) -> dict:
     station_id = IDMapper.radio_to_sub(row['id'])
 
     subsonic_radio_station = {
-        'id': str(row['id']),
+        'id': station_id,
         'name': row['name'],
         'streamUrl': row['stream_url'],
         'homePageUrl': row['homepage_url'] or '',
@@ -632,7 +632,7 @@ def _artist_metadata(name: str) -> dict:
         if album_rows:
             roles.append('albumartist')
             row = album_rows[0]
-            if row[0]: mbid = row[0]
+            if row[0]: mbid = validate_mbid(row[0])
             if row[1]: sort_name = row[1]
 
         item_rows = tx.query(
@@ -642,7 +642,7 @@ def _artist_metadata(name: str) -> dict:
         if item_rows:
             roles.append('artist')
             row = item_rows[0]
-            if not mbid and row[0]: mbid = row[0]
+            if not mbid and row[0]: mbid = validate_mbid(row[0])
             if not sort_name and row[1]: sort_name = row[1]
 
         # Check for secondary roles
@@ -699,10 +699,10 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
             return None
 
         name = item.get('albumartist') or item.get('artist') or ''
-        mbid = item.get('mb_albumartistid') or item.get('mb_artistid') or ''
+        mbid = validate_mbid(item.get('mb_albumartistid')) or validate_mbid(item.get('mb_artistid'))
         if not mbid:
             mbids = split_beets_multi(item.get('mb_albumartistids') or item.get('mb_artistids') or '')
-            mbid = mbids[0] if mbids else ''
+            mbid = next(filter(None, (validate_mbid(m) for m in mbids)), '')
 
         return name, mbid
 
@@ -712,10 +712,10 @@ def resolve_artist(req_id: str) -> Tuple[str, str] | None:
             return None
 
         name = album.get('albumartist') or ''
-        mbid = album.get('mb_albumartistid') or ''
+        mbid = validate_mbid(album.get('mb_albumartistid'))
         if not mbid:
             mbids = split_beets_multi(album.get('mb_albumartistids') or '')
-            mbid = mbids[0] if mbids else ''
+            mbid = next(filter(None, (validate_mbid(m) for m in mbids)), '')
 
         return name, mbid
 
@@ -801,7 +801,7 @@ def get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
 
             mbid = ''
             if i < len(mbids) and mbids[i]:
-                mbid = mbids[i]
+                mbid = validate_mbid(mbids[i])
             elif is_contributor:
                 meta = _artist_metadata(name)
                 mbid = meta['mbid']

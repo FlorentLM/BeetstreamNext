@@ -98,7 +98,12 @@ def endpoint_get_cover_art() -> flask.Response:
             if response is not None:
                 return response
 
-    # TODO: Add playlist images (mosaic of the first 4 albums / songs ?)
+    elif IDMapper.get_type(req_id) == 'playlist':
+        playlist = flask.g.playlist_provider.get(req_id)
+        if playlist:
+            mosaic = playlist_mosaic(playlist, size or 500)
+            if mosaic is not None:
+                return flask.send_file(mosaic, mimetype='image/jpeg')
 
     # artist requests
     else:  # some clients ask with artist ID, others ask with artist name, so this catches both

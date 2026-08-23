@@ -83,16 +83,38 @@ def home() -> str:
             ).fetchone()
 
         if row:
-            beets_song_id = IDMapper.sub_to_song(row['item_id'])
-            song = app.config['lib'].get_item(beets_song_id)
-            if song:
-                now_playing = {
-                    'title': song.title,
-                    'artist': song.artist,
-                    'album': song.album,
-                    'player': row['player_name'],
-                    'username': row['username']
-                }
+            item_id = row['item_id']
+            id_type = IDMapper.get_type(item_id)
+
+            if id_type == 'song':
+                beets_song_id = IDMapper.sub_to_song(item_id)
+                song = app.config['lib'].get_item(beets_song_id)
+                if song:
+                    now_playing = {
+                        'title': song.title,
+                        'artist': song.artist,
+                        'album': song.album,
+                        'player': row['player_name'],
+                        'username': row['username']
+                    }
+
+            elif id_type == 'radio':
+                radio_id = IDMapper.sub_to_radio(item_id)
+                if radio_id is not None:
+                    with database() as db:
+                        station = db.execute(
+                            """
+                            SELECT name FROM internet_radio_stations WHERE id = ?
+                            """, (radio_id,)
+                        ).fetchone()
+                    if station:
+                        now_playing = {
+                            'title': station['name'],
+                            'artist': 'Internet Radio',
+                            'album': '',
+                            'player': row['player_name'],
+                            'username': row['username']
+                        }
 
     # Resolve the public/external URL
     external_host = settings_store.get('external_hostname')
@@ -129,16 +151,27 @@ def now_playing_cover() -> flask.Response:
     if not row:
         flask.abort(404)
 
-    from beetsplug.beetstreamnext.core.images import send_album_art, round_image_size
+    from beetsplug.beetstreamnext.core.images import send_album_art, send_radio_art, round_image_size
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 
-    beets_song_id = IDMapper.sub_to_song(row['item_id'])
-    song = app.config['lib'].get_item(beets_song_id)
-    if song and song.get('album_id'):
-        response = send_album_art(song.get('album_id'), rounded_size)
-        if response:
-            return response
+    item_id = row['item_id']
+    id_type = IDMapper.get_type(item_id)
+
+    if id_type == 'song':
+        beets_song_id = IDMapper.sub_to_song(item_id)
+        song = app.config['lib'].get_item(beets_song_id)
+        if song and song.get('album_id'):
+            response = send_album_art(song.get('album_id'), rounded_size)
+            if response:
+                return response
+
+    elif id_type == 'radio':
+        radio_id = IDMapper.sub_to_radio(item_id)
+        if radio_id is not None:
+            response = send_radio_art(radio_id)
+            if response:
+                return response
 
     flask.abort(404)
 

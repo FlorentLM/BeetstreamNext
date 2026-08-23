@@ -103,7 +103,7 @@ def endpoint_get_now_playing() -> flask.Response:
         )
         rows = db.execute(
             """
-            SELECT username, item_id, started_at, player_name 
+            SELECT username, item_id, started_at, player_name, position_ms, state, playback_rate
             FROM now_playing
             """
         ).fetchall()
@@ -118,7 +118,22 @@ def endpoint_get_now_playing() -> flask.Response:
             if item:
                 entry = map_song(item)
 
-        # elif item_id.startswith('ir-'):    # TODO: Now playing radio
+        elif p_id.startswith('ir-'):
+            radio_id = IDMapper.sub_to_radio(p_id)
+            if radio_id is not None:
+                with database() as db:
+                    station = db.execute(
+                        """
+                        SELECT name FROM internet_radio_stations WHERE id = ?
+                        """, (radio_id,)
+                    ).fetchone()
+                if station:
+                    entry = {
+                        'id': p_id,
+                        'title': station['name'],
+                        'isDir': False,
+                        'coverArt': p_id,
+                    }
 
         if entry:
             entry.update({

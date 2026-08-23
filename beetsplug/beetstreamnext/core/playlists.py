@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.system import creation_date
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.images import fetch_playlist_images
 from beetsplug.beetstreamnext.api.serializers import map_song, IDMapper
 
 if TYPE_CHECKING:
@@ -167,6 +168,10 @@ class Playlist:
             row = results[idx]
             self.songs.append(map_song(row))
             self.duration += int(row['length'] or 0)
+
+            art_url = entries[idx].get('albumarturl')
+            if art_url:
+                fetch_playlist_images(row, art_url)
 
         self.song_count = len(self.songs)
 
@@ -353,9 +358,11 @@ class Playlist:
                     except ValueError:
                         pass
 
-                elif line.startswith('#EXTBIN:') or line.startswith('#EXT-X-') or line.startswith('#EXTALBUMARTURL:'):
-                    pass  # skip binary content, HLS fields, and album art URLs
-                    # TODO - maybe would be good to grab the album art from the url?
+                elif line.startswith('#EXTALBUMARTURL:'):
+                    curr_entry['albumarturl'] = line[len('#EXTALBUMARTURL:'):].strip()
+
+                elif line.startswith('#EXTBIN:') or line.startswith('#EXT-X-'):
+                    pass  # skip binary content and HLS fields
 
                 elif not line.startswith('#'):
                     curr_entry['uri'] = line

@@ -44,7 +44,7 @@ class SettingsStore:
         for k in ('trusted_hosts', 'legacy_auth',
                   'never_transcode', 'lastfm_api_key',
                   'fetch_artists_images', 'save_artists_images',
-                  'fetch_artists_biographies', 'save_album_art',
+                  'fetch_artists_biographies', 'save_album_art', 'follow_playlist_embedded_urls',
                   'fetch_lyrics', 'save_lyrics',
                   'fetch_album_version', 'save_album_version',
                   # 'fetch_radio_images',

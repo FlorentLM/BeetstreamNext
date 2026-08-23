@@ -4,7 +4,7 @@ import subprocess
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 from io import BytesIO
 from PIL import Image, ImageOps
 import flask
@@ -19,6 +19,9 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
+
+if TYPE_CHECKING:
+    from beetsplug.beetstreamnext.core.playlists import Playlist
 
 
 _ART_PRIORITY = [
@@ -180,6 +183,48 @@ def _image_from_folder(album_dir: str | Path) -> Path | None:
     return images[0]
 
 
+def fetch_playlist_images(item, url: str) -> None:
+    """
+    Try to get an image from a #EXTALBUMARTURL line from a foreign m3u (if the song's
+    album has no art locally). The fetched image is then saved in the album folder as
+    'cover.jpg' so the normal folder-scan lookup picks it up.
+    """
+    if not app.config.get('follow_playlist_embedded_urls') or not url:
+        return
+
+    album_id = item.get('album_id')
+    if not album_id:
+        return
+
+    album = flask.g.lib.get_album(album_id)
+    if not album:
+        return
+
+    if os.fsdecode(album.get('artpath') or b''):
+        return  # beets already knows about a cover
+
+    album_dir_raw = os.fsdecode(album.item_dir() or b'')
+    if not album_dir_raw:
+        return
+
+    album_dir = Path(album_dir_raw)
+    if not album_dir.is_absolute():
+        album_dir = app.config['root_directory'] / album_dir
+
+    if _image_from_folder(album_dir):
+        return  # already has art on disk
+
+    image_bytes = capped_image_fetch(url)
+    if not image_bytes:
+        return
+
+    try:
+        img = _safe_open_image(image_bytes)
+        img.convert('RGB').save(album_dir / 'cover.jpg', format='JPEG')
+    except Exception as e:
+        bsn_logger.warning(f"Failed to save captured playlist art for album {album_id}: {e}")
+
+
 def image_from_song(path: str | Path) -> BytesIO | None:
 
     if FFMPEG_PYTHON:
@@ -294,6 +339,118 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     return None # TODO - send a placeholder instead of 404ing
+
+
+def _album_art_bytes(album_id, size: int) -> bytes | None:
+    """
+    Resised jpg bytes for an album's art, via the same local -> folder -> CoverArtArchive
+    chain as send_album_art(), for compositing rather than serving directly.
+    """
+    if album_id is None:
+        return None
+
+    album = flask.g.lib.get_album(album_id)
+    if not album:
+        return None
+
+    art_path = os.fsdecode(album.get('artpath') or b'')
+    if art_path:
+        path_obj = Path(art_path)
+        if not path_obj.is_absolute():
+            art_path = str(app.config['root_directory'] / path_obj)
+        if os.path.isfile(art_path):
+            resized = _cached_resize(art_path, size)
+            if resized:
+                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
+
+    album_dir_raw = os.fsdecode(album.item_dir() or b'')
+    if album_dir_raw:
+        album_dir = Path(album_dir_raw)
+        if not album_dir.is_absolute():
+            album_dir = app.config['root_directory'] / album_dir
+        found_art = _image_from_folder(album_dir)
+        if found_art:
+            resized = _cached_resize(found_art, size)
+            if resized:
+                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
+
+    mbid = validate_mbid(album.get('mb_albumid'))
+    if mbid:
+        image_bytes = query_coverartarchive(mbid)
+        if image_bytes:
+            return resize_image(image_bytes, size).getvalue()
+
+    return None
+
+
+def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
+    """
+    2x2 grid mosaic from 4 distinct albums' art in a playlist,
+    falls back to a single album art if only one album in the playlist
+    """
+    if not playlist.songs:
+        return None
+
+    half = max(size // 2, 1)
+    tiles = []
+    used_album_ids = []
+
+    for song in playlist.songs:
+        sub_album_id = song.get('albumId')
+        if not sub_album_id or sub_album_id in used_album_ids:
+            continue
+
+        album = IDMapper.resolve_album(sub_album_id)
+        if not album:
+            continue
+
+        tile_bytes = _album_art_bytes(album.id, half)
+        if not tile_bytes:
+            continue
+
+        used_album_ids.append(sub_album_id)
+        tiles.append(tile_bytes)
+        if len(tiles) >= 4:
+            break
+
+    if not tiles:
+        return None
+    if len(tiles) == 1:
+        return BytesIO(tiles[0])
+
+    cache_key = f"{playlist.id}_{'-'.join(used_album_ids)}"
+    file_hash = hashlib.md5(f"{cache_key}_{size}".encode()).hexdigest()
+    cache_path = app.config['THUMBNAIL_CACHE_PATH'] / f'.mosaic-{file_hash}.jpg'
+    
+    if cache_path.is_file():
+        return BytesIO(cache_path.read_bytes())
+
+    canvas = Image.new('RGB', (half * 2, half * 2), color=(24, 24, 24))
+    positions = [(0, 0), (half, 0), (0, half), (half, half)]
+
+    for i, pos in enumerate(positions):
+        try:
+            tile_img = _safe_open_image(tiles[i % len(tiles)]).convert('RGB')
+            tile_img = ImageOps.fit(tile_img, (half, half), method=Image.LANCZOS)
+            canvas.paste(tile_img, pos)
+        except Exception as e:
+            bsn_logger.warning(f"Failed to composite mosaic tile: {e}")
+
+    out = BytesIO()
+    canvas.save(out, format='JPEG', quality=85, optimize=True)
+    out.seek(0)
+
+    try:
+        fd, tmp_path = tempfile.mkstemp(dir=cache_path.parent)
+        with os.fdopen(fd, 'wb') as tf:
+            tf.write(out.getvalue())
+        os.replace(tmp_path, cache_path)
+        make_hidden(cache_path)
+    except Exception as e:
+        bsn_logger.warning(f"Failed to cache playlist mosaic: {e}")
+
+    out.seek(0)
+    return out
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:

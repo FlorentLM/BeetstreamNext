@@ -265,6 +265,16 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Save fetched album art alongside music files.',
         'requires_restart': False,
     },
+    'follow_playlist_embedded_urls': {
+        'type': 'bool',
+        'default': False,
+        'category': 'library',
+        'description': (
+            "Fetch external images from foreign playlists' #EXTALBUMARTURL lines (for albums that "
+            "have no art locally). Only enable this if you trust the source of your imported playlists."
+        ),
+        'requires_restart': False,
+    },
     'fetch_lyrics': {
         'type': 'bool',
         'default': False,

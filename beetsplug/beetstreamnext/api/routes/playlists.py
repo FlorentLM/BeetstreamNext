@@ -106,11 +106,10 @@ def endpoint_update_playlist() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('playlistId', default='', type=safe_str)     # Required
     new_name =  r.get('name', default='', type=safe_str)[:200]
-    # new_comment =  r.get('comment', default='', type=safe_str)[:1024]
+    new_comment = r.get('comment', default=None, type=safe_str)
     # make_public =  r.get('public', default=False, type=api_bool)
     to_add = r.getlist('songIdToAdd', type=safe_str)
     to_remove = r.getlist('songIndexToRemove', type=int)
-    # TODO: Playlist comments
 
     if not playlist_id:
         return subsonic_error(10, 'Playlist ID is required.', resp_fmt=resp_fmt)
@@ -133,6 +132,9 @@ def endpoint_update_playlist() -> flask.Response:
                 if item:
                     beets_items.append(item)
             playlist.add_songs(beets_items)
+
+        if new_comment is not None:
+            playlist.set_comment(new_comment[:1024])
 
         if new_name:
             old_id = playlist.id

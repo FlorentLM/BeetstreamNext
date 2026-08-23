@@ -540,6 +540,7 @@ def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> dict:
     subsonic_playlist = {
         'id': playlist.id,
         'name': playlist.name,
+        'comment': playlist.comment,
         'songCount': playlist.song_count,
         'duration': playlist.duration,
         'created': timestamp_to_iso(playlist.ctime),

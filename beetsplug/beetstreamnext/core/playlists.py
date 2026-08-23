@@ -1,4 +1,5 @@
 import threading
+import urllib.parse
 from typing import TYPE_CHECKING, List, Optional, Generator
 import os
 from pathlib import Path
@@ -16,7 +17,6 @@ from beetsplug.beetstreamnext.api.serializers import map_song, IDMapper
 if TYPE_CHECKING:
     from beets.library import Item
 
-# TODO: Decode paths if foreign playlist contains %20'd spaces?
 
 class Playlist:
 
@@ -31,10 +31,11 @@ class Playlist:
         self.songs = []
         self.duration = 0
         self.song_count = 0
+        self.comment = ''
         self._parse_metadata()
 
     def _parse_metadata(self) -> None:
-        """Quickly parse M3U for duration and song count."""
+        """Quickly parse M3U for duration, song count, and playlist comment/description."""
         with self._lock:
             if not self.path.exists():
                 return
@@ -49,6 +50,8 @@ class Playlist:
                                     self.duration += runtime
                             except (ValueError, IndexError):
                                 pass
+                        elif line.startswith('#PLAYLIST-DESC:'):
+                            self.comment = line[len('#PLAYLIST-DESC:'):].strip()
                         elif line and not line.startswith('#'):
                             self.song_count += 1
             except OSError:
@@ -82,22 +85,37 @@ class Playlist:
                 if row:
                     results[idx] = row
 
-        # Resolve songs that only have a path
+        # Resolve songs that only have a path (try the literal path first and
+        # fall back to the percent-decoded one if that didn't match)
         if path_entries:
-            absolute_paths_bytes = []
+            literal_paths_bytes = []
+            decoded_paths_bytes = []
             for _, e in path_entries:
                 uri = e['uri']
                 full_path = (self.path.parent / uri).resolve()
-                absolute_paths_bytes.append(bytestring_path(str(full_path)))
+                literal_paths_bytes.append(bytestring_path(str(full_path)))
+
+                decoded_uri = urllib.parse.unquote(uri)
+                if decoded_uri != uri:
+                    decoded_full_path = (self.path.parent / decoded_uri).resolve()
+                    decoded_paths_bytes.append(bytestring_path(str(decoded_full_path)))
+                else:
+                    decoded_paths_bytes.append(None)
+
+            candidates = list({
+                p for p in literal_paths_bytes + decoded_paths_bytes if p is not None
+            })
 
             with flask.g.lib.transaction() as tx:
                 sql_query = 'SELECT * FROM items WHERE path IN ({q})'
-                rows = chunked_query(db_obj=tx, query_template=sql_query, chunked_values=absolute_paths_bytes)
+                rows = chunked_query(db_obj=tx, query_template=sql_query, chunked_values=candidates)
 
             path_map = {row['path']: row for row in rows}
 
-            for (idx, entry), path_bytes in zip(path_entries, absolute_paths_bytes):
-                row = path_map.get(path_bytes)
+            for (idx, entry), literal_bytes, decoded_bytes in zip(path_entries, literal_paths_bytes, decoded_paths_bytes):
+                row = path_map.get(literal_bytes)
+                if not row and decoded_bytes is not None:
+                    row = path_map.get(decoded_bytes)
                 if row:
                     results[idx] = row
 
@@ -132,6 +150,12 @@ class Playlist:
                 self.name = safe_name[:200]
                 self.id = f"{IDMapper.PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
                 self.mtime = self.path.stat().st_mtime
+
+    def set_comment(self, comment: str) -> None:
+        with self._lock:
+            self.comment = comment[:1024]
+            self.to_m3u()
+            self.mtime = self.path.stat().st_mtime
 
     def remove_songs(self, indices: List[int]) -> None:
         with self._lock:
@@ -178,6 +202,7 @@ class Playlist:
         instance.id = f'{IDMapper.PLY_ID_PREF}{instance.dir_id}-{instance.path.stem.lower()[:200]}{instance.path.suffix.lower()}'
         instance.ctime = None
         instance.mtime = None
+        instance.comment = ''
         instance.songs = [map_song(song) for song in songs]
         instance.song_count = len(instance.songs)
         instance.duration = sum(int(s.get('duration', 0) or 0) for s in instance.songs)
@@ -259,6 +284,9 @@ class Playlist:
     def to_m3u(self) -> None:
         with self._lock:
             content = ['#EXTM3U']
+
+            if self.comment:
+                content.append(f"#PLAYLIST-DESC:{' '.join(self.comment.splitlines())}")
 
             for song in self.songs:
                 path = song.get('path')

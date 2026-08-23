@@ -382,16 +382,17 @@ def map_artist(artist_name: str, with_albums: bool = True, prefetched: Optional[
 
     else:
         with flask.g.lib.transaction() as tx:
-            row = tx.query(
+            rows = tx.query(
                 """
                 SELECT COUNT(*), mb_albumartistid, albumartist_sort
                 FROM albums
                 WHERE albumartist = ?
                 GROUP BY albumartist
                 """, (artist_name,)
-            ).fetchone()
+            )
 
-        if row:
+        if rows:
+            row = rows[0]
             album_count, mbid, sort_name = row[0], row[1] or '', row[2] or artist_name
 
     meta = _get_artist_metadata(artist_name)
@@ -446,6 +447,7 @@ def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> dict:
         'changed': timestamp_to_iso(playlist.mtime),
         'owner': playlist.owner or playlist.creator or '',
         'public': playlist.owner is None,
+        'coverArt': playlist.id,
     }
     if include_songs and playlist.songs:
         subsonic_playlist['entry'] = playlist.songs

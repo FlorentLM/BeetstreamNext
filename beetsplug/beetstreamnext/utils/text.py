@@ -66,6 +66,21 @@ def trim_text(text: str, char_limit: int = 300) -> str:
     return snippet
 
 
+def format_duration(seconds: Any) -> str:
+    """Format a duration in seconds as M:SS, or H:MM:SS."""
+    try:
+        total = max(0, int(float(seconds or 0)))
+    except (TypeError, ValueError):
+        return '0:00'
+
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+
+    if hours:
+        return f'{hours}:{minutes:02d}:{secs:02d}'
+    return f'{minutes}:{secs:02d}'
+
+
 def safe_str(val: Any) -> str:
     if val is None:
         return ''

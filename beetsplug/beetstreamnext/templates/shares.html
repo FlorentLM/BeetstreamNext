@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %} - Shared Files{% endblock %}
+{% block title %} - {{ 'Shared album' if albums else ('Shared track' if songs else 'Shared files') }}{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 <style>
@@ -9,6 +9,27 @@
     .share-desc { font-size: 1.2rem; margin: 0.5rem 0; color: var(--text-muted); font-style: italic; }
     .album-group { margin-bottom: 2rem; }
     .album-title { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .track-title { font-weight: 600; }
+    .track-number { color: var(--text-muted); width: 2.5rem; }
+    .album-group table td { padding: 0.6rem 1.5rem; }
+    .icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 6px;
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        transition: color 0.15s, border-color 0.15s;
+    }
+    .icon-btn:hover { color: var(--text); border-color: var(--text-muted); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    .track-card { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+    .track-cover { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+    .track-card-info { flex: 1; min-width: 0; }
+    .track-card-title { font-weight: 600; font-size: 1.05rem; }
 </style>
 {% endblock %}
 
@@ -18,13 +39,15 @@
         <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
     </div>
 
+    {% if albums or songs %}
     <div class="share-meta">
-        <h1>Shared Content</h1>
+        <h1>{{ 'Shared album' if albums else 'Shared track' }}</h1>
         {% if share.description %}
             <p class="share-desc">"{{ share.description }}"</p>
         {% endif %}
         <p class="session-user">Shared by <strong>{{ share.username }}</strong></p>
     </div>
+    {% endif %}
 
     {# Display shared albums #}
     {% if albums %}
@@ -39,19 +62,36 @@
                         <span class="session-user">{{ album.artist }}</span>
                     </div>
                 </div>
+                <a href="{{ url_for('public.share_download_album', share_id=share.id, entry_id=album.id) }}"
+                   class="btn btn-primary">
+                   Download all
+                </a>
             </div>
             <div class="table-container">
                 <table>
+                    <thead>
+                        <tr>
+                            <th class="track-number">#</th>
+                            <th>Title</th>
+                            <th>Duration</th>
+                            <th class="cell-right"></th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for song in album.song %}
                         <tr>
-                            <td>{{ song.track or '' }}</td>
-                            <td class="username-cell">{{ song.title }}</td>
-                            <td class="session-user">{{ song.duration | int }}s</td>
+                            <td class="track-number">{{ song.track or '' }}</td>
+                            <td class="track-title">{{ song.title }}</td>
+                            <td class="session-user">{{ song.duration | duration }}</td>
                             <td class="actions-cell">
                                 <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
-                                   class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-                                   Download
+                                   class="icon-btn" title="Download" aria-label="Download &quot;{{ song.title }}&quot;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3v12"/>
+                                        <path d="M7 10l5 5 5-5"/>
+                                        <path d="M5 21h14"/>
+                                    </svg>
                                 </a>
                             </td>
                         </tr>
@@ -63,42 +103,23 @@
         {% endfor %}
     {% endif %}
 
-    {# Display shared songs #}
+    {# Display shared songs: one plain card per track, no table/header needed #}
     {% if songs %}
-        <div class="card">
-            <div class="table-header"><h2>Individual Shared Tracks</h2></div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Cover</th>
-                            <th>Track Info</th>
-                            <th class="cell-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for song in songs %}
-                        <tr>
-                            <td>
-                                <img class="user-avatar" style="border-radius: 4px;"
-                                     src="{{ url_for('public.share_cover', share_id=share.id, entry_id=song.id) }}" alt="">
-                            </td>
-                            <td>
-                                <div class="username-name">{{ song.title }}</div>
-                                <div class="email-cell">{{ song.artist }} &bull; {{ song.album }}</div>
-                            </td>
-                            <td class="actions-cell">
-                                <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
-                                   class="btn btn-outline">
-                                   Download
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        {% for song in songs %}
+        <div class="card track-card">
+            <img class="track-cover"
+                 src="{{ url_for('public.share_cover', share_id=share.id, entry_id=song.id) }}" alt="">
+            <div class="track-card-info">
+                <div class="track-card-title">{{ song.title }}</div>
+                <div class="email-cell">{{ song.artist }} &bull; {{ song.album }}</div>
+                <div class="session-user">{{ song.duration | duration }}</div>
             </div>
+            <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+               class="btn btn-outline">
+               Download
+            </a>
         </div>
+        {% endfor %}
     {% endif %}
 </div>
 {% endblock %}

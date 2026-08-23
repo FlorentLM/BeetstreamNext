@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_LOCATION
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL
 from beetsplug.beetstreamnext.core.database import close_database
+from beetsplug.beetstreamnext.utils.text import format_duration
 
 ##
 
@@ -30,5 +31,7 @@ app.config.update(
     TRUSTED_HOSTS='',
 )
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
+
+app.jinja_env.filters['duration'] = format_duration
 
 csrf = CSRFProtect(app)

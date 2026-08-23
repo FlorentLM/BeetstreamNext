@@ -28,6 +28,9 @@ CACHE_LOCATION: Path = cache_location()
 HLS_CACHE_DIR = CACHE_LOCATION / 'hls'
 HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+ZIP_CACHE_DIR = CACHE_LOCATION / 'zips'
+ZIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 ## Text constants
 
 BEETS_MULTI_DELIM: str = '\\\u2400'  # what's used in beets' db to separate multiple artists, multiple genres etc

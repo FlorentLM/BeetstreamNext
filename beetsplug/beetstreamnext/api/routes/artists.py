@@ -193,9 +193,9 @@ def endpoint_artist_info() -> flask.Response:
 
     if app.config['lastfm_api_key']:
         if artist_mbid:
-            data_lastfm = query_lastfm(q=artist_mbid, type='artist', method='info', is_mbid=True)
+            data_lastfm = query_lastfm(q=artist_mbid, data_type='artist', method='info', is_mbid=True)
         else:
-            data_lastfm = query_lastfm(q=artist_name, type='artist', method='info', is_mbid=False)
+            data_lastfm = query_lastfm(q=artist_name, data_type='artist', method='info', is_mbid=False)
 
         lastfm_bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
 

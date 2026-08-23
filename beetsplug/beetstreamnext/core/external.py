@@ -124,15 +124,15 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> d
     return {}
 
 
-def query_musicbrainz(mbid: str, type: str) -> dict:
+def query_musicbrainz(mbid: str, data_type: str) -> dict:
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
-    endpoint = f'https://musicbrainz.org/ws/2/{types_mb[type]}/{mbid}'
+    endpoint = f'https://musicbrainz.org/ws/2/{types_mb[data_type]}/{mbid}'
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
     params = {'fmt': 'json'}
 
-    if types_mb[type] == 'artist':
+    if types_mb[data_type] == 'artist':
         params['inc'] = 'annotation'
 
     try:
@@ -145,7 +145,7 @@ def query_musicbrainz(mbid: str, type: str) -> dict:
         return {}
 
 
-def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) -> dict:
+def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = True) -> dict:
 
     if not app.config['lastfm_api_key']:
         return {}
@@ -154,15 +154,15 @@ def query_lastfm(q: str, type: str, method: str = 'info', is_mbid: bool = True) 
 
     params = {
         'format': 'json',
-        'method': f'{type}.get{method.title()}',
+        'method': f'{data_type}.get{method.title()}',
         'api_key': app.config['lastfm_api_key'],
         }
 
     if is_mbid:
         q = q.replace(' ', '+')
         params['mbid'] = q
-    elif q and type != 'user':
-        params[type] = q
+    elif q and data_type != 'user':
+        params[data_type] = q
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
     try:

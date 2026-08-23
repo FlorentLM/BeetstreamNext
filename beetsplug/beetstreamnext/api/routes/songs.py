@@ -200,9 +200,9 @@ def endpoint_get_top_songs() -> flask.Response:
 
     if app.config['lastfm_api_key']:
         if artist_mbid:
-            lastfm_resp = query_lastfm(q=artist_mbid, type='artist', method='TopTracks', is_mbid=True)
+            lastfm_resp = query_lastfm(q=artist_mbid, data_type='artist', method='TopTracks', is_mbid=True)
         else:
-            lastfm_resp = query_lastfm(q=artist_name, type='artist', method='TopTracks', is_mbid=False)
+            lastfm_resp = query_lastfm(q=artist_name, data_type='artist', method='TopTracks', is_mbid=False)
 
         lastfm_tracks = lastfm_resp.get('toptracks', {}).get('track', [])
         lastfm_track_names = [t.get('name', '') for t in lastfm_tracks if t.get('name')]
@@ -280,9 +280,9 @@ def endpoint_get_similar_songs() -> flask.Response:
 
     if app.config['lastfm_api_key']:
         if req_artist_mbid:
-            lastfm_resp = query_lastfm(q=req_artist_mbid, type='artist', method='similar', is_mbid=True)
+            lastfm_resp = query_lastfm(q=req_artist_mbid, data_type='artist', method='similar', is_mbid=True)
         else:
-            lastfm_resp = query_lastfm(q=req_artist_name, type='artist', method='similar', is_mbid=False)
+            lastfm_resp = query_lastfm(q=req_artist_name, data_type='artist', method='similar', is_mbid=False)
 
         for artist in lastfm_resp.get('similarartists', {}).get('artist', []):
             name = artist.get('name')

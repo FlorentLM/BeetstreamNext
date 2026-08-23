@@ -236,7 +236,7 @@ def map_album(album_object: Dict | LibModel, include_songs: bool = True, song_co
 
     version = data.get('version')  # 'Deluxe Edition', 'Japanese Expanded Edition', etc.
     if not version and subsonic_album['musicBrainzId'] and app.config.get('fetch_album_version'):
-        mb_data = query_musicbrainz(subsonic_album['musicBrainzId'], 'album')
+        mb_data = query_musicbrainz(subsonic_album['musicBrainzId'], data_type='album')
         version = mb_data.get('disambiguation')
 
     if version:

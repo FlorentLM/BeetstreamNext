@@ -33,23 +33,39 @@ BeetstreamNext implements the vast majority of the OpenSubsonic API specificatio
 
 It also introduces several structural enhancements and features.
 
+### Core
+
 *   **Authentication:** Supports modern API key authentication and legacy MD5 token authentication for older clients.
 *   **Multi-user system:** Individual bookmarks, ratings, favorites, play statistics, and play queues (allowing you to save and restore your active queue across devices).
-*   **Metadata integration:** Retrieves artist biographies, top tracks, and similar artists from Last.fm or Wikipedia.
-*   **Album artworks / Artists images**: Grabs and serves the local album art path from your Beets library, or fetches and saves the images from [Cover Art Archive](https://coverartarchive.org/) and Deezer.
 *   **Advanced Beets queries (search hook):** You can execute complex Beets queries (e.g. regex, field-specific queries, fuzzy matching) directly inside your Subsonic client's search bar. Simply prefix your query with `beets:` or `b:` (e.g. `beets:length:..3:30` to find tracks shorter than 3:30).
-*   **Zero-file-modification architecture:** Designed for users who manage metadata inside Beets but do *not* want to modify or write metadata tags directly to their media files, for archival purposes. 
+*   **Zero-file-modification architecture:** Designed for users who manage metadata inside Beets but do *not* want to modify or write metadata tags directly to their media files, for archival purposes.
 *   **Lyrics retrieval:** Serves internal Beets lyrics or fetches them on-the-fly using the Beets `lyrics` plugin.
 *   **On-the-fly transcoding:** Serves raw files directly or transcodes lossy/lossless targets on-the-fly using FFmpeg.
 *   **HTTP Live Streaming (HLS):** AAC-encoded dynamic HLS streaming with full Adaptive Bitrate (ABR) support for clients that request multi-bitrate variant playlists.
+
+### Library intelligence
+
+*   **Metadata integration:** Retrieves artist biographies, top tracks, and similar artists or songs from Last.fm or Wikipedia, ratings from Discogs, etc.
+*   **Album artworks / Artist images:** Grabs and serves the local album art path from your Beets library, or fetches and saves the images from [Cover Art Archive](https://coverartarchive.org/) and Deezer.
+*   **Sonic similarity:** Native integration with [AudioMuse-AI](https://github.com/NeptuneHub/AudioMuse-AI) for acoustic similar-song lookups and playlist path-finding between two songs, via OpenSubsonic's `sonicSimilarity` extension.
+
+### Sharing
+
 *   **Public shares:** Generates public landing pages for shared files with a secure download endpoint.
-*   **Access controls:** Built-in IP whitelisting, blacklisting, and adaptive login rate-limiting (monitored and cleared via the admin panel).
-*   **Admin WebUI:** Settings can be changed via a rather simple but useful WebUI.
 
-[//]: # (### Coming soon:)
+### Beets integration
 
-[//]: # ()
-[//]: # (*   **Acoustic similarity engine:** Native integration with [AudioMuse-AI]&#40;https://github.com/FlorentLM/BeetstreamNext&#41; to support OpenSubsonic's `sonicSimilarity` extension.)
+*   **Optional write-back:** Optionally mirrors one user's stars and ratings back into the Beets database as flexible attributes, so they survive outside BeetstreamNext. Fetched song lyrics can also be committed to the beets library.
+*   **Remote-triggered scans:** Kick off an incremental `beet import` from a Subsonic client's "scan library" action.
+
+### Reliability & security
+
+*   **Access controls:** CIDR-aware IP whitelisting/blacklisting, plus adaptive login rate-limiting on both per-(IP, username) and per-IP-only buckets to slow down distributed brute-force attempts (monitored and cleared via the admin panel).
+*   **Reverse-proxy file offloading:** Supports `X-Accel-Redirect` (Nginx) or `X-Sendfile` (Apache) so direct file serving can bypass the Python process entirely.
+
+### Admin
+
+*   **Admin WebUI:** View live server info, manage settings, users, banned IP lists, etc, from a lightweight web dashboard.
 
 ---
 

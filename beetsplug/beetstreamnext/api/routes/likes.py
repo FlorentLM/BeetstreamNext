@@ -82,13 +82,12 @@ def endpoint_get_starred() -> flask.Response:
     username = flask.g.username
 
     with dual_database() as db:
-        song_rows = db.execute(
+        song_id_rows = db.execute(
             """
-            SELECT i.* 
-            FROM likes l
-            JOIN beets.items i ON l.item_id = 'sg-' || i.id
-            WHERE l.username = ?
-            ORDER BY l.starred_at DESC
+            SELECT item_id
+            FROM likes
+            WHERE username = ? AND item_id LIKE 'sg-%'
+            ORDER BY starred_at DESC
             """, (username,)
         ).fetchall()
 
@@ -111,9 +110,13 @@ def endpoint_get_starred() -> flask.Response:
             """, (username,)
         ).fetchall()
 
-    preload_songs(song_rows)
+    song_ids_ordered = [row['item_id'] for row in song_id_rows]
+    resolved = IDMapper.resolve_songs_bulk(song_ids_ordered)
+    song_items = [resolved[sid] for sid in song_ids_ordered if sid in resolved]
 
-    songs = [map_song(dict(row)) for row in song_rows]
+    preload_songs(song_items)
+
+    songs = [map_song(item) for item in song_items]
     album_dicts = [dict(row) for row in album_rows]
 
     preload_albums(album_dicts)
@@ -124,11 +127,11 @@ def endpoint_get_starred() -> flask.Response:
     mbids_to_resolve = []
     beets_artist_names = []
     for row in artist_rows:
-        val, is_mbid = IDMapper.sub_to_artist(row[0])
-        if val and is_mbid:
-            mbids_to_resolve.append(val)
-        elif val:
-            beets_artist_names.append(val)
+        value, is_mbid = IDMapper.decode_artist_mbid(row[0])
+        if value and is_mbid:
+            mbids_to_resolve.append(value)
+        elif value:
+            beets_artist_names.append(value)
 
     if mbids_to_resolve:
         with flask.g.lib.transaction() as tx:

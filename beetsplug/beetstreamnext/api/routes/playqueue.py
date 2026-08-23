@@ -3,12 +3,12 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.database import database, dual_database
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standardise_datadict
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
@@ -32,29 +32,32 @@ def endpoint_get_play_queue() -> flask.Response:
     if not queue_row:
         return subsonic_response({}, resp_fmt=resp_fmt)
 
-    current_beets_id, position, changed, changed_by = queue_row
+    current_song_id, position, changed, changed_by = queue_row
 
-    with dual_database() as db:
-        rows = db.execute(
+    with database() as db:
+        entry_rows = db.execute(
             """
-            SELECT i.*
-            FROM play_queue_entries pq
-            JOIN beets.items i ON pq.song_id = i.id
-            WHERE pq.username = ?
-            ORDER BY pq.position
+            SELECT song_id
+            FROM play_queue_entries
+            WHERE username = ?
+            ORDER BY position
             """, (username,)
         ).fetchall()
 
-    if not rows:
+    if not entry_rows:
         return subsonic_response({}, resp_fmt=resp_fmt)
 
-    preload_songs(rows)
-    songs = [map_song(dict(row)) for row in rows]
+    ordered_ids = [r['song_id'] for r in entry_rows]
+    resolved = IDMapper.resolve_songs_bulk(ordered_ids)
+    items_in_order = [resolved[sid] for sid in ordered_ids if sid in resolved]
+
+    preload_songs(items_in_order)
+    songs = [map_song(item) for item in items_in_order]
 
     payload = {
         'playQueue': {
             'entry': songs,
-            'current': IDMapper.song_to_sub(current_beets_id) if current_beets_id else '',
+            'current': current_song_id or '',
             'position': int(position or 0),
             'changed': timestamp_to_iso(changed) if changed else '',
             'changedBy': changed_by or '',
@@ -76,8 +79,13 @@ def endpoint_save_play_queue() -> flask.Response:
 
     username = flask.g.username
 
-    beets_song_ids = [bid for sid in song_ids if (bid := IDMapper.sub_to_song(sid)) is not None]
-    current_beets_sid = IDMapper.sub_to_song(current_sid) if current_sid else None
+    resolved = IDMapper.resolve_songs_bulk(song_ids)
+    canonical_ids = [IDMapper.mint_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
+
+    current_item = resolved.get(current_sid) if current_sid else None
+    if current_sid and current_item is None:
+        current_item = IDMapper.resolve_song(current_sid)
+    current_canonical = IDMapper.mint_song(standardise_datadict(current_item)) if current_item else None
 
     now = time.time()
 
@@ -91,22 +99,22 @@ def endpoint_save_play_queue() -> flask.Response:
                 position   = excluded.position,
                 changed    = excluded.changed,
                 changed_by = excluded.changed_by
-            """, (username, current_beets_sid, position, now, client)
+            """, (username, current_canonical, position, now, client)
         )
 
         db.execute(
             """
-            DELETE FROM play_queue_entries 
+            DELETE FROM play_queue_entries
             WHERE username = ?
             """, (username,)
         )
 
         db.executemany(
             """
-            INSERT INTO play_queue_entries (username, position, song_id) 
+            INSERT INTO play_queue_entries (username, position, song_id)
             VALUES (?, ?, ?)
             """,
-            [(username, i, sid) for i, sid in enumerate(beets_song_ids)]
+            [(username, i, sid) for i, sid in enumerate(canonical_ids)]
         )
 
     return subsonic_response({}, resp_fmt=resp_fmt)
@@ -132,30 +140,33 @@ def endpoint_get_play_queue_by_index() -> flask.Response:
     if not queue_row:
         return subsonic_response({'playQueueByIndex': {}}, resp_fmt=resp_fmt)
 
-    current_beets_id, position, changed, changed_by = queue_row
+    current_song_id, position, changed, changed_by = queue_row
 
-    with dual_database() as db:
-        rows = db.execute(
+    with database() as db:
+        entry_rows = db.execute(
             """
-            SELECT i.*
-            FROM play_queue_entries pq
-                     JOIN beets.items i ON pq.song_id = i.id
-            WHERE pq.username = ?
-            ORDER BY pq.position
+            SELECT song_id
+            FROM play_queue_entries
+            WHERE username = ?
+            ORDER BY position
             """, (username,)
         ).fetchall()
 
-    if not rows:
+    if not entry_rows:
         return subsonic_response({'playQueueByIndex': {}}, resp_fmt=resp_fmt)
 
-    preload_songs(rows)
+    ordered_ids = [r['song_id'] for r in entry_rows]
+    resolved = IDMapper.resolve_songs_bulk(ordered_ids)
+    valid_pairs = [(sid, resolved[sid]) for sid in ordered_ids if sid in resolved]
+
+    preload_songs([item for _, item in valid_pairs])
 
     current_index = 0
     songs = []
-    for i, row in enumerate(rows):
-        if row['id'] == current_beets_id:
+    for i, (sid, item) in enumerate(valid_pairs):
+        if sid == current_song_id:
             current_index = i
-        songs.append(map_song(dict(row)))
+        songs.append(map_song(item))
 
     payload = {
         'playQueueByIndex': {
@@ -206,13 +217,14 @@ def endpoint_save_play_queue_by_index() -> flask.Response:
     if current_index < 0 or current_index >= len(song_ids):
         return subsonic_error(10, message='currentIndex out of bounds.', resp_fmt=resp_fmt)
 
-    beets_song_ids = [bid for sid in song_ids if (bid := IDMapper.sub_to_song(sid)) is not None]
+    resolved = IDMapper.resolve_songs_bulk(song_ids)
+    canonical_ids = [IDMapper.mint_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
 
     # And revalidate against parsed list
-    if current_index >= len(beets_song_ids):
+    if current_index >= len(canonical_ids):
         return subsonic_error(10, message='currentIndex out of bounds.', resp_fmt=resp_fmt)
 
-    current_beets_id = beets_song_ids[current_index]
+    current_song_id = canonical_ids[current_index]
 
     with database() as db:
         db.execute(
@@ -223,7 +235,7 @@ def endpoint_save_play_queue_by_index() -> flask.Response:
                                                  position   = excluded.position,
                                                  changed    = excluded.changed,
                                                  changed_by = excluded.changed_by
-            """, (username, current_beets_id, position, now, client)
+            """, (username, current_song_id, position, now, client)
         )
 
         # Re-populate the entries table
@@ -233,7 +245,7 @@ def endpoint_save_play_queue_by_index() -> flask.Response:
             INSERT INTO play_queue_entries (username, position, song_id)
             VALUES (?, ?, ?)
             """,
-            [(username, i, sid) for i, sid in enumerate(beets_song_ids)]
+            [(username, i, sid) for i, sid in enumerate(canonical_ids)]
         )
 
     return subsonic_response({}, resp_fmt=resp_fmt)

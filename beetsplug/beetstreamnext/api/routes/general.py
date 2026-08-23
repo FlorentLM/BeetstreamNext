@@ -212,7 +212,7 @@ def endpoint_get_music_directory() -> flask.Response:
         children = []
         for row in rows:
             artist_name, artist_mbid = row
-            artist_id = IDMapper.artist_to_sub(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+            artist_id = IDMapper.mint_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
 
             children.append({
                 'id': artist_id,

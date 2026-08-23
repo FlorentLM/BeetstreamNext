@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standardise_datadict
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
@@ -60,7 +60,10 @@ def endpoint_scrobble() -> flask.Response:
         # Record play stats
         for i, p_id in enumerate(playing_ids):
             if IDMapper.get_type(p_id) == 'song':       # only keep count of songs played, not radios
-                beets_id = IDMapper.sub_to_song(p_id)
+                item = IDMapper.resolve_song(p_id)
+                if not item:
+                    continue
+                canonical_id = IDMapper.mint_song(standardise_datadict(item))
 
                 try:
                     played_at = times_ms[i] / 1000.0
@@ -75,7 +78,7 @@ def endpoint_scrobble() -> flask.Response:
                     DO UPDATE SET
                         play_count  = play_count + 1,
                         last_played = excluded.last_played
-                    """, (username, beets_id, played_at)
+                    """, (username, canonical_id, played_at)
                 )
 
     if app.config.get('lastfm_api_key') and flask.g.user_data.get('scrobblingEnabled'):
@@ -113,21 +116,13 @@ def endpoint_get_now_playing() -> flask.Response:
         entry = None
 
         if p_id.startswith('sg-'):
-            beets_id = IDMapper.sub_to_song(p_id)
-            item = flask.g.lib.get_item(beets_id)
+            item = IDMapper.resolve_song(p_id)
             if item:
                 entry = map_song(item)
 
         elif p_id.startswith('ir-'):
-            radio_id = IDMapper.sub_to_radio(p_id)
-            if radio_id is not None:
-                with database() as db:
-                    station = db.execute(
-                        """
-                        SELECT name FROM internet_radio_stations WHERE id = ?
-                        """, (radio_id,)
-                    ).fetchone()
-                if station:
+            station = IDMapper.resolve_radio(p_id)
+            if station:
                     entry = {
                         'id': p_id,
                         'title': station['name'],
@@ -212,10 +207,10 @@ def endpoint_report_playback() -> flask.Response:
 
     # Check for scrobble threshold: played for 4 minutes or 50% of total length
     if not ignore_scrobble and state == 'playing' and IDMapper.get_type(media_id) == 'song':
-        beets_id = IDMapper.sub_to_song(media_id)
-        item = flask.g.lib.get_item(beets_id)
+        item = IDMapper.resolve_song(media_id)
 
         if item:
+            canonical_id = IDMapper.mint_song(standardise_datadict(item))
             duration_ms = (item.get('length') or 0) * 1000
             threshold = min(4 * 60 * 1000, duration_ms * 0.5)
 
@@ -239,7 +234,7 @@ def endpoint_report_playback() -> flask.Response:
                             ON CONFLICT (username, song_id)
                                 DO UPDATE SET play_count  = play_count + 1,
                                               last_played = excluded.last_played
-                            """, (username, beets_id, now)
+                            """, (username, canonical_id, now)
                         )
                         # Mark as scrobbled to not count again until the next 'starting' state
                         db.execute(

@@ -1,4 +1,5 @@
 import ctypes
+import hashlib
 import mimetypes
 import os
 import platform
@@ -31,13 +32,16 @@ def cache_location() -> Path:
     return final_path
 
 
-def creation_date(filepath) -> float:
+def creation_date(filepath: bytes | str | Path) -> float:
     """Get a file's creation date."""
 
-    if platform.system() == 'Windows':
-        return os.path.getctime(filepath)
+    if isinstance(filepath, bytes):
+        filepath = os.fsdecode(filepath)
 
-    stat = os.stat(filepath)
+    stat = Path(filepath).stat()
+
+    if platform.system() == 'Windows':
+        return stat.st_ctime
 
     if platform.system() == 'Darwin':
         return stat.st_birthtime
@@ -46,15 +50,19 @@ def creation_date(filepath) -> float:
     return getattr(stat, 'st_birthtime', stat.st_mtime)
 
 
-def get_mimetype(path) -> str:
+def get_mimetype(path: bytes | str | Path) -> str:
     """Infer a file's mimetype."""
+
     if not path:
         return 'application/octet-stream'
+    if isinstance(path, bytes):
+        path = os.fsdecode(path)
 
-    path = os.fsdecode(path)
-    if '.' not in path or path.startswith('.'):
+    path = Path(path)
+
+    if '.' not in path.name or path.name.startswith('.'):
         # Assume the passed arg is just an extension
-        path = f'file.{path}'
+        path = Path('file').with_suffix('.' + path.name.strip('.'))
 
     mimetype_fallback = {
         '.aac': 'audio/aac',
@@ -65,14 +73,33 @@ def get_mimetype(path) -> str:
         '.ogg': 'audio/ogg',
         '.opus': 'audio/opus'
     }
-    ext = '.' + path.rsplit('.', 1)[-1].lower()
+    ext = path.suffix.lower()
     return mimetypes.guess_type(path)[0] or mimetype_fallback.get(ext, 'application/octet-stream')
 
 
-def make_hidden(filepath: Path) -> None:
+def path_hash(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:
+    """Short hash of a file's path relative to root_directory."""
+    if not path:
+        return ''
+    if isinstance(path, bytes):
+        path = os.fsdecode(path)
+    if isinstance(root_directory, bytes):
+        root_directory = os.fsdecode(root_directory)
+    try:
+        rel = Path(path).relative_to(str(root_directory)).as_posix()
+    except ValueError:
+        rel = Path(path).as_posix()
+    return hashlib.sha1(rel.encode('utf-8')).hexdigest()[:16]
+
+
+def make_hidden(filepath: bytes | str | Path) -> None:
     """Marks a file as hidden on Windows."""
-    if platform.system() == "Windows":
+    if isinstance(filepath, bytes):
+        filepath = os.fsdecode(filepath)
+    filepath = str(filepath)
+
+    if platform.system() == 'Windows':
         try:
-            ctypes.windll.kernel32.SetFileAttributesW(str(filepath), 2)     # 2 is FILE_ATTRIBUTE_HIDDEN
+            ctypes.windll.kernel32.SetFileAttributesW(filepath, 2)     # 2 is FILE_ATTRIBUTE_HIDDEN
         except Exception as e:
             bsn_logger.warning(f"Could not set file as hidden on Windows: {e}")

@@ -87,8 +87,7 @@ def home() -> str:
             id_type = IDMapper.get_type(item_id)
 
             if id_type == 'song':
-                beets_song_id = IDMapper.sub_to_song(item_id)
-                song = app.config['lib'].get_item(beets_song_id)
+                song = IDMapper.resolve_song(item_id)
                 if song:
                     now_playing = {
                         'title': song.title,
@@ -99,22 +98,15 @@ def home() -> str:
                     }
 
             elif id_type == 'radio':
-                radio_id = IDMapper.sub_to_radio(item_id)
-                if radio_id is not None:
-                    with database() as db:
-                        station = db.execute(
-                            """
-                            SELECT name FROM internet_radio_stations WHERE id = ?
-                            """, (radio_id,)
-                        ).fetchone()
-                    if station:
-                        now_playing = {
-                            'title': station['name'],
-                            'artist': 'Internet Radio',
-                            'album': '',
-                            'player': row['player_name'],
-                            'username': row['username']
-                        }
+                station = IDMapper.resolve_radio(item_id)
+                if station:
+                    now_playing = {
+                        'title': station['name'],
+                        'artist': 'Internet Radio',
+                        'album': '',
+                        'player': row['player_name'],
+                        'username': row['username']
+                    }
 
     # Resolve the public/external URL
     external_host = settings_store.get('external_hostname')
@@ -159,17 +151,16 @@ def now_playing_cover() -> flask.Response:
     id_type = IDMapper.get_type(item_id)
 
     if id_type == 'song':
-        beets_song_id = IDMapper.sub_to_song(item_id)
-        song = app.config['lib'].get_item(beets_song_id)
+        song = IDMapper.resolve_song(item_id)
         if song and song.get('album_id'):
             response = send_album_art(song.get('album_id'), rounded_size)
             if response:
                 return response
 
     elif id_type == 'radio':
-        radio_id = IDMapper.sub_to_radio(item_id)
-        if radio_id is not None:
-            response = send_radio_art(radio_id)
+        station = IDMapper.resolve_radio(item_id)
+        if station:
+            response = send_radio_art(station['id'])
             if response:
                 return response
 
@@ -225,12 +216,12 @@ def share_view(share_id: str) -> flask.Response:
         entry_type = IDMapper.get_type(entry_id)
 
         if entry_type == 'song':
-            item = flask.g.lib.get_item(IDMapper.sub_to_song(entry_id))
+            item = IDMapper.resolve_song(entry_id)
             if item:
                 songs.append(map_song(item))
 
         elif entry_type == 'album':
-            alb = flask.g.lib.get_album(IDMapper.sub_to_album(entry_id))
+            alb = IDMapper.resolve_album(entry_id)
             if alb:
                 albums.append(map_album(alb, include_songs=True))
 
@@ -264,33 +255,28 @@ def share_download(share_id: str, entry_id: str) -> flask.Response:
 
     is_valid = bool(explicit_match)
 
-    if not is_valid and IDMapper.get_type(entry_id) == 'song':
+    item = IDMapper.resolve_song(entry_id) if IDMapper.get_type(entry_id) == 'song' else None
 
-        beets_song_id = IDMapper.sub_to_song(entry_id)
-        item = flask.g.lib.get_item(beets_song_id)
+    if not is_valid and item:
+        album_id = item.get('album_id')
 
-        if item:
-            album_id = item.get('album_id')
+        if album_id:
+            sub_album_id = IDMapper.mint_album(album_id)
 
-            if album_id:
-                sub_album_id = IDMapper.album_to_sub(album_id)
+            with database() as db:
+                album_match = db.execute(
+                    """
+                    SELECT 1
+                    FROM share_entries
+                    WHERE share_id = ? AND item_id = ?
+                    """, (share_id, sub_album_id)
+                ).fetchone()
 
-                with database() as db:
-                    album_match = db.execute(
-                        """
-                        SELECT 1 
-                        FROM share_entries 
-                        WHERE share_id = ? AND item_id = ?
-                        """, (share_id, sub_album_id)
-                    ).fetchone()
-
-                is_valid = bool(album_match)
+            is_valid = bool(album_match)
 
     if not is_valid:
         flask.abort(403)
 
-    beets_song_id = IDMapper.sub_to_song(entry_id)
-    item = flask.g.lib.get_item(beets_song_id)
     if not item:
         flask.abort(404)
 
@@ -326,8 +312,7 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     if not explicit_match:
         flask.abort(403)
 
-    album_id = IDMapper.sub_to_album(entry_id)
-    album = flask.g.lib.get_album(album_id)
+    album = IDMapper.resolve_album(entry_id)
     if not album:
         flask.abort(404)
 
@@ -368,23 +353,20 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
 
     is_valid = bool(explicit_match)
 
-    if not is_valid and IDMapper.get_type(entry_id) == 'song':
+    song_item = IDMapper.resolve_song(entry_id) if IDMapper.get_type(entry_id) == 'song' else None
 
-        beets_song_id = IDMapper.sub_to_song(entry_id)
-        item = app.config['lib'].get_item(beets_song_id)
+    if not is_valid and song_item:
+        album_id = song_item.get('album_id')
+        if album_id:
+            sub_album_id = IDMapper.mint_album(album_id)
 
-        if item:
-            album_id = item.get('album_id')
-            if album_id:
-                sub_album_id = IDMapper.album_to_sub(album_id)
+            with database() as db:
+                album_match = db.execute(
+                    """SELECT 1 FROM share_entries WHERE share_id = ? AND item_id = ?""",
+                    (share_id, sub_album_id)
+                ).fetchone()
 
-                with database() as db:
-                    album_match = db.execute(
-                        """SELECT 1 FROM share_entries WHERE share_id = ? AND item_id = ?""",
-                        (share_id, sub_album_id)
-                    ).fetchone()
-
-                is_valid = bool(album_match)
+            is_valid = bool(album_match)
 
     if not is_valid:
         flask.abort(403)
@@ -394,21 +376,14 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
     rounded_size = round_image_size(size)
 
     if IDMapper.get_type(entry_id) == 'album':
-        album_id = IDMapper.sub_to_album(entry_id)
-
-        response = send_album_art(album_id, rounded_size)
+        album = IDMapper.resolve_album(entry_id)
+        response = send_album_art(album.id, rounded_size) if album else None
         if response:
             return response
 
-    elif IDMapper.get_type(entry_id) == 'song':
-        beets_song_id = IDMapper.sub_to_song(entry_id)
-
-        item = app.config['lib'].get_item(beets_song_id)
-
-        if item and item.get('album_id'):
-
-            response = send_album_art(item.get('album_id'), rounded_size)
-            if response:
-                return response
+    elif song_item and song_item.get('album_id'):
+        response = send_album_art(song_item.get('album_id'), rounded_size)
+        if response:
+            return response
 
     flask.abort(404)

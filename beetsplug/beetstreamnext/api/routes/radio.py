@@ -76,12 +76,14 @@ def endpoint_update_radio_station() -> flask.Response:
     stream_url = r.get('streamUrl', type=str)        # Required
     homepage_url = r.get('homepageUrl', type=str)
 
-    sid = IDMapper.sub_to_radio(raw_id)
-
-    if sid is None or not name or not stream_url:
+    if not raw_id or not name or not stream_url:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    update_station(sid, name, stream_url, homepage_url)
+    station = IDMapper.resolve_radio(raw_id)
+    if station is None:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    update_station(station['id'], name, stream_url, homepage_url)
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
@@ -97,9 +99,12 @@ def endpoint_delete_radio_station() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     raw_id = r.get('id', default='', type=safe_str)          # Required
 
-    sid = IDMapper.sub_to_radio(raw_id)
-    if sid is None:
+    if not raw_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    delete_station(sid)
+    station = IDMapper.resolve_radio(raw_id)
+    if station is None:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    delete_station(station['id'])
     return subsonic_response({}, resp_fmt=resp_fmt)

@@ -15,12 +15,12 @@ from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import image_url
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, resolve_artist, map_album, map_artist, get_song_counts
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_album, map_artist, get_song_counts
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
 
-    value, is_mbid = IDMapper.sub_to_artist(subsonic_artist_id)
+    value, is_mbid = IDMapper.decode_artist_mbid(subsonic_artist_id)
     if not value:
         return {}
 
@@ -183,7 +183,7 @@ def endpoint_artist_info() -> flask.Response:
     if not artist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    resolved = resolve_artist(artist_id)
+    resolved = IDMapper.resolve_artist(artist_id)
     if not resolved:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -213,7 +213,7 @@ def endpoint_artist_info() -> flask.Response:
     tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
 
     # image id is the artist id, but input may have been song or album
-    image_id = IDMapper.artist_to_sub(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+    image_id = IDMapper.mint_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
 
     payload = {
         tag: {

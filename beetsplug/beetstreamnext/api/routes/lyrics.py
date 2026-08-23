@@ -144,8 +144,7 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = IDMapper.sub_to_song(req_id)
-    item = flask.g.lib.get_item(beets_id)
+    item = IDMapper.resolve_song(req_id)
 
     if not item:
         return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)

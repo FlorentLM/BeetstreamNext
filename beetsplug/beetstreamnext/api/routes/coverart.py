@@ -39,15 +39,14 @@ def endpoint_get_cover_art() -> flask.Response:
 
     # album requests
     if IDMapper.get_type(req_id) == 'album':
-        album_id = IDMapper.sub_to_album(req_id)
-        response = send_album_art(album_id, size)
+        album = IDMapper.resolve_album(req_id)
+        response = send_album_art(album.id, size) if album else None
         if response is not None:
             return response
 
     # song requests
     elif IDMapper.get_type(req_id) == 'song':
-        item_id = IDMapper.sub_to_song(req_id)
-        item = flask.g.lib.get_item(item_id)
+        item = IDMapper.resolve_song(req_id)
         if not item:
             return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -93,9 +92,9 @@ def endpoint_get_cover_art() -> flask.Response:
                     return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     elif IDMapper.get_type(req_id) == 'radio':
-        radio_id = IDMapper.sub_to_radio(req_id)
-        if radio_id:
-            response = send_radio_art(radio_id)
+        station = IDMapper.resolve_radio(req_id)
+        if station:
+            response = send_radio_art(station['id'])
             if response is not None:
                 return response
 

@@ -88,25 +88,44 @@ class Playlist:
         path_entries = [(i, e) for i, e in enumerate(entries) if not e.get('props', {}).get('id')]
 
         results = {}    # keyed by original entry index to keep order
+        unresolved_by_id = []   # id_entries whose id didn't resolve fall back to path
 
-        # Resolve songs that have a beets id embedded in the m3u
+        # Resolve songs that have an id embedded in the m3u: either a legacy raw beets
+        # row id (old m3u files, plain digits) or a stable id (mbid/hash)
         if id_entries:
-            beets_ids = [int(e['props']['id']) for _, e in id_entries]
+            legacy_entries = [(i, e) for i, e in id_entries if e['props']['id'].isdigit()]
+            stable_entries = [(i, e) for i, e in id_entries if not e['props']['id'].isdigit()]
 
-            with flask.g.lib.transaction() as tx:
-                sql_query = 'SELECT * FROM items WHERE id IN ({q})'
-                rows = chunked_query(db_obj=tx, query_template=sql_query, chunked_values=beets_ids)
+            if legacy_entries:
+                beets_ids = [int(e['props']['id']) for _, e in legacy_entries]
 
-            id_map = {row['id']: row for row in rows}
+                with flask.g.lib.transaction() as tx:
+                    sql_query = 'SELECT * FROM items WHERE id IN ({q})'
+                    rows = chunked_query(db_obj=tx, query_template=sql_query, chunked_values=beets_ids)
 
-            for idx, entry in id_entries:
-                beets_id = int(entry['props']['id'])
-                row = id_map.get(beets_id)
-                if row:
-                    results[idx] = row
+                id_map = {row['id']: row for row in rows}
 
-        # Resolve songs that only have a path (try the literal path first and
-        # fall back to the percent-decoded one if that didn't match)
+                for idx, entry in legacy_entries:
+                    row = id_map.get(int(entry['props']['id']))
+                    if row:
+                        results[idx] = row
+                    else:
+                        unresolved_by_id.append((idx, entry))
+
+            if stable_entries:
+                resolved = IDMapper.resolve_songs_bulk([e['props']['id'] for _, e in stable_entries])
+
+                for idx, entry in stable_entries:
+                    row = resolved.get(entry['props']['id'])
+                    if row:
+                        results[idx] = row
+                    else:
+                        unresolved_by_id.append((idx, entry))
+
+        # Resolve songs that only have a path (try the path first, then
+        # fall back to the percent-decoded one if that didn't match, then any
+        # id-entries whose embedded id no longer resolves).
+        path_entries = path_entries + unresolved_by_id
         if path_entries:
             literal_paths_bytes = []
             decoded_paths_bytes = []
@@ -359,7 +378,7 @@ class Playlist:
                     continue
                 path = os.fsdecode(path)
 
-                song_id = IDMapper.sub_to_song(song.get('id', ''))
+                song_id = song.get('id', '')
                 length = song.get('duration') or song.get('length', 0)
                 info = f"#EXTINF:{round(length)} id={song_id}"
 

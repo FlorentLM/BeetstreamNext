@@ -15,8 +15,7 @@ from beetsplug.beetstreamnext.core.cache import preload_albums
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
 
-    beets_album_id = IDMapper.sub_to_album(subsonic_album_id)
-    album_object = flask.g.lib.get_album(beets_album_id)
+    album_object = IDMapper.resolve_album(subsonic_album_id)
     if not album_object:
         return {}
 
@@ -59,14 +58,14 @@ def endpoint_get_album_info() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     if IDMapper.get_type(req_id) == 'song':
-        item = flask.g.lib.get_item(IDMapper.sub_to_song(req_id))
+        item = IDMapper.resolve_song(req_id)
         beets_album_id = item.get('album_id') if item else None
 
         album = flask.g.lib.get_album(beets_album_id) if beets_album_id else None
-        image_id = IDMapper.album_to_sub(beets_album_id or req_id)
+        image_id = IDMapper.mint_album(beets_album_id or req_id)
 
     else:
-        album = flask.g.lib.get_album(IDMapper.sub_to_album(req_id))
+        album = IDMapper.resolve_album(req_id)
         image_id = req_id
 
     if not album:

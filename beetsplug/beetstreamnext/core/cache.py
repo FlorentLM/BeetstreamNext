@@ -1,7 +1,7 @@
 from typing import List
 import flask
 
-from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.api.serializers import IDMapper, standardise_datadict
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.utils.text import validate_mbid
@@ -112,12 +112,12 @@ def one_rating(item_id: str) -> int:
 ##
 # Play stats
 
-def batch_play_stats(beets_song_ids: list[int]):
+def batch_play_stats(song_ids: List[str]):
 
     def fetch(ids):
         query = """
-            SELECT song_id, play_count, last_played 
-            FROM play_stats 
+            SELECT song_id, play_count, last_played
+            FROM play_stats
             WHERE username=? AND song_id IN ({q})
         """
         with database() as db:
@@ -133,25 +133,25 @@ def batch_play_stats(beets_song_ids: list[int]):
             for row in rows
         }
 
-    _batch_cache('_play_stats', fetch, beets_song_ids)
+    _batch_cache('_play_stats', fetch, song_ids)
 
 
-def one_play_stats(beets_song_id: int) -> dict | None:
+def one_play_stats(song_id: str) -> dict | None:
     cache = flask.g.setdefault('_play_stats', {})
 
-    if beets_song_id not in cache:
+    if song_id not in cache:
         with database() as db:
             row = db.execute(
                 """
-                SELECT play_count, last_played 
-                FROM play_stats 
+                SELECT play_count, last_played
+                FROM play_stats
                 WHERE username=? AND song_id=?
-                """, (flask.g.username, beets_song_id)
+                """, (flask.g.username, song_id)
             ).fetchone()
 
-        cache[beets_song_id] = {'play_count': row[0], 'last_played': row[1]} if row else _MISSING
+        cache[song_id] = {'play_count': row[0], 'last_played': row[1]} if row else _MISSING
 
-    result = cache[beets_song_id]
+    result = cache[song_id]
     return None if result is _MISSING else result
 
 
@@ -161,18 +161,17 @@ def one_play_stats(beets_song_id: int) -> dict | None:
 def preload_songs(beets_items: list):
     if not beets_items:
         return
-    beets_ids = [s['id'] for s in beets_items]
-    sub_ids = [IDMapper.song_to_sub(i) for i in beets_ids]
+    sub_ids = [IDMapper.mint_song(standardise_datadict(s)) for s in beets_items]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
-    batch_play_stats(beets_ids)
+    batch_play_stats(sub_ids)
 
 
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
-    sub_ids = [IDMapper.album_to_sub(a['id']) for a in beets_albums]
+    sub_ids = [IDMapper.mint_album(a['id']) for a in beets_albums]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -187,17 +186,17 @@ def preload_artists(artists_data):
     if isinstance(artists_data, dict):
         for name, data in artists_data.items():
             mbid = validate_mbid(data.get('mbid'))
-            sub_ids.append(IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid)))
+            sub_ids.append(IDMapper.mint_artist(mbid or name, is_mbid=bool(mbid)))
 
     elif isinstance(artists_data, list):
         for item in artists_data:
             if isinstance(item, str):
-                sub_ids.append(IDMapper.artist_to_sub(item, is_mbid=False))
+                sub_ids.append(IDMapper.mint_artist(item, is_mbid=False))
 
             elif isinstance(item, dict) or hasattr(item, 'keys'):
                 name = item.get('albumartist') or item.get('artist') or ''
                 mbid = validate_mbid(item.get('mb_albumartistid')) or validate_mbid(item.get('mb_artistid'))
-                sub_ids.append(IDMapper.artist_to_sub(mbid or name, is_mbid=bool(mbid)))
+                sub_ids.append(IDMapper.mint_artist(mbid or name, is_mbid=bool(mbid)))
 
     if sub_ids:
         batch_likes(sub_ids)

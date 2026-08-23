@@ -96,7 +96,7 @@ def endpoint_create_playlist() -> flask.Response:
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = [flask.g.lib.get_item(IDMapper.sub_to_song(sid)) for sid in songs_ids if sid]
+    songs = [s for sid in songs_ids if sid and (s := IDMapper.resolve_song(sid))]
     try:
         playlist = Playlist.from_songs(name, songs)
     except FileExistsError as e:
@@ -173,7 +173,7 @@ def endpoint_update_playlist() -> flask.Response:
             beets_items = []
 
             for s_id in to_add:
-                item = flask.g.lib.get_item(IDMapper.sub_to_song(s_id))
+                item = IDMapper.resolve_song(s_id)
                 if item:
                     beets_items.append(item)
             playlist.add_songs(beets_items)

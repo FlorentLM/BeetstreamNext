@@ -126,8 +126,7 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
         if not media_id:
             return None, None, subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = IDMapper.sub_to_song(media_id)
-    media = flask.g.lib.get_item(beets_id)
+    media = IDMapper.resolve_song(media_id)
     if not media:
         return None, None, subsonic_error(70, resp_fmt=resp_fmt)
 

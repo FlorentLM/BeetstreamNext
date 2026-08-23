@@ -3,12 +3,12 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.database import dual_database, database
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standardise_datadict
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
@@ -20,22 +20,25 @@ def endpoint_get_bookmarks() -> flask.Response:
 
     username = flask.g.username
 
-    with dual_database() as db:
+    with database() as db:
         rows = db.execute(
             """
-            SELECT i.*, b.position, b.comment, b.created, b.changed
-            FROM bookmarks b 
-                     JOIN beets.items i ON b.song_id = i.id
-            WHERE b.username = ?
+            SELECT song_id, position, comment, created, changed
+            FROM bookmarks
+            WHERE username = ?
             """, (username,)
         ).fetchall()
 
-    preload_songs(rows)
+    items_by_song_id = IDMapper.resolve_songs_bulk([row['song_id'] for row in rows])
+    preload_songs(list(items_by_song_id.values()))
 
     bookmarks = []
     for row in rows:
+        item = items_by_song_id.get(row['song_id'])
+        if not item:
+            continue
         bookmarks.append({
-            'entry': map_song(dict(row)),
+            'entry': map_song(item),
             'position': int(row['position'] or 0),
             'comment': row['comment'] or '',
             'created': timestamp_to_iso(row['created']) if row['created'] else '',
@@ -64,19 +67,23 @@ def endpoint_create_bookmark() -> flask.Response:
     if not song_id or position < 0.0:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = IDMapper.sub_to_song(song_id)
+    item = IDMapper.resolve_song(song_id)
+    if not item:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    canonical_id = IDMapper.mint_song(standardise_datadict(item))
     username = flask.g.username
     now = time.time()
 
     with database() as db:
         db.execute(
             """
-            INSERT INTO bookmarks (username, song_id, position, comment, created, changed) 
-            VALUES (?, ?, ?, ?, ?, ?) 
+            INSERT INTO bookmarks (username, song_id, position, comment, created, changed)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (username, song_id) DO UPDATE SET position = excluded.position,
                                                           comment  = excluded.comment,
                                                           changed  = excluded.changed
-            """, (username, beets_id, position, comment, now, now)
+            """, (username, canonical_id, position, comment, now, now)
             )
 
     return subsonic_response({}, resp_fmt=resp_fmt)
@@ -93,16 +100,17 @@ def endpoint_delete_bookmark() -> flask.Response:
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    beets_id = IDMapper.sub_to_song(song_id)
+    item = IDMapper.resolve_song(song_id)
+    canonical_id = IDMapper.mint_song(standardise_datadict(item)) if item else None
     username = flask.g.username
 
     with database() as db:
         db.execute(
             """
-            DELETE 
-            FROM bookmarks 
+            DELETE
+            FROM bookmarks
             WHERE username = ? AND song_id = ?
-            """, (username, beets_id)
+            """, (username, canonical_id)
         )
 
     return subsonic_response({}, resp_fmt=resp_fmt)

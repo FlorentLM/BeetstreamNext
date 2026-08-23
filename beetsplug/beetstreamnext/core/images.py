@@ -300,7 +300,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
 
     artist = customstrip(artist)
     if IDMapper.get_type(artist) == 'artist':
-        value, is_mbid = IDMapper.sub_to_artist(artist)
+        value, is_mbid = IDMapper.decode_artist_mbid(artist)
 
         if is_mbid:
             with flask.g.lib.transaction() as tx:

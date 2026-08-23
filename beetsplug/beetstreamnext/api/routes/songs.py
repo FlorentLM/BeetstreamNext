@@ -5,18 +5,17 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.database import dual_database
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import query_lastfm
 from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, resolve_artist, map_song
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
 
 
 def song_payload(subsonic_song_id: str) -> dict:
-    beets_song_id = IDMapper.sub_to_song(subsonic_song_id)
-    song_item = flask.g.lib.get_item(beets_song_id)
+    song_item = IDMapper.resolve_song(subsonic_song_id)
     if not song_item:
         return {}
 
@@ -191,7 +190,7 @@ def endpoint_get_top_songs() -> flask.Response:
     count = r.get('count', default=50, type=int)
 
     lookup = req_artist_id if IDMapper.get_type(req_artist_id) == 'artist' else req_artist_name
-    resolved = resolve_artist(lookup)
+    resolved = IDMapper.resolve_artist(lookup)
     if not resolved:
         empty_payload = { 'topSongs': { 'song': [] } }
         return subsonic_response(empty_payload, resp_fmt=resp_fmt)
@@ -228,25 +227,34 @@ def endpoint_get_top_songs() -> flask.Response:
                 return subsonic_response(payload, resp_fmt=resp_fmt)
 
     # Fallback to local play stats
-    with dual_database() as db:
-        rows = db.execute(
+    with database() as db:
+        stat_rows = db.execute(
             """
-            SELECT i.*
-            FROM beets.items i
-                     JOIN play_stats ps ON ps.song_id = i.id
-            WHERE (i.albumartist = ? OR i.artist = ? OR i.artists LIKE ?)
-              AND ps.username = ?
-              AND ps.play_count > 0
-            ORDER BY ps.play_count DESC
-            LIMIT ?
-            """, (artist_name, artist_name, f"%{artist_name}%", flask.g.username, count)
+            SELECT song_id, play_count
+            FROM play_stats
+            WHERE username = ? AND play_count > 0
+            ORDER BY play_count DESC
+            """, (flask.g.username,)
         ).fetchall()
 
-    preload_songs(rows)
+    resolved = IDMapper.resolve_songs_bulk([r['song_id'] for r in stat_rows])
+
+    matches = []
+    for r in stat_rows:
+        item = resolved.get(r['song_id'])
+        if not item:
+            continue
+        if artist_name in (item.get('albumartist') or '', item.get('artist') or '') \
+                or artist_name in (item.get('artists') or ''):
+            matches.append(item)
+            if len(matches) >= count:
+                break
+
+    preload_songs(matches)
 
     payload = {
         'topSongs': {
-            'song': [map_song(song) for song in rows]
+            'song': [map_song(song) for song in matches]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -262,10 +270,11 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int
     if IDMapper.get_type(req_id) != 'song':
         return matches
 
-    song_beets_id = IDMapper.sub_to_song(req_id)
-    song_item = flask.g.lib.get_item(song_beets_id)
+    song_item = IDMapper.resolve_song(req_id)
     if not song_item or not song_item.get('title'):
         return matches
+
+    song_beets_id = song_item.id
 
     song_title = song_item.get('title')
     song_mbid = validate_mbid(song_item.get('mb_releasetrackid')) or validate_mbid(song_item.get('mb_trackid'))
@@ -318,7 +327,7 @@ def endpoint_get_similar_songs() -> flask.Response:
     if not req_id:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    resolved = resolve_artist(req_id)
+    resolved = IDMapper.resolve_artist(req_id)
     if resolved is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 

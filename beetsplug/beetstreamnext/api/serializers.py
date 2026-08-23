@@ -545,9 +545,8 @@ def map_playlist(playlist : 'Playlist', include_songs: bool = False) -> dict:
         'duration': playlist.duration,
         'created': timestamp_to_iso(playlist.ctime),
         'changed': timestamp_to_iso(playlist.mtime),
-
-        # 'owner': 'userA',     # TODO
-        # 'public': True,
+        'owner': playlist.owner or '',
+        'public': playlist.owner is None,
     }
     if include_songs and playlist.songs:
         subsonic_playlist['entry'] = playlist.songs

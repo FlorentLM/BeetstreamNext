@@ -2,11 +2,30 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.playlists import Playlist
+from beetsplug.beetstreamnext.core.playlists import Playlist, PlaylistProvider
+from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_playlist
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+
+
+def _can_read(playlist: Playlist, username: str, is_admin: bool) -> bool:
+    """BeetstreamNext playlists ones are per-user. External ones are public."""
+    return is_admin or playlist.owner is None or playlist.owner == username
+
+
+def _can_edit(playlist: Playlist, username: str, is_admin: bool) -> bool:
+    """Owner (or admin) can edit a BSN playlist. Public ones follow external_playlists_editors
+    setting, except smartplaylist ones which are always read-only."""
+    if playlist.dir_id == PlaylistProvider.SMARTPLAYLIST_DIR_ID:
+        return False
+    if is_admin:
+        return True
+    if playlist.owner is not None:
+        return playlist.owner == username
+    editors = settings_store.get('external_playlists_editors')
+    return '*' in editors or username in editors
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/
@@ -15,9 +34,13 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 def endpoint_get_playlists() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    # username = r.get('username', default=flask.g.username, type=safe_str)
-    playlists = flask.g.playlist_provider.getall()
-    # TODO: Properly support support per-user playlists
+    username = flask.g.username
+    is_admin = bool(flask.g.user_data.get('adminRole'))
+
+    playlists = [
+        p for p in flask.g.playlist_provider.getall()
+        if _can_read(p, username, is_admin)
+    ]
 
     payload = {
         'playlists': {
@@ -40,7 +63,7 @@ def endpoint_get_playlist() -> flask.Response:
 
     playlist = flask.g.playlist_provider.get(playlist_id)
 
-    if playlist is None:
+    if playlist is None or not _can_read(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
@@ -90,8 +113,17 @@ def endpoint_delete_playlist() -> flask.Response:
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
+    pp = flask.g.playlist_provider
+
+    playlist = pp.get(playlist_id)
+    if not playlist:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    if not _can_edit(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
+        return subsonic_error(50, message='Not authorized to delete this playlist.', resp_fmt=resp_fmt)
+
     try:
-        flask.g.playlist_provider.delete(playlist_id)
+        pp.delete(playlist_id)
     except FileNotFoundError as e:
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
@@ -119,6 +151,9 @@ def endpoint_update_playlist() -> flask.Response:
     playlist = pp.get(playlist_id)
     if not playlist:
         return subsonic_error(70, 'Playlist not found.', resp_fmt=resp_fmt)
+
+    if not _can_edit(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
+        return subsonic_error(50, message='Not authorized to edit this playlist.', resp_fmt=resp_fmt)
 
     try:
         if to_remove:

@@ -58,6 +58,15 @@
         });
     }
 
+    // Generic checkbox group select all / select none
+    function toggleCheckboxGroup(containerId, checked) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = checked;
+        });
+    }
+
     // Edit modal
 
     function applyTemplateUrl(el, attr, username) {
@@ -223,6 +232,9 @@
                 break;
             case 'roles-toggle':
                 toggleRoles(target.dataset.target, target.dataset.value === 'true', target.dataset.skip);
+                break;
+            case 'checkbox-group-toggle':
+                toggleCheckboxGroup(target.dataset.target, target.dataset.value === 'true');
                 break;
             case 'copy-api-key':
                 copyApiKey(target);

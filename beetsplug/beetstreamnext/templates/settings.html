@@ -10,11 +10,35 @@
     {%- if key == 'ratings_writeback_user' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <select id="set-{{ key }}" name="{{ key }}">
-            <option value="" {% if not info.value %}selected{% endif %}>&mdash; Disabled &mdash;</option>
+            <option value="" {% if not info.value %}selected{% endif %}>Disabled</option>
             {% for u in (users or []) %}
                 <option value="{{ u.username }}" {% if info.value == u.username %}selected{% endif %}>{{ u.username }}</option>
             {% endfor %}
         </select>
+    {%- elif key == 'external_playlists_editors' -%}
+        <div class="roles-header">
+            <label class="setting-row-label">{{ key }}</label>
+            <div class="roles-actions">
+                <button type="button" class="text-btn" data-action="checkbox-group-toggle"
+                        data-target="cbgroup-{{ key }}" data-value="true">Select all</button>
+                <span class="roles-sep">|</span>
+                <button type="button" class="text-btn text-btn-muted" data-action="checkbox-group-toggle"
+                        data-target="cbgroup-{{ key }}" data-value="false">Select none</button>
+            </div>
+        </div>
+        <div class="roles-grid" id="cbgroup-{{ key }}">
+            <label class="role-item">
+                <input type="checkbox" name="{{ key }}" value="*" {% if '*' in info.value %}checked{% endif %}>
+                Everyone;
+            </label>
+            {% for u in (users or []) %}
+            <label class="role-item">
+                <input type="checkbox" name="{{ key }}" value="{{ u.username }}" {% if u.username in info.value %}checked{% endif %}>
+                {{ u.username }}
+            </label>
+            {% endfor %}
+        </div>
+        <p class="label-hint">Empty selection = read-only.</p>
     {%- elif info.choices -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <select id="set-{{ key }}" name="{{ key }}">
@@ -54,7 +78,7 @@
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% for key, info in settings.items() if info.type != 'list[str]' %}
+        {% for key, info in settings.items() if info.type != 'list[str]' or key == 'external_playlists_editors' %}
             <div class="setting-row">
                 <div class="setting-row-control">
                     {{ render_setting_field(key, info, users) }}
@@ -253,7 +277,7 @@
     <section class="tab-content" id="tab-chat" data-tab-content="chat" role="tabpanel">
         <div class="card">
             <div class="table-header">
-                <h2>Chat Moderation</h2>
+                <h2>Chat moderation</h2>
             </div>
             <div class="table-container">
                 <table>

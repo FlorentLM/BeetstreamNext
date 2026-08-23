@@ -20,11 +20,12 @@ if TYPE_CHECKING:
 
 class Playlist:
 
-    def __init__(self, dir_id, path: str | Path):
+    def __init__(self, dir_id, path: str | Path, owner: Optional[str] = None):
         self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
-        self.id = f"{IDMapper.PLY_ID_PREF}{self.dir_id}-{self.path.stem[:200].lower()}{self.path.suffix.lower()}"
+        self.owner = owner
+        self.id = self.make_id(dir_id, self.path, owner)
         self.name = self.path.stem[:200]
         self.ctime = creation_date(self.path)
         self.mtime = self.path.stat().st_mtime
@@ -33,6 +34,16 @@ class Playlist:
         self.song_count = 0
         self.comment = ''
         self._parse_metadata()
+
+    @staticmethod
+    def make_id(dir_id, path: Path, owner: Optional[str]) -> str:
+        """
+        Make playlist's ID from its directory group, path (and owner for per-user ones).
+        """
+        stem_suffix = f"{path.stem[:200].lower()}{path.suffix.lower()}"
+        if owner:
+            return f"{IDMapper.PLY_ID_PREF}{dir_id}-{owner}/{stem_suffix}"
+        return f"{IDMapper.PLY_ID_PREF}{dir_id}-{stem_suffix}"
 
     def _parse_metadata(self) -> None:
         """Quickly parse M3U for duration, song count, and playlist comment/description."""
@@ -148,7 +159,7 @@ class Playlist:
                 self.path.rename(new_path)
                 self.path = new_path
                 self.name = safe_name[:200]
-                self.id = f"{IDMapper.PLY_ID_PREF}{self.dir_id}-{self.path.stem.lower()[:200]}{self.path.suffix.lower()}"
+                self.id = self.make_id(self.dir_id, self.path, self.owner)
                 self.mtime = self.path.stat().st_mtime
 
     def set_comment(self, comment: str) -> None:
@@ -183,8 +194,11 @@ class Playlist:
         instance = cls.__new__(cls)
         instance._lock = threading.RLock()
 
+        owner = flask.g.username
         safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
-        base_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
+        root_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
+        base_dir = root_dir / owner
+        base_dir.mkdir(parents=True, exist_ok=True)
         path = (base_dir / f'{safe_name}.m3u').resolve()
 
         if not path.is_relative_to(base_dir):
@@ -199,7 +213,8 @@ class Playlist:
         instance.path = path
 
         instance.dir_id = 0
-        instance.id = f'{IDMapper.PLY_ID_PREF}{instance.dir_id}-{instance.path.stem.lower()[:200]}{instance.path.suffix.lower()}'
+        instance.owner = owner
+        instance.id = cls.make_id(instance.dir_id, instance.path, owner)
         instance.ctime = None
         instance.mtime = None
         instance.comment = ''
@@ -329,6 +344,9 @@ class Playlist:
 
 class PlaylistProvider:
 
+    BSN_DIR_ID = 0
+    SMARTPLAYLIST_DIR_ID = 2
+
     def __init__(self):
         self._lock = threading.RLock()
         self.playlist_dirs = app.config.get('playlist_dirs', {})
@@ -338,27 +356,44 @@ class PlaylistProvider:
             bsn_logger.warning('No playlist directories could be found.')
         else:
             for dir_id, dir_path in self.playlist_dirs.items():
-                if dir_path is not None:
-                    dir_path = Path(dir_path)
-                    for path in dir_path.glob('*.m3u*'):
-                        try:
-                            self._load_playlist(dir_id, path)
-                        except Exception as e:
-                            bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
+                if dir_path is None:
+                    continue
+                for path, owner in self._iter_dir_entries(dir_id, Path(dir_path)):
+                    try:
+                        self._load_playlist(dir_id, path, owner)
+                    except Exception as e:
+                        bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
 
             bsn_logger.debug(f"Loaded {len(self._playlists)} playlists.")
 
-    def _load_playlist(self, dir_id, filepath) -> Playlist:
+    @classmethod
+    def _iter_dir_entries(cls, dir_id, dir_path: Path):
+        """
+        Yield (path, owner) for every playlist file in a playlist group's directory.
+        """
+        if not dir_path.is_dir():
+            return
+
+        for path in dir_path.glob('*.m3u*'):
+            yield path, None
+
+        if dir_id == cls.BSN_DIR_ID:
+            for user_dir in dir_path.iterdir():
+                if user_dir.is_dir():
+                    for path in user_dir.glob('*.m3u*'):
+                        yield path, user_dir.name
+
+    def _load_playlist(self, dir_id, filepath, owner: Optional[str] = None) -> Playlist:
         """Load playlist data from a file, or return the cached version if still current."""
 
         file_mtime = filepath.stat().st_mtime
-        playlist_id = f"{IDMapper.PLY_ID_PREF}{dir_id}-{filepath.stem.lower()[:200]}{filepath.suffix.lower()}"
+        playlist_id = Playlist.make_id(dir_id, filepath, owner)
 
         # check cache
         playlist = self._playlists.get(playlist_id)
 
         if not playlist or playlist.mtime < file_mtime:
-            playlist = Playlist(dir_id, filepath)
+            playlist = Playlist(dir_id, filepath, owner)
             # cache it
             self.register(playlist)
 
@@ -378,7 +413,7 @@ class PlaylistProvider:
                 playlist = self._playlists[playlist_id]
 
                 if playlist.path.is_file():
-                    loaded = self._load_playlist(playlist.dir_id, playlist.path)
+                    loaded = self._load_playlist(playlist.dir_id, playlist.path, playlist.owner)
                     loaded.load_songs()
                     return loaded
 
@@ -387,7 +422,7 @@ class PlaylistProvider:
                 if len(parts) < 2:
                     return None
                 dir_id = int(parts[0])
-                file_name = parts[1]
+                rest = parts[1]
             except ValueError:
                 return None
 
@@ -395,14 +430,22 @@ class PlaylistProvider:
             if not dir_path:
                 return None
 
+            if '/' in rest:
+                owner, file_name = rest.split('/', 1)
+                owner = os.path.basename(owner)
+            else:
+                owner, file_name = None, rest
+
             safe_file_name = os.path.basename(file_name)
             base_path = Path(dir_path).resolve()
+            if owner:
+                base_path = base_path / owner
             filepath = (base_path / safe_file_name).resolve()
             if not filepath.is_relative_to(base_path):
                 return None
 
             if filepath.is_file() and filepath.suffix.lower() in ('.m3u', '.m3u8'):
-                playlist = self._load_playlist(dir_id, filepath)
+                playlist = self._load_playlist(dir_id, filepath, owner)
                 playlist.load_songs()
                 return playlist
 
@@ -415,21 +458,21 @@ class PlaylistProvider:
                 if dir_path is None:
                     continue
 
-                dir_path = Path(dir_path)
-                current_files = {f.name.lower() for f in dir_path.glob('*.m3u*')}
+                entries = list(self._iter_dir_entries(dir_id, Path(dir_path)))
+                current_paths = {str(path.resolve()) for path, _ in entries}
 
                 # Remove playlists whose files have been deleted
                 stale = [
                     pid for pid, pl in self._playlists.items()
-                    if pl.dir_id == dir_id and pl.path.name.lower() not in current_files
+                    if pl.dir_id == dir_id and str(pl.path.resolve()) not in current_paths
                 ]
                 for pid in stale:
                     self._playlists.pop(pid)
 
                 # Register new files and reload modified ones
-                for path in dir_path.glob('*.m3u*'):
+                for path, owner in entries:
                     try:
-                        self._load_playlist(dir_id, path)
+                        self._load_playlist(dir_id, path, owner)
                     except Exception as e:
                         bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
 

@@ -20,6 +20,9 @@ def _back_to(anchor: str) -> flask.Response:
     return flask.redirect(flask.url_for('admin.route_settings') + f'#{anchor}')
 
 
+_CAN_MULTISELECT = {'external_playlists_editors'}
+
+
 ##
 # Settings-updating routes
 
@@ -38,11 +41,13 @@ def route_update_settings(category: str) -> flask.Response:
     for key, spec in SETTINGS_SCHEMA.items():
         if spec.get('category') != category:
             continue
-        if spec['type'] == 'list[str]':
+        if spec['type'] == 'list[str]' and key not in _CAN_MULTISELECT:
             continue   # Handled by dedicated endpoints
 
         if spec['type'] == 'bool':
             value: Any = key in submitted
+        elif key in _CAN_MULTISELECT:
+            value = submitted.getlist(key)
         elif key in submitted:
             value = submitted[key]
             if spec.get('sensitive') and value == '':

@@ -276,6 +276,17 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
     },
+    'external_playlists_editors': {
+        'type': 'list[str]',
+        'default': [],
+        'category': 'library',
+        'description': (
+            "Who can rename/edit/delete non BeetstreamNext playlists "
+            "(from Beets' `playlist` plugin directory)."
+            "Smartplaylist-generated playlists are always read-only."
+        ),
+        'requires_restart': False,
+    },
     'enable_radio_discovery': {
         'type': 'bool',
         'default': False,

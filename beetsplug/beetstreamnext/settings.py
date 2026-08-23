@@ -195,6 +195,8 @@ class SettingsStore:
                 }
                 if 'choices' in spec:
                     entry['choices'] = spec['choices']
+                if 'help' in spec:
+                    entry['help'] = spec['help']
                 if entry['sensitive']:
                     entry['is_set'] = bool(val)
                 else:

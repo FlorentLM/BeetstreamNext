@@ -57,6 +57,7 @@ class SettingDescriptor(TypedDict, total=False):
     sensitive: bool                     # Encrypt at rest, hide from logs, etc
     validator: Callable[[Any], Any]     # Raise ValueError on bad input
     choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
+    help: str                           # If set, admin UI shows this as a dotted box
 
 
 def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
@@ -138,6 +139,19 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Server is behind a reverse proxy (Nginx, Caddy, Traefik, etc.).',
         'requires_restart': True,
+        'help': (
+            "# Example Nginx configuration (adjust to match your BeetstreamNext host/port):\n"
+            "\n"
+            "location / {\n"
+            "    proxy_pass http://127.0.0.1:8080;\n"
+            "    proxy_set_header Host $host;\n"
+            "    proxy_set_header X-Real-IP $remote_addr;\n"
+            "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
+            "    proxy_set_header X-Forwarded-Proto $scheme;\n"
+            "    proxy_set_header X-Forwarded-Host $host;\n"
+            "    proxy_set_header X-Forwarded-Port $server_port;\n"
+            "}"
+        ),
     },
     'proxy_hops': {
         'type': 'int',
@@ -159,6 +173,12 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'choices': ('off', 'x-accel-redirect', 'x-sendfile'),
         'validator': _choice('off', 'x-accel-redirect', 'x-sendfile'),
+        'help': (
+            "# Apache mod_xsendfile example (allow the absolute music root path):\n"
+            "\n"
+            "XSendFile On\n"
+            "XSendFilePath /path/to/your/music/\n"
+        ),
     },
     'sendfile_internal_prefix': {
         'type': 'str',
@@ -169,6 +189,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "root directory. Only used when sendfile_method is 'x-accel-redirect'."
         ),
         'requires_restart': False,
+        'help': (
+            "# Example Nginx configuration:\n"
+            "\n"
+            "location /_bsn_internal/ {\n"
+            "    internal;\n"
+            "    alias /path/to/your/music/;\n"
+            "}"
+        ),
     },
     'trusted_hosts': {
         'type': 'str',

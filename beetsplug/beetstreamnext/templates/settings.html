@@ -88,6 +88,9 @@
                     {% if info.requires_restart %}
                         <p class="setting-restart-note">&#10227; Requires server restart</p>
                     {% endif %}
+                    {% if info.help %}
+                        <pre class="setting-help"><code>{{ info.help }}</code></pre>
+                    {% endif %}
                 </div>
             </div>
         {% endfor %}

@@ -392,6 +392,19 @@ input:focus, select:focus { border-color: var(--primary); }
     color: #fbbf24;
     font-weight: 500;
 }
+.setting-help {
+    margin: 0.6rem 0 0;
+    padding: 0.7rem 0.9rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    white-space: pre;
+    overflow-x: auto;
+}
 .settings-form-actions {
     margin-top: 1rem;
     display: flex;

@@ -173,7 +173,7 @@ def verify_key() -> bool:
 
 
 def initialise_db() -> None:
-    conn = sqlite3.connect(flask.current_app.config['DB_PATH'])
+    conn = sqlite3.connect(flask.current_app.config['BSN_DB_PATH'])
     cur = conn.cursor()
 
     cur.execute("PRAGMA busy_timeout = 5000;")
@@ -232,7 +232,7 @@ def initialise_db() -> None:
                     'BEETSTREAMNEXT_KEY has changed since the database was initialised. '
                     'Stored passwords are unrecoverable with the current key.\n'
                     f'Restore the original key, or delete the database '
-                    f"(`{flask.current_app.config['DB_PATH']}`) and run initial setup again."
+                    f"(`{flask.current_app.config['BSN_DB_PATH']}`) and run initial setup again."
                 )
 
         elif stored_hash is not None:
@@ -733,7 +733,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
 def database() -> sqlite3.Connection:
     """Get internal database connection."""
     if 'db' not in flask.g:
-        flask.g.db = sqlite3.connect(flask.current_app.config['DB_PATH'])
+        flask.g.db = sqlite3.connect(flask.current_app.config['BSN_DB_PATH'])
         flask.g.db.execute("""PRAGMA main.journal_mode = WAL;""")
         flask.g.db.execute("""PRAGMA synchronous = NORMAL;""")
         flask.g.db.execute("""PRAGMA busy_timeout = 5000;""")

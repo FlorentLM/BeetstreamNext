@@ -95,13 +95,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             app.config.update(
                 BEETS_DB_PATH=beets_db_path,
-                DB_PATH=beets_db_path.parent / 'beetstreamnext.db'
+                BSN_DB_PATH=beets_db_path.parent / 'beetstreamnext.db',
             )
 
             ip_filter.whitelist = self.config['ip_whitelist'].as_str_seq()
             ip_filter.blacklist = self.config['ip_blacklist'].as_str_seq()
 
-            ensure_secret(app.config['DB_PATH'])
+            ensure_secret(app.config['BSN_DB_PATH'])
             app.config.update(SECRET_KEY=rotate_session_key(CACHE_LOCATION))
 
             # Cache clearing

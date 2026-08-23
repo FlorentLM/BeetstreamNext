@@ -40,7 +40,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'beets_version': beets.__version__,
             'python_version': platform.python_version(),
             'os': platform.system(),
-            'db_path': str(app.config.get('DB_PATH')),
+            'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
             'stats': stats,
         }

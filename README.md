@@ -163,6 +163,8 @@ BeetstreamNext should be compatible with virtually any Subsonic/OpenSubsonic cli
 I tested it and confirmed it working with:
 
 #### Android
+- [Agin Music](https://github.com/aginrocks/agin-music-mobile)
+- [Amcfy Music](https://www.amcfy.com/)
 - [Symfonium](https://symfonium.app/)
 - [Tempo](https://github.com/CappielloAntonio/tempo)
 - [Tempus](https://github.com/eddyizm/tempus)

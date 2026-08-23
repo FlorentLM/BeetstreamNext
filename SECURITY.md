@@ -1,6 +1,7 @@
 # Security Policy
 
-BeetstreamNext is self-hosted project maintained by me in my free time (which I don't have a lot of).
+BeetstreamNext is a self-hosted project maintained by me in my free time (which I don't have a lot of).
+
 Security reports are welcome and appreciated.
 
 ## Supported Versions

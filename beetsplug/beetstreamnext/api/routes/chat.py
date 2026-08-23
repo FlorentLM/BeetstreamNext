@@ -8,8 +8,6 @@ from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_e
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
-# TODO: Add a way for admins to view the whole chat, and to delete messages
-
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/
 @api_bp.route('/addChatMessage', methods=['GET', 'POST'])
 @api_bp.route('/addChatMessage.view', methods=['GET', 'POST'])

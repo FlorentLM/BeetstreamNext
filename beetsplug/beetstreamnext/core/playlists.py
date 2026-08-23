@@ -195,6 +195,9 @@ class Playlist:
         instance._lock = threading.RLock()
 
         owner = flask.g.username
+        if not owner or os.path.basename(owner) != owner or owner in ('.', '..'):
+            raise ValueError('Invalid username for playlist storage.')
+
         safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
         root_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
         base_dir = root_dir / owner
@@ -430,7 +433,10 @@ class PlaylistProvider:
             if not dir_path:
                 return None
 
-            if '/' in rest:
+            # Only dir 0 (owned) ids carry an '<owner>/<filename>' segment. Ignoring it for
+            # every other dir_id keeps a crafted id from making a public (dir 1/2) playlist
+            # look privately "owned" by whatever name happened to follow the dash.
+            if dir_id == self.BSN_DIR_ID and '/' in rest:
                 owner, file_name = rest.split('/', 1)
                 owner = os.path.basename(owner)
             else:

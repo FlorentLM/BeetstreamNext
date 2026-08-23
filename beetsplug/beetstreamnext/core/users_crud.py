@@ -186,6 +186,9 @@ def create_user(username, password, admin=False, **kwargs):
 
     username = safe_str(username)
 
+    if not username or '/' in username or '\\' in username or username in ('.', '..'):
+        raise ValueError("Username can't be empty, contain '/' or '\\', or be '.' or '..'.")
+
     if get_userdata(username, fields=['adminRole']):  # any field, doesn't matter
         raise ValueError(f"Username '{username}' already exists.")
 

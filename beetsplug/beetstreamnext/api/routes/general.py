@@ -13,6 +13,7 @@ from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.users_crud import load_username
+from beetsplug.beetstreamnext.core.beets_import import start_import, is_importing
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
@@ -242,10 +243,23 @@ def endpoint_start_scan() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    # TODO: maybe trigger a refresh of BeetstreamNext's data (album covers, etc)?
-    #  or a beets import?
+    if not flask.g.user_data.get('adminRole'):
+        return subsonic_error(40, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
 
-    return subsonic_response({}, resp_fmt=resp_fmt)
+    ok, message = start_import()
+    if not ok:
+        return subsonic_error(0, message=message, resp_fmt=resp_fmt)
+
+    with flask.g.lib.transaction() as tx:
+        items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
+
+    payload = {
+        'scanStatus': {
+            "scanning": True,
+            "count": items_count
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/
@@ -260,11 +274,10 @@ def endpoint_get_scan_status() -> flask.Response:
 
     payload = {
         'scanStatus': {
-            "scanning": False,
+            "scanning": is_importing(),
             "count": items_count
         }
     }
-    # TODO: Maybe this should link to betanin and return whether there are songs waiting for user input?
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 

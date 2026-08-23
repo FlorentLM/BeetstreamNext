@@ -1,0 +1,81 @@
+import shlex
+import subprocess
+import sys
+import threading
+import time
+from typing import Optional, Tuple
+
+import beets
+
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.constants import CACHE_LOCATION
+from beetsplug.beetstreamnext.core.logging import bsn_logger
+
+_lock = threading.Lock()
+_process: Optional[subprocess.Popen] = None
+_started_at: Optional[float] = None
+
+IMPORT_LOG_PATH = CACHE_LOCATION / 'last_import.log'
+
+
+def is_importing() -> bool:
+    """True while a triggered beets import subprocess is still running."""
+    with _lock:
+        return _process is not None and _process.poll() is None
+
+
+def start_import() -> Tuple[bool, str]:
+    """
+    Trigger an incremental, unattended `beet import` on the library's root directory, as a
+    background subprocess (in the same Python environment BSN itself runs in) so newly-added
+    files that haven't been imported yet get picked up.
+
+    Refuses to start if beets' timid mode is on.
+    """
+    global _process, _started_at
+
+    with _lock:
+        if _process is not None and _process.poll() is None:
+            return False, 'An import is already running.'
+
+        if beets.config['import']['timid'].get(bool):
+            return False, (
+                "Can't run incremental import because beets' timid mode is enabled."
+            )
+
+        root_directory = str(app.config['root_directory'])
+        library_path = str(app.config['BEETS_DB_PATH'])
+
+        command = [sys.executable, '-m', 'beets']
+
+        config_path = app.config.get('BEETS_CONFIG_PATH')
+        if config_path:
+            command += ['-c', str(config_path)]
+
+        command += [
+            '-l', library_path,
+            '-d', root_directory,
+            'import', '-q', '-i', root_directory,
+        ]
+
+        try:
+            log_file = open(IMPORT_LOG_PATH, 'wb')
+        except OSError as e:
+            bsn_logger.error(f'Could not open import log file: {e}')
+            return False, 'Failed to start the import (could not open log file).'
+
+        try:
+            proc = subprocess.Popen(
+                command, stdout=log_file, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL
+            )
+        except Exception as e:
+            bsn_logger.error(f'Failed to start beets import: {e}')
+            return False, 'Failed to start the import process.'
+        finally:
+            log_file.close()   # the child got its own duplicated fd, safe to close ours
+
+        _process = proc
+        _started_at = time.time()
+
+        bsn_logger.info(f"Started beets import (pid {proc.pid}): {' '.join(shlex.quote(c) for c in command)}")
+        return True, 'Import started.'

@@ -331,6 +331,7 @@ input:focus, select:focus { border-color: var(--primary); }
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .setting-row:last-of-type { border-bottom: none; }
+.setting-row-control, .setting-row-meta { min-width: 0; }
 
 .setting-row-control input[type="text"],
 .setting-row-control input[type="number"],

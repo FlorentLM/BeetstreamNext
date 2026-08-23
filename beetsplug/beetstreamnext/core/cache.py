@@ -1,7 +1,7 @@
 from typing import List
 import flask
 
-from beetsplug.beetstreamnext.api.serializers import IDMapper, standardise_datadict
+from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.utils.text import validate_mbid

@@ -42,6 +42,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'os': platform.system(),
             'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
+            'config_path': str(app.config.get('BEETS_CONFIG_PATH')) if app.config.get('BEETS_CONFIG_PATH') else 'default location',
             'stats': stats,
         }
         stats.update(additional_info)

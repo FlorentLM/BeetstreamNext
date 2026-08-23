@@ -13,9 +13,12 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 import os
+import sys
 import getpass
 import logging
+import optparse
 from pathlib import Path
+from typing import List, Optional
 
 import beets
 from beets.plugins import BeetsPlugin
@@ -36,6 +39,29 @@ from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session
 from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user, load_user_roles
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.settings import settings_store
+
+
+def _detect_config_override(argv: List[str]) -> Optional[str]:
+    """
+    Look for an eventual explicit -c/--config arg that beets could have been launched with.
+    """
+    parser = optparse.OptionParser(add_help_option=False)
+    parser.disable_interspersed_args()
+    parser.add_option('--format-item')
+    parser.add_option('--format-album')
+    parser.add_option('-l', '--library')
+    parser.add_option('-d', '--directory')
+    parser.add_option('-v', '--verbose', action='count')
+    parser.add_option('-c', '--config')
+    parser.add_option('-p', '--plugins')
+    parser.add_option('-P', '--disable-plugins')
+
+    try:
+        options, _ = parser.parse_args(list(argv))
+    except optparse.OptParseError:
+        return None
+
+    return options.config
 
 
 class BeetstreamNextPlugin(BeetsPlugin):
@@ -96,6 +122,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             app.config.update(
                 BEETS_DB_PATH=beets_db_path,
                 BSN_DB_PATH=beets_db_path.parent / 'beetstreamnext.db',
+                BEETS_CONFIG_PATH=_detect_config_override(sys.argv[1:]),
             )
 
             ip_filter.whitelist = self.config['ip_whitelist'].as_str_seq()

@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.utils.system import is_installed, cache_location
 
 REPO_URL: str = 'https://github.com/FlorentLM/BeetstreamNext'
 SUBSONIC_API_VER: str = '1.16.1'
-BEETSTREAMNEXT_VER: str = '1.6.0-dev'
+BEETSTREAMNEXT_VER: str = '1.7.0-dev'
 
 USER_AGENT: str = f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( {REPO_URL} )'
 

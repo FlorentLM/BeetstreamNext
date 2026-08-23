@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import flask
 
 from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
@@ -107,6 +107,23 @@ def one_rating(item_id: str) -> int:
 
     result = cache[item_id]
     return 0 if result is _MISSING else result
+
+
+def avg_rating(item_id: str) -> Tuple[float, int]:
+    """Average rating across all users for an item (and the count)."""
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT AVG(rating), COUNT(*)
+            FROM ratings
+            WHERE item_id=?
+            """, (item_id,)
+        ).fetchone()
+
+    if not row or not row[1]:
+        return 0.0, 0
+
+    return round(row[0], 2), row[1]
 
 
 ##

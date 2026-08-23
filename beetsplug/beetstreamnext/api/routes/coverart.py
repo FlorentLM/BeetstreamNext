@@ -13,7 +13,8 @@ from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import (
-    round_image_size, send_album_art, thumbnail_path, image_from_song, resize_image, send_artist_image, send_radio_art
+    round_image_size, send_album_art, thumbnail_path, playlist_mosaic, image_from_song,
+    resize_image, send_artist_image, send_radio_art
 )
 
 

@@ -1,7 +1,7 @@
 import urllib.parse
 from datetime import timedelta
 from functools import lru_cache
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 import requests
 import asyncio
 from requests_cache import CachedSession
@@ -139,6 +139,27 @@ def query_musicbrainz(mbid: str, data_type: str) -> dict:
         response = http_session().get(endpoint, headers=headers, params=params, timeout=8)
         if response.from_cache:
             bsn_logger.debug(f"Cache hit for MusicBrainz: {mbid}")
+        return response.json() if response.ok else {}
+
+    except requests.exceptions.RequestException:
+        return {}
+
+
+def query_discogs(release_id: Any) -> dict:
+    """
+    Fetch a Discogs release.
+    Unauthenticated version so 25 req/min, maximum.
+    """
+    if not release_id:
+        return {}
+
+    endpoint = f'https://api.discogs.com/releases/{release_id}'
+    headers = {'User-Agent': USER_AGENT}
+
+    try:
+        response = http_session().get(endpoint, headers=headers, timeout=8)
+        if response.from_cache:
+            bsn_logger.debug(f"Cache hit for Discogs: {release_id}")
         return response.json() if response.ok else {}
 
     except requests.exceptions.RequestException:

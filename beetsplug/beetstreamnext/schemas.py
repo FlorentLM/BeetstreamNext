@@ -303,6 +303,21 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Save fetched album version info to the beets database.',
         'requires_restart': False,
     },
+    'discogs_ratings': {
+        'type': 'str',
+        'default': 'off',
+        'category': 'library',
+        'description': (
+            "Use Discogs' public community rating for an album's averageRating. 'fallback' only "
+            "kicks in when nobody on this server has rated the album yet, and never overrides a "
+            "real local rating. 'prefer' always uses Discogs' rating when available (falling back "
+            "to the local average when it isn't) - useful in single-user setups, where 'the "
+            "average of this server's users' isn't a very meaningful signal on its own."
+        ),
+        'requires_restart': False,
+        'choices': ('off', 'fallback', 'prefer'),
+        'validator': _choice('off', 'fallback', 'prefer'),
+    },
     'ratings_writeback_user': {
         'type': 'str',
         'default': '',

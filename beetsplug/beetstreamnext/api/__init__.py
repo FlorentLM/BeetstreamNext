@@ -18,6 +18,7 @@ from .routes import (
     search,
     shares,
     songs,
+    sonic,
     stream,
     users,
     radio

@@ -301,6 +301,21 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     #     'description': 'Automatically fetch station icons when adding from Radio Browser.',
     #     'requires_restart': False,
     # },
+    'audiomuse_url': {
+        'type': 'str',
+        'default': '',
+        'category': 'library',
+        'description': 'URL to your AudioMuse-AI instance (e.g. http://localhost:8000) to enable sonic similarity endpoints.',
+        'requires_restart': False,
+    },
+    'audiomuse_api_token': {
+        'type': 'str',
+        'default': '',
+        'category': 'library',
+        'description': 'API token for your AudioMuse-AI instance.',
+        'requires_restart': False,
+        'sensitive': True,
+    },
 
     # Audio
     'replaygain_enabled': {

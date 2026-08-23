@@ -18,7 +18,7 @@ Only the current pre-release version is supported
 
 Please report security issues privately, do **not** open a public GitHub issue or pull request, and do **not** disclose the issue publicly until it is fixed.
 
-Use GitHub's private vulnerability reporting: https://github.com/NeptuneHub/AudioMuse-AI/security/advisories/new (repository Security tab -> Report a vulnerability). Only I can see it.
+Use GitHub's private vulnerability reporting: https://github.com/FlorentLM/BeetstreamNext/security/advisories/new (repository Security tab -> Report a vulnerability). Only I can see it.
 
 Or you can email me at 25004801+FlorentLM@users.noreply.github.com
 

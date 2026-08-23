@@ -29,7 +29,7 @@
         <div class="roles-grid" id="cbgroup-{{ key }}">
             <label class="role-item">
                 <input type="checkbox" name="{{ key }}" value="*" {% if '*' in info.value %}checked{% endif %}>
-                Everyone;
+                Everyone
             </label>
             {% for u in (users or []) %}
             <label class="role-item">

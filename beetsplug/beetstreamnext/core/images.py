@@ -48,13 +48,18 @@ def _safe_open_image(data: bytes | bytearray | BytesIO) -> Image.Image:
 
 
 def sniff_image(data: bytes) -> str | None:
-    """Identify jpeg/png/webp from magic bytes. The client mimetype is not trusted."""
+    """Identify jpeg/png/webp/ico/svg from magic bytes. The client mimetype is not trusted."""
     if data[:3] == b'\xff\xd8\xff':
         return 'image/jpeg'
     if data[:8] == b'\x89PNG\r\n\x1a\n':
         return 'image/png'
     if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
         return 'image/webp'
+    if data[:4] == b'\x00\x00\x01\x00':
+        return 'image/x-icon'
+    stripped = data.lstrip(b'\xef\xbb\xbf \t\r\n')
+    if stripped.startswith(b'<?xml') or stripped.startswith(b'<svg'):
+        return 'image/svg+xml'
     return None
 
 

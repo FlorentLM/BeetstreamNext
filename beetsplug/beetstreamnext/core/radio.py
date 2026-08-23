@@ -3,7 +3,7 @@ from typing import Optional
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.external import query_radio_browser, capped_image_fetch
+from beetsplug.beetstreamnext.core.external import query_radio_browser, capped_image_fetch, fetch_favicon
 
 
 def create_station(
@@ -13,13 +13,14 @@ def create_station(
         image: Optional[bytes] = None
     ) -> None:
 
-    # TODO: This API actually mostly has broken links :(
-    # if not image and app.config.get('fetch_radio_images'):
-    #     resp = query_radio_browser(name, limit=1)
-    #     if resp:
-    #         favicon_url = resp[0]['favicon_url']
-    #         if favicon_url:
-    #             image = capped_image_fetch(favicon_url)
+    if not image and app.config.get('fetch_radio_images'):
+
+        resp = query_radio_browser(name, limit=1)
+        if resp and resp[0].get('favicon'):
+            image = capped_image_fetch(resp[0]['favicon'])
+
+        if not image and homepage_url:
+            image = fetch_favicon(homepage_url)
 
     with database() as db:
         db.execute(

@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     from beets.library import Item
 
 
+def _validate_owner(name: str) -> None:
+    """Usernames (used as a filesystem path) must be safe."""
+    if not name or os.path.basename(name) != name or name in ('.', '..'):
+        raise ValueError('Invalid username for playlist storage.')
+
+
 class Playlist:
 
     def __init__(self, dir_id, path: str | Path, owner: Optional[str] = None):
@@ -33,6 +39,7 @@ class Playlist:
         self.duration = 0
         self.song_count = 0
         self.comment = ''
+        self.creator = ''
         self._parse_metadata()
 
     @staticmethod
@@ -63,6 +70,8 @@ class Playlist:
                                 pass
                         elif line.startswith('#PLAYLIST-DESC:'):
                             self.comment = line[len('#PLAYLIST-DESC:'):].strip()
+                        elif line.startswith('#PLAYLIST-CREATOR:'):
+                            self.creator = line[len('#PLAYLIST-CREATOR:'):].strip()
                         elif line and not line.startswith('#'):
                             self.song_count += 1
             except OSError:
@@ -162,6 +171,41 @@ class Playlist:
                 self.id = self.make_id(self.dir_id, self.path, self.owner)
                 self.mtime = self.path.stat().st_mtime
 
+    def set_public(self, make_public: bool, requester: str) -> None:
+        """
+        Move BeetstreamNext-owned playlist between the shared dir root (public) and a
+        per-user subfolder (private).
+        """
+        with self._lock:
+            if self.dir_id != PlaylistProvider.BSN_DIR_ID:
+                raise ValueError('Only BeetstreamNext playlists can be made public/private.')
+
+            if make_public == (self.owner is None):
+                return
+
+            if make_public:
+                new_dir = self.path.parent.parent
+                new_owner = None
+            else:
+                _validate_owner(requester)
+                new_dir = self.path.parent / requester
+                new_dir.mkdir(parents=True, exist_ok=True)
+                new_owner = requester
+
+            new_dir = new_dir.resolve()
+            new_path = (new_dir / self.path.name).resolve()
+            if not new_path.is_relative_to(new_dir):
+                raise ValueError('Invalid playlist location.')
+
+            if new_path.exists():
+                raise FileExistsError(f"A playlist file named {new_path.name} already exists at the destination.")
+
+            self.path.rename(new_path)
+            self.path = new_path
+            self.owner = new_owner
+            self.id = self.make_id(self.dir_id, self.path, self.owner)
+            self.mtime = self.path.stat().st_mtime
+
     def set_comment(self, comment: str) -> None:
         with self._lock:
             self.comment = comment[:1024]
@@ -195,8 +239,7 @@ class Playlist:
         instance._lock = threading.RLock()
 
         owner = flask.g.username
-        if not owner or os.path.basename(owner) != owner or owner in ('.', '..'):
-            raise ValueError('Invalid username for playlist storage.')
+        _validate_owner(owner)
 
         safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
         root_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
@@ -221,6 +264,7 @@ class Playlist:
         instance.ctime = None
         instance.mtime = None
         instance.comment = ''
+        instance.creator = owner
         instance.songs = [map_song(song) for song in songs]
         instance.song_count = len(instance.songs)
         instance.duration = sum(int(s.get('duration', 0) or 0) for s in instance.songs)
@@ -305,6 +349,9 @@ class Playlist:
 
             if self.comment:
                 content.append(f"#PLAYLIST-DESC:{' '.join(self.comment.splitlines())}")
+
+            if self.creator:
+                content.append(f"#PLAYLIST-CREATOR:{self.creator}")
 
             for song in self.songs:
                 path = song.get('path')

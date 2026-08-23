@@ -4,6 +4,7 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.core.playlists import Playlist, PlaylistProvider
 from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_playlist
@@ -16,14 +17,21 @@ def _can_read(playlist: Playlist, username: str, is_admin: bool) -> bool:
 
 
 def _can_edit(playlist: Playlist, username: str, is_admin: bool) -> bool:
-    """Owner (or admin) can edit a BSN playlist. Public ones follow external_playlists_editors
-    setting, except smartplaylist ones which are always read-only."""
+    """
+    Private BSN playlists are only readable and editable by owner (and admin).
+    Public BSN playlists are read/write by everyone.
+    External playlists (Beets' playlist directory) editing is gated by 'external_playlists_editor's setting.
+    Smartplaylist ones are always read-only.
+    """
+
     if playlist.dir_id == PlaylistProvider.SMARTPLAYLIST_DIR_ID:
         return False
     if is_admin:
         return True
     if playlist.owner is not None:
         return playlist.owner == username
+    if playlist.dir_id == PlaylistProvider.BSN_DIR_ID:
+        return True
     editors = settings_store.get('external_playlists_editors')
     return '*' in editors or username in editors
 
@@ -139,7 +147,7 @@ def endpoint_update_playlist() -> flask.Response:
     playlist_id = r.get('playlistId', default='', type=safe_str)     # Required
     new_name =  r.get('name', default='', type=safe_str)[:200]
     new_comment = r.get('comment', default=None, type=safe_str)
-    # make_public =  r.get('public', default=False, type=api_bool)
+    make_public = r.get('public', default=None, type=api_bool)
     to_add = r.getlist('songIdToAdd', type=safe_str)
     to_remove = r.getlist('songIndexToRemove', type=int)
 
@@ -154,6 +162,8 @@ def endpoint_update_playlist() -> flask.Response:
 
     if not _can_edit(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
         return subsonic_error(50, message='Not authorized to edit this playlist.', resp_fmt=resp_fmt)
+
+    original_id = playlist.id
 
     try:
         if to_remove:
@@ -171,12 +181,15 @@ def endpoint_update_playlist() -> flask.Response:
         if new_comment is not None:
             playlist.set_comment(new_comment[:1024])
 
+        if make_public is not None:
+            playlist.set_public(make_public, flask.g.username)
+
         if new_name:
-            old_id = playlist.id
             playlist.rename(name=new_name)
 
-            # filename changed so ID changed. Update provider cache.
-            pp.deregister(old_id)
+        # in case ID changed if playlist moved
+        if playlist.id != original_id:
+            pp.deregister(original_id)
             pp.register(playlist)
 
     except Exception as e:

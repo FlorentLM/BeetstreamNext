@@ -265,6 +265,67 @@ def image_from_song(path: str | Path) -> BytesIO | None:
 ##
 # Main logic for album art and for artist images
 
+def _persist_album_art(image_bytes: bytes, album, album_dir: Optional[Path]) -> None:
+    """Persist CoverArtArchive-fetched bytes as cover.jpg in the album folder, if enabled."""
+    if not (app.config.get('save_album_art') and album_dir):
+        return
+    save_path = album_dir / 'cover.jpg'
+    if save_path.exists():
+        return
+    try:
+        img = _safe_open_image(image_bytes)
+        img.save(save_path, format='JPEG')
+        bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
+    except Exception as e:
+        bsn_logger.warning(f"Could not save album art to {save_path}: {e}")
+
+
+def _album_art_bytes(album_id, size: int) -> bytes | None:
+    """
+    Resised jpg bytes for an album's art at a given size
+    (order is local file -> folder scan -> CoverArtArchive).
+    """
+    if album_id is None:
+        return None
+
+    album = flask.g.lib.get_album(album_id)
+    if not album:
+        return None
+
+    art_path = os.fsdecode(album.get('artpath') or b'')
+    if art_path:
+        path_obj = Path(art_path)
+        if not path_obj.is_absolute():
+            art_path = str(app.config['root_directory'] / path_obj)
+
+        if os.path.isfile(art_path):
+            resized = _cached_resize(art_path, size)
+            if resized:
+                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
+
+    album_dir_raw = os.fsdecode(album.item_dir() or b'')
+    album_dir = None
+    if album_dir_raw:
+        album_dir = Path(album_dir_raw)
+        if not album_dir.is_absolute():
+            album_dir = app.config['root_directory'] / album_dir
+
+        found_art = _image_from_folder(album_dir)
+        if found_art:
+            resized = _cached_resize(found_art, size)
+            if resized:
+                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
+
+    mbid = validate_mbid(album.get('mb_albumid'))
+    if mbid:
+        image_bytes = query_coverartarchive(mbid)
+        if image_bytes:
+            _persist_album_art(image_bytes, album, album_dir)
+            return resize_image(image_bytes, size).getvalue()
+
+    return None
+
+
 def send_album_art(album_id, size=None)  -> flask.Response | None:
     """
     Generates a response with the album art for the given album ID and (optional) size.
@@ -278,7 +339,11 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     if not album:
         return None
 
-    # Check Beets db
+    if size:
+        image_bytes = _album_art_bytes(album_id, size)
+        return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg') if image_bytes else None
+
+    # No size requested: serve original file as-is (in its own format)
     art_path = os.fsdecode(album.get('artpath') or b'')
     if art_path:
         path_obj = Path(art_path)
@@ -287,9 +352,6 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
         if os.path.isfile(art_path):
             try:
-                if size:
-                    return flask.send_file(_cached_resize(art_path, size), mimetype='image/jpeg')
-
                 return flask.send_file(art_path, mimetype=get_mimetype(art_path))
             except Exception as e:
                 bsn_logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
@@ -306,10 +368,6 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
         if found_art:
             try:
-                if size:
-                    resized = _cached_resize(found_art, size)
-                    return flask.send_file(resized, mimetype='image/jpeg') if resized else None
-
                 if found_art.suffix.lower() in ('.tiff', '.tif'):
                     resized = _cached_resize(found_art, size=1200)
                     return flask.send_file(resized, mimetype='image/jpeg') if resized else None
@@ -323,64 +381,10 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     if mbid:
         image_bytes = query_coverartarchive(mbid)
         if image_bytes:
-            # Persist to disk if enabled
-            if app.config.get('save_album_art') and album_dir:
-                save_path = album_dir / 'cover.jpg'
-                if not save_path.exists():
-                    try:
-                        img = _safe_open_image(image_bytes)
-                        img.save(save_path, format='JPEG')
-                        bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
-                    except Exception as e:
-                        bsn_logger.warning(f"Could not save album art to {save_path}: {e}")
-
-            if size:
-                return flask.send_file(resize_image(image_bytes, size), mimetype='image/jpeg')
+            _persist_album_art(image_bytes, album, album_dir)
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     return None # TODO - send a placeholder instead of 404ing
-
-
-def _album_art_bytes(album_id, size: int) -> bytes | None:
-    """
-    Resised jpg bytes for an album's art, via the same local -> folder -> CoverArtArchive
-    chain as send_album_art(), for compositing rather than serving directly.
-    """
-    if album_id is None:
-        return None
-
-    album = flask.g.lib.get_album(album_id)
-    if not album:
-        return None
-
-    art_path = os.fsdecode(album.get('artpath') or b'')
-    if art_path:
-        path_obj = Path(art_path)
-        if not path_obj.is_absolute():
-            art_path = str(app.config['root_directory'] / path_obj)
-        if os.path.isfile(art_path):
-            resized = _cached_resize(art_path, size)
-            if resized:
-                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
-
-    album_dir_raw = os.fsdecode(album.item_dir() or b'')
-    if album_dir_raw:
-        album_dir = Path(album_dir_raw)
-        if not album_dir.is_absolute():
-            album_dir = app.config['root_directory'] / album_dir
-        found_art = _image_from_folder(album_dir)
-        if found_art:
-            resized = _cached_resize(found_art, size)
-            if resized:
-                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
-
-    mbid = validate_mbid(album.get('mb_albumid'))
-    if mbid:
-        image_bytes = query_coverartarchive(mbid)
-        if image_bytes:
-            return resize_image(image_bytes, size).getvalue()
-
-    return None
 
 
 def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:

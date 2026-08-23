@@ -90,6 +90,15 @@ h2 { font-size: 1.1rem; margin-bottom: 1.5rem; font-weight: 600; }
 }
 .table-header h2 { margin: 0; }
 .table-container { overflow-x: auto; }
+.table-footer.pagination {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+.pagination-status { color: var(--text-muted); font-size: 0.9rem; }
 
 table { width: 100%; border-collapse: collapse; text-align: left; }
 th {

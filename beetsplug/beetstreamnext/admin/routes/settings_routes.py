@@ -21,6 +21,7 @@ def _back_to(anchor: str) -> flask.Response:
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
+_CHAT_PAGE_SIZE = 50
 
 
 ##
@@ -253,15 +254,19 @@ def route_settings() -> flask.Response:
     for u in users:
         u['hasAvatar'] = bool(u.get('avatarLastChanged'))
 
-    # Load chat messages for moderation
-    # TODO: Maybe only load the last 100 and add a lazy loader or a paged view?
+    # Load chat messages for moderation, paged
+    chat_page = max(1, flask.request.args.get('chat_page', default=1, type=int))
     with database() as db:
+        chat_total = db.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
+        chat_pages = max(1, -(-chat_total // _CHAT_PAGE_SIZE))
+        chat_page = min(chat_page, chat_pages)
         chat_messages = db.execute(
             """
             SELECT id, username, time, message
             FROM chat_messages
             ORDER BY time DESC
-            """
+            LIMIT ? OFFSET ?
+            """, (_CHAT_PAGE_SIZE, (chat_page - 1) * _CHAT_PAGE_SIZE)
         ).fetchall()
 
     # Load active shares
@@ -293,6 +298,8 @@ def route_settings() -> flask.Response:
             'settings.html',
             users=users,
             chat_messages=chat_messages,
+            chat_page=chat_page,
+            chat_pages=chat_pages,
             shares=shares_list,
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),

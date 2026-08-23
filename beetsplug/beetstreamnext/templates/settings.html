@@ -323,6 +323,17 @@
                     </tbody>
                 </table>
             </div>
+            {% if chat_pages > 1 %}
+            <div class="table-footer pagination">
+                {% if chat_page > 1 %}
+                <a class="btn btn-outline" href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page - 1 }}#chat">&laquo; Prev</a>
+                {% endif %}
+                <span class="pagination-status">Page {{ chat_page }} of {{ chat_pages }}</span>
+                {% if chat_page < chat_pages %}
+                <a class="btn btn-outline" href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page + 1 }}#chat">Next &raquo;</a>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </section>
 

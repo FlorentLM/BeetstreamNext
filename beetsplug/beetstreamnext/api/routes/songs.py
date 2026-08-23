@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import dual_database
 from beetsplug.beetstreamnext.core.external import query_lastfm
 from beetsplug.beetstreamnext.core.cache import preload_songs
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, resolve_artist, map_song
@@ -252,6 +252,56 @@ def endpoint_get_top_songs() -> flask.Response:
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int, Dict]:
+    """
+    Track-level similarity via Last.fm's track.getSimilar, matched against the local library by (artist, title).
+    (only possible when the request is for a song (not an album/artist) obviously).
+    """
+    matches: Dict[int, Dict] = {}
+
+    if IDMapper.get_type(req_id) != 'song':
+        return matches
+
+    song_beets_id = IDMapper.sub_to_song(req_id)
+    song_item = flask.g.lib.get_item(song_beets_id)
+    if not song_item or not song_item.get('title'):
+        return matches
+
+    song_title = song_item.get('title')
+    song_mbid = validate_mbid(song_item.get('mb_releasetrackid')) or validate_mbid(song_item.get('mb_trackid'))
+
+    if song_mbid:
+        lastfm_resp = query_lastfm(q=song_mbid, data_type='track', method='similar', is_mbid=True)
+    else:
+        lastfm_resp = query_lastfm(q=song_title, data_type='track', method='similar', is_mbid=False, artist=req_artist_name)
+
+    lastfm_tracks = lastfm_resp.get('similartracks', {}).get('track', [])
+
+    # Safety cap to stay well under SQLite's 999-param limit (2 params per track)
+    conditions = []
+    params = []
+    for t in lastfm_tracks[:min(limit, 400)]:
+        t_name = t.get('name')
+        t_artist = (t.get('artist') or {}).get('name')
+        if not t_name or not t_artist:
+            continue
+        conditions.append("(lower(artist) = lower(?) AND lower(title) = lower(?))")
+        params.extend([t_artist, t_name])
+
+    if not conditions:
+        return matches
+
+    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions)
+    with flask.g.lib.transaction() as tx:
+        rows = list(tx.query(query, params))
+
+    for row in rows:
+        if row['id'] != song_beets_id:
+            matches[row['id']] = row
+
+    return matches
+
+
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs/
 @api_bp.route('/getSimilarSongs', methods=['GET', 'POST'])
 @api_bp.route('/getSimilarSongs.view', methods=['GET', 'POST'])
@@ -268,85 +318,92 @@ def endpoint_get_similar_songs() -> flask.Response:
     if not req_id:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    # TODO - Maybe query the track.getSimilar endpoint on lastfm instead of using the artist?
-
     resolved = resolve_artist(req_id)
     if resolved is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     req_artist_name, req_artist_mbid = resolved
 
-    similar_artists = {}
-
+    matched_songs: Dict[int, Dict] = {}
     if app.config['lastfm_api_key']:
-        if req_artist_mbid:
-            lastfm_resp = query_lastfm(q=req_artist_mbid, data_type='artist', method='similar', is_mbid=True)
-        else:
-            lastfm_resp = query_lastfm(q=req_artist_name, data_type='artist', method='similar', is_mbid=False)
+        matched_songs = _similar_by_track(req_id, req_artist_name, limit)
 
-        for artist in lastfm_resp.get('similarartists', {}).get('artist', []):
-            name = artist.get('name')
-            mbid = artist.get('mbid')
+    if len(matched_songs) < limit:
+        similar_artists = {}
 
-            if name and mbid:
-                similar_artists[name] = mbid
+        if app.config['lastfm_api_key']:
+            if req_artist_mbid:
+                lastfm_resp = query_lastfm(q=req_artist_mbid, data_type='artist', method='similar', is_mbid=True)
+            else:
+                lastfm_resp = query_lastfm(q=req_artist_name, data_type='artist', method='similar', is_mbid=False)
 
-    # Always include requested artist
-    if req_artist_name and req_artist_mbid:
-        similar_artists[req_artist_name] = req_artist_mbid
+            for artist in lastfm_resp.get('similarartists', {}).get('artist', []):
+                name = artist.get('name')
+                mbid = artist.get('mbid')
 
-    # Filter to columns that actually exist in current beets library
-    available_cols = set(get_beets_schema('items'))
-    mbid_fields = [f for f in ['mb_artistid', 'mb_artistids'] if f in available_cols]
-    name_fields = [f for f in ['artist', 'artists', 'composer', 'composers', 'lyricist', 'lyricists'] if f in available_cols]
+                if name and mbid:
+                    similar_artists[name] = mbid
 
-    # Safety cap to stay under SQLite 999 param limit
-    # (last.fm scores by similarity anyway so the top N are fine)
-    if mbid_fields or name_fields:
-        name_cost = sum(4 if f == 'artists' else 1 for f in name_fields)
-        max_params_per_artist = len(mbid_fields) + name_cost
-        max_artists = 998 // max(max_params_per_artist, 1)
-        similar_artists = dict(list(similar_artists.items())[:max_artists])
+        # Always include requested artist
+        if req_artist_name and req_artist_mbid:
+            similar_artists[req_artist_name] = req_artist_mbid
 
-    conditions = []
-    params = []
+        # Filter to columns that actually exist in current beets library
+        available_cols = set(get_beets_schema('items'))
+        mbid_fields = [f for f in ['mb_artistid', 'mb_artistids'] if f in available_cols]
+        name_fields = [f for f in ['artist', 'artists', 'composer', 'composers', 'lyricist', 'lyricists'] if f in available_cols]
 
-    for name, mbid in similar_artists.items():
-        sub_conditions = []
+        # Safety cap to stay under SQLite 999 param limit
+        # (last.fm scores by similarity anyway so the top N are fine)
+        if mbid_fields or name_fields:
+            name_cost = sum(4 if f == 'artists' else 1 for f in name_fields)
+            max_params_per_artist = len(mbid_fields) + name_cost
+            max_artists = 998 // max(max_params_per_artist, 1)
+            similar_artists = dict(list(similar_artists.items())[:max_artists])
 
-        if mbid:
-            # Match the mbid exactly against any mbid field if possible
-            for field in mbid_fields:
-                sub_conditions.append(f"{field} = ?")
-                params.append(mbid)
+        conditions = []
+        params = []
 
-        if name:
-            name_conds, name_params = _sql_conditions_for(name, name_fields)
-            sub_conditions.extend(name_conds)
-            params.extend(name_params)
+        for name, mbid in similar_artists.items():
+            sub_conditions = []
 
-        if sub_conditions:
-            conditions.append("(" + " OR ".join(sub_conditions) + ")")
+            if mbid:
+                # Match the mbid exactly against any mbid field if possible
+                for field in mbid_fields:
+                    sub_conditions.append(f"{field} = ?")
+                    params.append(mbid)
+
+            if name:
+                name_conds, name_params = _sql_conditions_for(name, name_fields)
+                sub_conditions.extend(name_conds)
+                params.extend(name_params)
+
+            if sub_conditions:
+                conditions.append("(" + " OR ".join(sub_conditions) + ")")
+
+        if conditions:
+            # Overfetch a bit since some rows may duplicate what track-level already found
+            remaining = limit - len(matched_songs)
+            query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"
+            params.append(remaining + len(matched_songs))
+
+            with flask.g.lib.transaction() as tx:
+                rows = list(tx.query(query, params))
+
+            for row in rows:
+                if row['id'] not in matched_songs:
+                    matched_songs[row['id']] = row
+                if len(matched_songs) >= limit:
+                    break
 
     tag = 'similarSongs2' if 'getSimilarSongs2' in flask.request.path else 'similarSongs'
 
-    if not conditions:
-        empty_payload = {
-            tag: {'song': []}
-        }
-        return subsonic_response(empty_payload, resp_fmt=resp_fmt)
-
-    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"
-    params.append(limit)
-
-    with flask.g.lib.transaction() as tx:
-        avail_similar_songs = list(tx.query(query, params))
-
-    preload_songs(avail_similar_songs)
+    final_songs = list(matched_songs.values())[:limit]
+    preload_songs(final_songs)
 
     payload = {
         tag: {
-            'song': [map_song(s) for s in avail_similar_songs]
+            'song': [map_song(s) for s in final_songs]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

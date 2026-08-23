@@ -145,7 +145,7 @@ def query_musicbrainz(mbid: str, data_type: str) -> dict:
         return {}
 
 
-def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = True) -> dict:
+def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = True, artist: str = '') -> dict:
 
     if not app.config['lastfm_api_key']:
         return {}
@@ -163,6 +163,9 @@ def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = T
         params['mbid'] = q
     elif q and data_type != 'user':
         params[data_type] = q
+        # track.* methods need both artist and track name to disambiguate
+        if artist and data_type == 'track':
+            params['artist'] = artist
 
     headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
     try:

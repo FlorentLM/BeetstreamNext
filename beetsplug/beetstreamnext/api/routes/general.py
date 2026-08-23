@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.users_crud import load_username
 from beetsplug.beetstreamnext.core.beets_import import start_import, is_importing
+from beetsplug.beetstreamnext.settings import settings_store
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
@@ -39,50 +40,52 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    payload = {
-        'openSubsonicExtensions': [
-            {
-                'name': 'apiKeyAuthentication',     # https://opensubsonic.netlify.app/docs/extensions/apikeyauth/
-                'versions': [1]
-            },
-            # {
-            #     'name': 'getPodcastEpisode',    # TODO: https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
-            #     'versions': [1]
-            # },
-            {
-                'name': 'formPost',    # https://opensubsonic.netlify.app/docs/extensions/formpost/
-                'versions': [1]
-            },
-            {
-                'name': 'indexBasedQueue',    # https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
-                'versions': [1]
-            },
-            {
-                'name': 'playbackReport',    # https://opensubsonic.netlify.app/docs/extensions/playbackreport/
-                'versions': [1]
-            },
-            {
-                'name': 'songLyrics',   # https://opensubsonic.netlify.app/docs/extensions/songlyrics/
-                'versions': [1]
-            },
-            # {
-            #     'name': 'sonicSimilarity',    # TODO https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/
-            #     'versions': [1]
-            # },
-            {
-                'name': 'topSongsByArtistId',  # https://opensubsonic.netlify.app/docs/extensions/topsongsbyartistid/
-                'versions': [1]
-            },
-            {
-                'name': 'transcodeOffset',  # https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/
-                'versions': [1]
-            },
-            {
-                'name': 'transcoding',  # https://opensubsonic.netlify.app/docs/extensions/transcoding/
-                'versions': [1]
-            },
-        ]
-    }
+    extensions = [
+        {
+            'name': 'apiKeyAuthentication',     # https://opensubsonic.netlify.app/docs/extensions/apikeyauth/
+            'versions': [1]
+        },
+        # {
+        #     'name': 'getPodcastEpisode',    # TODO: https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
+        #     'versions': [1]
+        # },
+        {
+            'name': 'formPost',    # https://opensubsonic.netlify.app/docs/extensions/formpost/
+            'versions': [1]
+        },
+        {
+            'name': 'indexBasedQueue',    # https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
+            'versions': [1]
+        },
+        {
+            'name': 'playbackReport',    # https://opensubsonic.netlify.app/docs/extensions/playbackreport/
+            'versions': [1]
+        },
+        {
+            'name': 'songLyrics',   # https://opensubsonic.netlify.app/docs/extensions/songlyrics/
+            'versions': [1]
+        },
+        {
+            'name': 'topSongsByArtistId',  # https://opensubsonic.netlify.app/docs/extensions/topsongsbyartistid/
+            'versions': [1]
+        },
+        {
+            'name': 'transcodeOffset',  # https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/
+            'versions': [1]
+        },
+        {
+            'name': 'transcoding',  # https://opensubsonic.netlify.app/docs/extensions/transcoding/
+            'versions': [1]
+        },
+    ]
+
+    if settings_store.get('audiomuse_url'):
+        extensions.append({
+            'name': 'sonicSimilarity',    # https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/
+            'versions': [1]
+        })
+
+    payload = {'openSubsonicExtensions': extensions}
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 

@@ -46,7 +46,7 @@ class SettingsStore:
                   'fetch_artists_images', 'save_artists_images',
                   'fetch_artists_biographies', 'save_album_art', 'follow_playlist_embedded_urls',
                   'fetch_lyrics', 'save_lyrics',
-                  'fetch_album_version', 'save_album_version', 'discogs_ratings',
+                  'fetch_album_version', 'save_album_version', 'discogs_ratings', 'ignored_articles',
                   # 'fetch_radio_images',
                   'enable_radio_discovery',
                   'replaygain_enabled', 'replaygain_preamp',

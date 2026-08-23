@@ -3,19 +3,19 @@ import time
 import urllib.parse
 from collections import defaultdict
 from functools import partial
-from typing import Dict
 import flask
 
 from .. import api_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str
-from beetsplug.beetstreamnext.core.external import WIKI_API, query_lastfm, query_wikipedia
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article
+from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import image_url
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_album, map_artist, get_song_counts
+from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
@@ -121,10 +121,13 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
         artists.append(name)
         artist_prefetch[name] = {'album_count': count, 'mbid': mbid, 'sort_name': sort_name}
 
+    ignored_articles = app.config.get('ignored_articles', SETTINGS_SCHEMA['ignored_articles']['default'])
+    articles = ignored_articles.split()
+
     alphanum_dict = defaultdict(list)
     for artist in artists:
         if artist:
-            char = remove_accents(artist[0]).upper()
+            char = remove_accents(strip_article(artist, articles)[0]).upper()
             group_key = char if char.isalpha() else '#'
             alphanum_dict[group_key].append(artist)
 
@@ -142,9 +145,6 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
         }
     }
 
-    ignored_articles = "The An A El La Los Las Le Les Die Das Ein Eine"
-    # the_plugin = 'the' in config['plugins'].as_str_seq()
-    # TODO: use config from 'the' plugin
     payload[tag]['ignoredArticles'] = ignored_articles
 
     if tag == 'indexes':

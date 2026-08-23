@@ -201,7 +201,10 @@ def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = T
 
 async def _async_wiki_search(q: str) -> str | None:
 
-    import wikipediaapi
+    if WIKI_API:
+        import wikipediaapi
+    else:
+        return None
 
     wiki = wikipediaapi.AsyncWikipedia(user_agent=USER_AGENT, language='en', timeout=8)
     page = wiki.page(q)

@@ -318,6 +318,18 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'choices': ('off', 'fallback', 'prefer'),
         'validator': _choice('off', 'fallback', 'prefer'),
     },
+    'ignored_articles': {
+        'type': 'str',
+        'default': (
+            "The A An Der Die Das Ein Eine El La Los Las Un Una Le Les Il Lo Gli Uno O Os As Um Uma De Het Den Det"
+        ),
+        'category': 'library',
+        'description': (
+            'Space-separated articles (across any language) to ignore when sorting '
+            "artists alphabetically (for instance, 'The Beatles' -> B). "
+        ),
+        'requires_restart': False,
+    },
     'ratings_writeback_user': {
         'type': 'str',
         'default': '',

@@ -59,6 +59,16 @@ def standard_ascii(text: Any) -> str:
     return text.translate(ASCII_TRANSLATE_TABLE).strip()
 
 
+def strip_article(text: str, articles: Sequence[str]) -> str:
+    """Strip a leading article (e.g. 'The ') from text, if present."""
+    if not text:
+        return ''
+    for a in articles:
+        if text[:len(a) + 1].lower() == f'{a.lower()} ':
+            return text[len(a) + 1:]
+    return text
+
+
 def trim_text(text: str, char_limit: int = 300) -> str:
     if len(text) <= char_limit:
         return text

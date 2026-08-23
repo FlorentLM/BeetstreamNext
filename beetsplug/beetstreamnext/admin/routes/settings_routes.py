@@ -3,10 +3,10 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.utils.general import get_server_info
+from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter
-from beetsplug.beetstreamnext.core.maintenance import clear_caches
+from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
@@ -250,6 +250,11 @@ def route_settings() -> flask.Response:
 
     settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
 
+    cache_size = human_bytes(cache_disk_usage(
+        flask.current_app.config['THUMBNAIL_CACHE_PATH'],
+        flask.current_app.config['HTTP_CACHE_PATH']
+    ))
+
     users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
     for u in users:
         u['hasAvatar'] = bool(u.get('avatarLastChanged'))
@@ -300,6 +305,7 @@ def route_settings() -> flask.Response:
             chat_messages=chat_messages,
             chat_page=chat_page,
             chat_pages=chat_pages,
+            cache_size=cache_size,
             shares=shares_list,
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),

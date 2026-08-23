@@ -26,6 +26,23 @@ def grab_auth_params() -> Dict[str, str]:
     return auth_params
 
 
+def _default_config_path() -> str:
+    """Where beets would load its config from when not started with an explicit -c/--config."""
+    try:
+        return beets.config.user_config_path()
+    except Exception:
+        return 'default location'
+
+
+def human_bytes(n: int) -> str:
+    size = float(n)
+    for unit in ('B', 'KB', 'MB', 'GB'):
+        if size < 1024:
+            return f'{size:.0f} {unit}' if unit == 'B' else f'{size:.1f} {unit}'
+        size /= 1024
+    return f'{size:.1f} TB'
+
+
 def get_server_info(extended: bool = False) -> Dict[str, str]:
     lib = app.config['lib']
     stats = {}
@@ -42,7 +59,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'os': platform.system(),
             'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
-            'config_path': str(app.config.get('BEETS_CONFIG_PATH')) if app.config.get('BEETS_CONFIG_PATH') else 'default location',
+            'config_path': str(app.config.get('BEETS_CONFIG_PATH')) if app.config.get('BEETS_CONFIG_PATH') else _default_config_path(),
             'stats': stats,
         }
         stats.update(additional_info)

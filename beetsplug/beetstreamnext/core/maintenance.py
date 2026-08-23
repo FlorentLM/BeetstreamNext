@@ -14,6 +14,23 @@ _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
 
 
+def cache_disk_usage(thumb_dir: str | Path, http_cache: str | Path) -> int:
+    """Total bytes currently used by the thumbnail and HTTP caches on disk."""
+    total = 0
+
+    thumb_dir = Path(thumb_dir)
+    if thumb_dir.exists():
+        for f in thumb_dir.iterdir():
+            if f.is_file():
+                total += f.stat().st_size
+
+    http_cache = Path(http_cache)
+    if http_cache.exists():
+        total += http_cache.stat().st_size
+
+    return total
+
+
 def clear_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
     """Clears thumbnails and HTTP cache. Returns a list of what was cleared."""
     cleared = []

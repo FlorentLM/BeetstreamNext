@@ -431,6 +431,7 @@
         <div class="card">
             <div class="table-header"><h2>Caches</h2></div>
             <p class="card-hint">Clears thumbnails on disk and the HTTP response cache. Active streams are unaffected.</p>
+            <p class="card-hint">Currently using <strong>{{ cache_size }}</strong> on disk.</p>
             <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
                   class="card-body-form"
                   data-confirm="Clear all cached thumbnails and the HTTP cache?">

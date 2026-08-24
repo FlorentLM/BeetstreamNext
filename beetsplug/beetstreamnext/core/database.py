@@ -490,12 +490,21 @@ def _apply_db_migrations(cursor: sqlite3.Cursor) -> None:
     MIGRATION_3_VER = 3
 
     if curr_version < MIGRATION_3_VER:
-        beets_db_path = flask.current_app.config.get('BEETS_DB_PATH')
-        if beets_db_path and Path(beets_db_path).is_file():
-            _migrate_to_stable_song_ids(cursor.connection, beets_db_path)
+        have_table = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='bookmarks'"""
+        ).fetchone()
+
+        if not have_table:
+            # Fresh install: bookmarks/likes/ratings/play_queue*/play_stats are all created further
+            # below, already in their current (post-migration) shape - nothing to migrate.
             curr_version = MIGRATION_3_VER
         else:
-            bsn_logger.warning('Beets database not found - stable song id migration deferred to next startup.')
+            beets_db_path = flask.current_app.config.get('BEETS_DB_PATH')
+            if beets_db_path and Path(beets_db_path).is_file():
+                _migrate_to_stable_song_ids(cursor.connection, beets_db_path)
+                curr_version = MIGRATION_3_VER
+            else:
+                bsn_logger.warning('Beets database not found - stable song id migration deferred to next startup.')
 
     ## ___________________________________________________________________
 

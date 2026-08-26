@@ -24,24 +24,24 @@ def is_importing() -> bool:
         return _process is not None and _process.poll() is None
 
 
-def start_import() -> Tuple[bool, str]:
+def start_import() -> Tuple[bool, str, bool]:
     """
     Trigger an incremental, unattended `beet import` on the library's root directory, as a
     background subprocess (in the same Python environment BSN itself runs in) so newly-added
     files that haven't been imported yet get picked up.
 
     Refuses to start if beets' timid mode is on.
+
+    Returns (ok, message, already_running)
     """
     global _process, _started_at
 
     with _lock:
         if _process is not None and _process.poll() is None:
-            return False, 'An import is already running.'
+            return False, 'An import is already running.', True
 
         if beets.config['import']['timid'].get(bool):
-            return False, (
-                "Can't run incremental import because beets' timid mode is enabled."
-            )
+            return False, "Can't run incremental import because beets' timid mode is enabled.", False
 
         root_directory = str(app.config['root_directory'])
         library_path = str(app.config['BEETS_DB_PATH'])
@@ -62,7 +62,7 @@ def start_import() -> Tuple[bool, str]:
             log_file = open(IMPORT_LOG_PATH, 'wb')
         except OSError as e:
             bsn_logger.error(f'Could not open import log file: {e}')
-            return False, 'Failed to start the import (could not open log file).'
+            return False, 'Failed to start the import (could not open log file).', False
 
         try:
             proc = subprocess.Popen(
@@ -70,7 +70,7 @@ def start_import() -> Tuple[bool, str]:
             )
         except Exception as e:
             bsn_logger.error(f'Failed to start beets import: {e}')
-            return False, 'Failed to start the import process.'
+            return False, 'Failed to start the import process.', False
         finally:
             log_file.close()   # the child got its own duplicated fd, safe to close ours
 
@@ -78,4 +78,4 @@ def start_import() -> Tuple[bool, str]:
         _started_at = time.time()
 
         bsn_logger.info(f"Started beets import (pid {proc.pid}): {' '.join(shlex.quote(c) for c in command)}")
-        return True, 'Import started.'
+        return True, 'Import started.', False

@@ -555,6 +555,7 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
         return err_resp
 
     resp_fmt = r.get('f', default='xml', type=safe_str)
+    # TODO: 'mediaType': "Either song or podcast so the server knows what the mediaId is referring to."
     offset = r.get('offset', default=0.0, type=float)
     tx_params_raw = r.get('transcodeParams', default='', type=str)
 

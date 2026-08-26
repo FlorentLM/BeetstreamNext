@@ -73,9 +73,10 @@ def endpoint_save_play_queue() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     client = r.get('c', default='', type=safe_str)
+    song_ids = r.getlist('id', type=safe_str)
+    current_sid = r.get('current', default='', type=safe_str)    # Required unless id is empty
     position = r.get('position', default=0.0, type=float)
     current_sid = r.get('current', default='', type=safe_str)    # Required unless id is empty
-    song_ids = r.getlist('id', type=safe_str)
 
     username = flask.g.username
 

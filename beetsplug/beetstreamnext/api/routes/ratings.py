@@ -16,8 +16,8 @@ from beetsplug.beetstreamnext.api.serializers import commit_likes
 def endpoint_set_rating() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    req_id = r.get('id', default='', type=safe_str)      # Required
-    rating = r.get('rating', default=0, type=int)   # Required
+    req_id = r.get('id', default='', type=safe_str)         # Required
+    rating = r.get('rating', default=0, type=int)           # Required
 
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

@@ -20,18 +20,18 @@ BITRATE_CHOICES_STR = [(0, 'No limit')] + [(b, f'{b} kbps') for b in sorted(ALLO
 
 USER_ROLES_SCHEMA = (
     # name,                 label,              default
-    ('adminRole',           'Admin',            False),
-    ('settingsRole',        'Settings',         True),
-    ('streamRole',          'Stream',           True),
-    ('downloadRole',        'Download',         False),
-    ('uploadRole',          'Upload',           False),
-    ('playlistRole',        'Playlists',        True),
-    ('commentRole',         'Comments',         True),
-    ('coverArtRole',        'Cover art',        False),
-    ('podcastRole',         'Podcasts',         False),
-    ('shareRole',           'Sharing',          False),
-    ('jukeboxRole',         'Jukebox',          False),
-    ('videoConversionRole', 'Video conversion', False),
+    ('adminRole',           'Admin',            False),     # Whether the user is administrator
+    ('settingsRole',        'Settings',         True),      # Whether the user is allowed to change personal settings and password
+    ('streamRole',          'Stream',           True),      # Whether the user is allowed to play files
+    ('downloadRole',        'Download',         False),     # Whether the user is allowed to download files
+    ('uploadRole',          'Upload',           False),     # Whether the user is allowed to upload files
+    ('playlistRole',        'Playlists',        True),      # Whether the user is allowed to create and delete playlists TODO: Since 1.8.0, changing this role has no effect
+    ('commentRole',         'Comments',         True),      # Whether the user is allowed to create and edit comments and ratings
+    ('coverArtRole',        'Cover art',        False),     # Whether the user is allowed to change cover art and tags
+    ('podcastRole',         'Podcasts',         False),     # Whether the user is allowed to administrate Podcasts
+    ('shareRole',           'Sharing',          False),     # Whether the user is allowed to share files with anyone
+    ('jukeboxRole',         'Jukebox',          False),     # Whether the user is allowed to play files in jukebox mode
+    ('videoConversionRole', 'Video conversion', False),     # Whether the user is allowed to start video conversions
     ('scrobblingEnabled',   'Scrobbling',       True),
 )
 

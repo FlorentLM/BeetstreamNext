@@ -50,9 +50,9 @@ def endpoint_create_radio_station() -> flask.Response:
 
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    name = r.get('name', type=safe_str)
     stream_url = r.get('streamUrl', type=str)           # Required
-    homepage_url = r.get('homepageUrl', type=str)       # Required
+    name = r.get('name', type=safe_str)                 # Required
+    homepage_url = r.get('homepageUrl', type=str)
 
     if not name or not stream_url:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -71,9 +71,9 @@ def endpoint_update_radio_station() -> flask.Response:
 
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    raw_id = r.get('id', default='', type=safe_str)  # Required
-    name = r.get('name', type=safe_str)              # Required
-    stream_url = r.get('streamUrl', type=str)        # Required
+    raw_id = r.get('id', default='', type=safe_str)     # Required
+    stream_url = r.get('streamUrl', type=str)           # Required
+    name = r.get('name', type=safe_str)                 # Required
     homepage_url = r.get('homepageUrl', type=str)
 
     if not raw_id or not name or not stream_url:

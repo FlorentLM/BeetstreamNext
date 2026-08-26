@@ -43,7 +43,7 @@ def endpoint_search() -> flask.Response:
     newer_than = r.get('newerThan', default=0, type=int) / 1000.0
 
     # search2/3 query
-    query_untrunc = r.get('query', default='', type=safe_str)
+    query_untrunc = r.get('query', default='', type=safe_str)           # Required (in search2 and search3)
     if query_untrunc.startswith('"') and query_untrunc.endswith('"'):
         query_untrunc = query_untrunc[1:-1]
     query = query_untrunc[:256]

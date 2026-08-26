@@ -58,7 +58,7 @@ def endpoint_create_share() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     ids = r.getlist('id', type=safe_str)                    # Required
     description = r.get('description', default='', type=safe_str)
-    expires_ms = r.get('expires', default=0, type=int)      # timestamp in ms
+    expires_ms = r.get('expires', default=0, type=int)
 
     if not flask.g.user_data.get('shareRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
@@ -110,15 +110,14 @@ def endpoint_update_share() -> flask.Response:
 
     resp_fmt = r.get('f', default='xml', type=safe_str)
     share_id = r.get('id', default='', type=safe_str)       # Required
+    description = r.get('description', default=None, type=safe_str)
+    expires_ms = r.get('expires', default=None, type=int)
 
     if not flask.g.user_data.get('shareRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not share_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
-
-    description = r.get('description', default=None, type=safe_str)
-    expires_ms = r.get('expires', default=None, type=int)
 
     with database() as db:
         row = db.execute(

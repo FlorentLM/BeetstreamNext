@@ -155,7 +155,7 @@ def endpoint_get_license() -> flask.Response:
 
     payload = {
         'license': {
-            "valid": True
+            'valid': True
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

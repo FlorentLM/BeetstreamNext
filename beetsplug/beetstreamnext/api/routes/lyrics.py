@@ -141,6 +141,8 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required
 
+    # TODO: 'enhanced' parameter
+
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 

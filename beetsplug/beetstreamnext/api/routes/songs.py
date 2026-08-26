@@ -85,9 +85,9 @@ def endpoint_get_song() -> flask.Response:
 def endpoint_songs_by_genre() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
+    genre = r.get('genre', default='', type=safe_str)[:64]   # Required
     count = r.get('count', default=10, type=int)
     offset = r.get('offset', default=0, type=int)
-    genre = r.get('genre', default='', type=safe_str)[:64]   # Required
 
     if not genre:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -134,9 +134,9 @@ def endpoint_get_random_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     size = r.get('size', default=10, type=int)
+    genre = r.get('genre', default='', type=safe_str)[:64]
     from_year = r.get('fromYear', default=0, type=int)
     to_year = r.get('toYear', default=0, type=int)
-    genre = r.get('genre', default='', type=safe_str)[:64]
 
     conditions = []
     params = []
@@ -185,8 +185,8 @@ def endpoint_get_random_songs() -> flask.Response:
 def endpoint_get_top_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    req_artist_id = r.get('id', default='', type=safe_str)
-    req_artist_name = r.get('artist', default='', type=safe_str)     # Required
+    req_artist_name = r.get('artist', default='', type=safe_str)    # Required (unless id is provided)
+    req_artist_id = r.get('id', default='', type=safe_str)          # Required (only in OpenSubsonic)
     count = r.get('count', default=50, type=int)
 
     lookup = req_artist_id if IDMapper.get_type(req_artist_id) == 'artist' else req_artist_name

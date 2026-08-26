@@ -18,10 +18,10 @@ from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standar
 def endpoint_scrobble() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    submission = r.get('submission', default=True, type=api_bool)
     client = r.get('c', default='', type=safe_str)
     playing_ids = r.getlist('id', type=safe_str)        # Required
     times_ms = r.getlist('time', type=int)
+    submission = r.get('submission', default=True, type=api_bool)
 
     if not playing_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -158,12 +158,12 @@ def endpoint_report_playback() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    media_id = r.get('mediaId', default='', type=safe_str)          # Required
-    media_type = r.get('mediaType', default='song', type=safe_str)
-    position_ms = r.get('positionMs', default=0, type=int)          # Required
-    state = r.get('state', default='playing', type=safe_str)        # Required
-    playback_rate = r.get('playbackRate', default=1.0, type=float)
-    ignore_scrobble = r.get('ignoreScrobble', default=False, type=api_bool)
+    media_id = r.get('mediaId', default='', type=safe_str)                      # Required
+    media_type = r.get('mediaType', default='song', type=safe_str)              # Required
+    position_ms = r.get('positionMs', default=0, type=int)                      # Required
+    state = r.get('state', default='playing', type=safe_str)                    # Required
+    playback_rate = r.get('playbackRate', default=1.0, type=float)              # Required (only in OpenSubsonic)
+    ignore_scrobble = r.get('ignoreScrobble', default=False, type=api_bool)     # Required (only in OpenSubsonic)
     client = r.get('c', default='', type=safe_str)
 
     # TODO: media_type can be podcast once podcassts are supported by BSN

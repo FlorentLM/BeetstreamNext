@@ -1,5 +1,8 @@
+import html
+import re
 import string
 import unicodedata
+from html.parser import HTMLParser
 from typing import Any, Sequence, List
 
 from beetsplug.beetstreamnext.constants import MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
@@ -95,6 +98,68 @@ def format_duration(seconds: Any) -> str:
     if hours:
         return f'{hours}:{minutes:02d}:{secs:02d}'
     return f'{minutes}:{secs:02d}'
+
+
+def parse_duration(raw: Any) -> float:
+    """Parse a duration string (plain seconds, or M:SS / H:MM:SS) into seconds."""
+    if not raw:
+        return 0.0
+    raw = str(raw).strip()
+    if raw.isdigit():
+        return float(raw)
+    try:
+        parts = [float(p) for p in raw.split(':')]
+    except ValueError:
+        return 0.0
+    seconds = 0.0
+    for p in parts:
+        seconds = seconds * 60 + p
+    return seconds
+
+
+_BLOCK_TAGS = frozenset({
+    'p', 'br', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote'
+})
+
+
+class _TagStripper(HTMLParser):
+
+    def __init__(self):
+        super().__init__()
+        self.parts: List[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in _BLOCK_TAGS:
+            self.parts.append('\n')
+
+    def handle_endtag(self, tag):
+        if tag in _BLOCK_TAGS:
+            self.parts.append('\n')
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+
+def strip_html(text: Any) -> str:
+    """Strip markup from (possibly HTML-formatted) text, keeping paragraph breaks as newlines."""
+    text = str(text or '')
+    if not text:
+        return ''
+
+    if '<' not in text:
+        return html.unescape(text).strip()
+
+    stripper = _TagStripper()
+    try:
+        stripper.feed(text)
+        stripper.close()
+        raw = ''.join(stripper.parts)
+    except Exception:
+        raw = re.sub(r'<[^>]+>', '', text)
+
+    lines = [line.strip() for line in html.unescape(raw).splitlines()]
+    lines = [line for line in lines if line]
+    return '\n'.join(lines)
 
 
 def safe_str(val: Any) -> str:

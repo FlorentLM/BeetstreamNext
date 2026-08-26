@@ -21,6 +21,7 @@ FFMPEG_BIN: bool = shutil.which('ffmpeg') is not None
 FFMPEG_PYTHON: bool = is_installed('ffmpeg-python')
 WIKI_API: bool = is_installed('wikipedia-api')
 RADIO_BROWSER: bool = is_installed('radios')
+FEEDPARSER: bool = is_installed('feedparser')
 
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()
@@ -83,3 +84,10 @@ MAX_REMOTE_IMAGE_BYTES: int = 15 * 1024 * 1024
 
 MAX_AVATAR_DIM: int = 512
 MAX_AVATAR_BYTES: int = 1 * 1024 * 1024      # 1 MB
+
+MAX_PODCAST_IMAGE_DIM: int = 1024
+
+
+## Podcasts
+
+MAX_PODCAST_FEED_BYTES: int = 30 * 1024 * 1024   # 30 MB cap on a fetched podcast rss feed body

@@ -295,7 +295,7 @@ def initialise_db() -> None:
         CREATE TABLE IF NOT EXISTS bookmarks
         (
             username TEXT NOT NULL,
-            song_id  TEXT NOT NULL, -- subsonic song ID (sg-m-xxx, sg-h-xxx, or legacy sg-<row id>)
+            song_id  TEXT NOT NULL, -- subsonic song or podcast episode ID (sg-m-xxx, sg-h-xxx, legacy sg-<row id>, or pe-<row id>)
             position REAL NOT NULL DEFAULT 0, -- playback offset (milliseconds)
             comment  TEXT,
             created  REAL NOT NULL DEFAULT (unixepoch()),
@@ -332,6 +332,49 @@ def initialise_db() -> None:
         )
         """
     )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS podcast_channels
+        (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            url           TEXT NOT NULL UNIQUE,
+            title         TEXT,
+            description   TEXT,
+            image         BLOB,
+            image_url     TEXT,
+            status        TEXT NOT NULL DEFAULT 'new', -- new/downloading/completed/error/deleted/skipped (PodcastStatus)
+            error_message TEXT,
+            created       REAL NOT NULL DEFAULT (unixepoch())
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS podcast_episodes
+        (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_id    INTEGER NOT NULL,
+            guid          TEXT NOT NULL, -- feed <guid> (or link/title fallback), unique per channel
+            title         TEXT,
+            description   TEXT,
+            publish_date  REAL,
+            audio_url     TEXT,
+            duration      REAL,   -- seconds
+            file_path     TEXT,   -- absolute local path once downloaded
+            file_size     INTEGER,
+            status        TEXT NOT NULL DEFAULT 'new', -- new/downloading/completed/error/deleted/skipped (PodcastStatus)
+            error_message TEXT,
+            created       REAL NOT NULL DEFAULT (unixepoch()),
+            UNIQUE (channel_id, guid),
+            FOREIGN KEY (channel_id) REFERENCES podcast_channels (id) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_podcast_episodes_channel ON podcast_episodes(channel_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_podcast_episodes_publish ON podcast_episodes(publish_date);""")
 
     cur.execute(
         """

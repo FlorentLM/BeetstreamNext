@@ -104,12 +104,26 @@ def _get_artist_metadata(name: str) -> dict:
     return result
 
 
+class AttrDict(dict):
+    """
+    A dict that also allows attribute-style access.
+    Missing keys resolving to None.
+    """
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self[name]
+        except KeyError:
+            return None
+
+
 def _mint_song_id(mb_trackid: Any, mb_releasetrackid: Any, path: Any, beets_id: Any, root_directory) -> str:
     """
-    Make the stable BSN song id for a beets item: prefers whatever MusicBrainz-field id beets recorded
-    (MusicBrainz, Deezer, Spotify or any other source -beets always writes them in the mb_* field).
-    Falls back to a hash of the item's path relative to root_directory, and only falls back to the raw beets row
-    id (unstable across reimports) if neither is available.
+    Make the stable BSN song id for a beets item: prefers whatever external database id beets recorded
+    (MusicBrainz, Deezer, Spotify etc -- beets always writes them in the mb_* field)
+
+    Falls back to a hash of the item's path (relative to root_directory), or to the raw beets row
+    id if neither is available (but this one is unstable across reimports).
     """
     mbid = str(mb_releasetrackid or mb_trackid or '').strip()
     if mbid:
@@ -137,6 +151,8 @@ class IDMapper:
     ALB_ID_PREF = 'al-'
     PLY_ID_PREF = 'pl-'
     RAD_ID_PREF = 'ir-'
+    PCH_ID_PREF = 'pc-'   # podcast channel: pc-<db id>
+    PEP_ID_PREF = 'pe-'   # podcast episode: pe-<db id>
 
     @staticmethod
     def _to_beets_int(subsonic_id: str, prefix: str) -> int | None:
@@ -308,15 +324,44 @@ class IDMapper:
         return f'{cls.RAD_ID_PREF}{db_id}'
 
     @classmethod
-    def resolve_radio(cls, subsonic_id: str):
-        """Decode a Subsonic radio id and fetch the station row (BSN's own db) in one step."""
+    def resolve_radio(cls, subsonic_id: str) -> Optional[AttrDict]:
+        """Decode a Subsonic radio id and fetch the station row (BSN's own db)."""
         radio_id = cls._to_beets_int(subsonic_id, cls.RAD_ID_PREF)
         if radio_id is None:
             return None
         with database() as db:
-            return db.execute(
+            row = db.execute(
                 """SELECT * FROM internet_radio_stations WHERE id = ?""", (radio_id,)
             ).fetchone()
+        return AttrDict(dict(row)) if row else None
+
+    @classmethod
+    def mint_podcast_channel(cls, db_id: int) -> str:
+        return f'{cls.PCH_ID_PREF}{db_id}'
+
+    @classmethod
+    def resolve_podcast_channel(cls, subsonic_id: str) -> Optional[AttrDict]:
+        """Decode a Subsonic podcast channel id and fetch its row (BSN's own db)."""
+        channel_id = cls._to_beets_int(subsonic_id, cls.PCH_ID_PREF)
+        if channel_id is None:
+            return None
+        with database() as db:
+            row = db.execute("""SELECT * FROM podcast_channels WHERE id = ?""", (channel_id,)).fetchone()
+        return AttrDict(dict(row)) if row else None
+
+    @classmethod
+    def mint_podcast_episode(cls, db_id: int) -> str:
+        return f'{cls.PEP_ID_PREF}{db_id}'
+
+    @classmethod
+    def resolve_podcast_episode(cls, subsonic_id: str) -> Optional[AttrDict]:
+        """Decode a Subsonic podcast episode id and fetch its row (BSN's own db)."""
+        episode_id = cls._to_beets_int(subsonic_id, cls.PEP_ID_PREF)
+        if episode_id is None:
+            return None
+        with database() as db:
+            row = db.execute("""SELECT * FROM podcast_episodes WHERE id = ?""", (episode_id,)).fetchone()
+        return AttrDict(dict(row)) if row else None
 
     @classmethod
     def get_type(cls, subsonic_id: str) -> str | None:
@@ -327,6 +372,8 @@ class IDMapper:
         if sid.startswith(cls.SNG_ID_PREF): return 'song'
         if sid.startswith(cls.PLY_ID_PREF): return 'playlist'
         if sid.startswith(cls.RAD_ID_PREF): return 'radio'
+        if sid.startswith(cls.PCH_ID_PREF): return 'podcastChannel'
+        if sid.startswith(cls.PEP_ID_PREF): return 'podcastEpisode'
         return None
 
     @classmethod

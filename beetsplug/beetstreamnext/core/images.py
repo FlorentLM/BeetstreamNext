@@ -544,6 +544,20 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     return None
 
 
+def send_podcast_art(channel_id: int, size: Optional[int] = None) -> flask.Response | None:
+    with database() as db:
+        row = db.execute("""SELECT image FROM podcast_channels WHERE id=?""", (channel_id,)).fetchone()
+
+    if not row or not row['image']:
+        return None
+
+    if size:
+        resized = _cached_resize(BytesIO(row['image']), size)
+        return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+
+    return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']) or 'image/jpeg')
+
+
 def send_radio_art(station_id: int) -> flask.Response | None:
     with database() as db:
         row = db.execute(

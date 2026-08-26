@@ -13,6 +13,7 @@ from .routes import (
     lyrics,
     playlists,
     playqueue,
+    podcasts,
     ratings,
     scrobble,
     search,

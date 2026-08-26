@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import (
     round_image_size, send_album_art, thumbnail_path, playlist_mosaic, image_from_song,
-    resize_image, send_artist_image, send_radio_art
+    resize_image, send_artist_image, send_radio_art, send_podcast_art
 )
 
 
@@ -96,6 +96,20 @@ def endpoint_get_cover_art() -> flask.Response:
         station = IDMapper.resolve_radio(req_id)
         if station:
             response = send_radio_art(station['id'])
+            if response is not None:
+                return response
+
+    elif IDMapper.get_type(req_id) == 'podcastChannel':
+        channel = IDMapper.resolve_podcast_channel(req_id)
+        if channel:
+            response = send_podcast_art(channel['id'], size)
+            if response is not None:
+                return response
+
+    elif IDMapper.get_type(req_id) == 'podcastEpisode':
+        episode = IDMapper.resolve_podcast_episode(req_id)
+        if episode:
+            response = send_podcast_art(episode['channel_id'], size)
             if response is not None:
                 return response
 

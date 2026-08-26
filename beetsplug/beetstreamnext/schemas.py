@@ -382,6 +382,29 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'sensitive': True,
     },
 
+    # Podcasts
+    'podcast_storage_dir': {
+        'type': 'str',
+        'default': '',
+        'category': 'podcasts',
+        'description': (
+            "Directory to store downloaded podcast episode audio. Leave empty to use the "
+            "default cache location."
+        ),
+        'requires_restart': False,
+    },
+    'podcast_auto_download_count': {
+        'type': 'int',
+        'default': 20,
+        'category': 'podcasts',
+        'description': (
+            "Number of episodes to download of a channel's most recent episodes when "
+            "added. Set to 0 to disable and only download episodes on request."
+        ),
+        'requires_restart': False,
+        'validator': _int_range(0, 200),
+    },
+
     # Audio
     'replaygain_enabled': {
         'type': 'bool',

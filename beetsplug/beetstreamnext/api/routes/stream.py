@@ -15,6 +15,7 @@ from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN, HLS_CA
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, send_file
+from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
@@ -111,7 +112,7 @@ def get_normalization_filter(item) -> str | None:
 
 
 def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional[Any], Optional[str], Optional[flask.Response]]:
-    """Helper to check permissions, IDs, and retrieve absolute track path."""
+    """Helper to check permissions, IDs, and retrieve absolute track path (song, or a downloaded podcast episode)."""
 
     resp_fmt = req_values.get('f', default='xml', type=safe_str)
     media_id = req_values.get('id', default='', type=safe_str)      # Required
@@ -121,10 +122,22 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
 
     if not media_id:
         if required_role == 'streamRole':
-            # TODO: media_type can be podcast once podcassts are supported by BSN
             media_id = req_values.get('mediaId', default='', type=safe_str)     # Required in getTranscodeDecision / getTranscodeStream
+
         if not media_id:
             return None, None, subsonic_error(10, resp_fmt=resp_fmt)
+
+    if IDMapper.get_type(media_id) == 'podcastEpisode':
+        episode = IDMapper.resolve_podcast_episode(media_id)
+        if not episode or episode.get('status') != 'completed' or not episode.get('file_path'):
+            return None, None, subsonic_error(70, resp_fmt=resp_fmt)
+
+        episode_path = episode['file_path']
+        if not os.path.isfile(episode_path):
+            return None, None, subsonic_error(70, resp_fmt=resp_fmt)
+
+        episode['length'] = episode.get('duration') or 0.0     # alias expected by the rest of this module
+        return episode, episode_path, None
 
     media = IDMapper.resolve_song(media_id)
     if not media:
@@ -139,6 +152,79 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
         media_path = str(app.config['root_directory'] / path_obj)
 
     return media, media_path, None
+
+
+def _streamdownload_podcast(req_values, required_role: str) -> flask.Response | None:
+    """
+    Some clients never call downloadPodcastEpisode, they just hit /stream (or /download)
+    directly with an episode id and expect audio back...
+
+    So for episodes not yet downloaded, relayed_download() proxies it live,
+    and simultaneously saves it to local storage.
+
+    Returns None when this doesn't apply (not a podcast episode id, or already downloaded): in this case
+    _get_media_context handles it (it supports range/transcode) so the caller falls through just fine.
+    """
+
+    resp_fmt = req_values.get('f', default='xml', type=safe_str)
+    media_id = req_values.get('id', default='', type=safe_str)
+    if not media_id and required_role == 'streamRole':
+        media_id = req_values.get('mediaId', default='', type=safe_str)
+
+    if IDMapper.get_type(media_id) != 'podcastEpisode':
+        return None
+
+    if not bool(flask.g.user_data.get(required_role)):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    episode = IDMapper.resolve_podcast_episode(media_id)
+    if not episode:
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    if episode.get('status') == 'completed' and episode.get('file_path'):
+        return None   # already on disk, _get_media_context serves it normally
+
+    if not episode.get('audio_url'):
+        return subsonic_error(70, resp_fmt=resp_fmt)
+
+    podcast_manager = flask.g.podcast_manager
+
+    if podcast_manager.is_downloading(episode['id']):
+        return subsonic_error(0, message='This episode is already being fetched, try again shortly.', resp_fmt=resp_fmt)
+
+    try:
+        started = podcast_manager.relayed_download(episode['id'], episode['channel_id'], episode['audio_url'])
+    except Exception as e:
+        bsn_logger.warning(f"Failed to start streaming podcast episode {episode['id']}: {e}")
+        return subsonic_error(0, message=f'Failed to fetch episode audio: {e}', resp_fmt=resp_fmt)
+
+    if started is None:
+        return subsonic_error(0, message='This episode is already being fetched, try again shortly.', resp_fmt=resp_fmt)
+
+    resp, tmp_path, target_path = started
+    mimetype = resp.headers.get('Content-Type') or get_mimetype(str(target_path))
+    episode_id = episode['id']
+
+    def generate() -> Generator:
+        size = 0
+        success = False
+        try:
+            with open(tmp_path, 'wb') as f:
+                for chunk in resp.iter_content(65536):
+                    if not chunk:
+                        continue
+                    f.write(chunk)
+                    size += len(chunk)
+                    yield chunk
+            success = True
+        except Exception as e:
+            bsn_logger.warning(f'Streaming podcast episode {episode_id} failed: {e}')
+        finally:
+            podcast_manager.finish_relayed_download(episode_id, tmp_path, target_path, size, success)
+
+    response = flask.Response(flask.stream_with_context(generate()), mimetype=mimetype)
+    response.headers['Accept-Ranges'] = 'none'
+    return response
 
 
 def _send_transcode(
@@ -317,6 +403,10 @@ def try_transcode(
 def endpoint_stream_song() -> flask.Response | None:
     r = flask.request.values
 
+    live_response = _streamdownload_podcast(r, 'streamRole')
+    if live_response is not None:
+        return live_response
+
     song, song_path, err_resp = _get_media_context(r, 'streamRole')
     if err_resp:
         return err_resp
@@ -384,6 +474,10 @@ def endpoint_stream_song() -> flask.Response | None:
 @api_bp.route('/download.view', methods=['GET', 'POST'])
 def endpoint_download_song() -> flask.Response | None:
     r = flask.request.values
+
+    live_response = _streamdownload_podcast(r, 'downloadRole')
+    if live_response is not None:
+        return live_response
 
     song, song_path, err_resp = _get_media_context(r, 'downloadRole')
     if err_resp:

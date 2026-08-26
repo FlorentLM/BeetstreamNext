@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standardise_datadict
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_podcast_episode, standardise_datadict
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
@@ -130,6 +130,12 @@ def endpoint_get_now_playing() -> flask.Response:
                         'coverArt': p_id,
                     }
 
+        elif p_id.startswith('pe-'):
+            episode = IDMapper.resolve_podcast_episode(p_id)
+            if episode:
+                channel = IDMapper.resolve_podcast_channel(IDMapper.mint_podcast_channel(episode['channel_id']))
+                entry = map_podcast_episode(episode, channel)
+
         if entry:
             entry.update({
                 'username': row['username'],
@@ -165,8 +171,6 @@ def endpoint_report_playback() -> flask.Response:
     playback_rate = r.get('playbackRate', default=1.0, type=float)              # Required (only in OpenSubsonic)
     ignore_scrobble = r.get('ignoreScrobble', default=False, type=api_bool)     # Required (only in OpenSubsonic)
     client = r.get('c', default='', type=safe_str)
-
-    # TODO: media_type can be podcast once podcassts are supported by BSN
 
     if not media_id or not state:
         return subsonic_error(10, resp_fmt=resp_fmt)

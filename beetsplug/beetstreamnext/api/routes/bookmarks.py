@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standardise_datadict
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_podcast_episode, standardise_datadict
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
@@ -29,16 +29,31 @@ def endpoint_get_bookmarks() -> flask.Response:
             """, (username,)
         ).fetchall()
 
-    items_by_song_id = IDMapper.resolve_songs_bulk([row['song_id'] for row in rows])
+    song_ids = [row['song_id'] for row in rows if IDMapper.get_type(row['song_id']) != 'podcastEpisode']
+    items_by_song_id = IDMapper.resolve_songs_bulk(song_ids)
     preload_songs(list(items_by_song_id.values()))
 
     bookmarks = []
     for row in rows:
-        item = items_by_song_id.get(row['song_id'])
-        if not item:
-            continue
+        bookmarked_id = row['song_id']
+
+        if IDMapper.get_type(bookmarked_id) == 'podcastEpisode':
+            episode = IDMapper.resolve_podcast_episode(bookmarked_id)
+            if not episode:
+                continue
+
+            channel = IDMapper.resolve_podcast_channel(IDMapper.mint_podcast_channel(episode['channel_id']))
+            entry = map_podcast_episode(episode, channel)
+
+        else:
+            item = items_by_song_id.get(bookmarked_id)
+            if not item:
+                continue
+
+            entry = map_song(item)
+
         bookmarks.append({
-            'entry': map_song(item),
+            'entry': entry,
             'position': int(row['position'] or 0),
             'comment': row['comment'] or '',
             'created': timestamp_to_iso(row['created']) if row['created'] else '',
@@ -60,18 +75,28 @@ def endpoint_get_bookmarks() -> flask.Response:
 def endpoint_create_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    song_id = r.get('id', default='', type=safe_str)             # Required
-    position = r.get('position', default=0.0, type=float)       # Required
+
+    req_id = r.get('id', default='', type=safe_str)                 # Required
+    position = r.get('position', default=0.0, type=float)           # Required
     comment = r.get('comment', default='', type=safe_str)[:1024]
 
-    if not song_id or position < 0.0:
+    if not req_id or position < 0.0:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    item = IDMapper.resolve_song(song_id)
-    if not item:
-        return subsonic_error(70, resp_fmt=resp_fmt)
+    if IDMapper.get_type(req_id) == 'podcastEpisode':
+        episode = IDMapper.resolve_podcast_episode(req_id)
+        if not episode:
+            return subsonic_error(70, resp_fmt=resp_fmt)
 
-    canonical_id = IDMapper.mint_song(standardise_datadict(item))
+        canonical_id = IDMapper.mint_podcast_episode(episode['id'])
+
+    else:
+        item = IDMapper.resolve_song(req_id)
+        if not item:
+            return subsonic_error(70, resp_fmt=resp_fmt)
+
+        canonical_id = IDMapper.mint_song(standardise_datadict(item))
+
     username = flask.g.username
     now = time.time()
 
@@ -95,13 +120,18 @@ def endpoint_create_bookmark() -> flask.Response:
 def endpoint_delete_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    song_id = r.get('id', default='', type=safe_str)     # Required
+    req_id = r.get('id', default='', type=safe_str)         # Required
 
-    if not song_id:
+    if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    item = IDMapper.resolve_song(song_id)
-    canonical_id = IDMapper.mint_song(standardise_datadict(item)) if item else None
+    if IDMapper.get_type(req_id) == 'podcastEpisode':
+        episode = IDMapper.resolve_podcast_episode(req_id)
+        canonical_id = IDMapper.mint_podcast_episode(episode['id']) if episode else None
+    else:
+        item = IDMapper.resolve_song(req_id)
+        canonical_id = IDMapper.mint_song(standardise_datadict(item)) if item else None
+
     username = flask.g.username
 
     with database() as db:

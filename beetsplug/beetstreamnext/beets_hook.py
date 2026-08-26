@@ -38,6 +38,7 @@ from beetsplug.beetstreamnext.core.maintenance import clear_caches
 from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session_key, ensure_secret
 from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user, load_user_roles
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
+from beetsplug.beetstreamnext.core.podcasts import PodcastManager
 from beetsplug.beetstreamnext.settings import settings_store
 
 
@@ -377,6 +378,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             )
 
             app.config.update(playlist_provider=PlaylistProvider())
+            app.config.update(podcast_manager=PodcastManager())
 
             # Handle "requires restart" settings
             cors_origin = settings_store.get('cors_origins')

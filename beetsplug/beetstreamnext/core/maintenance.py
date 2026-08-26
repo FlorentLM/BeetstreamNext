@@ -91,6 +91,12 @@ def run_periodic():
 
         rate_limiter.sweep()
 
+        # Poll subscribed podcast feeds for new episodes
+        try:
+            app.config['podcast_manager'].refresh()
+        except Exception as e:
+            bsn_logger.error(f'Podcast feed refresh failed: {e}')
+
         # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']
         if cache_dir.exists():

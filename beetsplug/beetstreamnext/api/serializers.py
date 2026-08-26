@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any, Sequence
 import os
+from pathlib import Path
 import flask
 from beets.library import LibModel, Item
 
@@ -466,6 +467,75 @@ def map_radio_station(row: dict) -> dict:
         'coverArt': station_id
     }
     return subsonic_radio_station
+
+
+def map_podcast_channel(row: dict, episodes: Optional[List[dict]] = None) -> dict:
+    channel_id = IDMapper.mint_podcast_channel(row['id'])
+
+    subsonic_channel = {
+        'id': channel_id,
+        'url': row['url'],
+        'title': row.get('title') or row['url'],
+        'description': row.get('description') or '',
+        'coverArt': channel_id,
+        'originalImageUrl': row.get('image_url') or '',
+        'status': row.get('status') or 'new',
+    }
+
+    if row.get('error_message'):
+        subsonic_channel['errorMessage'] = row['error_message']
+
+    if episodes is not None:
+        subsonic_channel['episode'] = [map_podcast_episode(ep, row) for ep in episodes]
+
+    return subsonic_channel
+
+
+def map_podcast_episode(row: dict, channel: Optional[dict] = None) -> dict:
+
+    episode_id = IDMapper.mint_podcast_episode(row['id'])
+    channel_id = IDMapper.mint_podcast_channel(row['channel_id'])
+
+    title = row.get('title') or ''
+    channel_title = (channel or {}).get('title') or (channel or {}).get('channel_title') or ''
+
+    subsonic_episode = {
+        'id': episode_id,
+        'parent': channel_id,
+        'channelId': channel_id,
+        'title': title,
+        'name': title,
+        'description': row.get('description') or '',
+        'status': row.get('status') or 'new',
+        'coverArt': channel_id,
+        'isDir': False,
+        'isVideo': False,
+        'type': 'podcast',
+        'mediaType': 'podcast',
+        'duration': round(row.get('duration') or 0),
+        'size': row.get('file_size') or 0,
+    }
+
+    if row.get('publish_date'):
+        published_iso = timestamp_to_iso(row['publish_date'])
+        if published_iso:
+            subsonic_episode['publishDate'] = published_iso
+            subsonic_episode['created'] = published_iso
+
+    if channel_title:
+        subsonic_episode['album'] = channel_title
+        subsonic_episode['artist'] = channel_title
+
+    if row.get('error_message'):
+        subsonic_episode['errorMessage'] = row['error_message']
+
+    if row.get('status') == 'completed' and row.get('file_path'):
+        suffix = Path(row['file_path']).suffix.lstrip('.').lower() or 'mp3'
+        subsonic_episode['suffix'] = suffix
+        subsonic_episode['contentType'] = get_mimetype(row['file_path'])
+        subsonic_episode['streamId'] = episode_id
+
+    return subsonic_episode
 
 
 def map_share(row: dict, entries: Sequence[str]) -> dict:

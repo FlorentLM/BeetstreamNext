@@ -46,10 +46,10 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
             'name': 'apiKeyAuthentication',     # https://opensubsonic.netlify.app/docs/extensions/apikeyauth/
             'versions': [1]
         },
-        # {
-        #     'name': 'getPodcastEpisode',    # TODO: https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
-        #     'versions': [1]
-        # },
+        {
+            'name': 'getPodcastEpisode',    # https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
+            'versions': [1]
+        },
         {
             'name': 'formPost',    # https://opensubsonic.netlify.app/docs/extensions/formpost/
             'versions': [1]
@@ -321,9 +321,6 @@ def endpoint_token_info() -> flask.Response:
 ##
 # Stubs for unsupported features
 
-# Spec: https://opensubsonic.netlify.app/docs/endpoints/getPodcasts/
-@api_bp.route('/getPodcasts', methods=['GET', 'POST'])
-@api_bp.route('/getPodcasts.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCaptions/
 @api_bp.route('/getCaptions', methods=['GET', 'POST'])

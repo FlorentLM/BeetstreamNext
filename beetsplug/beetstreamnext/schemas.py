@@ -25,7 +25,7 @@ USER_ROLES_SCHEMA = (
     ('streamRole',          'Stream',           True),      # Whether the user is allowed to play files
     ('downloadRole',        'Download',         False),     # Whether the user is allowed to download files
     ('uploadRole',          'Upload',           False),     # Whether the user is allowed to upload files
-    ('playlistRole',        'Playlists',        True),      # Whether the user is allowed to create and delete playlists TODO: Since 1.8.0, changing this role has no effect
+    ('playlistRole',        'Playlists',        True),      # Whether the user is allowed to create and delete playlists
     ('commentRole',         'Comments',         True),      # Whether the user is allowed to create and edit comments and ratings
     ('coverArtRole',        'Cover art',        False),     # Whether the user is allowed to change cover art and tags
     ('podcastRole',         'Podcasts',         False),     # Whether the user is allowed to administrate Podcasts

@@ -19,6 +19,9 @@ def endpoint_set_rating() -> flask.Response:
     req_id = r.get('id', default='', type=safe_str)         # Required
     rating = r.get('rating', default=0, type=int)           # Required
 
+    if not flask.g.user_data.get('commentRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 

@@ -163,6 +163,9 @@ def endpoint_delete_share() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     share_id = r.get('id', type=safe_str)                   # Required
 
+    if not flask.g.user_data.get('shareRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
     if not share_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 

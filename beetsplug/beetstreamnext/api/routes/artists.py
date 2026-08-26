@@ -180,6 +180,8 @@ def endpoint_artist_info() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist_id = r.get('id', default='', type=safe_str)   # Required
 
+    # TODO: count and includeNotPresent
+
     if not artist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -225,5 +227,6 @@ def endpoint_artist_info() -> flask.Response:
             'smallImageUrl': image_url(image_id, size=250)
         }
     }
+    # include similarArtist array of artists
 
     return subsonic_response(payload, resp_fmt=resp_fmt)

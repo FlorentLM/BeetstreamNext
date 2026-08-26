@@ -367,14 +367,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 (2, beets.config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
             ]
 
-            playlist_dirs = {}
-            used_paths = set()
-            for k, path in possible_paths:
-                if path and path not in used_paths:
-                    playlist_dirs[k] = Path(os.fsdecode(path))
-                    used_paths.add(path)
-                else:
-                    playlist_dirs[k] = None
+            playlist_dirs = {k: Path(os.fsdecode(path)) if path else None for k, path in possible_paths}
 
             # App-level things that don't belong in db settings
             app.config.update(

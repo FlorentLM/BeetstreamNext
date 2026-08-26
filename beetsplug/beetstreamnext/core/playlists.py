@@ -421,7 +421,10 @@ class Playlist:
 class PlaylistProvider:
 
     BSN_DIR_ID = 0
+    PLAYLIST_DIR_ID = 1
     SMARTPLAYLIST_DIR_ID = 2
+
+    _DIR_PRIORITY = (SMARTPLAYLIST_DIR_ID, PLAYLIST_DIR_ID, BSN_DIR_ID)
 
     def __init__(self):
         self._lock = threading.RLock()
@@ -431,27 +434,41 @@ class PlaylistProvider:
         if not self.playlist_dirs or all(v is None for v in self.playlist_dirs.values()):
             bsn_logger.warning('No playlist directories could be found.')
         else:
-            for dir_id, dir_path in self.playlist_dirs.items():
-                if dir_path is None:
-                    continue
-                for path, owner in self._iter_dir_entries(dir_id, Path(dir_path)):
-                    try:
-                        self._load_playlist(dir_id, path, owner)
-                    except Exception as e:
-                        bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
+            for dir_id, path, owner in self._iter_all_entries():
+                try:
+                    self._load_playlist(dir_id, path, owner)
+                except Exception as e:
+                    bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
 
             bsn_logger.debug(f"Loaded {len(self._playlists)} playlists.")
 
+    def _iter_all_entries(self):
+        """
+        Yield (dir_id, path, owner) across every configured playlist directory, in priority order.
+        """
+        claimed_dirs = set()
+        for dir_id in self._DIR_PRIORITY:
+            dir_path = self.playlist_dirs.get(dir_id)
+            if dir_path is None:
+                continue
+            dir_path = Path(dir_path)
+            for path, owner in self._iter_dir_entries(dir_id, dir_path, claimed_dirs):
+                yield dir_id, path, owner
+            claimed_dirs.add(dir_path.resolve())
+
     @classmethod
-    def _iter_dir_entries(cls, dir_id, dir_path: Path):
+    def _iter_dir_entries(cls, dir_id, dir_path: Path, claimed_dirs: set):
         """
         Yield (path, owner) for every playlist file in a playlist group's directory.
+        Top-level files are skipped if a higher-priority dir id already claimed this same
+        physical folder.
         """
         if not dir_path.is_dir():
             return
 
-        for path in dir_path.glob('*.m3u*'):
-            yield path, None
+        if dir_path.resolve() not in claimed_dirs:
+            for path in dir_path.glob('*.m3u*'):
+                yield path, None
 
         if dir_id == cls.BSN_DIR_ID:
             for user_dir in dir_path.iterdir():
@@ -533,27 +550,21 @@ class PlaylistProvider:
     def getall(self) -> List[Playlist]:
         """Return all playlists, rescanning directories for changes."""
         with self._lock:
-            for dir_id, dir_path in self.playlist_dirs.items():
-                if dir_path is None:
-                    continue
+            current_paths_by_dir: dict[int, set] = {}
+            for dir_id, path, owner in self._iter_all_entries():
+                current_paths_by_dir.setdefault(dir_id, set()).add(str(path.resolve()))
+                try:
+                    self._load_playlist(dir_id, path, owner)
+                except Exception as e:
+                    bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
 
-                entries = list(self._iter_dir_entries(dir_id, Path(dir_path)))
-                current_paths = {str(path.resolve()) for path, _ in entries}
-
-                # Remove playlists whose files have been deleted
-                stale = [
-                    pid for pid, pl in self._playlists.items()
-                    if pl.dir_id == dir_id and str(pl.path.resolve()) not in current_paths
-                ]
-                for pid in stale:
-                    self._playlists.pop(pid)
-
-                # Register new files and reload modified ones
-                for path, owner in entries:
-                    try:
-                        self._load_playlist(dir_id, path, owner)
-                    except Exception as e:
-                        bsn_logger.error(f"Failed to load playlist {path.name}: {e}")
+            # Remove playlists whose files have been deleted (or lost a shared folder's claim)
+            stale = [
+                pid for pid, pl in self._playlists.items()
+                if str(pl.path.resolve()) not in current_paths_by_dir.get(pl.dir_id, set())
+            ]
+            for pid in stale:
+                self._playlists.pop(pid)
 
             return list(self._playlists.values())
 

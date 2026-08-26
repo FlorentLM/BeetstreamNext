@@ -676,6 +676,10 @@ def endpoint_hls() -> flask.Response | None:
 
 @api_bp.route('/hls_data/<stream_id>/<bitrate>/<filename>')
 def endpoint_hls_data(stream_id: str, bitrate: str, filename: str) -> flask.Response:
+
+    if not flask.g.user_data.get('streamRole'):
+        flask.abort(403)
+
     if not stream_id.isalnum() or not bitrate.isdigit() or not (filename.endswith('.ts') or filename.endswith('.m3u8')):
         flask.abort(400)
 

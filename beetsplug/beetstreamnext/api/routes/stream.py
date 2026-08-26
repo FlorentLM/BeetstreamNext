@@ -356,7 +356,7 @@ def endpoint_stream_song() -> flask.Response | None:
     else:
         target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
-        response = try_transcode(       # TODO: Should this return a subsonic error or 404?
+        response = try_transcode(
             song_path,
             start_at=time_offset,
             max_bitrate=target_bitrate,
@@ -369,8 +369,13 @@ def endpoint_stream_song() -> flask.Response | None:
     if response is not None:
         return response
 
-    bsn_logger.warning(f"Direct play of song '{Path(song_path).name}' failed.")
+    song_filename = Path(song_path).name
 
+    if needs_transcode and (FFMPEG_PYTHON or FFMPEG_BIN):
+        bsn_logger.warning(f"Transcode of song '{song_filename}' failed.")
+        return subsonic_error(0, message='Transcoding failed.', resp_fmt=resp_fmt)
+
+    bsn_logger.warning(f"Direct play of song '{song_filename}' failed.")
     return subsonic_error(70, resp_fmt=resp_fmt)
 
 

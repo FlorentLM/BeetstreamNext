@@ -227,6 +227,6 @@ def endpoint_artist_info() -> flask.Response:
             'smallImageUrl': image_url(image_id, size=250)
         }
     }
-    # include similarArtist array of artists
+    # TODO: include similarArtist array of artists
 
     return subsonic_response(payload, resp_fmt=resp_fmt)

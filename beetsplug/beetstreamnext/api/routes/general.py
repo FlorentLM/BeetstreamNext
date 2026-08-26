@@ -309,10 +309,29 @@ def endpoint_token_info() -> flask.Response:
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+##
+# Stubs for unsupported features
+
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPodcasts/
 @api_bp.route('/getPodcasts', methods=['GET', 'POST'])
 @api_bp.route('/getPodcasts.view', methods=['GET', 'POST'])
-def endpoint_get_podcasts() -> flask.Response:
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getCaptions/
+@api_bp.route('/getCaptions', methods=['GET', 'POST'])
+@api_bp.route('/getCaptions.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideoInfo/
+@api_bp.route('/getVideoInfo', methods=['GET', 'POST'])
+@api_bp.route('/getVideoInfo.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideos/
+@api_bp.route('/getVideos', methods=['GET', 'POST'])
+@api_bp.route('/getVideos.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/jukeboxControl/
+@api_bp.route('/jukeboxControl', methods=['GET', 'POST'])
+@api_bp.route('/jukeboxControl.view', methods=['GET', 'POST'])
+def endpoint_unsupported() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    return subsonic_error(0, message='Podcast feature is not supported.', resp_fmt=resp_fmt)
+    return subsonic_error(0, message='Feature is not supported.', resp_fmt=resp_fmt)

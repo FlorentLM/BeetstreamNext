@@ -11,18 +11,33 @@ from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_e
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_podcast_channel, map_podcast_episode
 
 
-def _list_channels() -> List[dict]:
+def _list_channels(username: str) -> List[dict]:
 
     with database() as db:
         rows = db.execute(
             """
-            SELECT *
-            FROM podcast_channels
-            ORDER BY title COLLATE NOCASE
-            """
+            SELECT pc.*
+            FROM podcast_channels pc
+            JOIN podcast_subscriptions ps ON ps.channel_id = pc.id
+            WHERE ps.username = ?
+            ORDER BY pc.title COLLATE NOCASE
+            """, (username,)
         ).fetchall()
 
     return [dict(r) for r in rows]
+
+
+def _is_subscribed(username: str, channel_id: int) -> bool:
+
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT 1 FROM podcast_subscriptions 
+            WHERE username = ? AND channel_id = ?
+            """, (username, channel_id)
+        ).fetchone()
+
+    return row is not None
 
 
 def _list_episodes(channel_id: int) -> List[dict]:
@@ -39,7 +54,7 @@ def _list_episodes(channel_id: int) -> List[dict]:
     return [dict(r) for r in rows]
 
 
-def _newest_episodes(count: int) -> List[dict]:
+def _newest_episodes(username: str, count: int) -> List[dict]:
 
     with database() as db:
         rows = db.execute(
@@ -47,10 +62,11 @@ def _newest_episodes(count: int) -> List[dict]:
             SELECT pe.*, pc.title AS channel_title
             FROM podcast_episodes pe
             JOIN podcast_channels pc ON pc.id = pe.channel_id
+            JOIN podcast_subscriptions ps ON ps.channel_id = pc.id AND ps.username = ?
             WHERE pe.publish_date IS NOT NULL
             ORDER BY pe.publish_date DESC
             LIMIT ?
-            """, (count,)
+            """, (username, count)
         ).fetchall()
 
     return [dict(r) for r in rows]
@@ -69,14 +85,17 @@ def endpoint_get_podcasts() -> flask.Response:
     req_id = r.get('id', default='', type=safe_str)
     include_episodes = r.get('includeEpisodes', default=True, type=api_bool)
 
+    username = flask.g.username
+    is_admin = bool(flask.g.user_data.get('adminRole'))
+
     if req_id:
         channel = IDMapper.resolve_podcast_channel(req_id)
-        if not channel:
+        if not channel or not (is_admin or _is_subscribed(username, channel['id'])):
             return subsonic_error(70, resp_fmt=resp_fmt)
         channels = [channel]
 
     else:
-        channels = _list_channels()
+        channels = _list_channels(username)
 
     entries = [
         map_podcast_channel(ch, _list_episodes(ch['id']) if include_episodes else None)
@@ -101,7 +120,7 @@ def endpoint_get_newest_podcasts() -> flask.Response:
 
     entries = [
         map_podcast_episode(row, {'channel_title': row.get('channel_title')})
-        for row in _newest_episodes(count)
+        for row in _newest_episodes(flask.g.username, count)
     ]
 
     payload = {
@@ -120,7 +139,7 @@ def endpoint_create_podcast_channel() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     url = r.get('url', default='', type=str)                # Required
 
-    if not flask.g.user_data.get('podcastRole'):
+    if not (flask.g.user_data.get('podcastRole') or flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not FEEDPARSER:
@@ -128,11 +147,11 @@ def endpoint_create_podcast_channel() -> flask.Response:
                               message="Podcast feeds need the 'feedparser' package to be installed on the server.",
                               resp_fmt=resp_fmt)
 
-    if not url:
+    if not url.strip():
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     podcast_manager = flask.g.podcast_manager
-    podcast_manager.create_channel(url)
+    podcast_manager.create_channel(flask.g.username, url)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 
@@ -145,7 +164,7 @@ def endpoint_delete_podcast_channel() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)         # Required
 
-    if not flask.g.user_data.get('podcastRole'):
+    if not (flask.g.user_data.get('podcastRole') or flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not req_id:
@@ -156,7 +175,12 @@ def endpoint_delete_podcast_channel() -> flask.Response:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     podcast_manager = flask.g.podcast_manager
-    podcast_manager.delete_channel(channel['id'])
+
+    if flask.g.user_data.get('adminRole'):
+        # admins can purge a channel's shared storage
+        podcast_manager.delete_channel(channel['id'])
+    else:
+        podcast_manager.unsubscribe(flask.g.username, channel['id'])
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 
@@ -168,7 +192,7 @@ def endpoint_refresh_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
-    if not flask.g.user_data.get('podcastRole'):
+    if not (flask.g.user_data.get('podcastRole') or flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not FEEDPARSER:
@@ -177,7 +201,12 @@ def endpoint_refresh_podcasts() -> flask.Response:
                               resp_fmt=resp_fmt)
 
     podcast_manager = flask.g.podcast_manager
-    podcast_manager.background_refresh()
+
+    if flask.g.user_data.get('adminRole'):
+        podcast_manager.background_refresh()   # every channel, server-wide
+    else:
+        for channel in _list_channels(flask.g.username):
+            podcast_manager.background_refresh(channel['id'])
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 
@@ -190,7 +219,7 @@ def endpoint_download_podcast_episode() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)         # Required
 
-    if not flask.g.user_data.get('podcastRole'):
+    if not (flask.g.user_data.get('podcastRole') or flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not req_id:
@@ -200,13 +229,14 @@ def endpoint_download_podcast_episode() -> flask.Response:
     if not episode:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    if episode.get('status') == 'completed':
-        return subsonic_response({}, resp_fmt=resp_fmt)   # already on disk, nothing to do here
+    username = flask.g.username
+    if not (flask.g.user_data.get('adminRole') or _is_subscribed(username, episode['channel_id'])):
+        return subsonic_error(50, resp_fmt=resp_fmt)
 
     podcast_manager = flask.g.podcast_manager
-    has_started = podcast_manager.background_download(episode['id'])
+    ok = podcast_manager.request_episode_download(username, episode['id'])
 
-    if not has_started:
+    if not ok:
         # Couldn't start (no audio source or whatever): don't tell the client to wait for a download
         return subsonic_error(0, message='This episode has no audio source and/or cannot be downloaded.', resp_fmt=resp_fmt)
 
@@ -221,7 +251,7 @@ def endpoint_delete_podcast_episode() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)         # Required
 
-    if not flask.g.user_data.get('podcastRole'):
+    if not (flask.g.user_data.get('podcastRole') or flask.g.user_data.get('adminRole')):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not req_id:
@@ -232,7 +262,12 @@ def endpoint_delete_podcast_episode() -> flask.Response:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     podcast_manager = flask.g.podcast_manager
-    podcast_manager.delete_episode(episode['id'])
+
+    if flask.g.user_data.get('adminRole'):
+        # force-remove the shared file for every subscriber
+        podcast_manager.delete_episode(episode['id'])
+    else:
+        podcast_manager.release_episode_download(flask.g.username, episode['id'])
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

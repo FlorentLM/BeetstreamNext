@@ -378,6 +378,38 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS podcast_subscriptions
+        (
+            username      TEXT NOT NULL,
+            channel_id    INTEGER NOT NULL,
+            subscribed_at REAL NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (username, channel_id),
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE,
+            FOREIGN KEY (channel_id) REFERENCES podcast_channels (id) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        -- one row = username wants episode_id kept on disk
+        CREATE TABLE IF NOT EXISTS podcast_episode_downloads
+        (
+            username     TEXT NOT NULL,
+            episode_id   INTEGER NOT NULL,
+            requested_at REAL NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (username, episode_id),
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE,
+            FOREIGN KEY (episode_id) REFERENCES podcast_episodes (id) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_podcast_subscriptions_channel ON podcast_subscriptions(channel_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_podcast_episode_downloads_episode ON podcast_episode_downloads(episode_id);""")
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS shares
         (
             id          TEXT PRIMARY KEY,

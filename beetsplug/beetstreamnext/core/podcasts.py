@@ -120,7 +120,7 @@ class PodcastManager:
     # Channels
 
     @_ensure_app_context
-    def _worker_refresh_channel(self, channel_id: int, download_recents: bool = False) -> None:
+    def _worker_refresh_channel(self, channel_id: int, download_recents: bool = False, username: Optional[str] = None) -> None:
         """Worker for refreshing a single channel."""
 
         if not FEEDPARSER:
@@ -157,7 +157,18 @@ class PodcastManager:
                 )
 
             try:
-                feed = _fetch_feed(row['url'])
+                feed, resolved_url = _fetch_feed(row['url'])
+
+                if resolved_url != row['url']:
+                    try:
+                        with database() as db:
+                            db.execute(
+                                """UPDATE podcast_channels SET url = ? WHERE id = ?""",
+                                (resolved_url, channel_id)
+                            )
+                        bsn_logger.info(f"Upgraded podcast channel {channel_id} to '{resolved_url}'.")
+                    except Exception as e:
+                        bsn_logger.warning(f"Could not persist upgraded URL '{resolved_url}' for podcast channel {channel_id}: {e}")
 
                 feed_info = feed.get('feed', {})
                 title = feed_info.get('title') or row['url']
@@ -272,6 +283,8 @@ class PodcastManager:
                                 f'for newly-added podcast channel {channel_id}...'
                             )
                             for ep_id in episode_ids:
+                                if username:
+                                    self._record_want(username, ep_id)
                                 self.download(ep_id)   # TODO: should this be in parallel?
 
             except Exception as e:
@@ -289,7 +302,7 @@ class PodcastManager:
                 self._refreshing_channels.discard(channel_id)
 
     @_ensure_app_context
-    def refresh(self, channel_id: Optional[int] = None, download_recents: bool = False) -> None:
+    def refresh(self, channel_id: Optional[int] = None, download_recents: bool = False, username: Optional[str] = None) -> None:
 
         if not FEEDPARSER:
             return
@@ -298,58 +311,114 @@ class PodcastManager:
             with database() as db:
                 rows = db.execute(
                     """
-                    SELECT id 
+                    SELECT id
                     FROM podcast_channels
                     """
                 ).fetchall()
 
             for row in rows:
-                self._worker_refresh_channel(channel_id=row['id'], download_recents=download_recents)
+                self._worker_refresh_channel(channel_id=row['id'], download_recents=download_recents, username=username)
 
         else:
-            self._worker_refresh_channel(channel_id=channel_id, download_recents=download_recents)
+            self._worker_refresh_channel(channel_id=channel_id, download_recents=download_recents, username=username)
 
-    def background_refresh(self, channel_id: Optional[int] = None, download_recents: bool = False) -> None:
+    def background_refresh(self, channel_id: Optional[int] = None, download_recents: bool = False, username: Optional[str] = None) -> None:
 
         thread = Thread(
             target=self.refresh,
             args=(channel_id,),
-            kwargs={'download_recents': download_recents},
+            kwargs={'download_recents': download_recents, 'username': username},
             daemon=True
         )
         thread.start()
 
-    def create_channel(self, url: str) -> int:
+    def create_channel(self, username: str, url: str) -> int:
+        """
+        Creates the channel row if its URL is new, or just subscribes username to the
+        existing shared channel.
+
+        url is normalised first and deduped against its http/https variants.
+        """
+
+        url = normalize_url(url)
+        alt_url = https_variant(url)
 
         with database() as db:
-            cur = db.execute(
-                """
-                INSERT INTO podcast_channels (url, title, status) 
-                VALUES (?, ?, 'new')
-                """, (url, url)
-            )
-            channel_id = cur.lastrowid
+            existing = db.execute(
+                """SELECT id FROM podcast_channels WHERE url = ? OR url = ?""", (url, alt_url)
+            ).fetchone()
 
-        self.background_refresh(channel_id, download_recents=True)
+            if existing:
+                channel_id = existing['id']
+                is_new = False
+            else:
+                cur = db.execute(
+                    """
+                    INSERT INTO podcast_channels (url, title, status)
+                    VALUES (?, ?, 'new')
+                    ON CONFLICT (url) DO NOTHING
+                    """, (url, url)
+                )
+                if cur.rowcount > 0:
+                    channel_id = cur.lastrowid
+                    is_new = True
+                else:
+                    # Another request for the same URL already did it
+                    channel_id = db.execute(
+                        """SELECT id FROM podcast_channels WHERE url = ?""", (url,)
+                    ).fetchone()['id']
+                    is_new = False
+
+            db.execute(
+                """
+                INSERT INTO podcast_subscriptions (username, channel_id)
+                VALUES (?, ?)
+                ON CONFLICT (username, channel_id) DO NOTHING
+                """, (username, channel_id)
+            )
+
+        if is_new:
+            self.background_refresh(channel_id, download_recents=True, username=username)
 
         return channel_id
 
+    def unsubscribe(self, username: str, channel_id: int, force: bool = False) -> None:
+        """
+        Removes username's subscription to channel_id. The shared channel/episodes/files are
+        only purged when no subscriber remains (unless forced by admin override).
+        """
+
+        with database() as db:
+            db.execute(
+                """DELETE FROM podcast_subscriptions WHERE username = ? AND channel_id = ?""",
+                (username, channel_id)
+            )
+            remaining = db.execute(
+                """SELECT COUNT(*) AS n FROM podcast_subscriptions WHERE channel_id = ?""",
+                (channel_id,)
+            ).fetchone()['n']
+
+        if force or remaining == 0:
+            self.delete_channel(channel_id)
+
     def delete_channel(self, channel_id: int) -> None:
+        """Unconditionally purges a channel, episodes and files for all subscribers."""
+
         with database() as db:
             rows = db.execute(
                 """
-                SELECT file_path 
-                FROM podcast_episodes 
+                SELECT file_path
+                FROM podcast_episodes
                 WHERE channel_id = ? AND file_path IS NOT NULL
                 """, (channel_id,)
             ).fetchall()
 
             db.execute(
                 """
-                DELETE FROM podcast_channels 
+                DELETE FROM podcast_channels
                 WHERE id = ?
                 """, (channel_id,)
-            )   # cascade to episodes
+            )   # Cascade to episodes, subscriptions and episode download wants
 
         for row in rows:
             try:
@@ -358,6 +427,23 @@ class PodcastManager:
                 bsn_logger.warning(f"Failed to remove podcast episode file '{row['file_path']}': {e}")
 
     # Episodes
+
+    def _record_want(self, username: str, episode_id: int) -> None:
+        with database() as db:
+            db.execute(
+                """
+                INSERT INTO podcast_episode_downloads (username, episode_id)
+                VALUES (?, ?)
+                ON CONFLICT (username, episode_id) DO NOTHING
+                """, (username, episode_id)
+            )
+
+    def _want_count(self, episode_id: int) -> int:
+        with database() as db:
+            return db.execute(
+                """SELECT COUNT(*) AS n FROM podcast_episode_downloads WHERE episode_id = ?""",
+                (episode_id,)
+            ).fetchone()['n']
 
     def _reserve_download(self, episode_id: int) -> bool:
         """
@@ -503,6 +589,75 @@ class PodcastManager:
 
         return True
 
+    def request_episode_download(self, username: str, episode_id: int) -> bool:
+        """
+        Records that username wants episode_id downloaded, and makes sure the audio file
+        is being fetched (if not already on disk).
+
+        Returns False only when the episode has no known audio source.
+        """
+
+        self._record_want(username, episode_id)
+
+        with database() as db:
+            row = db.execute(
+                """
+                SELECT status, audio_url 
+                FROM podcast_episodes 
+                WHERE id = ?
+                """, (episode_id,)
+            ).fetchone()
+
+        if not row or not row['audio_url']:
+            return False
+
+        if row['status'] == 'completed':
+            return True
+
+        return self.background_download(episode_id)
+
+    def release_episode_download(self, username: str, episode_id: int) -> None:
+        """
+        Clears username's want for episode_id. Once no subscriber wants it downloaded anymore,
+        the audio file is purged from disk (metadata stays, ofc).
+        """
+
+        with database() as db:
+            db.execute(
+                """
+                DELETE FROM podcast_episode_downloads 
+                WHERE username = ? AND episode_id = ?
+                """, (username, episode_id)
+            )
+
+        if self._want_count(episode_id) > 0:
+            return
+
+        with database() as db:
+            row = db.execute(
+                """
+                SELECT file_path 
+                FROM podcast_episodes 
+                WHERE id = ?
+                """, (episode_id,)
+            ).fetchone()
+
+            if not row or not row['file_path']:
+                return
+
+            db.execute(
+                """
+                UPDATE podcast_episodes
+                SET status = 'new', file_path = NULL, file_size = NULL, error_message = NULL
+                WHERE id = ?
+                """, (episode_id,)
+            )
+
+        try:
+            Path(row['file_path']).unlink(missing_ok=True)
+        except OSError as e:
+            bsn_logger.warning(f"Failed to remove podcast episode file '{row['file_path']}': {e}")
+
     def relayed_download(self, episode_id: int, channel_id: int, audio_url: str):
         """
         Starts a streamed HTTP GET for an episode that isn't downloaded yet.
@@ -600,13 +755,16 @@ class PodcastManager:
                 self._downloading_episodes.discard(episode_id)
 
     def delete_episode(self, episode_id: int) -> None:
-        """Removes an episode's audio file, keeping its metadata (status becomes 'deleted')."""
+        """
+        Unconditionally removes an episode's audio file all subscribers (admin override),
+        keeping its metadata (status becomes 'deleted').
+        """
 
         with database() as db:
             row = db.execute(
                 """
-                SELECT file_path 
-                FROM podcast_episodes 
+                SELECT file_path
+                FROM podcast_episodes
                 WHERE id = ?
                 """, (episode_id,)
             ).fetchone()
@@ -619,6 +777,12 @@ class PodcastManager:
                 UPDATE podcast_episodes
                 SET status = 'deleted', file_path = NULL, error_message = NULL
                 WHERE id = ?
+                """, (episode_id,)
+            )
+            db.execute(
+                """
+                DELETE FROM podcast_episode_downloads 
+                WHERE episode_id = ?
                 """, (episode_id,)
             )
 

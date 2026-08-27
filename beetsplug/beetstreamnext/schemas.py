@@ -28,7 +28,7 @@ USER_ROLES_SCHEMA = (
     ('playlistRole',        'Playlists',        True),      # Whether the user is allowed to create and delete playlists
     ('commentRole',         'Comments',         True),      # Whether the user is allowed to create and edit comments and ratings
     ('coverArtRole',        'Cover art',        False),     # Whether the user is allowed to change cover art and tags
-    ('podcastRole',         'Podcasts',         False),     # Whether the user is allowed to administrate Podcasts
+    ('podcastRole',         'Podcasts',         False),     # Whether the user is allowed to administrate Podcasts (subscribe and manage their own subscriptions)
     ('shareRole',           'Sharing',          False),     # Whether the user is allowed to share files with anyone
     ('jukeboxRole',         'Jukebox',          False),     # Whether the user is allowed to play files in jukebox mode
     ('videoConversionRole', 'Video conversion', False),     # Whether the user is allowed to start video conversions

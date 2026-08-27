@@ -643,13 +643,21 @@ def endpoint_get_transcode_decision() -> flask.Response:
 @api_bp.route('/getTranscodeStream.view', methods=['GET', 'POST'])
 def endpoint_get_transcode_stream() -> flask.Response | None:
     r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    media_id = r.get('id', default='', type=safe_str) or r.get('mediaId', default='', type=safe_str)
+    media_type = r.get('mediaType', default='', type=safe_str).lower()
+
+    if media_type and media_type not in ('song', 'podcast'):
+        return subsonic_error(0, message="'mediaType' must be 'song' or 'podcast'.", resp_fmt=resp_fmt)
+
+    resolved_type = 'podcast' if IDMapper.get_type(media_id) == 'podcastEpisode' else 'song'
+    if media_type and media_type != resolved_type:
+        return subsonic_error(0, message=f"'mediaType' ({media_type}) does not match the resolved media ({resolved_type}).", resp_fmt=resp_fmt)
 
     song, song_path, err_resp = _get_media_context(r, 'streamRole')
     if err_resp:
         return err_resp
 
-    resp_fmt = r.get('f', default='xml', type=safe_str)
-    # TODO: 'mediaType': "Either song or podcast so the server knows what the mediaId is referring to."
     offset = r.get('offset', default=0.0, type=float)
     tx_params_raw = r.get('transcodeParams', default='', type=str)
 

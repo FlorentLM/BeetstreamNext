@@ -9,6 +9,7 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article
+from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import image_url
@@ -179,8 +180,8 @@ def endpoint_artist_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist_id = r.get('id', default='', type=safe_str)   # Required
-
-    # TODO: count and includeNotPresent
+    count = r.get('count', default=20, type=int)
+    include_not_present = r.get('includeNotPresent', default=False, type=api_bool)
 
     if not artist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -227,6 +228,26 @@ def endpoint_artist_info() -> flask.Response:
             'smallImageUrl': image_url(image_id, size=250)
         }
     }
-    # TODO: include similarArtist array of artists
+
+    if app.config['lastfm_api_key'] and count > 0:
+        if artist_mbid:
+            data_similar = query_lastfm(q=artist_mbid, data_type='artist', method='similar', is_mbid=True)
+        else:
+            data_similar = query_lastfm(q=artist_name, data_type='artist', method='similar', is_mbid=False)
+
+        similar_artists = []
+        for entry in data_similar.get('similarartists', {}).get('artist', []):
+            name = entry.get('name')
+            if not name:
+                continue
+            mapped = map_artist(name, with_albums=False)
+            if not include_not_present and not mapped['albumCount']:
+                continue
+            similar_artists.append(mapped)
+            if len(similar_artists) >= count:
+                break
+
+        if similar_artists:
+            payload[tag]['similarArtist'] = similar_artists
 
     return subsonic_response(payload, resp_fmt=resp_fmt)

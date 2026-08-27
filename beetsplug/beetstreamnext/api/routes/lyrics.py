@@ -5,6 +5,7 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.api.serializers import IDMapper
@@ -140,8 +141,7 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required
-
-    # TODO: 'enhanced' parameter
+    enhanced = r.get('enhanced', default=False, type=api_bool)
 
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -157,18 +157,20 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
 
     lines, has_timestamps = _parse_lyrics_content(data['text'])
 
+
+    structured = {
+        'displayArtist': data['artist'],
+        'displayTitle': data['title'],
+        'lang': data['lang'],
+        'synced': has_timestamps,
+        'line': lines
+    }
+    if enhanced:
+        structured['kind'] = 'main'
+
     payload = {
         'lyricsList': {
-            'structuredLyrics': [
-                {
-                    'kind': 'main',
-                    'displayArtist': data['artist'],
-                    'displayTitle': data['title'],
-                    'lang': data['lang'],
-                    'synced': has_timestamps,
-                    'line': lines
-                }
-            ]
+            'structuredLyrics': [structured]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

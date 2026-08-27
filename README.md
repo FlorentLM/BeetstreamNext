@@ -29,9 +29,11 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 
 ## API coverage & Features
 
-BeetstreamNext implements the vast majority of the OpenSubsonic API specification, **excluding video streaming and podcast management**.
+BeetstreamNext supports pretty much **all** of the Subsonic/OpenSubsonic API specification.
 
-It also introduces several structural enhancements and features.
+Only unsupported features (currently) are _video streaming_ and _jukebox_ mode.
+
+It also introduces several enhancements and featuresv though :)
 
 ### Core
 
@@ -48,6 +50,10 @@ It also introduces several structural enhancements and features.
 *   **Metadata integration:** Retrieves artist biographies, top tracks, and similar artists or songs from Last.fm or Wikipedia, ratings from Discogs, etc.
 *   **Album artworks / Artist images:** Grabs and serves the local album art path from your Beets library, or fetches and saves the images from [Cover Art Archive](https://coverartarchive.org/) and Deezer.
 *   **Sonic similarity:** Native integration with [AudioMuse-AI](https://github.com/NeptuneHub/AudioMuse-AI) for acoustic similar-song lookups and playlist path-finding between two songs, via OpenSubsonic's `sonicSimilarity` extension.
+
+### Podcasts
+
+*   **Full support:** Per-user subscriptions to podcast RSS feeds, browse channels and episodes, download episodes, etc.
 
 ### Sharing
 
@@ -110,10 +116,14 @@ beetstreamnext:
   cors: ''                      # Allowed CORS origins for web-based clients
   
   # Library options
-  enable_public_now_playing: false # Toggle the public homepage widget
-  fetch_artists_images: true    # Fetch artist photos from Deezer
-  save_artists_images: true     # Save fetched artist photos to music folders
-  save_album_art: true          # Save fetched album art to music folders
+  enable_public_now_playing: false  # Toggle the public homepage widget
+  fetch_artists_images: true        # Fetch artist photos from Deezer
+  save_artists_images: true         # Save fetched artist photos to music folders
+  save_album_art: true              # Save fetched album art to music folders
+
+  # Podcasts
+  podcast_storage_dir: ''           # Where to store downloaded episodes (defaults to the cache location)
+  podcast_auto_download_count: 10   # Number of episodes to auto-download when a channel is added (0 to disable)
 ```
 
 ### Environment variables

@@ -1,5 +1,4 @@
 import calendar
-import functools
 import os
 from threading import Thread, Lock
 import urllib.parse
@@ -8,7 +7,7 @@ from typing import Optional
 
 import flask
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.constants import (
     CACHE_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, USER_AGENT
 )
@@ -18,19 +17,6 @@ from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
-
-
-def _ensure_app_context(fn):
-    """
-    wrapper to let fn run as a threading.Thread (because it has no app context)
-    """
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
-        if flask.has_app_context():
-            return fn(*args, **kwargs)
-        with app.app_context():
-            return fn(*args, **kwargs)
-    return wrapper
 
 
 ##
@@ -119,7 +105,7 @@ class PodcastManager:
 
     # Channels
 
-    @_ensure_app_context
+    @with_app_context
     def _worker_refresh_channel(self, channel_id: int, download_recents: bool = False, username: Optional[str] = None) -> None:
         """Worker for refreshing a single channel."""
 
@@ -301,7 +287,7 @@ class PodcastManager:
             with self._refresh_lock:
                 self._refreshing_channels.discard(channel_id)
 
-    @_ensure_app_context
+    @with_app_context
     def refresh(self, channel_id: Optional[int] = None, download_recents: bool = False, username: Optional[str] = None) -> None:
 
         if not FEEDPARSER:
@@ -496,7 +482,7 @@ class PodcastManager:
             )
         return True
 
-    @_ensure_app_context
+    @with_app_context
     def _worker_download_episode(self, episode_id: int, channel_id: int, audio_url: str) -> None:
         """
         Worker for getting and writing an episode's audio to disk.
@@ -558,7 +544,7 @@ class PodcastManager:
             with self._download_lock:
                 self._downloading_episodes.discard(episode_id)
 
-    @_ensure_app_context
+    @with_app_context
     def download(self, episode_id: int) -> None:
         """
         Reserve and download an episode to server storage, sequential/blocking, for background.

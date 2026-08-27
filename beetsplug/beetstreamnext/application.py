@@ -1,3 +1,5 @@
+import functools
+import flask
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
@@ -35,3 +37,24 @@ app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 app.jinja_env.filters['duration'] = format_duration
 
 csrf = CSRFProtect(app)
+
+
+##
+# Small decorator for background threads to get the app context
+
+
+def with_app_context(fn):
+    """
+    Lets a function run from a plain background thread (which has no Flask app/request context),
+    by pushing one (and populating flask.g.lib) if it's missing.
+    """
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if flask.has_app_context():
+            if 'lib' not in flask.g:
+                flask.g.lib = app.config['lib']
+            return fn(*args, **kwargs)
+        with app.app_context():
+            flask.g.lib = app.config['lib']
+            return fn(*args, **kwargs)
+    return wrapper

@@ -4,6 +4,8 @@ public_bp = Blueprint('public', __name__)
 
 
 from .routes import (
+    errors,
     home,
-    page_not_found
+    now_playing,
+    shares,
 )

@@ -4,21 +4,19 @@ import secrets
 import time
 import zipfile
 from pathlib import Path
-from typing import List, Tuple, Any
+from typing import Any, List
+
 import flask
 from flask import render_template
 
-from . import public_bp
+from .. import public_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.general import get_server_info, send_file
+from beetsplug.beetstreamnext.utils.general import send_file
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_album
-from beetsplug.beetstreamnext.settings import settings_store
-
-# TODO: It's maybe time to split this file into several route files like the rest api
 
 
 def _safe_filename(name: Any) -> str:
@@ -53,127 +51,13 @@ def _build_album_zip(items: List) -> Path:
     return zip_path
 
 
-@public_bp.app_errorhandler(404)
-def page_not_found(_e: Any) -> Tuple[str, int]:
-    error = {
-        'code': 404,
-        'title': '*record scratches*',
-        'message': "Looks like you're lost.",
-    }
-    return render_template('error.html', error=error), error['code']
-
-@public_bp.route('/')
-def home() -> str:
-    stats = get_server_info(extended=False)
-    stats['status'] = 'running'
-
-    now_playing = None
-
-    if settings_store.get('public_now_playing'):
-        with database() as db:
-            row = db.execute(
-                """
-                SELECT np.item_id, np.player_name, np.username
-                FROM now_playing np
-                         JOIN users u ON np.username = u.username
-                WHERE np.state = 'playing'
-                ORDER BY np.started_at DESC
-                LIMIT 1
-                """
-            ).fetchone()
-
-        if row:
-            item_id = row['item_id']
-            id_type = IDMapper.get_type(item_id)
-
-            if id_type == 'song':
-                song = IDMapper.resolve_song(item_id)
-                if song:
-                    now_playing = {
-                        'title': song.title,
-                        'artist': song.artist,
-                        'album': song.album,
-                        'player': row['player_name'],
-                        'username': row['username']
-                    }
-
-            elif id_type == 'radio':
-                station = IDMapper.resolve_radio(item_id)
-                if station:
-                    now_playing = {
-                        'title': station['name'],
-                        'artist': 'Internet Radio',
-                        'album': '',
-                        'player': row['player_name'],
-                        'username': row['username']
-                    }
-
-    # Resolve the public/external URL
-    external_host = settings_store.get('external_hostname')
-    if external_host:
-        scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
-        server_url = f"{scheme}://{external_host}/"
-    else:
-        server_url = flask.request.host_url
-
-    return render_template(
-        'index.html',
-        stats=stats,
-        now_playing=now_playing,
-        server_url=server_url
-    )
-
-@public_bp.route('/now-playing/cover')
-def now_playing_cover() -> flask.Response:
-    if not settings_store.get('public_now_playing'):
-        flask.abort(404)
-
-    with database() as db:
-        row = db.execute(
-            """
-            SELECT np.item_id
-            FROM now_playing np
-                     JOIN users u ON np.username = u.username
-            WHERE np.state = 'playing'
-            ORDER BY np.started_at DESC
-            LIMIT 1
-            """
-        ).fetchone()
-
-    if not row:
-        flask.abort(404)
-
-    from beetsplug.beetstreamnext.core.images import send_album_art, send_radio_art, round_image_size
-    size = flask.request.args.get('size', default=0, type=int)
-    rounded_size = round_image_size(size)
-
-    item_id = row['item_id']
-    id_type = IDMapper.get_type(item_id)
-
-    if id_type == 'song':
-        song = IDMapper.resolve_song(item_id)
-        if song and song.get('album_id'):
-            response = send_album_art(song.get('album_id'), rounded_size)
-            if response:
-                return response
-
-    elif id_type == 'radio':
-        station = IDMapper.resolve_radio(item_id)
-        if station:
-            response = send_radio_art(station['id'])
-            if response:
-                return response
-
-    flask.abort(404)
-
-
 @public_bp.route('/share/<share_id>')
 def share_view(share_id: str) -> flask.Response:
     with database() as db:
         share = db.execute(
             """
-            SELECT * 
-            FROM shares 
+            SELECT *
+            FROM shares
             WHERE id = ?
             """, (share_id,)
         ).fetchone()
@@ -192,8 +76,8 @@ def share_view(share_id: str) -> flask.Response:
     with database() as db:
         db.execute(
             """
-            UPDATE shares 
-            SET visit_count = visit_count + 1 
+            UPDATE shares
+            SET visit_count = visit_count + 1
             WHERE id = ?
             """, (share_id,)
         )
@@ -201,8 +85,8 @@ def share_view(share_id: str) -> flask.Response:
     with database() as db:
         entry_rows = db.execute(
             """
-            SELECT item_id 
-            FROM share_entries 
+            SELECT item_id
+            FROM share_entries
             WHERE share_id = ?
             """, (share_id,)
         ).fetchall()
@@ -234,8 +118,8 @@ def share_download(share_id: str, entry_id: str) -> flask.Response:
     with database() as db:
         share = db.execute(
             """
-            SELECT * 
-            FROM shares 
+            SELECT *
+            FROM shares
             WHERE id = ?
             """, (share_id,)
         ).fetchone()
@@ -247,8 +131,8 @@ def share_download(share_id: str, entry_id: str) -> flask.Response:
     with database() as db:
         explicit_match = db.execute(
             """
-            SELECT 1 
-            FROM share_entries 
+            SELECT 1
+            FROM share_entries
             WHERE share_id = ? AND item_id = ?
             """, (share_id, entry_id)
         ).fetchone()

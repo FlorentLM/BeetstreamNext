@@ -151,7 +151,10 @@ def endpoint_create_podcast_channel() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     podcast_manager = flask.g.podcast_manager
-    podcast_manager.create_channel(flask.g.username, url)
+    channel_id, error = podcast_manager.create_channel(flask.g.username, url)
+
+    if channel_id is None:
+        return subsonic_error(0, message=f"Could not subscribe to podcast feed '{url}': {error}", resp_fmt=resp_fmt)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

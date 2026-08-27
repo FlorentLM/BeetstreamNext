@@ -285,7 +285,7 @@ class PodcastManager:
                             for ep_id in episode_ids:
                                 if username:
                                     self._record_want(username, ep_id)
-                                self.download(ep_id)   # TODO: should this be in parallel?
+                                self.background_download(ep_id)
 
             except Exception as e:
                 bsn_logger.error(f"Failed to refresh podcast channel {channel_id} ('{row['url']}'): {e}")
@@ -332,12 +332,15 @@ class PodcastManager:
         )
         thread.start()
 
-    def create_channel(self, username: str, url: str) -> int:
+    def create_channel(self, username: str, url: str) -> tuple[Optional[int], Optional[str]]:
         """
         Creates the channel row if its URL is new, or just subscribes username to the
         existing shared channel.
 
         url is normalised first and deduped against its http/https variants.
+
+        Returns (channel_id, error_message), channel_id can be None if a new channel's feed
+        could not be fetched.
         """
 
         url = normalize_url(url)
@@ -345,7 +348,11 @@ class PodcastManager:
 
         with database() as db:
             existing = db.execute(
-                """SELECT id FROM podcast_channels WHERE url = ? OR url = ?""", (url, alt_url)
+                """
+                SELECT id 
+                FROM podcast_channels 
+                WHERE url = ? OR url = ?
+                """, (url, alt_url)
             ).fetchone()
 
             if existing:
@@ -365,7 +372,11 @@ class PodcastManager:
                 else:
                     # Another request for the same URL already did it
                     channel_id = db.execute(
-                        """SELECT id FROM podcast_channels WHERE url = ?""", (url,)
+                        """
+                        SELECT id 
+                        FROM podcast_channels 
+                        WHERE url = ?
+                        """, (url,)
                     ).fetchone()['id']
                     is_new = False
 
@@ -378,9 +389,21 @@ class PodcastManager:
             )
 
         if is_new:
-            self.background_refresh(channel_id, download_recents=True, username=username)
+            self.refresh(channel_id, download_recents=True, username=username)
 
-        return channel_id
+            with database() as db:
+                row = db.execute(
+                    """
+                    SELECT status, error_message 
+                    FROM podcast_channels WHERE id = ?
+                    """, (channel_id,)
+                ).fetchone()
+
+            if row and row['status'] == 'error':
+                self.delete_channel(channel_id)
+                return None, row['error_message']
+
+        return channel_id, None
 
     def unsubscribe(self, username: str, channel_id: int, force: bool = False) -> None:
         """
@@ -390,12 +413,17 @@ class PodcastManager:
 
         with database() as db:
             db.execute(
-                """DELETE FROM podcast_subscriptions WHERE username = ? AND channel_id = ?""",
-                (username, channel_id)
+                """
+                DELETE FROM podcast_subscriptions 
+                WHERE username = ? AND channel_id = ?
+                """, (username, channel_id)
             )
             remaining = db.execute(
-                """SELECT COUNT(*) AS n FROM podcast_subscriptions WHERE channel_id = ?""",
-                (channel_id,)
+                """
+                SELECT COUNT(*) AS n 
+                FROM podcast_subscriptions 
+                WHERE channel_id = ?
+                """, (channel_id,)
             ).fetchone()['n']
 
         if force or remaining == 0:
@@ -441,8 +469,11 @@ class PodcastManager:
     def _want_count(self, episode_id: int) -> int:
         with database() as db:
             return db.execute(
-                """SELECT COUNT(*) AS n FROM podcast_episode_downloads WHERE episode_id = ?""",
-                (episode_id,)
+                """
+                SELECT COUNT(*) AS n 
+                FROM podcast_episode_downloads 
+                WHERE episode_id = ?
+                """, (episode_id,)
             ).fetchone()['n']
 
     def _reserve_download(self, episode_id: int) -> bool:

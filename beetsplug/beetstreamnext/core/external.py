@@ -9,9 +9,18 @@ from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import (
-    WIKI_API, RADIO_BROWSER, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES, USER_AGENT
+    WIKI_API, RADIO_BROWSER, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES, USER_AGENT, _SCHEME_RE, _DUPLICATE_SCHEME_RE
 )
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+
+
+def https_variant(url: str) -> str:
+    """Returns url with its scheme flipped between http and https, or url unchanged if neither."""
+    if url.lower().startswith('http://'):
+        return 'https://' + url[len('http://'):]
+    if url.lower().startswith('https://'):
+        return 'http://' + url[len('https://'):]
+    return url
 
 
 _http_session = None
@@ -28,6 +37,43 @@ def http_session() -> CachedSession:
             stale_if_error=True     # serve expired cached version if remote server goes down
         )
     return _http_session
+
+
+def normalize_url(url: str, probe_https: bool = False, probe_timeout: float = 3.0) -> str:
+    """
+    Cleans up a client-supplied URL
+
+    Args:
+        - probe_https: if True and the URL is http, a HEAD request is sent at the https
+        equivalent and the URL is upgraded if the server responds
+        - probe_timeout: timeout in seconds for the probe
+
+    Falls back silently to http on any error.
+    """
+    url = url.strip()
+
+    if not url:
+        return url
+
+    url = _DUPLICATE_SCHEME_RE.sub('', url)
+
+    if not _SCHEME_RE.match(url):
+        url = f'https://{url}'
+
+    if probe_https and url.lower().startswith('http://'):
+        https_url = https_variant(url)
+        try:
+            with http_session().cache_disabled():
+                resp = http_session().head(
+                    https_url, timeout=probe_timeout, stream=True, allow_redirects=True,
+                    headers={'User-Agent': USER_AGENT}
+                )
+            resp.close()
+            url = https_url
+        except Exception:
+            pass
+
+    return url
 
 
 _ICON_LINK_RE = re.compile(

@@ -69,6 +69,12 @@ RATE_LIMIT_IP_BLOCK_WINDOW: int = 3600
 MIN_PASSWORD_LEN: int = 8
 
 
+## URLs cleanup constants
+
+_SCHEME_RE = re.compile(r'^https?://', re.IGNORECASE)
+_DUPLICATE_SCHEME_RE = re.compile(r'^(?:https?://)+(?=https?://)', re.IGNORECASE)
+
+
 ## Maintenance timings
 
 NOW_PLAYING_TIMEOUT_SEC: int = 600   # stale after 10 min

@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.constants import (
     CACHE_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch
+from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch, normalize_url, https_variant
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
@@ -52,9 +52,7 @@ def _get_audio_url(entry) -> tuple[str, int]:
     return '', 0
 
 
-def _fetch_feed(url: str):
-
-    import feedparser
+def _fetch_feed_bytes(url: str) -> bytes:
 
     # Feeds change quite frequently so no caching
     with http_session().cache_disabled():
@@ -75,7 +73,25 @@ def _fetch_feed(url: str):
     finally:
         resp.close()
 
-    return feedparser.parse(bytes(buf))
+    return bytes(buf)
+
+
+def _fetch_feed(url: str) -> tuple:
+    """
+    Fetches and parses url, trying to upgrade to https if possible.
+    Returns the parsed feed, and the resolved url (the oen that actually worked).
+    """
+
+    import feedparser
+
+    if url.lower().startswith('http://'):
+        https_url = https_variant(url)
+        try:
+            return feedparser.parse(_fetch_feed_bytes(https_url)), https_url
+        except Exception:
+            pass   # fall through and try original http URL below
+
+    return feedparser.parse(_fetch_feed_bytes(url)), url
 
 
 ##

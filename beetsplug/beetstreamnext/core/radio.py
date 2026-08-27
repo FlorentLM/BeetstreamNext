@@ -3,7 +3,7 @@ from typing import Optional
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.external import query_radio_browser, capped_image_fetch, fetch_favicon
+from beetsplug.beetstreamnext.core.external import query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url
 
 
 def create_station(
@@ -12,6 +12,10 @@ def create_station(
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None
     ) -> None:
+
+    stream_url = normalize_url(stream_url, probe_https=True)
+    if homepage_url:
+        homepage_url = normalize_url(homepage_url)
 
     if not image and app.config.get('fetch_radio_images'):
 
@@ -38,6 +42,10 @@ def update_station(
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None
     ) -> None:
+
+    stream_url = normalize_url(stream_url, probe_https=True)
+    if homepage_url:
+        homepage_url = normalize_url(homepage_url)
 
     with database() as db:
         db.execute(

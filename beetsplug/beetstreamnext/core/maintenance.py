@@ -6,7 +6,8 @@ from typing import List
 
 from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.application import app, with_app_context
+from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.security import rate_limiter
 
 
@@ -64,6 +65,92 @@ def clear_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
     return cleared
 
 
+# Tables (and id column) that can hold a stale song reference
+_SONG_REF_TABLES = (
+    ('bookmarks', 'song_id'),
+    ('likes', 'item_id'),
+    ('ratings', 'item_id'),
+    ('play_stats', 'song_id'),
+    ('play_queue', 'current'),
+    ('play_queue_entries', 'song_id'),
+    ('share_entries', 'item_id'),
+)
+
+
+@with_app_context
+def sweep_stale_references() -> dict[str, int]:
+    """
+    Finds and deletes rows left behind by deleted content.
+    Returns the number of rows purged, keyed by a short description.
+    """
+    from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
+    purged: dict[str, int] = {}
+
+    with database() as db:
+        # Podcast episodes: only bookmarks can reference one
+        stale_pe = [
+            row[0] for row in db.execute(
+                """
+                SELECT b.song_id
+                FROM bookmarks b
+                LEFT JOIN podcast_episodes pe ON pe.id = CAST(substr(b.song_id, 4) AS INTEGER)
+                WHERE b.song_id LIKE 'pe-%' AND pe.id IS NULL
+                """
+            ).fetchall()
+        ]
+        if stale_pe:
+            placeholders = ','.join('?' * len(stale_pe))
+            db.execute(
+                f"""
+                DELETE FROM bookmarks 
+                WHERE song_id IN ({placeholders})
+                """, stale_pe
+            )
+            purged['bookmarks (deleted podcast episodes)'] = len(stale_pe)
+
+        # Songs
+
+        refs_by_table: dict[tuple[str, str], list[str]] = {}
+        all_refs: set[str] = set()
+
+        for table, column in _SONG_REF_TABLES:
+            rows = db.execute(
+                f"""SELECT DISTINCT {column} 
+                FROM {table} 
+                WHERE {column} 
+                LIKE 'sg-%'
+                """
+            ).fetchall()
+
+            ids = [row[0] for row in rows]
+            refs_by_table[(table, column)] = ids
+            all_refs.update(ids)
+
+        if all_refs:
+            resolved = IDMapper.resolve_songs_bulk(list(all_refs))
+            stale_songs = all_refs - resolved.keys()
+
+            for (table, column), ids in refs_by_table.items():
+
+                to_delete = [i for i in ids if i in stale_songs]
+                if not to_delete:
+                    continue
+
+                placeholders = ','.join('?' * len(to_delete))
+                db.execute(
+                    f"""
+                    DELETE FROM {table} 
+                    WHERE {column} 
+                    IN ({placeholders})
+                    """, to_delete
+                )
+
+                purged[f'{table} (deleted songs)'] = len(to_delete)
+
+    return purged
+
+
 def run_periodic():
     """
     Runs housekeeping periodically.
@@ -96,6 +183,15 @@ def run_periodic():
             app.config['podcast_manager'].refresh()
         except Exception as e:
             bsn_logger.error(f'Podcast feed refresh failed: {e}')
+
+        # Purge stale refs
+        try:
+            purged = sweep_stale_references()
+            if purged:
+                details = ', '.join(f'{n} {label}' for label, n in purged.items())
+                bsn_logger.info(f'Database sanity sweep purged: {details}')
+        except Exception as e:
+            bsn_logger.error(f'Database sanity sweep failed: {e}')
 
         # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']

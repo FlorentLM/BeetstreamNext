@@ -458,6 +458,18 @@
         </div>
 
         <div class="card">
+            <div class="table-header"><h2>Database Sanity Check</h2></div>
+            <p class="card-hint">
+                Removes stale entries in the database (bookmarks, likes, ratings, play stats, queue entries and shares that
+                point at a song or podcast episode that no longer exists). Also runs periodically in the background.
+            </p>
+            <form method="POST" action="{{ url_for('admin.route_sanity_check') }}" class="card-body-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline">Run sanity check</button>
+            </form>
+        </div>
+
+        <div class="card">
             <div class="table-header"><h2>Server Info</h2></div>
             <dl class="kv-grid">
                 <dt>BeetstreamNext</dt><dd>v{{ server_info.version }}</dd>

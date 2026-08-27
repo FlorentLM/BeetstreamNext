@@ -6,7 +6,7 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter
-from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage
+from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage, sweep_stale_references
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
@@ -224,6 +224,24 @@ def route_clear_cache() -> flask.Response:
             flask.flash('Nothing to clear.', 'info')
     except RuntimeError as e:
         flask.flash(str(e), 'error')
+
+    return _back_to('maintenance')
+
+
+@admin_bp.route('/maintenance/sanity-check', methods=['POST'])
+@admin_required
+def route_sanity_check() -> flask.Response:
+    try:
+        purged = sweep_stale_references()
+        if purged:
+            details = ', '.join(f'{n} {label}' for label, n in purged.items())
+            flask.flash(f'Purged stale references: {details}.', 'success')
+        else:
+            flask.flash('No stale references found.', 'info')
+
+    except Exception as e:
+        bsn_logger.error(f'Database sanity sweep failed: {e}')
+        flask.flash(f'Sanity check failed: {e}', 'error')
 
     return _back_to('maintenance')
 

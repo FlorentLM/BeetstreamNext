@@ -198,7 +198,6 @@ I tested it and confirmed it working with:
 - [GoSonic](https://play.google.com/store/apps/details?id=com.readysteadygosoftware.gosonic)
 - [K-19 Player](https://github.com/ulysg/k19-player)
 - [Ultrasonic](https://gitlab.com/ultrasonic/ultrasonic)
-- [Subtracks](https://github.com/austinried/subtracks)
 
 #### iOS/iPadOS
 - [Amperfy](https://github.com/BLeeEZ/amperfy)

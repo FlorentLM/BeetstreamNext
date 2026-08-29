@@ -268,6 +268,65 @@
             </table>`;
     }
 
+    // Convert ANSI color/style escape codes to HTML
+    const ANSI_COLOR_CLASS = {
+        30: 'ansi-fg-black', 31: 'ansi-fg-red', 32: 'ansi-fg-green', 33: 'ansi-fg-yellow',
+        34: 'ansi-fg-blue', 35: 'ansi-fg-magenta', 36: 'ansi-fg-cyan', 37: 'ansi-fg-white',
+        90: 'ansi-fg-bright-black', 91: 'ansi-fg-bright-red', 92: 'ansi-fg-bright-green',
+        93: 'ansi-fg-bright-yellow', 94: 'ansi-fg-bright-blue', 95: 'ansi-fg-bright-magenta',
+        96: 'ansi-fg-bright-cyan', 97: 'ansi-fg-bright-white'
+    };
+
+    function ansiLineToHtml(line) {
+        let html = '';
+        let openSpan = false;
+        let colorClass = null, bold = false, dim = false, italic = false, underline = false;
+
+        function closeSpan() {
+            if (openSpan) { html += '</span>'; openSpan = false; }
+        }
+
+        function openSpanIfStyled() {
+            const classes = [];
+            if (colorClass) classes.push(colorClass);
+            if (bold) classes.push('ansi-bold');
+            if (dim) classes.push('ansi-dim');
+            if (italic) classes.push('ansi-italic');
+            if (underline) classes.push('ansi-underline');
+            if (classes.length) {
+                html += '<span class="' + classes.join(' ') + '">';
+                openSpan = true;
+            }
+        }
+
+        const parts = line.split(/(\x1b\[[0-9;]*[a-zA-Z])/);
+        for (const part of parts) {
+            const m = /^\x1b\[([0-9;]*)([a-zA-Z])$/.exec(part);
+            if (m) {
+                if (m[2] !== 'm') continue;   // not a color/style code, skip
+                const codes = m[1] ? m[1].split(';').map(Number) : [0];
+                closeSpan();
+                for (const code of codes) {
+                    if (code === 0) { colorClass = null; bold = dim = italic = underline = false; }
+                    else if (code === 1) bold = true;
+                    else if (code === 2) dim = true;
+                    else if (code === 3) italic = true;
+                    else if (code === 4) underline = true;
+                    else if (code === 22) { bold = false; dim = false; }
+                    else if (code === 23) italic = false;
+                    else if (code === 24) underline = false;
+                    else if (code === 39) colorClass = null;
+                    else if (ANSI_COLOR_CLASS[code]) colorClass = ANSI_COLOR_CLASS[code];
+                }
+                openSpanIfStyled();
+            } else if (part) {
+                html += escapeHtml(part);
+            }
+        }
+        closeSpan();
+        return html;
+    }
+
     async function refreshLogs(button) {
         const url = button.dataset.url;
         const target = document.getElementById(button.dataset.target);
@@ -279,7 +338,7 @@
             const payload = await resp.json();
             const lines = payload.lines || [];
             const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-            target.textContent = lines.length ? lines.join('\n') : '(no log output yet)';
+            target.innerHTML = lines.length ? lines.map(ansiLineToHtml).join('\n') : '(no log output yet)';
             if (wasAtBottom) target.scrollTop = target.scrollHeight;
             if (hint) hint.textContent = `Last ${lines.length} log line${lines.length !== 1 ? 's' : ''} captured since server start.`;
         } catch (err) {

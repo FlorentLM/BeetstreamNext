@@ -17,7 +17,9 @@
     function toggleTheme() {
         const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
         const next = current === 'light' ? 'dark' : 'light';
-        try { localStorage.setItem('bsn-theme', next); } catch (e) {}
+        try {
+            document.cookie = 'bsn-theme=' + next + '; Path=/; Max-Age=31536000; SameSite=Lax';
+        } catch (e) {}
         applyTheme(next);
     }
 
@@ -440,6 +442,9 @@
 
     applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
     initTabsFromHash();
+
+    const rateLimitsRefreshBtn = document.querySelector('[data-action="refresh-rate-limits"]');
+    if (rateLimitsRefreshBtn) refreshRateLimits(rateLimitsRefreshBtn);
 
     // Format HLS/chat epoch timestamps to human readable format
     document.querySelectorAll('.chat-time').forEach(el => {

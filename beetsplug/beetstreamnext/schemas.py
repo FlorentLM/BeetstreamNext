@@ -310,11 +310,10 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': 'off',
         'category': 'library',
         'description': (
-            "Use Discogs' public community rating for an album's averageRating. 'fallback' only "
-            "kicks in when nobody on this server has rated the album yet, and never overrides a "
-            "real local rating. 'prefer' always uses Discogs' rating when available (falling back "
-            "to the local average when it isn't) - useful in single-user setups, where 'the "
-            "average of this server's users' isn't a very meaningful signal on its own."
+            "Use Discogs' public community rating for an album's averageRating. `fallback`: Only "
+            "use Discogs when nobody on this server has rated the album locally. It never overrides a "
+            "local rating. `prefer`: Always uses Discogs when available (falling back "
+            "to the local average when it isn't)."
         ),
         'requires_restart': False,
         'choices': ('off', 'fallback', 'prefer'),

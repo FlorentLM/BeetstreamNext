@@ -497,10 +497,9 @@ def initialise_db() -> None:
         CREATE TABLE IF NOT EXISTS chat_messages
         (
             id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            time     REAL NOT NULL, -- timestamp in ms
-            message  TEXT NOT NULL,
-            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+            username TEXT NOT NULL,   -- voluntarily not Foreign-Keyed to users
+            time     REAL NOT NULL,   -- timestamp in ms
+            message  TEXT NOT NULL
         )
         """
     )
@@ -581,6 +580,22 @@ def _apply_db_migrations(cursor: sqlite3.Cursor) -> None:
             else:
                 bsn_logger.warning('Beets database not found - stable song id migration deferred to next startup.')
 
+    ## _________ Migration 4: Version 3 -> 4 (drop the Foreign Key on chat_messages.username
+    MIGRATION_4_VER = 4
+
+    chat_messages_still_fkd = cursor.execute(
+        """
+        SELECT 1 FROM sqlite_master
+        WHERE type = 'table' AND name = 'chat_messages' AND sql LIKE '%FOREIGN KEY%'
+        """
+    ).fetchone()
+
+    if chat_messages_still_fkd:
+        _rebuild_chat_messages(cursor.connection)
+
+    if curr_version < MIGRATION_4_VER:
+        curr_version = MIGRATION_4_VER
+
     ## ___________________________________________________________________
 
     # Update version in db
@@ -620,6 +635,40 @@ def _rebuild_play_queue_entries(conn: sqlite3.Connection) -> None:
         )
         conn.execute("""DROP TABLE play_queue_entries""")
         conn.execute("""ALTER TABLE play_queue_entries_new RENAME TO play_queue_entries""")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.execute("""PRAGMA foreign_keys = ON""")
+
+def _rebuild_chat_messages(conn: sqlite3.Connection) -> None:
+    """
+    Recreate chat_messages without the foreign key to users(username)
+    """
+    conn.commit()   # close any implicit transaction before toggling FK enforcement
+    conn.execute("""PRAGMA foreign_keys = OFF""")
+    try:
+        conn.execute("""BEGIN""")
+        conn.execute(
+            """
+            CREATE TABLE chat_messages_new
+            (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                time     REAL NOT NULL,
+                message  TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO chat_messages_new (id, username, time, message)
+            SELECT id, username, time, message FROM chat_messages
+            """
+        )
+        conn.execute("""DROP TABLE chat_messages""")
+        conn.execute("""ALTER TABLE chat_messages_new RENAME TO chat_messages""")
         conn.commit()
     except Exception:
         conn.rollback()

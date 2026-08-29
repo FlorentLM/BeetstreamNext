@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.security import rate_limiter
+from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 
 
 _cleanup_lock = threading.Lock()
@@ -147,6 +148,17 @@ def sweep_stale_references() -> dict[str, int]:
                 )
 
                 purged[f'{table} (deleted songs)'] = len(to_delete)
+
+        # Settings: keys no longer present in the schema (renamed/removed settings)
+        placeholders = ','.join('?' * len(SETTINGS_SCHEMA))
+        cur = db.execute(
+            f"""
+            DELETE FROM settings
+            WHERE key NOT IN ({placeholders})
+            """, tuple(SETTINGS_SCHEMA.keys())
+        )
+        if cur.rowcount:
+            purged['settings (unknown keys)'] = cur.rowcount
 
     return purged
 

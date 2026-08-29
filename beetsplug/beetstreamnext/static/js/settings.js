@@ -276,10 +276,26 @@
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const payload = await resp.json();
             const lines = payload.lines || [];
+            const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
             target.textContent = lines.length ? lines.join('\n') : '(no log output yet)';
+            if (wasAtBottom) target.scrollTop = target.scrollHeight;
             if (hint) hint.textContent = `Last ${lines.length} log line${lines.length !== 1 ? 's' : ''} captured since server start.`;
         } catch (err) {
             target.textContent = 'Failed to load log: ' + err.message;
+        }
+    }
+
+    let logAutoRefreshTimer = null;
+
+    function toggleLogAutoRefresh(checkbox) {
+        if (logAutoRefreshTimer) {
+            clearInterval(logAutoRefreshTimer);
+            logAutoRefreshTimer = null;
+        }
+        if (checkbox.checked) {
+            const button = document.getElementById(checkbox.dataset.refreshTarget);
+            if (!button) return;
+            logAutoRefreshTimer = setInterval(() => refreshLogs(button), 5000);
         }
     }
 
@@ -375,6 +391,11 @@
                 }
                 break;
         }
+    });
+
+    document.addEventListener('change', event => {
+        const target = event.target.closest('[data-action="toggle-log-autorefresh"]');
+        if (target) toggleLogAutoRefresh(target);
     });
 
     // Confirm dialogs

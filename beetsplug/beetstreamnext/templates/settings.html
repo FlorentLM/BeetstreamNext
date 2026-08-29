@@ -697,8 +697,12 @@
             <div class="table-header">
                 <h2>Server Log</h2>
                 <div class="table-header-actions">
+                    <label class="log-autorefresh">
+                        <input type="checkbox" data-action="toggle-log-autorefresh" data-refresh-target="refresh-log-btn">
+                        Auto-refresh
+                    </label>
                     <button type="button" class="btn btn-outline" data-action="copy-log" data-target="serverLogText">{{ icon('copy') }} <span class="btn-label">Copy</span></button>
-                    <button type="button" class="btn btn-outline" data-action="refresh-log"
+                    <button type="button" class="btn btn-outline" id="refresh-log-btn" data-action="refresh-log"
                             data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText" data-hint="serverLogHint">
                         {{ icon('refresh') }} <span class="btn-label">Refresh</span>
                     </button>

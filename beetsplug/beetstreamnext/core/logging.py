@@ -106,7 +106,7 @@ def apply_logs_redaction() -> None:
 class MemLogBuffer(logging.Handler):
     """Ring buffer to keep the last n log lines in memory (for the admin panel)."""
 
-    def __init__(self, capacity: int = 500):
+    def __init__(self, capacity: int = 2000):
         super().__init__()
         self.buffer: collections.deque = collections.deque(maxlen=capacity)
 
@@ -132,5 +132,5 @@ bsn_logger.propagate = True
 
 mem_log = MemLogBuffer()
 
-mem_log.setFormatter(logging.Formatter('%(asctime)s %(levelname)-8s %(name)s: %(message)s'))
 logging.getLogger().addHandler(mem_log)
+logging.getLogger('wsgi').addHandler(mem_log)

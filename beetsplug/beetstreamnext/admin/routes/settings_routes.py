@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import (
     test_lastfm_connection, test_audiomuse_connection, start_audiomuse_analysis
 )
+from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
@@ -252,6 +253,43 @@ def route_delete_share(share_id: str) -> flask.Response:
     flask.flash(f"Share '{share_id}' deleted successfully.", 'success')
 
     return _back_to('shares')
+
+
+##
+# Beets interaction
+
+@admin_bp.route('/beets/scan', methods=['POST'])
+@admin_required
+def route_beets_scan() -> flask.Response:
+    ok, message, already_running = start_import()
+    flask.flash(message, 'info' if already_running else ('success' if ok else 'error'))
+    return _back_to('beets')
+
+
+@admin_bp.route('/beets/scan-status', methods=['GET'])
+@admin_required
+def route_beets_scan_status() -> flask.Response:
+    lib = flask.current_app.config['lib']
+    try:
+        with lib.transaction() as tx:
+            items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
+    except Exception as e:
+        bsn_logger.warning(f'Could not read item count while checking scan status: {e}')
+        items_count = None
+
+    return flask.jsonify({'scanning': is_importing(), 'count': items_count})
+
+
+@admin_bp.route('/beets/import-log', methods=['GET'])
+@admin_required
+def route_beets_import_log() -> flask.Response:
+    try:
+        with open(IMPORT_LOG_PATH, 'r', errors='replace') as f:
+            lines = f.read().splitlines()[-1000:]
+    except OSError:
+        lines = []
+
+    return flask.jsonify({'lines': lines})
 
 
 ##

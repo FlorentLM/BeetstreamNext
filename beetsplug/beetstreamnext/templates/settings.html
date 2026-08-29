@@ -233,7 +233,8 @@
         {% endif %}
         <button class="tab" role="tab" data-tab="radios" aria-controls="tab-radios">Radios</button>
         <button class="tab" role="tab" data-tab="shares" aria-controls="tab-shares">Shares</button>
-        <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat moderation</button>
+        <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat</button>
+        <button class="tab" role="tab" data-tab="beets" aria-controls="tab-beets">Beets</button>
         <button class="tab" role="tab" data-tab="maintenance" aria-controls="tab-maintenance">Maintenance</button>
     </nav>
 
@@ -654,6 +655,62 @@
         </div>
     </section>
 
+    {# Beets interaction tab #}
+    <section class="tab-content" id="tab-beets" data-tab-content="beets" role="tabpanel">
+
+        <div class="card">
+            <div class="table-header">
+                <h2>Library Scan</h2>
+                <button class="btn btn-outline" data-action="refresh-scan-status"
+                        data-url="{{ url_for('admin.route_beets_scan_status') }}">Refresh</button>
+            </div>
+            <p class="card-hint">
+                Runs an incremental, unattended <code>beet import</code> over the library's root directory to pick
+                up newly-added files. Refuses to start if beets' <code>timid</code> import mode is enabled.
+            </p>
+            <dl class="kv-grid">
+                <dt>Status</dt><dd id="beets-scan-status-value">Loading...</dd>
+                <dt>Tracks in library</dt><dd id="beets-scan-count-value">&mdash;</dd>
+            </dl>
+            <form method="POST" action="{{ url_for('admin.route_beets_scan') }}" class="card-body-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary">Start scan</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-header">
+                <h2>Last Import Log</h2>
+                <div class="table-header-actions">
+                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="beetsImportLogText">{{ icon('copy') }} <span class="btn-label">Copy</span></button>
+                    <button type="button" class="btn btn-outline" data-action="refresh-log"
+                            data-url="{{ url_for('admin.route_beets_import_log') }}" data-target="beetsImportLogText">
+                        {{ icon('refresh') }} <span class="btn-label">Refresh</span>
+                    </button>
+                </div>
+            </div>
+            <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
+        </div>
+
+        <div class="card">
+            <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
+            <p class="card-hint">
+                Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
+                <code>audiomuse_url</code> to be configured under Library settings.
+            </p>
+            <p class="card-hint">
+                Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)
+                but it doesn't expose them through its API. So writing them back into beets' <code>acoustid_id</code>
+                / <code>acoustid_fingerprint</code> fields isn't currently possible.
+            </p>
+            <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
+                  data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline">Fingerprint library</button>
+            </form>
+        </div>
+    </section>
+
     {# Maintenance tab #}
     <section class="tab-content" id="tab-maintenance" data-tab-content="maintenance" role="tabpanel">
 
@@ -695,19 +752,6 @@
             <form method="POST" action="{{ url_for('admin.route_sanity_check') }}" class="card-body-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline">Run cleanup</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
-            <p class="card-hint">
-                Triggers a full-library analysis on AudioMuse-AI in the background. Requires
-                <code>audiomuse_url</code> to be configured under Library settings.
-            </p>
-            <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
-                  data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Fingerprint library</button>
             </form>
         </div>
 

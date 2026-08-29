@@ -375,6 +375,22 @@
         }
     }
 
+    async function refreshScanStatus(button) {
+        const url = button.dataset.url;
+        const statusEl = document.getElementById('beets-scan-status-value');
+        const countEl = document.getElementById('beets-scan-count-value');
+        if (!url || !statusEl) return;
+        try {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const payload = await resp.json();
+            statusEl.textContent = payload.scanning ? 'Scanning…' : 'Idle';
+            if (countEl) countEl.textContent = payload.count != null ? payload.count : '—';
+        } catch (err) {
+            statusEl.textContent = 'Failed to load: ' + err.message;
+        }
+    }
+
     async function testConnection(button) {
         const url = button.dataset.url;
         const result = document.getElementById(button.dataset.result);
@@ -441,6 +457,9 @@
             case 'refresh-rate-limits':
                 refreshRateLimits(target);
                 break;
+            case 'refresh-scan-status':
+                refreshScanStatus(target);
+                break;
             case 'refresh-log':
                 refreshLogs(target);
                 break;
@@ -504,6 +523,11 @@
 
     const rateLimitsRefreshBtn = document.querySelector('[data-action="refresh-rate-limits"]');
     if (rateLimitsRefreshBtn) refreshRateLimits(rateLimitsRefreshBtn);
+
+    const scanStatusRefreshBtn = document.querySelector('[data-action="refresh-scan-status"]');
+    if (scanStatusRefreshBtn) refreshScanStatus(scanStatusRefreshBtn);
+
+    document.querySelectorAll('[data-action="refresh-log"]').forEach(refreshLogs);
 
     // Format HLS/chat epoch timestamps to human readable format
     document.querySelectorAll('.chat-time').forEach(el => {

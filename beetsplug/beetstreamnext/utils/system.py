@@ -2,14 +2,22 @@ import ctypes
 import hashlib
 import mimetypes
 import os
+import re
 import platform
+import shutil
+import subprocess
+from functools import lru_cache
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
+from typing import Optional
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 
 ##
+
+_VERSION_RE = re.compile(r'\d+(?:\.\d+){1,3}')
+
 
 def is_installed(package_name: str) -> bool:
     try:
@@ -103,3 +111,37 @@ def make_hidden(filepath: bytes | str | Path) -> None:
             ctypes.windll.kernel32.SetFileAttributesW(filepath, 2)     # 2 is FILE_ATTRIBUTE_HIDDEN
         except Exception as e:
             bsn_logger.warning(f"Could not set file as hidden on Windows: {e}")
+
+
+def find_ffmpeg() -> Optional[str]:
+    from beetsplug.beetstreamnext.settings import settings_store
+    custom = settings_store.get('ffmpeg_path')
+    found = shutil.which(custom) if custom else shutil.which('ffmpeg')
+    if found:
+        bsn_logger.info(f'ffmpeg found at: {found}')
+    return found
+
+
+def find_mpv() -> Optional[str]:
+    from beetsplug.beetstreamnext.settings import settings_store
+    custom = settings_store.get('mpv_path')
+    found = shutil.which(custom) if custom else shutil.which('mpv')
+    if found:
+        bsn_logger.info(f'MPV path: {found}')
+    return found
+
+
+@lru_cache(maxsize=8)
+def binary_version(bin_path: str, version_flag: str) -> Optional[str]:
+    """Runs '<bin_path> <version_flag>' and pulls a version number from first line of output."""
+    try:
+        result = subprocess.run(
+            [bin_path, version_flag], capture_output=True, text=True, timeout=5
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        bsn_logger.warning(f"Could not run '{bin_path} {version_flag}': {e}")
+        return None
+
+    first_line = next(iter((result.stdout or result.stderr).splitlines()), '')
+    match = _VERSION_RE.search(first_line)
+    return match.group(0) if match else None

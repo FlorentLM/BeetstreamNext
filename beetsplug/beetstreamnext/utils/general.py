@@ -8,7 +8,7 @@ import beets
 import flask
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.system import get_mimetype
+from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
 from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, SERVER_VERSION
@@ -68,6 +68,9 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
         stats['songs'] = tx.query("SELECT COUNT(*) FROM items")[0][0]
 
     if extended:
+        ffmpeg_path = find_ffmpeg()
+        mpv_path = find_mpv()
+
         additional_info = {
             'version': SERVER_VERSION,
             'beets_version': beets.__version__,
@@ -77,6 +80,10 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
             'config_path': str(app.config.get('BEETS_CONFIG_PATH')) if app.config.get('BEETS_CONFIG_PATH') else _default_config_path(),
+            'ffmpeg_path': ffmpeg_path or 'not found',
+            'ffmpeg_version': (binary_version(ffmpeg_path, '-version') or 'unknown') if ffmpeg_path else None,
+            'mpv_path': mpv_path or 'not found',
+            'mpv_version': (binary_version(mpv_path, '--version') or 'unknown') if mpv_path else None,
             'stats': stats,
         }
         stats.update(additional_info)

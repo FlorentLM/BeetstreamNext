@@ -11,11 +11,11 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, find_ffmpeg, HLS_CACHE_DIR
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, send_file
-from beetsplug.beetstreamnext.utils.system import get_mimetype
+from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper

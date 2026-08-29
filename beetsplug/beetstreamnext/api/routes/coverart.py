@@ -5,10 +5,10 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, find_ffmpeg
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.system import make_hidden
+from beetsplug.beetstreamnext.utils.system import make_hidden, find_ffmpeg
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.core.logging import bsn_logger

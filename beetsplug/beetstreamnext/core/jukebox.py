@@ -10,7 +10,8 @@ import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR, find_mpv
+from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR
+from beetsplug.beetstreamnext.utils.system import find_mpv
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 

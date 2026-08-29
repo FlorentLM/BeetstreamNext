@@ -766,6 +766,14 @@
                 <dt>DB path</dt>        <dd><code>{{ server_info.db_path }}</code></dd>
                 <dt>Library path</dt>   <dd><code>{{ server_info.library_path }}</code></dd>
                 <dt>Config path</dt>    <dd><code>{{ server_info.config_path }}</code></dd>
+                <dt>ffmpeg</dt>
+                <dd>
+                    <code>{{ server_info.ffmpeg_path }}</code>{% if server_info.ffmpeg_version %}  (v{{ server_info.ffmpeg_version }}){% endif %}
+                </dd>
+                <dt>mpv</dt>
+                <dd>
+                    <code>{{ server_info.mpv_path }}</code> {% if server_info.mpv_version %}  (v{{ server_info.mpv_version }}){% endif %}
+                </dd>
             </dl>
         </div>
 

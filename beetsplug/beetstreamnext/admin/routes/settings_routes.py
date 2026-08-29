@@ -22,6 +22,8 @@ def _back_to(anchor: str) -> flask.Response:
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
 _CHAT_PAGE_SIZE = 50
+_ANNOUNCEMENT_USERNAME = 'Server'
+_CHAT_MESSAGE_MAX_LEN = 1000
 
 
 ##
@@ -156,6 +158,30 @@ def route_ip_remove(list_type: str) -> flask.Response:
 
 ##
 # Chat moderation routes
+
+@admin_bp.route('/chat/announce', methods=['POST'])
+@admin_required
+def route_add_announcement() -> flask.Response:
+    message = safe_str(flask.request.form.get('message', '').strip())
+
+    if not message:
+        flask.flash('Announcement cannot be empty.', 'error')
+        return _back_to('chat')
+
+    if len(message) > _CHAT_MESSAGE_MAX_LEN:
+        flask.flash(f'Announcement exceeds maximum length ({_CHAT_MESSAGE_MAX_LEN} characters).', 'error')
+        return _back_to('chat')
+
+    with database() as db:
+        db.execute(
+            """
+            INSERT INTO chat_messages (username, time, message)
+            VALUES (?, ?, ?)
+            """, (_ANNOUNCEMENT_USERNAME, int(time.time() * 1000), message)
+        )
+    flask.flash('Announcement posted.', 'success')
+    return _back_to('chat')
+
 
 @admin_bp.route('/chat/delete/<int:msg_id>', methods=['POST'])
 @admin_required

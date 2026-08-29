@@ -37,6 +37,9 @@ HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 ZIP_CACHE_DIR = CACHE_LOCATION / 'zips'
 ZIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+JUKEBOX_SOCK_DIR = CACHE_LOCATION / 'jukebox'
+JUKEBOX_SOCK_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def find_ffmpeg() -> Optional[str]:
     from beetsplug.beetstreamnext.settings import settings_store

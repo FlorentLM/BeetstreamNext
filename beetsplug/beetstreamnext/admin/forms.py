@@ -34,6 +34,15 @@ class EditUserForm(FlaskForm):
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
 
 
+class RadioStationForm(FlaskForm):
+    """
+    Form for creating/editing a radio station.
+    """
+    name = StringField('Name', validators=[DataRequired(), Length(max=128)])
+    streamUrl = StringField('Stream URL', validators=[DataRequired(), Length(max=1024)])
+    homepageUrl = StringField('Homepage URL', validators=[Optional(), Length(max=1024)])
+
+
 # Attach the role checkboxes from the registry
 # (WTForms rebuilds the unbound-field list on class attribute assignment, so this is safe)
 for _name, _label, _default in USER_ROLES_SCHEMA:

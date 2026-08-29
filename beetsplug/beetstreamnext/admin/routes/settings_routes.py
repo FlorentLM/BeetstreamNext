@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm
+from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
 from ...utils.text import safe_str
 
@@ -277,7 +277,7 @@ def route_settings() -> flask.Response:
     for u in users:
         u['hasAvatar'] = bool(u.get('avatarLastChanged'))
 
-    # Load chat messages for moderation, paged
+    # Load chat messages for moderation
     chat_page = max(1, flask.request.args.get('chat_page', default=1, type=int))
     with database() as db:
         chat_total = db.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
@@ -316,6 +316,66 @@ def route_settings() -> flask.Response:
             s_dict['url'] = flask.url_for('public.share_view', share_id=r['id'], _external=True)
         shares_list.append(s_dict)
 
+    # Load radio stations
+    with database() as db:
+        radio_rows = db.execute(
+            """
+            SELECT id, name, stream_url, homepage_url, (image IS NOT NULL) AS has_image
+            FROM internet_radio_stations
+            ORDER BY name COLLATE NOCASE
+            """
+        ).fetchall()
+
+    radios = [dict(r) for r in radio_rows]
+
+    # Load podcast channels, subscribers, episode count and disk usage
+    with database() as db:
+        channel_rows = db.execute(
+            """
+            SELECT pc.id, pc.title, pc.url, pc.status, pc.error_message,
+                   (pc.image IS NOT NULL) AS has_image,
+                   (SELECT COUNT(*) FROM podcast_episodes pe WHERE pe.channel_id = pc.id) AS episode_count,
+                   (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
+                    WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
+            FROM podcast_channels pc
+            ORDER BY pc.title COLLATE NOCASE
+            """
+        ).fetchall()
+
+        episode_rows = db.execute(
+            """
+            SELECT id, channel_id, title, publish_date, duration, status, file_size, error_message
+            FROM podcast_episodes
+            ORDER BY publish_date DESC
+            """
+        ).fetchall()
+
+        subscription_rows = db.execute(
+            """
+            SELECT channel_id, username
+            FROM podcast_subscriptions
+            ORDER BY username COLLATE NOCASE
+            """
+        ).fetchall()
+
+    episodes_by_channel: dict[int, list] = {}
+    for row in episode_rows:
+        episodes_by_channel.setdefault(row['channel_id'], []).append(dict(row))
+
+    subscribers_by_channel: dict[int, list] = {}
+    for row in subscription_rows:
+        subscribers_by_channel.setdefault(row['channel_id'], []).append(row['username'])
+
+    podcast_channels = []
+    podcast_total_bytes = 0
+    for row in channel_rows:
+        ch = dict(row)
+        ch['episodes'] = episodes_by_channel.get(ch['id'], [])
+        ch['subscribers'] = subscribers_by_channel.get(ch['id'], [])
+        ch['storage_size'] = human_bytes(ch['bytes_on_disk'])
+        podcast_total_bytes += ch['bytes_on_disk']
+        podcast_channels.append(ch)
+
     resp = flask.make_response(
         flask.render_template(
             'settings.html',
@@ -325,8 +385,12 @@ def route_settings() -> flask.Response:
             chat_pages=chat_pages,
             cache_size=cache_size,
             shares=shares_list,
+            radios=radios,
+            podcast_channels=podcast_channels,
+            podcast_total_size=human_bytes(podcast_total_bytes),
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),
+            radio_form=RadioStationForm(formdata=None),
             role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],
             server_info=get_server_info(extended=True),
             current_username=flask.session.get('username'),

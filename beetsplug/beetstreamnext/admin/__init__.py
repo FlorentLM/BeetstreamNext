@@ -52,6 +52,7 @@ def admin_required(f) -> Callable:
 from .routes import (
     auth,
     avatars,
+    podcasts_radio,
     settings_routes,
     users,
 )

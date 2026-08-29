@@ -189,6 +189,7 @@
         {% endfor %}
         <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat moderation</button>
         <button class="tab" role="tab" data-tab="shares" aria-controls="tab-shares">Shares</button>
+        <button class="tab" role="tab" data-tab="radios" aria-controls="tab-radios">Radios</button>
         <button class="tab" role="tab" data-tab="maintenance" aria-controls="tab-maintenance">Maintenance</button>
     </nav>
 
@@ -421,9 +422,197 @@
             {{ render_ip_list('blacklist', 'IP Blacklist',
                               'Listed IPs are denied access regardless of whitelist.',
                               'e.g. 203.0.113.5', settings_by_category.security['ip_blacklist'].value) }}
+        {% elif cat == 'podcasts' %}
+            <div class="card">
+                <div class="table-header">
+                    <h2>Podcast Channels</h2>
+                    <form method="POST" action="{{ url_for('admin.route_refresh_all_podcasts') }}" class="form-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline">Refresh all</button>
+                    </form>
+                </div>
+                <p class="card-hint">Total storage used by downloaded episodes: <strong>{{ podcast_total_size }}</strong>.</p>
+                <form method="POST" action="{{ url_for('admin.route_add_podcast') }}" class="ip-add-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="url" placeholder="https://example.com/feed.xml" required>
+                    <button type="submit" class="btn btn-primary">Subscribe</button>
+                </form>
+
+                {% for ch in podcast_channels %}
+                <div class="podcast-channel">
+                    <div class="podcast-channel-header">
+                        {% if ch.has_image %}
+                            <img class="cover-thumb" src="{{ url_for('admin.route_serve_podcast_image', channel_id=ch.id) }}" alt="">
+                        {% else %}
+                            <span class="cover-thumb cover-thumb-placeholder">{{ (ch.title or ch.url)[0]|upper }}</span>
+                        {% endif %}
+                        <div class="podcast-channel-info">
+                            <div class="username-name">{{ ch.title or ch.url }}</div>
+                            <div class="email-cell">{{ ch.url }}</div>
+                            {% if ch.status == 'error' and ch.error_message %}
+                                <div class="email-cell" style="color:#f87171">{{ ch.error_message }}</div>
+                            {% endif %}
+                            <div class="email-cell">
+                                {% if ch.subscribers %}
+                                    Subscribers: {{ ch.subscribers|join(', ') }}
+                                {% else %}
+                                    No subscribers
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="roles-cell">
+                            <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}">{{ ch.status }}</span>
+                            <span class="badge">{{ ch.episode_count }} episode{{ 's' if ch.episode_count != 1 }}</span>
+                            <span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>
+                            <span class="badge badge-limit">{{ ch.storage_size }}</span>
+                        </div>
+                        <div class="actions-cell">
+                            <form action="{{ url_for('admin.route_refresh_podcast', channel_id=ch.id) }}"
+                                  method="POST" class="form-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="action-link">Refresh</button>
+                            </form>
+                            <form action="{{ url_for('admin.route_delete_podcast', channel_id=ch.id) }}"
+                                  method="POST" class="form-inline"
+                                  data-confirm="Delete podcast channel '{{ (ch.title or ch.url) | e }}'? This removes it and its downloaded episodes for all subscribers.">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="action-link action-link-delete">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if ch.episodes %}
+                    <details class="podcast-episodes">
+                        <summary>{{ ch.episodes|length }} episode{{ 's' if ch.episodes|length != 1 }}</summary>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Published</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                        <th>Size</th>
+                                        <th class="cell-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for e in ch.episodes %}
+                                    <tr>
+                                        <td>{{ e.title or '(untitled)' }}</td>
+                                        <td>
+                                            {% if e.publish_date %}
+                                                <span class="chat-time" data-timestamp="{{ (e.publish_date * 1000) | int }}">Loading...</span>
+                                            {% else %}
+                                                <span class="rate-limit-anon">&mdash;</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ e.duration | duration }}</td>
+                                        <td>
+                                            <span class="badge{% if e.status == 'error' %} badge-admin{% endif %}">{{ e.status }}</span>
+                                        </td>
+                                        <td>
+                                            {% if e.file_size %}
+                                                <span class="badge badge-limit">{{ e.file_size | filesizeformat }}</span>
+                                            {% else %}
+                                                <span class="rate-limit-anon">&mdash;</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-cell">
+                                            {% if e.status != 'completed' %}
+                                            <form action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
+                                                  method="POST" class="form-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="action-link">Download</button>
+                                            </form>
+                                            {% else %}
+                                            <form action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
+                                                  method="POST" class="form-inline"
+                                                  data-confirm="Remove this episode's downloaded file for all subscribers?">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="action-link action-link-delete">Delete file</button>
+                                            </form>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="empty-state">No podcast channels yet. Subscribe to a feed above to get started.</p>
+                {% endfor %}
+            </div>
         {% endif %}
     </section>
     {% endfor %}
+
+    {# Radios tab #}
+    <section class="tab-content" id="tab-radios" data-tab-content="radios" role="tabpanel">
+        <div class="card">
+            <div class="table-header">
+                <h2>Internet Radio Stations</h2>
+                <button class="btn btn-primary" data-action="open-modal" data-target="createRadioModal">
+                    + Add Station
+                </button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Station</th>
+                            <th>Stream URL</th>
+                            <th>Homepage</th>
+                            <th class="cell-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in radios %}
+                        <tr>
+                            <td>
+                                <div class="username-cell">
+                                    {% if s.has_image %}
+                                        <img class="cover-thumb" src="{{ url_for('admin.route_serve_radio_image', station_id=s.id) }}" alt="">
+                                    {% else %}
+                                        <span class="cover-thumb cover-thumb-placeholder">{{ s.name[0]|upper }}</span>
+                                    {% endif %}
+                                    <span class="username-name">{{ s.name }}</span>
+                                </div>
+                            </td>
+                            <td><code>{{ s.stream_url }}</code></td>
+                            <td>
+                                {% if s.homepage_url %}
+                                    <a href="{{ s.homepage_url }}" target="_blank" rel="noopener">{{ s.homepage_url }}</a>
+                                {% else %}
+                                    <span class="rate-limit-anon">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td class="actions-cell">
+                                <button class="action-link"
+                                        data-action="edit-radio"
+                                        data-station="{{ s | tojson | forceescape }}">Edit</button>
+                                <form action="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
+                                      method="POST"
+                                      class="form-inline"
+                                      data-confirm="Delete radio station '{{ s.name | e }}'?">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-link action-link-delete">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-state">No radio stations yet. Add the first one to get started.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
     {# Maintenance tab #}
     <section class="tab-content" id="tab-maintenance" data-tab-content="maintenance" role="tabpanel">
@@ -608,6 +797,70 @@
                 <button type="submit" class="action-link action-link-delete">Remove avatar</button>
             </form>
         </div>
+    </div>
+</div>
+
+<!-- Radio station create modal -->
+<div class="modal-overlay" id="createRadioModal" data-action="modal-backdrop">
+    <div class="modal-content">
+        <button class="close-modal" data-action="close-modal" data-target="createRadioModal" aria-label="Close">&times;</button>
+        <h2>Add Radio Station</h2>
+        <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">
+            {{ radio_form.csrf_token }}
+            <div class="form-group">
+                <label>Name</label>
+                {{ radio_form.name(placeholder="My Favorite Station") }}
+            </div>
+            <div class="form-group">
+                <label>Stream URL</label>
+                {{ radio_form.streamUrl(placeholder="https://stream.example.com/stream.mp3") }}
+            </div>
+            <div class="form-group">
+                <label>Homepage URL <span class="label-hint">(optional)</span></label>
+                {{ radio_form.homepageUrl(placeholder="https://example.com") }}
+            </div>
+            <div class="form-group">
+                <label>Icon <span class="label-hint">(optional)</span></label>
+                <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Add station</button>
+        </form>
+    </div>
+</div>
+
+<!-- Radio station edit modal -->
+<div class="modal-overlay" id="editRadioModal" data-action="modal-backdrop">
+    <div class="modal-content">
+        <button class="close-modal" data-action="close-modal" data-target="editRadioModal" aria-label="Close">&times;</button>
+        <h2>Edit Radio Station</h2>
+        <form id="editRadioForm" method="POST" enctype="multipart/form-data"
+              data-update-url-base="{{ url_for('admin.route_update_radio', station_id=1) }}">
+            {{ radio_form.csrf_token }}
+            <div class="form-group">
+                <label>Name</label>
+                {{ radio_form.name(id="editRadioName") }}
+            </div>
+            <div class="form-group">
+                <label>Stream URL</label>
+                {{ radio_form.streamUrl(id="editRadioStreamUrl") }}
+            </div>
+            <div class="form-group">
+                <label>Homepage URL <span class="label-hint">(optional)</span></label>
+                {{ radio_form.homepageUrl(id="editRadioHomepageUrl") }}
+            </div>
+            <div class="form-group">
+                <div class="avatar-section-header">
+                    <label class="label-inline">Icon <span class="label-hint">(optional)</span></label>
+                    <img id="editRadioImagePreview" class="cover-thumb hidden" alt=""
+                         data-image-url-base="{{ url_for('admin.route_serve_radio_image', station_id=1) }}">
+                </div>
+                <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+                <label class="role-item role-item-standalone">
+                    <input type="checkbox" name="remove_image" id="editRadioRemoveImage"> Remove current icon
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Save changes</button>
+        </form>
     </div>
 </div>
 

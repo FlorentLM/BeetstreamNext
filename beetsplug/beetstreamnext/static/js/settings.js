@@ -130,6 +130,44 @@
         openModal('editModal');
     }
 
+    // Radio station edit modal
+
+    function openEditRadioModal(button) {
+        let station;
+        try {
+            station = JSON.parse(button.getAttribute('data-station'));
+        } catch (err) {
+            console.error('Invalid radio station payload on edit button', err);
+            return;
+        }
+
+        const form = document.getElementById('editRadioForm');
+        if (!form) return;
+
+        const base = form.getAttribute('data-update-url-base') || '';
+        form.action = base.slice(0, -1) + station.id;
+
+        form.querySelector('#editRadioName').value = station.name || '';
+        form.querySelector('#editRadioStreamUrl').value = station.stream_url || '';
+        form.querySelector('#editRadioHomepageUrl').value = station.homepage_url || '';
+        form.querySelector('#editRadioRemoveImage').checked = false;
+        form.querySelector('input[type="file"]').value = '';
+
+        const preview = document.getElementById('editRadioImagePreview');
+        if (preview) {
+            if (station.has_image) {
+                const imgBase = preview.getAttribute('data-image-url-base') || '';
+                preview.src = imgBase.slice(0, -1) + station.id;
+                preview.classList.remove('hidden');
+            } else {
+                preview.removeAttribute('src');
+                preview.classList.add('hidden');
+            }
+        }
+
+        openModal('editRadioModal');
+    }
+
     // One-time API key copy
 
     function copyApiKey(button) {
@@ -229,6 +267,9 @@
                 break;
             case 'edit-user':
                 openEditModal(target);
+                break;
+            case 'edit-radio':
+                openEditRadioModal(target);
                 break;
             case 'roles-toggle':
                 toggleRoles(target.dataset.target, target.dataset.value === 'true', target.dataset.skip);

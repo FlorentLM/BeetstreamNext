@@ -126,6 +126,7 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
 /* Badges */
 .roles-cell { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .badge {
+    display: inline-block;
     font-size: 0.7rem;
     padding: 0.25rem 0.6rem;
     border-radius: 99px;
@@ -133,6 +134,7 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
     border: 1px solid var(--border);
     color: var(--text-muted);
     font-weight: 500;
+    white-space: nowrap;
 }
 .badge-admin {
     background: rgba(149, 64, 57, 0.2);
@@ -537,3 +539,30 @@ input:focus, select:focus { border-color: var(--primary); }
     border-top: 1px solid var(--border);
     margin: 1.5rem 0 1.25rem;
 }
+
+/* Cover thumbnail (radio, podcast) */
+.cover-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.cover-thumb-placeholder { text-transform: uppercase; }
+
+/* Podcast channels */
+.podcast-channel { border-top: 1px solid var(--border); padding: 1.25rem 1.5rem; }
+.podcast-channel-header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.podcast-channel-info { flex: 1; min-width: 200px; }
+.podcast-channel-header .roles-cell { flex-wrap: wrap; }
+.podcast-episodes { margin-top: 1rem; }
+.podcast-episodes summary { cursor: pointer; color: var(--text-muted); font-size: 0.85rem; }
+.podcast-episodes .table-container { margin-top: 0.75rem; border: 1px solid var(--border); border-radius: 8px; }

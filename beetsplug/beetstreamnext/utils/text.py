@@ -85,7 +85,7 @@ def trim_text(text: str, char_limit: int = 300) -> str:
     return snippet
 
 
-def format_duration(seconds: Any) -> str:
+def format_duration(seconds: Any, force_hms: bool = False) -> str:
     """Format a duration in seconds as M:SS, or H:MM:SS."""
     try:
         total = max(0, int(float(seconds or 0)))
@@ -95,7 +95,7 @@ def format_duration(seconds: Any) -> str:
     hours, rem = divmod(total, 3600)
     minutes, secs = divmod(rem, 60)
 
-    if hours:
+    if hours or force_hms:
         return f'{hours}:{minutes:02d}:{secs:02d}'
     return f'{minutes}:{secs:02d}'
 

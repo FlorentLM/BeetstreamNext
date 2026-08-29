@@ -16,7 +16,7 @@
   </p>
 </div>
 
-BeetstreamNext exposes your [Beets](https://beets.io) music library over the [OpenSubsonic API](https://opensubsonic.netlify.app/), allowing you to stream your music to any Subsonic client. 
+BeetstreamNext exposes your [Beets](https://beets.io) music library over the [OpenSubsonic API](https://opensubsonic.netlify.app/), allowing you to stream your music to any Subsonic/OpenSubsonic/Navidrome client. 
 
 ## Screenshots
 

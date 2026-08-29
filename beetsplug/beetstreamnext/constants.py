@@ -25,6 +25,7 @@ FFMPEG_PYTHON: bool = is_installed('ffmpeg-python')
 WIKI_API: bool = is_installed('wikipedia-api')
 RADIO_BROWSER: bool = is_installed('radios')
 FEEDPARSER: bool = is_installed('feedparser')
+SOCO: bool = is_installed('soco')
 
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()

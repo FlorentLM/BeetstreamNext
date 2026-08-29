@@ -31,9 +31,9 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 
 BeetstreamNext supports pretty much **all** of the Subsonic/OpenSubsonic API specification.
 
-Only unsupported features (currently) are _video streaming_ and _jukebox_ mode.
+Only unsupported features are _video streaming_-related.
 
-It also introduces several enhancements and featuresv though :)
+It also introduces several enhancements and features though :)
 
 ### Core
 
@@ -44,6 +44,7 @@ It also introduces several enhancements and featuresv though :)
 *   **Lyrics retrieval:** Serves internal Beets lyrics or fetches them on-the-fly using the Beets `lyrics` plugin.
 *   **On-the-fly transcoding:** Serves raw files directly or transcodes lossy/lossless targets on-the-fly using FFmpeg.
 *   **HTTP Live Streaming (HLS):** AAC-encoded dynamic HLS streaming with full Adaptive Bitrate (ABR) support for clients that request multi-bitrate variant playlists.
+*   **Jukebox mode:** Play audio directly on the server's own hardware, controlled remotely from any Subsonic client with jukebox support.
 
 ### Library intelligence
 
@@ -96,6 +97,10 @@ It also introduces several enhancements and featuresv though :)
     beet beetstreamnext
     ```
 
+**Optional system dependencies** (must be on `PATH`, or pointed to explicitly via `ffmpeg_path`/`mpv_path`, see [Configuration](#configuration)):
+*   [`ffmpeg`](https://ffmpeg.org/) for on-the-fly transcoding and HLS streaming.
+*   [`mpv`](https://mpv.io/) for jukebox mode (playing audio on the server's own hardware). Not needed if you don't use jukebox mode.
+
 ---
 
 ## Configuration
@@ -124,6 +129,12 @@ beetstreamnext:
   # Podcasts
   podcast_storage_dir: ''           # Where to store downloaded episodes (defaults to the cache location)
   podcast_auto_download_count: 10   # Number of episodes to auto-download when a channel is added (0 to disable)
+
+  # Audio
+  ffmpeg_path: ''                   # Path to the ffmpeg binary, if not on PATH
+  jukebox_allowed: false            # Allow jukebox mode (server plays audio on its own hardware)
+  mpv_path: ''                      # Path to the mpv binary, if not on PATH
+  jukebox_audio_device: ''          # mpv --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
 ```
 
 ### Environment variables
@@ -213,7 +224,7 @@ I tested it and confirmed it working with:
 
 ## Missing endpoints
 
-See [here](OpenSubsonic_endpoints.md)
+None, except video-streaming-related (see [here](OpenSubsonic_endpoints.md))
 
 ---
 

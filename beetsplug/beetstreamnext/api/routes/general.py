@@ -333,10 +333,6 @@ def endpoint_token_info() -> flask.Response:
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideos/
 @api_bp.route('/getVideos', methods=['GET', 'POST'])
 @api_bp.route('/getVideos.view', methods=['GET', 'POST'])
-
-# Spec: https://opensubsonic.netlify.app/docs/endpoints/jukeboxControl/
-@api_bp.route('/jukeboxControl', methods=['GET', 'POST'])
-@api_bp.route('/jukeboxControl.view', methods=['GET', 'POST'])
 def endpoint_unsupported() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

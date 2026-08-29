@@ -9,6 +9,7 @@ from .routes import (
     chat,
     coverart,
     general,
+    jukebox,
     likes,
     lyrics,
     playlists,

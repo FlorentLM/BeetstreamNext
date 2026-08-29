@@ -69,7 +69,7 @@
 - [ ] [getVideoInfo](https://opensubsonic.netlify.app/docs/endpoints/getvideoinfo/)
 - [ ] [getVideos](https://opensubsonic.netlify.app/docs/endpoints/getvideos/)
 - [x] [hls](https://opensubsonic.netlify.app/docs/endpoints/hls/)
-- [ ] [jukeboxControl](https://opensubsonic.netlify.app/docs/endpoints/jukeboxcontrol/)
+- [x] [jukeboxControl](https://opensubsonic.netlify.app/docs/endpoints/jukeboxcontrol/)
 - [x] [ping](https://opensubsonic.netlify.app/docs/endpoints/ping/)
 - [x] [refreshPodcasts](https://opensubsonic.netlify.app/docs/endpoints/refreshpodcasts/)
 - [x] [reportPlayback](https://opensubsonic.netlify.app/docs/endpoints/reportplayback/)

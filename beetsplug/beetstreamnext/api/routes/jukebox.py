@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, standardise_datadict
-from beetsplug.beetstreamnext.core.jukebox import jukebox_player, JukeboxUnavailable
+from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxUnavailable
 
 
 def _resolve_entries(song_ids: List[str]) -> List[Tuple[str, str]]:
@@ -62,16 +62,17 @@ def endpoint_jukebox_control() -> flask.Response:
         return subsonic_error(0, message='Jukebox mode is disabled on this server.', resp_fmt=resp_fmt)
 
     song_ids = r.getlist('id', type=safe_str)
+    player = get_jukebox_player()
 
     try:
         if action == 'get':
 
-            mpv_song_ids = jukebox_player.track_ids()
+            mpv_song_ids = player.track_ids()
             songs = IDMapper.resolve_songs_bulk(mpv_song_ids)
 
             payload = {
                 'jukeboxPlaylist':{
-                    **jukebox_player.status(),
+                    **player.status(),
                     'entry': [map_song(songs[sid]) for sid in mpv_song_ids if sid in songs]
                 }
             }
@@ -81,28 +82,28 @@ def endpoint_jukebox_control() -> flask.Response:
             pass
 
         elif action == 'set':
-            jukebox_player.set_playlist(_resolve_entries(song_ids))
+            player.set_playlist(_resolve_entries(song_ids))
 
         elif action == 'add':
-            jukebox_player.add(_resolve_entries(song_ids))
+            player.add(_resolve_entries(song_ids))
 
         elif action == 'clear':
-            jukebox_player.clear()
+            player.clear()
 
         elif action == 'remove':
             index = r.get('index', type=int)
             if index is None:
                 return subsonic_error(10, message='index is required.', resp_fmt=resp_fmt)
-            jukebox_player.remove(index)
+            player.remove(index)
 
         elif action == 'shuffle':
-            jukebox_player.shuffle()
+            player.shuffle()
 
         elif action == 'start':
-            jukebox_player.start()
+            player.start()
 
         elif action == 'stop':
-            jukebox_player.stop()
+            player.stop()
 
         elif action == 'skip':
 
@@ -112,7 +113,7 @@ def endpoint_jukebox_control() -> flask.Response:
             if index is None:
                 return subsonic_error(10, message='index is required.', resp_fmt=resp_fmt)
             try:
-                jukebox_player.skip(index, offset)
+                player.skip(index, offset)
             except ValueError:
                 return subsonic_error(10, message='index out of range.', resp_fmt=resp_fmt)
 
@@ -120,7 +121,7 @@ def endpoint_jukebox_control() -> flask.Response:
             gain = r.get('gain', type=float)
             if gain is None:
                 return subsonic_error(10, message='gain is required.', resp_fmt=resp_fmt)
-            jukebox_player.set_gain(gain)
+            player.set_gain(gain)
 
         else:
             return subsonic_error(10, message=f"Unknown jukeboxControl action '{action}'.", resp_fmt=resp_fmt)
@@ -129,6 +130,6 @@ def endpoint_jukebox_control() -> flask.Response:
         return subsonic_error(0, message=str(e), resp_fmt=resp_fmt)
 
     payload = {
-        'jukeboxStatus': jukebox_player.status()
+        'jukeboxStatus': player.status()
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

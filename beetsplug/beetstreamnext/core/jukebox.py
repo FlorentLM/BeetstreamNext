@@ -290,6 +290,18 @@ class JukeboxPlayer:
 
 
 ##
-# Instantiate the Jukebox
+# Lazy instantiation
 
-jukebox_player = JukeboxPlayer()
+_jukebox_player: Optional[JukeboxPlayer] = None
+_jukebox_player_lock = threading.Lock()
+
+
+def get_jukebox_player() -> JukeboxPlayer:
+    global _jukebox_player
+
+    if _jukebox_player is None:
+        with _jukebox_player_lock:
+            if _jukebox_player is None:
+                _jukebox_player = JukeboxPlayer()
+
+    return _jukebox_player

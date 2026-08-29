@@ -456,6 +456,38 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'validator': _validate_path,
     },
+    'jukebox_allowed': {
+        'type': 'bool',
+        'default': False,
+        'category': 'audio',
+        'description': (
+            'Allow jukebox mode: the server can play audio on its own hardware '
+            "(client apps act as remote controls)."
+        ),
+        'requires_restart': False,
+    },
+    'mpv_path': {
+        'type': 'str',
+        'default': '',
+        'category': 'audio',
+        'description': (
+            "Path to the mpv binary, if it isn't on the system PATH (e.g. /usr/local/bin/mpv). "
+            "Leave empty to auto-detect from PATH."
+        ),
+        'requires_restart': False,
+        'validator': _validate_path,
+    },
+    'jukebox_audio_device': {
+        'type': 'str',
+        'default': '',
+        'category': 'audio',
+        'description': (
+            "Audio output device for jukebox mode, as mpv's `--audio-device` expects "
+            "(e.g. `alsa/hw:0,0` or `coreaudio/BuiltInSpeakerDevice`). Leave empty to use the system default. "
+            "Run `mpv --audio-device=help` on the server to list available devices."
+        ),
+        'requires_restart': False,
+    },
 
     # Security
     'ip_whitelist': {

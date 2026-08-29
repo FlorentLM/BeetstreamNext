@@ -335,6 +335,8 @@ def route_settings() -> flask.Response:
             SELECT pc.id, pc.title, pc.url, pc.status, pc.error_message,
                    (pc.image IS NOT NULL) AS has_image,
                    (SELECT COUNT(*) FROM podcast_episodes pe WHERE pe.channel_id = pc.id) AS episode_count,
+                   (SELECT COUNT(*) FROM podcast_episodes pe
+                    WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS downloaded_count,
                    (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
                     WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
             FROM podcast_channels pc

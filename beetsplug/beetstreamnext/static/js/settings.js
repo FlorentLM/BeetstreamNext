@@ -1,6 +1,26 @@
 (function () {
     'use strict';
 
+    // Theme
+
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        document.querySelectorAll('[data-action="toggle-theme"]').forEach(btn => {
+            btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+        });
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        const next = current === 'light' ? 'dark' : 'light';
+        try { localStorage.setItem('bsn-theme', next); } catch (e) {}
+        applyTheme(next);
+    }
+
     // Tabs
 
     function activateTab(name) {
@@ -283,6 +303,9 @@
             case 'refresh-rate-limits':
                 refreshRateLimits(target);
                 break;
+            case 'toggle-theme':
+                toggleTheme();
+                break;
             case 'edit-chat':
                 const msgId = target.dataset.id;
                 const oldText = target.dataset.text;
@@ -327,6 +350,7 @@
 
     // Init
 
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
     initTabsFromHash();
 
     // Format HLS/chat epoch timestamps to human readable format

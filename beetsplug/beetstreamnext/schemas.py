@@ -488,4 +488,4 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
 }
 
-SETTINGS_CATEGORIES = frozenset(s.get('category') for s in SETTINGS_SCHEMA.values())
+SETTINGS_CATEGORIES = tuple(dict.fromkeys(s.get('category') for s in SETTINGS_SCHEMA.values()))

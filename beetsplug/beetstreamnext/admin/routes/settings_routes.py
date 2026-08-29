@@ -18,7 +18,8 @@ from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_imp
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
-from ...utils.text import safe_str
+from beetsplug.beetstreamnext.constants import SERVER_NAME
+from beetsplug.beetstreamnext.utils.text import safe_str
 
 
 def _back_to(anchor: str) -> flask.Response:
@@ -313,9 +314,9 @@ def route_clear_cache() -> flask.Response:
     return _back_to('maintenance')
 
 
-@admin_bp.route('/maintenance/sanity-check', methods=['POST'])
+@admin_bp.route('/maintenance/database-cleanup', methods=['POST'])
 @admin_required
-def route_sanity_check() -> flask.Response:
+def route_database_cleanup() -> flask.Response:
     try:
         purged = sweep_stale_references()
         if purged:
@@ -325,8 +326,9 @@ def route_sanity_check() -> flask.Response:
             flask.flash('No stale references found.', 'info')
 
     except Exception as e:
-        bsn_logger.error(f'Database sanity sweep failed: {e}')
-        flask.flash(f'Sanity check failed: {e}', 'error')
+        err = f'{SERVER_NAME} database cleanup failed: {e}'
+        bsn_logger.error(err)
+        flask.flash(err, 'error')
 
     return _back_to('maintenance')
 

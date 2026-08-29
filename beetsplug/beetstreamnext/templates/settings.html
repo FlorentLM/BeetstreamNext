@@ -749,7 +749,7 @@
                 Removes stale entries in the database (bookmarks, likes, ratings, play stats, queue entries and shares that
                 point at a song or podcast episode that no longer exists). Also runs periodically in the background.
             </p>
-            <form method="POST" action="{{ url_for('admin.route_sanity_check') }}" class="card-body-form">
+            <form method="POST" action="{{ url_for('admin.route_database_cleanup') }}" class="card-body-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline">Run cleanup</button>
             </form>

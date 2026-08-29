@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS
+from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database
@@ -189,9 +189,9 @@ def run_periodic():
             purged = sweep_stale_references()
             if purged:
                 details = ', '.join(f'{n} {label}' for label, n in purged.items())
-                bsn_logger.info(f'Database sanity sweep purged: {details}')
+                bsn_logger.info(f'{SERVER_NAME} database cleanup purged: {details}')
         except Exception as e:
-            bsn_logger.error(f'Database sanity sweep failed: {e}')
+            bsn_logger.error(f'{SERVER_NAME} database cleanup failed: {e}')
 
         # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']

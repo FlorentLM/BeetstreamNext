@@ -62,7 +62,7 @@ class SettingDescriptor(TypedDict, total=False):
     help: str                           # If set, admin UI shows this as a dotted box
 
 
-def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
+def _validate_int_range(lo: int, hi: int) -> Callable[[Any], int]:
     def _v(x: Any) -> int:
         n = int(x)
         if not lo <= n <= hi:
@@ -71,7 +71,7 @@ def _int_range(lo: int, hi: int) -> Callable[[Any], int]:
     return _v
 
 
-def _choice(*options: str) -> Callable[[Any], str]:
+def _validate_choice(*options: str) -> Callable[[Any], str]:
     def _v(x: Any) -> str:
         s = str(x)
         if s not in options:
@@ -80,7 +80,7 @@ def _choice(*options: str) -> Callable[[Any], str]:
     return _v
 
 
-def _validate_ffmpeg_path(x: Any) -> str:
+def _validate_path(x: Any) -> str:
     s = str(x or '').strip()
     if s and shutil.which(s) is None:
         raise ValueError('Not an executable file (or not found).')
@@ -111,7 +111,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Worker threads for serving requests.',
         'requires_restart': True,
-        'validator': _int_range(1, 128),
+        'validator': _validate_int_range(1, 128),
     },
     'channel_timeout': {
         'type': 'int',
@@ -119,7 +119,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Seconds of inactivity allowed on a connection before Waitress closes it. Lower this on low-resource environments to free up connections faster.',
         'requires_restart': True,
-        'validator': _int_range(1, 3600),
+        'validator': _validate_int_range(1, 3600),
     },
     'connection_limit': {
         'type': 'int',
@@ -127,7 +127,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Maximum number of simultaneous connections Waitress will accept. Lower this on low-resource environments to cap memory/socket usage.',
         'requires_restart': True,
-        'validator': _int_range(1, 10000),
+        'validator': _validate_int_range(1, 10000),
     },
     'cors_origins': {
         'type': 'str',
@@ -169,7 +169,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Number of trusted reverse proxies in front of the server. Only used if `reverse_proxy` is enabled',
         'requires_restart': True,
-        'validator': _int_range(1, 10),
+        'validator': _validate_int_range(1, 10),
     },
     'sendfile_method': {
         'type': 'str',
@@ -182,7 +182,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'choices': ('off', 'x-accel-redirect', 'x-sendfile'),
-        'validator': _choice('off', 'x-accel-redirect', 'x-sendfile'),
+        'validator': _validate_choice('off', 'x-accel-redirect', 'x-sendfile'),
         'help': (
             "# Apache mod_xsendfile example (allow the absolute music root path):\n"
             "\n"
@@ -325,7 +325,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'choices': ('off', 'fallback', 'prefer'),
-        'validator': _choice('off', 'fallback', 'prefer'),
+        'validator': _validate_choice('off', 'fallback', 'prefer'),
     },
     'ignored_articles': {
         'type': 'str',
@@ -411,7 +411,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "added. Set to 0 to disable and only download episodes on request."
         ),
         'requires_restart': False,
-        'validator': _int_range(0, 200),
+        'validator': _validate_int_range(0, 200),
     },
 
     # Audio
@@ -428,7 +428,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'audio',
         'description': 'Additional gain (dB) to apply.',
         'requires_restart': False,
-        'validator': _int_range(-20, 20),
+        'validator': _validate_int_range(-20, 20),
     },
     'replaygain_fallback': {
         'type': 'int',
@@ -436,7 +436,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'audio',
         'description': "Gain (dB) to apply to tracks without ReplayGain tags in beets' library.",
         'requires_restart': False,
-        'validator': _int_range(-20, 0),
+        'validator': _validate_int_range(-20, 0),
     },
     'audio_peak_limit': {
         'type': 'bool',
@@ -454,7 +454,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "Leave empty to auto-detect from PATH."
         ),
         'requires_restart': False,
-        'validator': _validate_ffmpeg_path,
+        'validator': _validate_path,
     },
 
     # Security
@@ -480,7 +480,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'security',
         'description': 'Failed attempts before an IP is rate-limited.',
         'requires_restart': False,
-        'validator': _int_range(1, 100),
+        'validator': _validate_int_range(1, 100),
     },
     'rate_limit_block_window': {
         'type': 'int',
@@ -488,7 +488,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'security',
         'description': 'Seconds before failures roll off.',
         'requires_restart': False,
-        'validator': _int_range(10, 86400),
+        'validator': _validate_int_range(10, 86400),
     },
     'rate_limit_ip_max_failures': {
         'type': 'int',
@@ -496,7 +496,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'security',
         'description': 'Failed attempts from a single IP (across any usernames tried) before that IP is blocked outright. Catches attackers rotating usernames to dodge the per-user limit above.',
         'requires_restart': False,
-        'validator': _int_range(1, 1000),
+        'validator': _validate_int_range(1, 1000),
     },
     'rate_limit_ip_block_window': {
         'type': 'int',
@@ -504,7 +504,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'security',
         'description': 'Seconds before an IP-wide failure count rolls off.',
         'requires_restart': False,
-        'validator': _int_range(10, 604800),
+        'validator': _validate_int_range(10, 604800),
     },
 }
 

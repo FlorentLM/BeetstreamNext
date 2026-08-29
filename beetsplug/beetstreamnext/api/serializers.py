@@ -6,7 +6,7 @@ from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
+from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter, external_url
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.db import chunked_query
@@ -14,7 +14,6 @@ from beetsplug.beetstreamnext.core.external import query_musicbrainz, query_disc
 from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, one_rating, one_like, one_play_stats, avg_rating
 from beetsplug.beetstreamnext.core.images import image_url
-from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict, _get_artist_metadata
 
 if TYPE_CHECKING:
@@ -538,31 +537,31 @@ def map_podcast_episode(row: dict, channel: Optional[dict] = None) -> dict:
     return subsonic_episode
 
 
-def map_share(row: dict, entries: Sequence[str]) -> dict:
+def resolve_share_entries(entry_ids: Sequence[str]) -> Tuple[List[Item], List[LibModel]]:
+    """Split a share's entry ids into resolved song items and album objects."""
+
     songs = []
     albums = []
 
-    for entry_id in entries:
+    for entry_id in entry_ids:
         entry_type = IDMapper.get_type(entry_id)
 
         if entry_type == 'song':
             item = IDMapper.resolve_song(entry_id)
             if item:
-                songs.append(map_song(item))
+                songs.append(item)
 
         elif entry_type == 'album':
             alb = IDMapper.resolve_album(entry_id)
             if alb:
-                albums.append(map_album(alb, include_songs=False))
+                albums.append(alb)
 
-    # Force public hostname (if set)
-    external_host = settings_store.get('external_hostname')
+    return songs, albums
 
-    if external_host:
-        scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
-        share_url = f"{scheme}://{external_host}{flask.url_for('public.share_view', share_id=row['id'])}"
-    else:
-        share_url = flask.url_for('public.share_view', share_id=row['id'], _external=True)
+
+def map_share(row: dict, entries: Sequence[str]) -> dict:
+    songs, albums = resolve_share_entries(entries)
+    share_url = external_url(flask.url_for('public.share_view', share_id=row['id']))
 
     subsonic_share = {
         'id': row['id'],
@@ -572,7 +571,7 @@ def map_share(row: dict, entries: Sequence[str]) -> dict:
         'created': timestamp_to_iso(row['created']),
         'expires': timestamp_to_iso(row['expires']),
         'visitCount': row['visit_count'],
-        'entry': songs + albums
+        'entry': [map_song(s) for s in songs] + [map_album(a, include_songs=False) for a in albums]
     }
     return subsonic_share
 

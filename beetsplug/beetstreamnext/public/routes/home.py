@@ -6,7 +6,7 @@ from .. import public_bp
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.serializers import IDMapper
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.utils.general import get_server_info
+from beetsplug.beetstreamnext.utils.general import get_server_info, external_url
 
 
 @public_bp.route('/')
@@ -55,13 +55,7 @@ def home() -> str:
                         'username': row['username']
                     }
 
-    # Resolve the public/external URL
-    external_host = settings_store.get('external_hostname')
-    if external_host:
-        scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
-        server_url = f"{scheme}://{external_host}/"
-    else:
-        server_url = flask.request.host_url
+    server_url = external_url('/')
 
     return render_template(
         'index.html',

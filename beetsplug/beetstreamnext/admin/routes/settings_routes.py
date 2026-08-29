@@ -4,7 +4,7 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
+from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes, external_url
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage, sweep_stale_references
@@ -406,15 +406,10 @@ def route_settings() -> flask.Response:
 
     # build shares URLs
     shares_list = []
-    external_host = settings_store.get('external_hostname')
-    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
 
     for r in shares_rows:
         s_dict = dict(r)
-        if external_host:
-            s_dict['url'] = f"{scheme}://{external_host}{flask.url_for('public.share_view', share_id=r['id'])}"
-        else:
-            s_dict['url'] = flask.url_for('public.share_view', share_id=r['id'], _external=True)
+        s_dict['url'] = external_url(flask.url_for('public.share_view', share_id=r['id']))
         shares_list.append(s_dict)
 
     # Load radio stations

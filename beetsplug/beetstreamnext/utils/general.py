@@ -27,6 +27,20 @@ def grab_auth_params() -> Dict[str, str]:
     return auth_params
 
 
+def external_url(path_part: str) -> str:
+    """
+    Build an absolute URL for 'path_part' with external hostname taking precedence.
+    """
+    from beetsplug.beetstreamnext.settings import settings_store
+
+    external_host = settings_store.get('external_hostname')
+    if not external_host:
+        return flask.request.host_url.rstrip('/') + path_part
+
+    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+    return f'{scheme}://{external_host}{path_part}'
+
+
 def _default_config_path() -> str:
     """Where beets would load its config from when not started with an explicit -c/--config."""
     try:

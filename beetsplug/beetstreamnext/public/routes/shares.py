@@ -1,4 +1,3 @@
-import os
 import re
 import secrets
 import time
@@ -11,12 +10,12 @@ from flask import render_template
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import send_file
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_album
+from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_album, resolve_share_entries
+from beetsplug.beetstreamnext.api.idmapper import beets_abspath
 
 
 def _safe_filename(name: Any) -> str:
@@ -24,21 +23,49 @@ def _safe_filename(name: Any) -> str:
     return cleaned or 'untitled'
 
 
-def _resolve_song_path(item) -> Path:
-    song_path = os.fsdecode(item.get('path', b''))
-    path_obj = Path(song_path)
-    if not path_obj.is_absolute():
-        path_obj = app.config['root_directory'] / path_obj
-    return path_obj
+def _is_shared(share_id: str, entry_id: str) -> bool:
+    """Whether entry_id is shared or is part of an album that is shared."""
+
+    with database() as db:
+        explicit_match = db.execute(
+            """
+            SELECT 1 
+            FROM share_entries 
+            WHERE share_id = ? AND item_id = ?
+            """, (share_id, entry_id)
+        ).fetchone()
+
+    if explicit_match:
+        return True
+
+    if IDMapper.get_type(entry_id) != 'song':
+        return False
+
+    item = IDMapper.resolve_song(entry_id)
+    album_id = item.get('album_id') if item else None
+    if not album_id:
+        return False
+
+    sub_album_id = IDMapper.mint_album(album_id)
+    with database() as db:
+        album_match = db.execute(
+            """
+            SELECT 1 
+            FROM share_entries 
+            WHERE share_id = ? AND item_id = ?
+            """, (share_id, sub_album_id)
+        ).fetchone()
+
+    return bool(album_match)
 
 
-def _build_album_zip(items: List) -> Path:
+def _zip_album(items: List) -> Path:
     """Zip all songs of an album and returns the zip path."""
     zip_path = ZIP_CACHE_DIR / f'{secrets.token_hex(16)}.zip'
 
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_STORED) as zf:
         for item in items:
-            path_obj = _resolve_song_path(item)
+            path_obj = beets_abspath(item)
             if not path_obj.is_file():
                 bsn_logger.warning(f"Skipping missing file for album zip: '{path_obj}'")
                 continue
@@ -93,27 +120,15 @@ def share_view(share_id: str) -> flask.Response:
 
     entry_ids = [r['item_id'] for r in entry_rows]
 
-    songs = []
-    albums = []
-
-    for entry_id in entry_ids:
-        entry_type = IDMapper.get_type(entry_id)
-
-        if entry_type == 'song':
-            item = IDMapper.resolve_song(entry_id)
-            if item:
-                songs.append(map_song(item))
-
-        elif entry_type == 'album':
-            alb = IDMapper.resolve_album(entry_id)
-            if alb:
-                albums.append(map_album(alb, include_songs=True))
+    resolved_songs, resolved_albums = resolve_share_entries(entry_ids)
+    songs = [map_song(s) for s in resolved_songs]
+    albums = [map_album(a, include_songs=True) for a in resolved_albums]
 
     return render_template('shares.html', share=share, songs=songs, albums=albums)
 
 
 @public_bp.route('/share/<share_id>/download/<entry_id>')
-def share_download(share_id: str, entry_id: str) -> flask.Response:
+def share_download(share_id: str, entry_id: str) -> flask.Response | None:
 
     with database() as db:
         share = db.execute(
@@ -127,44 +142,14 @@ def share_download(share_id: str, entry_id: str) -> flask.Response:
     if not share or (share['expires'] and share['expires'] < time.time()):
         flask.abort(404)
 
-    # Check if entry is shared (or if it belongs to an album that is shared)
-    with database() as db:
-        explicit_match = db.execute(
-            """
-            SELECT 1
-            FROM share_entries
-            WHERE share_id = ? AND item_id = ?
-            """, (share_id, entry_id)
-        ).fetchone()
-
-    is_valid = bool(explicit_match)
-
-    item = IDMapper.resolve_song(entry_id) if IDMapper.get_type(entry_id) == 'song' else None
-
-    if not is_valid and item:
-        album_id = item.get('album_id')
-
-        if album_id:
-            sub_album_id = IDMapper.mint_album(album_id)
-
-            with database() as db:
-                album_match = db.execute(
-                    """
-                    SELECT 1
-                    FROM share_entries
-                    WHERE share_id = ? AND item_id = ?
-                    """, (share_id, sub_album_id)
-                ).fetchone()
-
-            is_valid = bool(album_match)
-
-    if not is_valid:
+    if not _is_shared(share_id, entry_id):
         flask.abort(403)
 
+    item = IDMapper.resolve_song(entry_id) if IDMapper.get_type(entry_id) == 'song' else None
     if not item:
         flask.abort(404)
 
-    song_path = _resolve_song_path(item)
+    song_path = beets_abspath(item)
 
     return send_file(
         song_path,
@@ -204,7 +189,7 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     if not items:
         flask.abort(404)
 
-    zip_path = _build_album_zip(items)
+    zip_path = _zip_album(items)
     download_name = f"{_safe_filename(album.albumartist)} - {_safe_filename(album.album)}.zip"
 
     response = flask.send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=download_name)
@@ -228,31 +213,7 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
     if not share or (share['expires'] and share['expires'] < time.time()):
         flask.abort(404)
 
-    # Validate that the requested entry belongs to this share
-    with database() as db:
-        explicit_match = db.execute(
-            """SELECT 1 FROM share_entries WHERE share_id = ? AND item_id = ?""",
-            (share_id, entry_id)
-        ).fetchone()
-
-    is_valid = bool(explicit_match)
-
-    song_item = IDMapper.resolve_song(entry_id) if IDMapper.get_type(entry_id) == 'song' else None
-
-    if not is_valid and song_item:
-        album_id = song_item.get('album_id')
-        if album_id:
-            sub_album_id = IDMapper.mint_album(album_id)
-
-            with database() as db:
-                album_match = db.execute(
-                    """SELECT 1 FROM share_entries WHERE share_id = ? AND item_id = ?""",
-                    (share_id, sub_album_id)
-                ).fetchone()
-
-            is_valid = bool(album_match)
-
-    if not is_valid:
+    if not _is_shared(share_id, entry_id):
         flask.abort(403)
 
     from beetsplug.beetstreamnext.core.images import send_album_art, round_image_size
@@ -265,9 +226,11 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
         if response:
             return response
 
-    elif song_item and song_item.get('album_id'):
-        response = send_album_art(song_item.get('album_id'), rounded_size)
-        if response:
-            return response
+    else:
+        song_item = IDMapper.resolve_song(entry_id) if IDMapper.get_type(entry_id) == 'song' else None
+        if song_item and song_item.get('album_id'):
+            response = send_album_art(song_item.get('album_id'), rounded_size)
+            if response:
+                return response
 
     flask.abort(404)

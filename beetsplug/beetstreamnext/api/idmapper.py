@@ -1,4 +1,6 @@
 import base64
+import os
+from pathlib import Path
 import binascii
 from typing import Optional, Tuple, Dict, List, Any, Sequence
 import flask
@@ -9,6 +11,18 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import path_hash
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.database import database
+
+
+
+def beets_abspath(item: Dict | Item | Any) -> Path:
+    """
+    Beets sometimes stores paths relative to its 'directory' config.
+    This resolves to an absolute path.
+    """
+    path_obj = Path(os.fsdecode(item.get('path', b'')))
+    if not path_obj.is_absolute():
+        path_obj = app.config['root_directory'] / path_obj
+    return path_obj
 
 
 def standardise_datadict(obj: Dict | LibModel | Item | Any) -> dict:

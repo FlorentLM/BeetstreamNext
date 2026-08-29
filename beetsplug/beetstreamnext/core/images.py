@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.api.idmapper import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden
-from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, FFMPEG_BIN
+from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, find_ffmpeg
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
 from beetsplug.beetstreamnext.core.database import database
@@ -232,6 +232,8 @@ def fetch_playlist_images(item, url: str) -> None:
 
 def image_from_song(path: str | Path) -> BytesIO | None:
 
+    ffmpeg_bin = find_ffmpeg()
+
     if FFMPEG_PYTHON:
         import ffmpeg
 
@@ -241,14 +243,14 @@ def image_from_song(path: str | Path) -> BytesIO | None:
                 .input(os.fsdecode(path))
                 # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
                 .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
-                .run(capture_stdout=True, capture_stderr=False, quiet=True)
+                .run(capture_stdout=True, capture_stderr=False, quiet=True, cmd=ffmpeg_bin or 'ffmpeg')
             )
         except ffmpeg.Error:
             img_bytes = b''
 
-    elif FFMPEG_BIN:
+    elif ffmpeg_bin:
         command = [
-            'ffmpeg',
+            ffmpeg_bin,
             '-i', os.fsdecode(path),
             # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
             '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',

@@ -5,7 +5,7 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, FFMPEG_BIN
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, find_ffmpeg
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden
@@ -58,7 +58,7 @@ def endpoint_get_cover_art() -> flask.Response:
                 return response
 
         # Fallback: try to extract cover from the song file
-        if FFMPEG_PYTHON or FFMPEG_BIN:
+        if FFMPEG_PYTHON or find_ffmpeg():
             song_path = os.fsdecode(item.path)
             path_obj = Path(song_path)
             if not path_obj.is_absolute():

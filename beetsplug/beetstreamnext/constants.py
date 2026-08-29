@@ -3,7 +3,7 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location
 
@@ -22,7 +22,6 @@ USER_AGENT: str = f'{SERVER_NAME}/{SERVER_VERSION} ( {REPO_URL} )'
 
 ## Paths and deps
 
-FFMPEG_BIN: bool = shutil.which('ffmpeg') is not None
 FFMPEG_PYTHON: bool = is_installed('ffmpeg-python')
 WIKI_API: bool = is_installed('wikipedia-api')
 RADIO_BROWSER: bool = is_installed('radios')
@@ -36,6 +35,13 @@ HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 ZIP_CACHE_DIR = CACHE_LOCATION / 'zips'
 ZIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def find_ffmpeg() -> Optional[str]:
+    from beetsplug.beetstreamnext.settings import settings_store
+    custom = settings_store.get('ffmpeg_path')
+    return shutil.which(custom) if custom else shutil.which('ffmpeg')
+
 
 ## Text constants
 

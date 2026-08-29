@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, Optional
 
+from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location
 
 
@@ -40,7 +41,19 @@ ZIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 def find_ffmpeg() -> Optional[str]:
     from beetsplug.beetstreamnext.settings import settings_store
     custom = settings_store.get('ffmpeg_path')
-    return shutil.which(custom) if custom else shutil.which('ffmpeg')
+    found = shutil.which(custom) if custom else shutil.which('ffmpeg')
+    if found:
+        bsn_logger.info(f'ffmpeg found at: {found}')
+    return found
+
+
+def find_mpv() -> Optional[str]:
+    from beetsplug.beetstreamnext.settings import settings_store
+    custom = settings_store.get('mpv_path')
+    found = shutil.which(custom) if custom else shutil.which('mpv')
+    if found:
+        bsn_logger.info(f'MPV path: {found}')
+    return found
 
 
 ## Text constants

@@ -32,6 +32,9 @@ _ANNOUNCEMENT_USERNAME = 'Server'
 _CHAT_MESSAGE_MAX_LEN = 1000
 
 
+# TODO: This file now needs reorganisation / to be split
+
+
 ##
 # Settings-updating routes
 

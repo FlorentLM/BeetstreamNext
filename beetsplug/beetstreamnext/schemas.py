@@ -1,3 +1,4 @@
+import shutil
 from typing import TypedDict, Any, Callable, Dict, Tuple
 
 from beetsplug.beetstreamnext.constants import SERVER_NAME
@@ -77,6 +78,13 @@ def _choice(*options: str) -> Callable[[Any], str]:
             raise ValueError(f"Must be one of: {', '.join(options)}")
         return s
     return _v
+
+
+def _validate_ffmpeg_path(x: Any) -> str:
+    s = str(x or '').strip()
+    if s and shutil.which(s) is None:
+        raise ValueError('Not an executable file (or not found).')
+    return s
 
 
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
@@ -436,6 +444,17 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'audio',
         'description': 'Always prevent audio peaks from exceeding 0 dB (prevent clipping).',
         'requires_restart': False,
+    },
+    'ffmpeg_path': {
+        'type': 'str',
+        'default': '',
+        'category': 'audio',
+        'description': (
+            "Path to the ffmpeg binary, if it isn't on the system PATH (e.g. /usr/local/bin/ffmpeg). "
+            "Leave empty to auto-detect from PATH."
+        ),
+        'requires_restart': False,
+        'validator': _validate_ffmpeg_path,
     },
 
     # Security

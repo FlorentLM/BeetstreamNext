@@ -208,6 +208,26 @@
         }
     }
 
+    function copyLogs(button) {
+        const el = document.getElementById(button.dataset.target);
+        if (!el) return;
+        const text = el.textContent;
+        const label = button.querySelector('.btn-label');
+
+        const done = () => {
+            if (!label) return;
+            const orig = label.textContent;
+            label.textContent = 'Copied';
+            setTimeout(() => { label.textContent = orig; }, 2000);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(done).catch(() => selectKey(el));
+        } else {
+            selectKey(el);
+        }
+    }
+
     function selectKey(el) {
         const range = document.createRange();
         range.selectNodeContents(el);
@@ -244,6 +264,23 @@
                 <thead><tr><th>IP</th><th>Username</th><th>Failures</th><th>Oldest</th><th>Status</th></tr></thead>
                 <tbody>${rows}</tbody>
             </table>`;
+    }
+
+    async function refreshLogs(button) {
+        const url = button.dataset.url;
+        const target = document.getElementById(button.dataset.target);
+        const hint = document.getElementById(button.dataset.hint);
+        if (!target || !url) return;
+        try {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const payload = await resp.json();
+            const lines = payload.lines || [];
+            target.textContent = lines.length ? lines.join('\n') : '(no log output yet)';
+            if (hint) hint.textContent = `Last ${lines.length} log line${lines.length !== 1 ? 's' : ''} captured since server start.`;
+        } catch (err) {
+            target.textContent = 'Failed to load log: ' + err.message;
+        }
     }
 
     async function refreshRateLimits(button) {
@@ -300,8 +337,14 @@
             case 'copy-api-key':
                 copyApiKey(target);
                 break;
+            case 'copy-log':
+                copyLogs(target);
+                break;
             case 'refresh-rate-limits':
                 refreshRateLimits(target);
+                break;
+            case 'refresh-log':
+                refreshLogs(target);
                 break;
             case 'toggle-theme':
                 toggleTheme();

@@ -1,5 +1,7 @@
 import re
 import logging
+import collections
+from typing import List
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from paste.translogger import TransLogger
 
@@ -101,8 +103,34 @@ def apply_logs_redaction() -> None:
     bsn_logger.addFilter(_filter)
 
 
+class MemLogBuffer(logging.Handler):
+    """Ring buffer to keep the last n log lines in memory (for the admin panel)."""
+
+    def __init__(self, capacity: int = 500):
+        super().__init__()
+        self.buffer: collections.deque = collections.deque(maxlen=capacity)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.buffer.append(self.format(record))
+        except Exception:
+            self.handleError(record)
+
+    @property
+    def recents(self) -> List[str]:
+        return list(self.buffer)
+
+
+##
+# Setup
+
 logging.getLogger('flask').setLevel(LOG_LEVEL)
 logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
 
 bsn_logger = logging.getLogger('beetstreamnext')
 bsn_logger.propagate = True
+
+mem_log = MemLogBuffer()
+
+mem_log.setFormatter(logging.Formatter('%(asctime)s %(levelname)-8s %(name)s: %(message)s'))
+logging.getLogger().addHandler(mem_log)

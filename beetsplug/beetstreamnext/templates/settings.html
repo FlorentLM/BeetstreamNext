@@ -692,6 +692,21 @@
                 <dt>Config path</dt>    <dd><code>{{ server_info.config_path }}</code></dd>
             </dl>
         </div>
+
+        <div class="card">
+            <div class="table-header">
+                <h2>Server Log</h2>
+                <div class="table-header-actions">
+                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="serverLogText">{{ icon('copy') }} <span class="btn-label">Copy</span></button>
+                    <button type="button" class="btn btn-outline" data-action="refresh-log"
+                            data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText" data-hint="serverLogHint">
+                        {{ icon('refresh') }} <span class="btn-label">Refresh</span>
+                    </button>
+                </div>
+            </div>
+            <p class="card-hint" id="serverLogHint">Last {{ log_lines|length }} log line{{ 's' if log_lines|length != 1 }} captured since server start.</p>
+            <pre class="log-view" id="serverLogText">{% if log_lines %}{{ log_lines|join('\n') }}{% else %}(no log output yet){% endif %}</pre>
+        </div>
     </section>
 </div>
 

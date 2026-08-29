@@ -1,10 +1,11 @@
+import time
 from typing import Any
 import flask
 
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage, sweep_stale_references
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
@@ -278,6 +279,12 @@ def route_rate_limits() -> flask.Response:
     return flask.jsonify(rate_limiter.report())
 
 
+@admin_bp.route('/maintenance/logs', methods=['GET'])
+@admin_required
+def route_logs() -> flask.Response:
+    return flask.jsonify({'lines': mem_log.recents})
+
+
 @admin_bp.route('/maintenance/clear-rate-limits', methods=['POST'])
 @admin_required
 def route_clear_rate_limits() -> flask.Response:
@@ -425,6 +432,7 @@ def route_settings() -> flask.Response:
             new_api_key=new_api_key,
             settings_categories=SETTINGS_CATEGORIES,
             settings_by_category=settings_by_category,
+            log_lines=mem_log.recents,
         )
     )
     return resp

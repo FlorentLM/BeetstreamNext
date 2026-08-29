@@ -10,8 +10,9 @@ Only the current pre-release version is supported
 
 | Version | Supported          |
 |---------| ------------------ |
+| 1.8.5   | :white_check_mark: |
 | 1.8.0   | :white_check_mark: |
-| < 1.8.x | :x:                |
+| < 1.8.0 | :x:                |
 
 ## Reporting a Vulnerability
 

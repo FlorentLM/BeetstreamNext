@@ -1,4 +1,5 @@
 import platform
+import time
 from pathlib import Path
 from typing import Optional, Dict, Tuple, Any
 from functools import lru_cache
@@ -10,7 +11,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import GENRES_DELIM, BEETSTREAMNEXT_VER
+from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, BEETSTREAMNEXT_VER
 
 
 ##
@@ -43,6 +44,21 @@ def human_bytes(n: int) -> str:
     return f'{size:.1f} TB'
 
 
+def human_time(seconds: float) -> str:
+    total = max(0, int(seconds))
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, secs = divmod(rem, 60)
+
+    if days:
+        return f'{days}d {hours}h {minutes}m'
+    if hours:
+        return f'{hours}h {minutes}m'
+    if minutes:
+        return f'{minutes}m {secs}s'
+    return f'{secs}s'
+
+
 def get_server_info(extended: bool = False) -> Dict[str, str]:
     lib = app.config['lib']
     stats = {}
@@ -57,6 +73,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'beets_version': beets.__version__,
             'python_version': platform.python_version(),
             'os': platform.system(),
+            'uptime': human_time(time.time() - START_TIME),
             'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
             'config_path': str(app.config.get('BEETS_CONFIG_PATH')) if app.config.get('BEETS_CONFIG_PATH') else _default_config_path(),

@@ -1,3 +1,4 @@
+import time
 import os
 import re
 import shutil
@@ -6,6 +7,8 @@ from typing import Dict
 
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location
 
+
+START_TIME = time.time()    # not a constant but...yeah
 
 ## Versions
 

@@ -59,7 +59,7 @@ h1 {
     background: var(--card-bg);
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--overlay-weak);
 }
 
 .stat-value {
@@ -81,7 +81,9 @@ h1 {
 }
 
 .server-url {
-    background: #000;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
     padding: 5px 10px;
     border-radius: 4px;
     display: inline-block;
@@ -94,7 +96,7 @@ h1 {
     gap: 0.5rem;
     margin-top: 1.5rem;
     padding: 0.6rem 1.2rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--overlay-weak);
     border-radius: 8px;
     border: 1px solid var(--border);
     color: var(--text-muted);
@@ -102,7 +104,7 @@ h1 {
     transition: all 0.2s ease;
 }
 .github-link:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--overlay-strong);
     color: var(--text);
     border-color: var(--primary);
     opacity: 1;

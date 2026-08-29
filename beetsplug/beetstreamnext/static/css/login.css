@@ -41,7 +41,7 @@ input[type="password"] {
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--input-bg);
-    color: #fff;
+    color: var(--text);
     font-family: inherit;
     font-size: 0.95rem;
     transition: border-color 0.2s;

@@ -1,4 +1,3 @@
-import requests
 import flask
 
 from .. import api_bp
@@ -6,33 +5,8 @@ from .. import api_bp
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.cache import preload_songs
-
-
-def _audiomuse_get(path: str, params: dict, timeout: float = 10.0):
-    """GET an AudioMuse-AI endpoint. Returns (data, error_message)."""
-    audiomuse_url = settings_store.get('audiomuse_url')
-    if not audiomuse_url:
-        return None, 'AudioMuse-AI is not configured on this server.'
-
-    headers = {}
-    api_token = settings_store.get('audiomuse_api_token')
-    if api_token:
-        headers['Authorization'] = f'Bearer {api_token}'
-
-    try:
-        url = f"{audiomuse_url.rstrip('/')}{path}"
-        response = requests.get(url, params=params, headers=headers, timeout=timeout)
-        if not response.ok:
-            bsn_logger.error(f'AudioMuse-AI API error: {response.status_code} - {response.text}')
-            return None, 'Failed to communicate with AudioMuse-AI.'
-        return response.json(), None
-
-    except requests.RequestException as e:
-        bsn_logger.error(f'AudioMuse-AI connection failed: {e}')
-        return None, 'Could not connect to AudioMuse-AI.'
+from beetsplug.beetstreamnext.core.external import _audiomuse_get
 
 
 def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:

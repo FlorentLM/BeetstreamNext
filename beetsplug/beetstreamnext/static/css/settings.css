@@ -424,6 +424,10 @@ input:focus, select:focus { border-color: var(--primary); }
 
 .setting-row-meta { color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; }
 .setting-description { margin: 0; }
+.setting-row-actions { margin: 0.5rem 0 0; }
+.test-result { margin: 0.4rem 0 0; font-size: 0.85rem; }
+.test-result-ok { color: #4ade80; }
+.test-result-fail { color: #f87171; }
 .setting-restart-note {
     margin: 0.4rem 0 0;
     font-size: 0.78rem;

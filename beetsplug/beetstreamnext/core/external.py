@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.constants import (
     WIKI_API, RADIO_BROWSER, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES, USER_AGENT, _SCHEME_RE, _DUPLICATE_SCHEME_RE
 )
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.settings import settings_store
 
 
 def https_variant(url: str) -> str:
@@ -251,6 +252,105 @@ def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = T
 
     except requests.exceptions.RequestException:
         return {}
+
+
+def test_lastfm_connection() -> tuple[bool, str]:
+    """Check that the configured Last.fm API key is valid. Returns (ok, message)."""
+    api_key = settings_store.get('lastfm_api_key')
+    if not api_key:
+        return False, 'No Last.fm API key configured.'
+
+    endpoint = 'https://ws.audioscrobbler.com/2.0/'
+    params = {'format': 'json', 'method': 'chart.gettopartists', 'api_key': api_key, 'limit': 1}
+    headers = {'User-Agent': USER_AGENT}
+
+    try:
+        response = requests.get(endpoint, headers=headers, params=params, timeout=8)
+    except requests.exceptions.RequestException as e:
+        return False, f'Could not reach Last.fm: {e}'
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict) and payload.get('error'):
+        return False, payload.get('message', 'Last.fm rejected the API key.')
+    if not response.ok:
+        return False, f'Last.fm returned HTTP {response.status_code}.'
+
+    return True, 'Connected to Last.fm successfully.'
+
+
+def _audiomuse_get(path: str, params: dict, timeout: float = 10.0):
+    """GET a AudioMuse-AI endpoint. Returns (data, error_message)."""
+    audiomuse_url = settings_store.get('audiomuse_url')
+    if not audiomuse_url:
+        return None, 'AudioMuse-AI is not configured on this server.'
+
+    headers = {}
+    api_token = settings_store.get('audiomuse_api_token')
+    if api_token:
+        headers['Authorization'] = f'Bearer {api_token}'
+
+    try:
+        url = f"{audiomuse_url.rstrip('/')}{path}"
+        response = requests.get(url, params=params, headers=headers, timeout=timeout)
+        if not response.ok:
+            bsn_logger.error(f'AudioMuse-AI API error: {response.status_code} - {response.text}')
+            return None, 'Failed to communicate with AudioMuse-AI.'
+        return response.json(), None
+
+    except requests.RequestException as e:
+        bsn_logger.error(f'AudioMuse-AI connection failed: {e}')
+        return None, 'Could not connect to AudioMuse-AI.'
+
+
+def _audiomuse_post(path: str, json_body: dict, timeout: float = 10.0):
+    """POST to a AudioMuse-AI endpoint. Returns (data, error_message)."""
+    audiomuse_url = settings_store.get('audiomuse_url')
+    if not audiomuse_url:
+        return None, 'AudioMuse-AI is not configured on this server.'
+
+    headers = {}
+    api_token = settings_store.get('audiomuse_api_token')
+    if api_token:
+        headers['Authorization'] = f'Bearer {api_token}'
+
+    try:
+        url = f"{audiomuse_url.rstrip('/')}{path}"
+        response = requests.post(url, json=json_body, headers=headers, timeout=timeout)
+        if not response.ok:
+            bsn_logger.error(f'AudioMuse-AI API error: {response.status_code} - {response.text}')
+            return None, 'Failed to communicate with AudioMuse-AI.'
+        return response.json(), None
+
+    except requests.RequestException as e:
+        bsn_logger.error(f'AudioMuse-AI connection failed: {e}')
+        return None, 'Could not connect to AudioMuse-AI.'
+
+
+def test_audiomuse_connection() -> tuple[bool, str]:
+    """Ping AudioMuse-AI's health endpoint. Returns (ok, message)."""
+    if not settings_store.get('audiomuse_url'):
+        return False, 'AudioMuse-AI URL is not configured.'
+
+    data, err = _audiomuse_get('/api/health', {}, timeout=8.0)
+    if err:
+        return False, err
+    return True, 'Connected to AudioMuse-AI successfully.'
+
+
+def start_audiomuse_analysis() -> tuple[bool, str]:
+    """Trigger a AudioMuse-AI analysis over the whole library."""
+    data, err = _audiomuse_post('/api/analysis/start', {'num_recent_albums': 0}, timeout=15.0)
+    if err:
+        return False, err
+
+    task_id = (data or {}).get('task_id')
+    if task_id:
+        return True, f'Fingerprinting started on AudioMuse-AI (task {task_id}).'
+    return True, 'Fingerprinting started on AudioMuse-AI.'
 
 
 async def _async_wiki_search(q: str) -> str | None:

@@ -11,6 +11,9 @@ from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_u
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.external import (
+    test_lastfm_connection, test_audiomuse_connection, start_audiomuse_analysis
+)
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
@@ -104,6 +107,23 @@ def route_clear_setting(category: str, key: str) -> flask.Response:
     settings_store.set(key, '')
     flask.flash(f"Cleared '{key}'.", 'success')
     return _back_to(category)
+
+
+##
+# Library integrations: test connection
+
+@admin_bp.route('/settings/test/lastfm', methods=['GET'])
+@admin_required
+def route_test_lastfm() -> flask.Response:
+    ok, message = test_lastfm_connection()
+    return flask.jsonify({'ok': ok, 'message': message})
+
+
+@admin_bp.route('/settings/test/audiomuse', methods=['GET'])
+@admin_required
+def route_test_audiomuse() -> flask.Response:
+    ok, message = test_audiomuse_connection()
+    return flask.jsonify({'ok': ok, 'message': message})
 
 
 ##
@@ -270,6 +290,14 @@ def route_sanity_check() -> flask.Response:
         bsn_logger.error(f'Database sanity sweep failed: {e}')
         flask.flash(f'Sanity check failed: {e}', 'error')
 
+    return _back_to('maintenance')
+
+
+@admin_bp.route('/maintenance/audiomuse-fingerprint', methods=['POST'])
+@admin_required
+def route_audiomuse_fingerprint() -> flask.Response:
+    ok, message = start_audiomuse_analysis()
+    flask.flash(message, 'success' if ok else 'error')
     return _back_to('maintenance')
 
 

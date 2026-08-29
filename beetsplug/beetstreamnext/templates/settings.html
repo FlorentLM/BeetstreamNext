@@ -74,6 +74,24 @@
     {%- endif -%}
 {%- endmacro %}
 
+{% macro render_field_actions(key) -%}
+    {%- if key == 'lastfm_api_key' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline" data-action="test-connection"
+                    data-url="{{ url_for('admin.route_test_lastfm') }}"
+                    data-result="test-result-lastfm">Test connection</button>
+        </p>
+        <p class="test-result" id="test-result-lastfm"></p>
+    {%- elif key == 'audiomuse_url' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline" data-action="test-connection"
+                    data-url="{{ url_for('admin.route_test_audiomuse') }}"
+                    data-result="test-result-audiomuse">Test connection</button>
+        </p>
+        <p class="test-result" id="test-result-audiomuse"></p>
+    {%- endif -%}
+{%- endmacro %}
+
 {% macro render_settings_form(category, settings, users=None) %}
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
@@ -91,6 +109,7 @@
                     {% if info.help %}
                         <pre class="setting-help"><code>{{ info.help }}</code></pre>
                     {% endif %}
+                    {{ render_field_actions(key) }}
                 </div>
             </div>
         {% endfor %}
@@ -652,12 +671,12 @@
 
         <div class="card">
             <div class="table-header">
-                <h2>Rate Limit State</h2>
+                <h2>Rate Limits</h2>
                 <button class="btn btn-outline" data-action="refresh-rate-limits"
                         data-url="{{ url_for('admin.route_rate_limits') }}">Refresh</button>
             </div>
             <div id="rate-limit-state" class="rate-limit-state">
-                <p class="empty-state">Click <em>Refresh</em> to load current state.</p>
+                <p class="empty-state">Loading...</p>
             </div>
             <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
                   data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
@@ -668,14 +687,27 @@
         </div>
 
         <div class="card">
-            <div class="table-header"><h2>Database Sanity Check</h2></div>
+            <div class="table-header"><h2>Database Cleanup</h2></div>
             <p class="card-hint">
                 Removes stale entries in the database (bookmarks, likes, ratings, play stats, queue entries and shares that
                 point at a song or podcast episode that no longer exists). Also runs periodically in the background.
             </p>
             <form method="POST" action="{{ url_for('admin.route_sanity_check') }}" class="card-body-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Run sanity check</button>
+                <button type="submit" class="btn btn-outline">Run cleanup</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
+            <p class="card-hint">
+                Triggers a full-library analysis on AudioMuse-AI in the background. Requires
+                <code>audiomuse_url</code> to be configured under Library settings.
+            </p>
+            <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
+                  data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline">Fingerprint library</button>
             </form>
         </div>
 

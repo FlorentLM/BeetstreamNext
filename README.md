@@ -109,7 +109,7 @@ Settings can be managed initially via Beets' `config.yaml`, and subsequently adj
 
 ```yaml
 beetstreamnext:
-  host: 0.0.0.0
+  host: 0.0.0.0                 # Or a list (e.g. [192.168.1.10, 100.64.0.5]) to bind only specific interfaces
   port: 8080
   reverse_proxy: false          # Enable if running behind Nginx/Caddy
   

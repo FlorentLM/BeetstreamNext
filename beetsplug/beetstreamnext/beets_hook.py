@@ -101,7 +101,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('--debug', dest='debug', action='store_true', default=False, help='Run server in debug mode')
         cmd.parser.add_option('--force_trust_host', dest='force_trust_host', action='store_true', default=False, help='Force debug mode on non-localhost')
         cmd.parser.add_option('--port', dest='port', type='int', help='Port to listen on')
-        cmd.parser.add_option('--host', dest='host', help='Host to listen on')
+        cmd.parser.add_option('--host', dest='host', help='Host(s) to listen on, comma-separated (e.g. 192.168.1.10,100.64.0.5)')
         cmd.parser.add_option('--threads', dest='threads', type='int', help='Waitress worker threads')
 
         # User management
@@ -273,7 +273,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         print(f'Error: {e}')
                     return
 
-            host = opts.host or self.config['host'].as_str()
+            host = [h.strip() for h in opts.host.split(',')] if opts.host else list(self.config['host'].as_str_seq())
             port = opts.port or self.config['port'].get(int)
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
@@ -299,13 +299,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 # Read db, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING
                 settings_store.initialise(yaml_defaults)
 
-            if debug and host not in LOOPBACK_IPS:
+            if debug and any(h not in LOOPBACK_IPS for h in host):
                 if force_trust_host:
                     print_box([
                         '',
                         f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  !!! SUPER IMPORTANT WARNING !!!  {TermColors.ENDC}',
                         '',
-                        f'Debug mode is force-enabled on {host}.',
+                        f"Debug mode is force-enabled on {', '.join(host)}.",
                         f'The Werkzeug debugger allows arbitrary remote code execution.',
                         '',
                         "I hope you know what you're doing!",
@@ -324,14 +324,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     return
 
             if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
-                if host not in LOOPBACK_IPS:
+                if any(h not in LOOPBACK_IPS for h in host):
                     print_box([
                         '',
                         f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
                         '',
-                        f'Legacy authentication is enabled, and the server',
-                        f'is listening on http://{host}:{port}',
-                        f'without a reverse proxy.',
+                        'Legacy authentication is enabled, and the server',
+                        f"is listening on {', '.join(f'http://{h}:{port}' for h in host)}",
+                        'without a reverse proxy.',
                         '',
                         'Passwords from legacy clients may be',
                         'transmitted in cleartext over HTTP.',
@@ -339,13 +339,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     ], color=TermColors.WARNING)
 
             if settings_store.get('reverse_proxy'):
-                if host not in LOOPBACK_IPS:
+                if any(h not in LOOPBACK_IPS for h in host):
                     print_box([
                         '',
                         f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
                         '',
                         'reverse_proxy is enabled and the server is bound to',
-                        f'{host}:{port} (not loopback).',
+                        f"{', '.join(host)}:{port} (not loopback).",
                         '',
                         'Make sure this address is *not* reachable without going through the proxy.',
                         '',
@@ -412,7 +412,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             apply_logs_redaction()
             if debug:
-                app.run(host=host, port=port, debug=True, threaded=True)
+                if len(host) > 1:
+                    bsn_logger.warning(
+                        f"Debug mode (Werkzeug) can only bind one interface, ignoring all but '{host[0]}' "
+                        f"(configured: {', '.join(host)})."
+                    )
+                app.run(host=host[0], port=port, debug=True, threaded=True)
 
             else:
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
@@ -421,11 +426,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 connection_limit = settings_store.get('connection_limit')
                 logging.getLogger('waitress').setLevel(LOG_LEVEL)
                 if LOG_LEVEL > logging.INFO:
-                    print(f'BeetstreamNext server running on http://{host}:{port}...')
+                    urls = ', '.join(f'http://{h}:{port}' for h in host)
+                    print(f'BeetstreamNext server running on {urls}...')
                 logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
                 serve(
-                    logged_app, host=host, port=port, threads=threads,
+                    logged_app, listen=[f'{h}:{port}' for h in host], threads=threads,
                     channel_timeout=channel_timeout, connection_limit=connection_limit
                 )
 

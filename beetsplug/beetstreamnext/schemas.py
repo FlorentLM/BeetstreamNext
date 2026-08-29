@@ -1,5 +1,6 @@
 from typing import TypedDict, Any, Callable, Dict, Tuple
 
+from beetsplug.beetstreamnext.constants import SERVER_NAME
 from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts
 
 
@@ -85,7 +86,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': 'If set, the admin panel will only be accessible when visited via this hostname (e.g. https://beetstreamnext.internal.example.com). Loopback is always allowed.',
+        'description': f'If set, the admin panel will only be accessible when visited via this hostname '
+                       f'(e.g. https://{SERVER_NAME.lower()}.internal.example.com). Loopback is always allowed.',
         'requires_restart': False,
     },
     'external_hostname': {
@@ -140,7 +142,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Server is behind a reverse proxy (Nginx, Caddy, Traefik, etc.).',
         'requires_restart': True,
         'help': (
-            "# Example Nginx configuration (adjust to match your BeetstreamNext host/port):\n"
+            f"# Example Nginx configuration (adjust to match your {SERVER_NAME} host/port):\n"
             "\n"
             "location / {\n"
             "    proxy_pass http://127.0.0.1:8080;\n"
@@ -336,7 +338,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': (
             "Commit this user's Likes and Ratings into the Beets library so they survive outside "
-            "BeetstreamNext. Beets has no concept of per-user data, so only one user's changes can "
+            f"{SERVER_NAME}. Beets has no concept of per-user data, so only one user's changes can "
             "be committed this way. Leave unset to disable."
         ),
         'requires_restart': False,
@@ -346,7 +348,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': [],
         'category': 'library',
         'description': (
-            "Who can rename/edit/delete non BeetstreamNext playlists "
+            f"Who can rename/edit/delete non{SERVER_NAME} playlists "
             "(from Beets' `playlist` plugin directory)."
             "Smartplaylist-generated playlists are always read-only."
         ),

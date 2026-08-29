@@ -12,11 +12,13 @@ START_TIME = time.time()    # not a constant but...yeah
 
 ## Versions
 
-REPO_URL: str = 'https://github.com/FlorentLM/BeetstreamNext'
-SUBSONIC_API_VER: str = '1.16.1'
-BEETSTREAMNEXT_VER: str = '1.7.0-dev'
+SERVER_NAME: str = 'BeetstreamNext'
 
-USER_AGENT: str = f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( {REPO_URL} )'
+REPO_URL: str = f'https://github.com/FlorentLM/BeetstreamNext'
+SUBSONIC_API_VER: str = '1.16.1'
+SERVER_VERSION: str = '1.8.0'
+
+USER_AGENT: str = f'{SERVER_NAME}/{SERVER_VERSION} ( {REPO_URL} )'
 
 ## Paths and deps
 

@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "beetstreamnext"
-version = "1.7.0"
+version = "1.8.0"
 description = "A modern, feature-rich OpenSubsonic API server for your Beets.io music library."
 authors = ["Florent Le Moël <25004801+FlorentLM@users.noreply.github.com>"]
 license = "MIT"

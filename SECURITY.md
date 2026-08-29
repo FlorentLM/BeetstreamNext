@@ -9,10 +9,9 @@ Security reports are welcome and appreciated.
 Only the current pre-release version is supported
 
 | Version | Supported          |
-| ------- | ------------------ |
-| 1.7.0   | :white_check_mark: |
-| 1.7.0-dev   | :white_check_mark: |
-| < 1.7.x | :x:                |
+|---------| ------------------ |
+| 1.8.0   | :white_check_mark: |
+| < 1.8.x | :x:                |
 
 ## Reporting a Vulnerability
 

@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, BEETSTREAMNEXT_VER
+from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, SERVER_VERSION
 
 
 ##
@@ -69,7 +69,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
 
     if extended:
         additional_info = {
-            'version': BEETSTREAMNEXT_VER,
+            'version': SERVER_VERSION,
             'beets_version': beets.__version__,
             'python_version': platform.python_version(),
             'os': platform.system(),

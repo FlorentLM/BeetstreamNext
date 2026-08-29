@@ -9,7 +9,7 @@ from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import (
-    WIKI_API, RADIO_BROWSER, BEETSTREAMNEXT_VER, MAX_REMOTE_IMAGE_BYTES, USER_AGENT, _SCHEME_RE, _DUPLICATE_SCHEME_RE
+    WIKI_API, RADIO_BROWSER, MAX_REMOTE_IMAGE_BYTES, USER_AGENT, _SCHEME_RE, _DUPLICATE_SCHEME_RE
 )
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
@@ -147,7 +147,7 @@ def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> d
 
     search_endpoint += '&limit=5&index=0'
 
-    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
+    headers = {'User-Agent': USER_AGENT}
 
     try:
         response = http_session().get(search_endpoint, headers=headers, timeout=8)
@@ -184,7 +184,7 @@ def query_musicbrainz(mbid: str, data_type: str) -> dict:
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[data_type]}/{mbid}'
 
-    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
+    headers = {'User-Agent': USER_AGENT}
     params = {'fmt': 'json'}
 
     if types_mb[data_type] == 'artist':
@@ -243,7 +243,7 @@ def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = T
         if artist and data_type == 'track':
             params['artist'] = artist
 
-    headers = {'User-Agent': f'BeetstreamNext/{BEETSTREAMNEXT_VER} ( https://github.com/FlorentLM/BeetstreamNext )'}
+    headers = {'User-Agent': USER_AGENT}
     try:
         response = http_session().get(endpoint, headers=headers, params=params, timeout=15) # lastfm is very slow...
         if response.from_cache:

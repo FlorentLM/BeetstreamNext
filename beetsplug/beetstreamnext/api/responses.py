@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 import flask
 
-from beetsplug.beetstreamnext.constants import SUBSONIC_API_VER, BEETSTREAMNEXT_VER, ALPHANUM_CHARS
+from beetsplug.beetstreamnext.constants import SUBSONIC_API_VER, SERVER_VERSION, ALPHANUM_CHARS, SERVER_NAME
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
@@ -21,8 +21,8 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
             'subsonic-response': {
                 'status': 'failed' if failed else 'ok',
                 'version': SUBSONIC_API_VER,
-                'type': 'BeetstreamNext',
-                'serverVersion': BEETSTREAMNEXT_VER,
+                'type': SERVER_NAME,
+                'serverVersion': SERVER_VERSION,
                 'openSubsonic': True,
                 **data
             }
@@ -30,19 +30,19 @@ def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed
         return jsonpify(resp_fmt, wrapped)
 
     else:
-        root = dict_to_xml("subsonic-response", data)
-        root.set("xmlns", "http://subsonic.org/restapi")
-        root.set("status", 'failed' if failed else 'ok')
-        root.set("version", SUBSONIC_API_VER)
-        root.set("type", 'BeetstreamNext')
-        root.set("serverVersion", BEETSTREAMNEXT_VER)
-        root.set("openSubsonic", 'true')
+        root = dict_to_xml('subsonic-response', data)
+        root.set('xmlns', 'http://subsonic.org/restapi')
+        root.set('status', 'failed' if failed else 'ok')
+        root.set('version', SUBSONIC_API_VER)
+        root.set('type', SERVER_NAME)
+        root.set('serverVersion', SERVER_VERSION)
+        root.set('openSubsonic', 'true')
 
         xml_bytes = ET.tostring(root, encoding='UTF-8', method='xml', xml_declaration=True)
         # xml_bytes = minidom.parseString(xml_bytes).toprettyxml(encoding='UTF-8')
         xml_str = xml_bytes.decode('UTF-8')
 
-        return flask.Response(xml_str, mimetype="text/xml")
+        return flask.Response(xml_str, mimetype='text/xml')
 
 
 def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml') -> flask.Response:

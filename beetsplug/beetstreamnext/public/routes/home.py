@@ -4,7 +4,7 @@ from flask import render_template
 from .. import public_bp
 
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve
 
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import get_server_info, external_url
@@ -31,7 +31,7 @@ def home() -> str:
             ).fetchone()
 
         if row:
-            entry_type, entry = IDMapper.resolve(row['item_id'])
+            entry_type, entry = Resolve.any(row['item_id'])
 
             if entry_type == 'song' and entry:
                 now_playing = {

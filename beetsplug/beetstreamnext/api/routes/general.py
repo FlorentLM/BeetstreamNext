@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs
 
 from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
@@ -187,17 +187,17 @@ def endpoint_get_music_directory() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDMapper.get_type(req_id) == 'artist':
+    if IDs.decode_type(req_id) == 'artist':
         payload = artist_payload(req_id, with_albums=True)
         payload['directory'] = payload.pop('artist')
         payload['directory']['child'] = payload['directory'].pop('album')
 
-    elif IDMapper.get_type(req_id) == 'album':
+    elif IDs.decode_type(req_id) == 'album':
         payload = album_payload(req_id, include_songs=True)
         payload['directory'] = payload.pop('album')
         payload['directory']['child'] = payload['directory'].pop('song')
 
-    elif IDMapper.get_type(req_id) == 'song':
+    elif IDs.decode_type(req_id) == 'song':
         payload = song_payload(req_id)
         payload['directory'] = payload.pop('song')
 
@@ -218,7 +218,7 @@ def endpoint_get_music_directory() -> flask.Response:
         children = []
         for row in rows:
             artist_name, artist_mbid = row
-            artist_id = IDMapper.mint_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+            artist_id = IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
 
             children.append({
                 'id': artist_id,

@@ -11,18 +11,18 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
-from beetsplug.beetstreamnext.core.cache import preload_artists
+from beetsplug.beetstreamnext.core.cache import preload_artists, get_song_counts
 from beetsplug.beetstreamnext.core.images import image_url
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
 
-    value, is_mbid = IDMapper.decode_artist_mbid(subsonic_artist_id)
+    value, is_mbid = IDs.decode_artist(subsonic_artist_id)
     if not value:
         return {}
 
@@ -67,9 +67,9 @@ def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
         else:
             albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
 
-        song_counts = IDMapper.get_song_counts(albums)
+        song_counts = get_song_counts(albums)
 
-        payload['artist']['album'] = list(map(partial(IDMapper.map_album, include_songs=False, song_counts=song_counts), albums))
+        payload['artist']['album'] = list(map(partial(Serialise.album, include_songs=False, song_counts=song_counts), albums))
 
     return payload
 
@@ -140,7 +140,7 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
             'index': [
                 {
                     'name': char,
-                    'artist': [IDMapper.map_artist(a, with_albums=False, prefetched=artist_prefetch) for a in artists]
+                    'artist': [Serialise.artist(a, with_albums=False, prefetched=artist_prefetch) for a in artists]
                 }
                 for char, artists in sorted(alphanum_dict.items())
             ]
@@ -187,7 +187,7 @@ def endpoint_artist_info() -> flask.Response:
     if not artist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    resolved = IDMapper.resolve_artist(artist_id)
+    resolved = Resolve.artist(artist_id)
     if not resolved:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -217,7 +217,7 @@ def endpoint_artist_info() -> flask.Response:
     tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
 
     # image id is the artist id, but input may have been song or album
-    image_id = IDMapper.mint_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+    image_id = IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
 
     payload = {
         tag: {
@@ -241,7 +241,7 @@ def endpoint_artist_info() -> flask.Response:
             name = entry.get('name')
             if not name:
                 continue
-            mapped = IDMapper.map_artist(name, with_albums=False)
+            mapped = Serialise.artist(name, with_albums=False)
             if not include_not_present and not mapped['albumCount']:
                 continue
             similar_artists.append(mapped)

@@ -3,7 +3,7 @@ import flask
 from .. import public_bp
 
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve
 
 from beetsplug.beetstreamnext.settings import settings_store
 
@@ -32,7 +32,7 @@ def now_playing_cover() -> flask.Response:
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 
-    entry_type, entry = IDMapper.resolve(row['item_id'])
+    entry_type, entry = Resolve.any(row['item_id'])
 
     if entry_type == 'song':
         if entry and entry.get('album_id'):

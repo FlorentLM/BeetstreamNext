@@ -177,8 +177,8 @@ def one_play_stats(song_id: str) -> dict | None:
 def preload_songs(beets_items: list):
     if not beets_items:
         return
-    from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
-    sub_ids = [IDMapper.mint_song(standardise_datadict(s)) for s in beets_items]
+    from beetsplug.beetstreamnext.api.idmapper import IDs, standardise_datadict
+    sub_ids = [IDs.encode_song(standardise_datadict(s)) for s in beets_items]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -188,8 +188,8 @@ def preload_songs(beets_items: list):
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
-    from beetsplug.beetstreamnext.api.idmapper import IDMapper
-    sub_ids = [IDMapper.mint_album(a['id']) for a in beets_albums]
+    from beetsplug.beetstreamnext.api.idmapper import IDs
+    sub_ids = [IDs.encode_album(a['id']) for a in beets_albums]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)
@@ -200,24 +200,44 @@ def preload_artists(artists_data):
     if not artists_data:
         return
 
-    from beetsplug.beetstreamnext.api.idmapper import IDMapper
+    from beetsplug.beetstreamnext.api.idmapper import IDs
 
     sub_ids = []
     if isinstance(artists_data, dict):
         for name, data in artists_data.items():
             mbid = validate_mbid(data.get('mbid'))
-            sub_ids.append(IDMapper.mint_artist(mbid or name, is_mbid=bool(mbid)))
+            sub_ids.append(IDs.encode_artist(mbid or name, is_mbid=bool(mbid)))
 
     elif isinstance(artists_data, list):
         for item in artists_data:
             if isinstance(item, str):
-                sub_ids.append(IDMapper.mint_artist(item, is_mbid=False))
+                sub_ids.append(IDs.encode_artist(item, is_mbid=False))
 
             elif isinstance(item, dict) or hasattr(item, 'keys'):
                 name = item.get('albumartist') or item.get('artist') or ''
                 mbid = validate_mbid(item.get('mb_albumartistid')) or validate_mbid(item.get('mb_artistid'))
-                sub_ids.append(IDMapper.mint_artist(mbid or name, is_mbid=bool(mbid)))
+                sub_ids.append(IDs.encode_artist(mbid or name, is_mbid=bool(mbid)))
 
     if sub_ids:
         batch_likes(sub_ids)
         batch_ratings(sub_ids)
+
+
+def get_song_counts(albums: List[dict]) -> dict:
+    """Get song counts for a list of albums in a single db query."""
+
+    album_ids = [row['id'] for row in albums]
+
+    if not album_ids:
+        return {}
+
+    with flask.g.lib.transaction() as tx:
+        sql_query = ('SELECT album_id, COUNT(*) as count, CAST(SUM(length) AS INTEGER) as duration'
+                     + ' FROM items WHERE album_id IN ({q}) GROUP BY album_id')
+        count_rows = chunked_query(
+            db_obj=tx,
+            query_template=sql_query,
+            chunked_values=album_ids
+        )
+
+    return {row['album_id']: (row['count'], row['duration'] or 0) for row in count_rows}

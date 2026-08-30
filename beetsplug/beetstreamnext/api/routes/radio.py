@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve, Serialise
 
 def radios_payload() -> dict:
 
@@ -20,7 +20,7 @@ def radios_payload() -> dict:
 
     payload = {
         'internetRadioStations': {
-            'internetRadioStation': [IDMapper.map_radio_station(dict(row)) for row in rows]
+            'internetRadioStation': [Serialise.radio(dict(row)) for row in rows]
         }
     }
 
@@ -78,7 +78,7 @@ def endpoint_update_radio_station() -> flask.Response:
     if not raw_id or not name or not stream_url:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    station = IDMapper.resolve_radio(raw_id)
+    station = Resolve.radio(raw_id)
     if station is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -101,7 +101,7 @@ def endpoint_delete_radio_station() -> flask.Response:
     if not raw_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    station = IDMapper.resolve_radio(raw_id)
+    station = Resolve.radio(raw_id)
     if station is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 

@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 
 def _list_channels(username: str) -> List[dict]:
 
@@ -88,7 +88,7 @@ def endpoint_get_podcasts() -> flask.Response:
     is_admin = bool(flask.g.user_data.get('adminRole'))
 
     if req_id:
-        channel = IDMapper.resolve_podcast_channel(req_id)
+        channel = Resolve.podcast_channel(req_id)
         if not channel or not (is_admin or _is_subscribed(username, channel['id'])):
             return subsonic_error(70, resp_fmt=resp_fmt)
         channels = [channel]
@@ -97,7 +97,7 @@ def endpoint_get_podcasts() -> flask.Response:
         channels = _list_channels(username)
 
     entries = [
-        IDMapper.map_podcast_channel(ch, _list_episodes(ch['id']) if include_episodes else None)
+        Serialise.podcast_channel(ch, _list_episodes(ch['id']) if include_episodes else None)
         for ch in channels
     ]
 
@@ -118,7 +118,7 @@ def endpoint_get_newest_podcasts() -> flask.Response:
     count = r.get('count', default=20, type=int)
 
     entries = [
-        IDMapper.map_podcast_episode(row, {'channel_title': row.get('channel_title')})
+        Serialise.podcast_episode(row, {'channel_title': row.get('channel_title')})
         for row in _newest_episodes(flask.g.username, count)
     ]
 
@@ -172,7 +172,7 @@ def endpoint_delete_podcast_channel() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    channel = IDMapper.resolve_podcast_channel(req_id)
+    channel = Resolve.podcast_channel(req_id)
     if not channel:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -227,7 +227,7 @@ def endpoint_download_podcast_episode() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    episode = IDMapper.resolve_podcast_episode(req_id)
+    episode = Resolve.podcast_episode(req_id)
     if not episode:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -259,7 +259,7 @@ def endpoint_delete_podcast_episode() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    episode = IDMapper.resolve_podcast_episode(req_id)
+    episode = Resolve.podcast_episode(req_id)
     if not episode:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -285,13 +285,13 @@ def endpoint_get_podcast_episode() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    episode = IDMapper.resolve_podcast_episode(req_id)
+    episode = Resolve.podcast_episode(req_id)
     if not episode:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    channel = IDMapper.resolve_podcast_channel(IDMapper.mint_podcast_channel(episode['channel_id']))
+    channel = Resolve.podcast_channel(IDs.encode_podcast_channel(episode['channel_id']))
 
     payload = {
-        'episode': IDMapper.map_podcast_episode(episode, channel)
+        'episode': Serialise.podcast_episode(episode, channel)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

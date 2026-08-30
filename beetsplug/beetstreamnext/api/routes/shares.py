@@ -5,7 +5,7 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -39,7 +39,7 @@ def endpoint_get_shares() -> flask.Response:
             ).fetchall()
 
             entries = [e[0] for e in rows]
-            shares_data.append(IDMapper.map_share(s, entries))
+            shares_data.append(Serialise.shared_items(s, entries))
 
     payload = {
         'shares': {
@@ -96,7 +96,7 @@ def endpoint_create_share() -> flask.Response:
 
     payload = {
         'shares': {
-            'share': [IDMapper.map_share(row, ids)]
+            'share': [Serialise.shared_items(row, ids)]
         }
     }
 

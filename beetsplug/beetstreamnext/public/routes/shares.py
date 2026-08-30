@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import send_file
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 
 from beetsplug.beetstreamnext.api.idmapper import beets_abspath
 
@@ -39,7 +39,7 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
     if explicit_match:
         return True
 
-    entry_type, item = IDMapper.resolve(entry_id)
+    entry_type, item = Resolve.any(entry_id)
     if entry_type != 'song':
         return False
 
@@ -47,7 +47,7 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
     if not album_id:
         return False
 
-    sub_album_id = IDMapper.mint_album(album_id)
+    sub_album_id = IDs.encode_album(album_id)
     with database() as db:
         album_match = db.execute(
             """
@@ -121,9 +121,9 @@ def share_view(share_id: str) -> flask.Response:
 
     entry_ids = [r['item_id'] for r in entry_rows]
 
-    resolved_songs, resolved_albums = IDMapper.resolve_share(entry_ids)
-    songs = [IDMapper.map_song(s) for s in resolved_songs]
-    albums = [IDMapper.map_album(a, include_songs=True) for a in resolved_albums]
+    resolved_songs, resolved_albums = Resolve.shared_items(entry_ids)
+    songs = [Serialise.song(s) for s in resolved_songs]
+    albums = [Serialise.album(a, include_songs=True) for a in resolved_albums]
 
     return render_template('shares.html', share=share, songs=songs, albums=albums)
 
@@ -146,7 +146,7 @@ def share_download(share_id: str, entry_id: str) -> flask.Response | None:
     if not _is_shared(share_id, entry_id):
         flask.abort(403)
 
-    entry_type, item = IDMapper.resolve(entry_id)
+    entry_type, item = Resolve.any(entry_id)
     if entry_type != 'song' or not item:
         flask.abort(404)
 
@@ -168,7 +168,7 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     if not share or (share['expires'] and share['expires'] < time.time()):
         flask.abort(404)
 
-    entry_type, album = IDMapper.resolve(entry_id)
+    entry_type, album = Resolve.any(entry_id)
     if entry_type != 'album':
         flask.abort(404)
 
@@ -221,7 +221,7 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 
-    entry_type, entry = IDMapper.resolve(entry_id)
+    entry_type, entry = Resolve.any(entry_id)
 
     if entry_type == 'album':
         response = send_album_art(entry.id, rounded_size) if entry else None

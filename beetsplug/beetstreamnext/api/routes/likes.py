@@ -3,12 +3,12 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.core.database import database, dual_database
-from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists
+from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 from beetsplug.beetstreamnext.core.beets_interaction import commit_likes
 
 
@@ -110,23 +110,23 @@ def endpoint_get_starred() -> flask.Response:
         ).fetchall()
 
     song_ids_ordered = [row['item_id'] for row in song_id_rows]
-    resolved = IDMapper.resolve_many_songs(song_ids_ordered)
+    resolved = Resolve.songs(song_ids_ordered)
     song_items = [resolved[sid] for sid in song_ids_ordered if sid in resolved]
 
     preload_songs(song_items)
 
-    songs = [IDMapper.map_song(item) for item in song_items]
+    songs = [Serialise.song(item) for item in song_items]
     album_dicts = [dict(row) for row in album_rows]
 
     preload_albums(album_dicts)
 
-    song_counts = IDMapper.get_song_counts(album_dicts)
-    albums = [IDMapper.map_album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
+    song_counts = get_song_counts(album_dicts)
+    albums = [Serialise.album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
 
     mbids_to_resolve = []
     beets_artist_names = []
     for row in artist_rows:
-        value, is_mbid = IDMapper.decode_artist_mbid(row[0])
+        value, is_mbid = IDs.decode_artist(row[0])
         if value and is_mbid:
             mbids_to_resolve.append(value)
         elif value:
@@ -161,7 +161,7 @@ def endpoint_get_starred() -> flask.Response:
 
     preload_artists(prefetched)
 
-    artists = [IDMapper.map_artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
+    artists = [Serialise.artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
 
     tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {

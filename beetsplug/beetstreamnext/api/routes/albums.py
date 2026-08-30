@@ -6,23 +6,23 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.images import image_url
 from beetsplug.beetstreamnext.core.database import dual_database
-from beetsplug.beetstreamnext.core.cache import preload_albums
+from beetsplug.beetstreamnext.core.cache import preload_albums, get_song_counts
 
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
 
-    album_object = IDMapper.resolve_album(subsonic_album_id)
+    album_object = Resolve.album(subsonic_album_id)
     if not album_object:
         return {}
 
     payload = {
         "album": {
-            **IDMapper.map_album(album_object, include_songs=include_songs)
+            **Serialise.album(album_object, include_songs=include_songs)
         }
     }
     return payload
@@ -58,15 +58,15 @@ def endpoint_get_album_info() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDMapper.get_type(req_id) == 'song':
-        item = IDMapper.resolve_song(req_id)
+    if IDs.decode_type(req_id) == 'song':
+        item = Resolve.song(req_id)
         beets_album_id = item.get('album_id') if item else None
 
         album = flask.g.lib.get_album(beets_album_id) if beets_album_id else None
-        image_id = IDMapper.mint_album(beets_album_id or req_id)
+        image_id = IDs.encode_album(beets_album_id or req_id)
 
     else:
-        album = IDMapper.resolve_album(req_id)
+        album = Resolve.album(req_id)
         image_id = req_id
 
     if not album:
@@ -228,12 +228,12 @@ def endpoint_get_album_list() -> flask.Response:
 
         albums_dict = [dict(album) for album in albums]
 
-    song_counts = IDMapper.get_song_counts(albums_dict)
+    song_counts = get_song_counts(albums_dict)
     preload_albums(albums_dict)
 
     payload = {
         tag: {
-            "album": [IDMapper.map_album(a, include_songs=False, song_counts=song_counts) for a in albums_dict]
+            "album": [Serialise.album(a, include_songs=False, song_counts=song_counts) for a in albums_dict]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

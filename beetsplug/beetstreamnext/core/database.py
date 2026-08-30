@@ -689,9 +689,10 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
 
     Rows for a song that no longer exists in the library are dropped.
     """
-    from beetsplug.beetstreamnext.api.idmapper import _mint_song_id
+    from beetsplug.beetstreamnext.api.idmapper import IDs
 
-    root_directory = beets.config['directory'].get()
+    # this migration runs before app.config['root_directory'] is set so this is needed
+    _root_dir = beets.config['directory'].get()
 
     conn.commit()   # close any implicit transaction before toggling FK enforcement
     conn.execute("""PRAGMA foreign_keys = OFF""")
@@ -706,7 +707,10 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
         ).fetchall()
 
         id_map = {
-            row[0]: _mint_song_id(row[1], row[2], row[3], row[0], root_directory)
+            row[0]: IDs.encode_song(
+                {'id': row[0], 'mb_trackid': row[1], 'mb_releasetrackid': row[2], 'path': row[3]},
+                _root_directory=_root_dir
+            )
             for row in item_rows
         }
 

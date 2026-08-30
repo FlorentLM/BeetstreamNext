@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve, Serialise
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
@@ -53,7 +53,7 @@ def endpoint_get_playlists() -> flask.Response:
 
     payload = {
         'playlists': {
-            'playlist': [IDMapper.map_playlist(p) for p in playlists]
+            'playlist': [Serialise.playlist(p) for p in playlists]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -76,7 +76,7 @@ def endpoint_get_playlist() -> flask.Response:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
-        'playlist': IDMapper.map_playlist(playlist, include_songs=True)
+        'playlist': Serialise.playlist(playlist, include_songs=True)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -97,7 +97,7 @@ def endpoint_create_playlist() -> flask.Response:
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = [s for sid in songs_ids if sid and (s := IDMapper.resolve_song(sid))]
+    songs = [s for sid in songs_ids if sid and (s := Resolve.song(sid))]
     try:
         playlist = Playlist.from_songs(name, songs)
     except FileExistsError as e:
@@ -106,7 +106,7 @@ def endpoint_create_playlist() -> flask.Response:
     flask.g.playlist_provider.register(playlist)
 
     payload = {
-        'playlist': IDMapper.map_playlist(playlist)
+        'playlist': Serialise.playlist(playlist)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -174,7 +174,7 @@ def endpoint_update_playlist() -> flask.Response:
             beets_items = []
 
             for s_id in to_add:
-                item = IDMapper.resolve_song(s_id)
+                item = Resolve.song(s_id)
                 if item:
                     beets_items.append(item)
             playlist.add_songs(beets_items)

@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxUnavailableException
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve, Serialise
 
 ##
 # Endpoint
@@ -34,7 +34,7 @@ def endpoint_jukebox_control() -> flask.Response:
             payload = {
                 'jukeboxPlaylist': {
                     **player.status(),
-                    'entry': IDMapper.map_playables(player.track_ids())
+                    'entry': Serialise.playables(player.track_ids())
                 }
             }
             return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -43,10 +43,10 @@ def endpoint_jukebox_control() -> flask.Response:
             pass
 
         elif action == 'set':
-            player.set_playlist(IDMapper.resolve_playables(entry_ids))
+            player.set_playlist(Resolve.playables(entry_ids))
 
         elif action == 'add':
-            player.add(IDMapper.resolve_playables(entry_ids))
+            player.add(Resolve.playables(entry_ids))
 
         elif action == 'clear':
             player.clear()

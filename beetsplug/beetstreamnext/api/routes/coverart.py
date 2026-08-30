@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden, find_ffmpeg
 from beetsplug.beetstreamnext.api.responses import subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import (
@@ -39,7 +39,7 @@ def endpoint_get_cover_art() -> flask.Response:
     if req_id == app.config['root_directory'].name or req_id == 'm-0':
         return flask.send_file(app.config['IMAGES_PATH'] / 'logo.png', mimetype='image/png')
 
-    entry_type, entry = IDMapper.resolve(req_id)
+    entry_type, entry = Resolve.any(req_id)
 
     # album requests
     if entry_type == 'album':

@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.utils.system import creation_date
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import fetch_playlist_images
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 
 if TYPE_CHECKING:
     from beets.library import Item
@@ -49,9 +49,7 @@ class Playlist:
         Make playlist's ID from its directory group, path (and owner for per-user ones).
         """
         stem_suffix = f"{path.stem[:200].lower()}{path.suffix.lower()}"
-        if owner:
-            return f"{IDMapper._PLY_ID_PREF}{dir_id}-{owner}/{stem_suffix}"
-        return f"{IDMapper._PLY_ID_PREF}{dir_id}-{stem_suffix}"
+        return IDs.encode_playlist(dir_id, stem_suffix, owner)
 
     def _parse_metadata(self) -> None:
         """Quickly parse M3U for duration, song count, and playlist comment/description."""
@@ -114,7 +112,7 @@ class Playlist:
                         unresolved_by_id.append((idx, entry))
 
             if stable_entries:
-                resolved = IDMapper.resolve_many_songs([e['props']['id'] for _, e in stable_entries])
+                resolved = Resolve.songs([e['props']['id'] for _, e in stable_entries])
 
                 for idx, entry in stable_entries:
                     row = resolved.get(entry['props']['id'])
@@ -166,7 +164,7 @@ class Playlist:
         self.duration = 0
         for idx in sorted(results):
             row = results[idx]
-            self.songs.append(IDMapper.map_song(row))
+            self.songs.append(Serialise.song(row))
             self.duration += int(row['length'] or 0)
 
             art_url = entries[idx].get('albumarturl')
@@ -247,7 +245,7 @@ class Playlist:
     def add_songs(self, beets_items) -> None:
         with self._lock:
             for item in beets_items:
-                self.songs.append(IDMapper.map_song(item))
+                self.songs.append(Serialise.song(item))
             self._calc_duration()
             self.to_m3u()
 
@@ -289,7 +287,7 @@ class Playlist:
         instance.mtime = None
         instance.comment = ''
         instance.creator = owner
-        instance.songs = [IDMapper.map_song(song) for song in songs]
+        instance.songs = [Serialise.song(song) for song in songs]
         instance.song_count = len(instance.songs)
         instance.duration = sum(int(s.get('duration', 0) or 0) for s in instance.songs)
 
@@ -495,10 +493,8 @@ class PlaylistProvider:
     def get(self, playlist_id: str) -> Playlist | None:
         """Get a playlist by its id, reloading from disk if file changed."""
 
-        # TODO: Probably should use the IDMapper class here
-
         with self._lock:
-            if not playlist_id.startswith(IDMapper._PLY_ID_PREF):
+            if IDs.decode_type(playlist_id) != 'playlist':
                 return None
 
             playlist_id = playlist_id.lower()
@@ -513,7 +509,7 @@ class PlaylistProvider:
                     return loaded
 
             try:
-                parts = playlist_id.removeprefix(IDMapper._PLY_ID_PREF).split('-', 1)
+                parts = IDs.decode_playlist(playlist_id).split('-', 1)
                 if len(parts) < 2:
                     return None
                 dir_id = int(parts[0])

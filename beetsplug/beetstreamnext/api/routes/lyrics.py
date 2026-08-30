@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve
 
 from beetsplug.beetstreamnext.application import app
 
@@ -147,7 +147,7 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    item = IDMapper.resolve_song(req_id)
+    item = Resolve.song(req_id)
 
     if not item:
         return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)

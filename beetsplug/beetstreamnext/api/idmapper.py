@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.database import database, write_beets_field
 from beetsplug.beetstreamnext.core.external import query_musicbrainz, query_discogs
 from beetsplug.beetstreamnext.core.cache import (
-    preload_songs, preload_albums, one_rating, one_like, one_play_stats, avg_rating
+    preload_songs, preload_albums, one_rating, one_like, one_play_stats, avg_rating, get_song_counts
 )
 from beetsplug.beetstreamnext.core.images import image_url
 
@@ -66,7 +66,10 @@ def standardise_datadict(obj: Dict | LibModel | Item | Any) -> dict:
 
 
 def _get_artist_metadata(name: str) -> dict:
-    """Lookup MBID, sort name and roles for a given artist name."""
+    """
+    Lookup MBID, sort name and roles for a given artist name.
+    """
+
     if not name:
         return {'mbid': '', 'sort_name': '', 'roles': []}
 
@@ -149,7 +152,9 @@ def _get_artist_metadata(name: str) -> dict:
 
 
 def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
-    """Split a song/album's raw artist/composer/lyricist/etc. fields into Subsonic ID3 artist refs."""
+    """
+    Split a song/album's raw artist/composer/lyricist/etc. fields into Subsonic ID3 artist refs.
+    """
 
     artists_array = []
     album_artists_array = []
@@ -178,7 +183,7 @@ def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
                 meta = _get_artist_metadata(name)
                 mbid = meta['mbid']
 
-            contributor_id = IDMapper.mint_artist(mbid or name, is_mbid=bool(mbid))
+            contributor_id = IDs.encode_artist(mbid or name, is_mbid=bool(mbid))
             if is_contributor:
                 dedup_key = (contributor_id, role)
                 if dedup_key not in seen_set:
@@ -213,51 +218,35 @@ def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
 
     return artists_array, album_artists_array, contributors_array, display_composer
 
+##
 
-def _mint_song_id(mb_trackid: Any, mb_releasetrackid: Any, path: Any, beets_id: Any, root_directory) -> str:
-    """
-    Make the stable BSN song id for a beets item: prefers whatever external database id beets recorded
-    (MusicBrainz, Deezer, Spotify etc.. beets always writes them in the mb_* field)
-
-    Falls back to a hash of the item's path (relative to root_directory), or to the raw beets row
-    id if neither is available (but this one is unstable across reimports).
-    """
-    mbid = str(mb_releasetrackid or mb_trackid or '').strip()
-    if mbid:
-        encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
-        return f"{IDMapper._SNG_MBID_PREF}{encoded}"
-
-    hash = path_hash(path, root_directory)
-    if hash:
-        return f"{IDMapper._SNG_HASH_PREF}{hash}"
-
-    return f"{IDMapper._SNG_ID_PREF}{beets_id}"
+# TODO: Having an plainly defined hierarchy of what is 'playable', what is 'media', what is 'any' would help here
 
 
 ##
-# Main mapper class
+# IDs: Mints IDs from a Beets/db object, or decodes them to their raw value/type. No I/O.
 
 
-class IDMapper:
+class IDs:
     """
-    Minting IDs from a Beets/db object, decoding IDs back to that object,
-    and mapping that object to its serialised Subsonic response dict.
+    Mints the stable Subsonic-facing IDs BSN hands out, and decodes them back to
+    whatever raw value (beets row id, mbid, name...) they were minted from.
     """
 
-    _ART_MBID_PREF = 'ar-m-'     # ar-m-<base64url(mbid)>  preferred if mbid is known
-    _ART_NAME_PREF = 'ar-n-'     # ar-n-<base64url(name)>  fallback
-    _SNG_ID_PREF = 'sg-'         # legacy: sg-<raw beets row id> (decode-only)
-    _SNG_MBID_PREF = 'sg-m-'     # sg-m-<base64url(mb_releasetrackid or mb_trackid)>
-    _SNG_HASH_PREF = 'sg-h-'     # sg-h-<hash of path relative to root_directory>
+    _ART_MBID_PREF = 'ar-m-'    # ar-m-<base64url(mbid)>  preferred if mbid is known
+    _ART_NAME_PREF = 'ar-n-'    # ar-n-<base64url(name)>  fallback
+    _SNG_ID_PREF = 'sg-'        # legacy: sg-<raw beets row id> (decode-only)
+    _SNG_MBID_PREF = 'sg-m-'    # sg-m-<base64url(mb_releasetrackid or mb_trackid)>
+    _SNG_HASH_PREF = 'sg-h-'    # sg-h-<hash of path relative to root_directory>
 
     _ALB_ID_PREF = 'al-'
     _PLY_ID_PREF = 'pl-'
     _RAD_ID_PREF = 'ir-'
-    _PCH_ID_PREF = 'pc-'   # podcast channel: pc-<db id>
-    _PEP_ID_PREF = 'pe-'   # podcast episode: pe-<db id>
+    _PCH_ID_PREF = 'pc-'        # podcast channel: pc-<db id>
+    _PEP_ID_PREF = 'pe-'        # podcast episode: pe-<db id>
 
     @staticmethod
-    def _to_beets_int(subsonic_id: str, prefix: str) -> int | None:
+    def decode_int(subsonic_id: str, prefix: str) -> int | None:
         sid = str(subsonic_id)
         if not sid.startswith(prefix):
             return None
@@ -267,7 +256,7 @@ class IDMapper:
             return None
 
     @classmethod
-    def get_type(cls, subsonic_id: str) -> str | None:
+    def decode_type(cls, subsonic_id: str) -> str | None:
         """Returns the type of object this ID represents."""
         sid = str(subsonic_id)
         if sid.startswith((cls._ART_MBID_PREF, cls._ART_NAME_PREF)): return 'artist'
@@ -289,8 +278,29 @@ class IDMapper:
             return ''
 
     @classmethod
-    def decode_artist_mbid(cls, subsonic_id: str) -> Tuple[str, bool]:
+    def decode_song(cls, subsonic_id: str) -> Tuple[Any, str] | Tuple[None, None]:
+        """Decode any song id (mbid, hash, or legacy row id) into (value, kind)."""
+
         sid = str(subsonic_id)
+
+        if sid.startswith(cls._SNG_MBID_PREF):
+            mbid = cls.decode_song_mbid(sid)
+            return (mbid, 'mbid') if mbid else (None, None)
+
+        if sid.startswith(cls._SNG_HASH_PREF):
+            return sid[len(cls._SNG_HASH_PREF):], 'hash'
+
+        if sid.startswith(cls._SNG_ID_PREF):
+            beets_id = cls.decode_int(sid, cls._SNG_ID_PREF)
+            return (beets_id, 'legacy_int') if beets_id is not None else (None, None)
+
+        return None, None
+
+    @classmethod
+    def decode_artist(cls, subsonic_id: str) -> Tuple[str, bool]:
+
+        sid = str(subsonic_id)
+
         if sid.startswith(cls._ART_MBID_PREF):
             payload, is_mbid = sid[len(cls._ART_MBID_PREF):], True
         elif sid.startswith(cls._ART_NAME_PREF):
@@ -305,50 +315,85 @@ class IDMapper:
         except (binascii.Error, UnicodeDecodeError):
             return '', False
 
-    # Minting: Generate IDs
+    @classmethod
+    def decode_playlist(cls, subsonic_id: str) -> str | None:
+        sid = str(subsonic_id)
+        if not sid.startswith(cls._PLY_ID_PREF):
+            return None
+        return sid[len(cls._PLY_ID_PREF):]
 
     @classmethod
-    def mint_artist(cls, name_or_mbid: Any, is_mbid: bool = True) -> str:
+    def encode_artist(cls, name_or_mbid: Any, is_mbid: bool = True) -> str:
         encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
         prefix = cls._ART_MBID_PREF if is_mbid else cls._ART_NAME_PREF
         return f"{prefix}{encoded}"
 
     @classmethod
-    def mint_album(cls, beets_id: int) -> str:
+    def encode_album(cls, beets_id: int) -> str:
         return f"{cls._ALB_ID_PREF}{beets_id}"
 
     @classmethod
-    def mint_song(cls, song: dict) -> str:
-        return _mint_song_id(
-            song.get('mb_trackid'),
-            song.get('mb_releasetrackid'),
-            song.get('path'),
-            song.get('id', 0),
-            app.config['root_directory']
-        )
+    def encode_song(cls, song: dict, _root_directory: Optional[bytes | str | Path] = None) -> str:
+        """
+        Mint the song id for a beets item: prefers whatever external database id beets
+        recorded (MusicBrainz, Deezer, Spotify etc... beets always writes them in the mb_* field).
+
+        Falls back to a hash of the item's path (relative to the root directory), or to the raw beets
+        row id if neither is available (but this one is unstable across reimports).
+
+        Note: _root_directory is only necessary for the db migration callsite, it's called
+            before app.config['root_directory'] is set
+        """
+        mbid = str(song.get('mb_releasetrackid') or song.get('mb_trackid') or '').strip()
+        if mbid:
+            encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
+            return f"{cls._SNG_MBID_PREF}{encoded}"
+
+        hash = path_hash(song.get('path'), _root_directory or app.config['root_directory'])
+        if hash:
+            return f"{cls._SNG_HASH_PREF}{hash}"
+
+        return f"{cls._SNG_ID_PREF}{song.get('id', 0)}"
 
     @classmethod
-    def mint_radio(cls, db_id: int) -> str:
+    def encode_playlist(cls, dir_id: int, stem_suffix: str, owner: Optional[str] = None) -> str:
+        if owner:
+            return f"{cls._PLY_ID_PREF}{dir_id}-{owner}/{stem_suffix}"
+        return f"{cls._PLY_ID_PREF}{dir_id}-{stem_suffix}"
+
+    @classmethod
+    def encode_radio(cls, db_id: int) -> str:
         return f'{cls._RAD_ID_PREF}{db_id}'
 
     @classmethod
-    def mint_podcast_channel(cls, db_id: int) -> str:
+    def encode_podcast_channel(cls, db_id: int) -> str:
         return f'{cls._PCH_ID_PREF}{db_id}'
 
     @classmethod
-    def mint_podcast_episode(cls, db_id: int) -> str:
+    def encode_podcast_episode(cls, db_id: int) -> str:
         return f'{cls._PEP_ID_PREF}{db_id}'
 
-    # Resolvers: Decode Subsonic ID and grab the data
+
+##
+# Resolver: Decodes a Subsonic ID and fetches the Beets/db object it refers to
+
+
+class Resolve:
+    """
+    Decode Subsonic IDs (minted by IDs) and fetch the Beets/db object they refer to.
+    """
 
     @classmethod
-    def resolve_artist(cls, req_id: str) -> Tuple[str, str] | None:
+    def artist(cls, req_id: str) -> Tuple[str, str] | None:
         """
-        Decode any music Subsonic id (artist, album, or song) and fetch the beets artist data.
+        Decode any music Subsonic ID (artist, album, or song) and fetch the beets artist data.
+
+        Note: Unlike the other Resolve methods, this doesn't return a db object because beets has no
+        Artist row.
 
         Returns (name, mbid), or None if ID can't be resolved.
         """
-        entry_type, obj = cls.resolve(req_id)
+        entry_type, obj = cls.any(req_id)
 
         if entry_type == 'song':
             if not obj:
@@ -375,7 +420,7 @@ class IDMapper:
             return name, mbid
 
         if entry_type == 'artist':
-            value, is_mbid = cls.decode_artist_mbid(req_id)
+            value, is_mbid = IDs.decode_artist(req_id)
         else:
             value, is_mbid = req_id, False
 
@@ -412,36 +457,32 @@ class IDMapper:
             return artist_name, meta['mbid']
 
     @classmethod
-    def resolve_album(cls, subsonic_id: str) -> Optional[LibModel]:
+    def album(cls, subsonic_id: str) -> Optional[LibModel]:
         """
-        Decode a Subsonic album id and fetch the beets album data.
+        Decode a Subsonic album ID and fetch the beets album data.
         """
-        beets_id = cls._to_beets_int(subsonic_id, cls._ALB_ID_PREF)
+        beets_id = IDs.decode_int(subsonic_id, IDs._ALB_ID_PREF)
         return flask.g.lib.get_album(beets_id) if beets_id is not None else None
 
     @classmethod
-    def resolve_song(cls, subsonic_id: str) -> Optional[Item]:
+    def song(cls, subsonic_id: str) -> Optional[Item]:
         """
-        Decode a Subsonic song id (mbid, hash, or legacy row id) and fetch the beets song data.
+        Decode a Subsonic song ID (mbid, hash, or legacy row id) and fetch the beets song data.
         """
-        sid = str(subsonic_id)
+        value, kind = IDs.decode_song(subsonic_id)
 
-        if sid.startswith(cls._SNG_MBID_PREF):
-            mbid = cls.decode_song_mbid(sid)
-            if not mbid:
-                return None
+        if kind == 'mbid':
             with flask.g.lib.transaction() as tx:
                 rows = tx.query(
                     """
-                    SELECT id 
-                    FROM items 
+                    SELECT id
+                    FROM items
                     WHERE mb_releasetrackid = ? OR mb_trackid = ? LIMIT 1
-                    """, (mbid, mbid)
+                    """, (value, value)
                 )
             return flask.g.lib.get_item(rows[0][0]) if rows else None
 
-        if sid.startswith(cls._SNG_HASH_PREF):
-            target_hash = sid[len(cls._SNG_HASH_PREF):]
+        if kind == 'hash':
             root_directory = app.config['root_directory']
 
             with flask.g.lib.transaction() as tx:
@@ -454,18 +495,20 @@ class IDMapper:
                 )
 
             for row in candidates:
-                if path_hash(row[1], root_directory) == target_hash:
+                if path_hash(row[1], root_directory) == value:
                     return flask.g.lib.get_item(row[0])
 
             return None
 
-        beets_id = cls._to_beets_int(sid, cls._SNG_ID_PREF)
-        return flask.g.lib.get_item(beets_id) if beets_id is not None else None
+        if kind == 'legacy_int':
+            return flask.g.lib.get_item(value)
+
+        return None
 
     @classmethod
-    def resolve_many_songs(cls, subsonic_ids: Sequence[str]) -> Dict[str, Item]:
+    def songs(cls, subsonic_ids: Sequence[str]) -> Dict[str, Item]:
         """
-        Batched resolve_song(). Returns {id: song_object},
+        Batched song resolving. Returns {id: song_object},
         """
 
         result: Dict[str, Item] = {}
@@ -476,16 +519,14 @@ class IDMapper:
 
         for raw in subsonic_ids:
             sid = str(raw)
-            if sid.startswith(cls._SNG_MBID_PREF):
-                mbid = cls.decode_song_mbid(sid)
-                if mbid:
-                    by_mbid.setdefault(mbid, []).append(sid)
-            elif sid.startswith(cls._SNG_HASH_PREF):
-                by_hash.setdefault(sid[len(cls._SNG_HASH_PREF):], []).append(sid)
-            else:
-                beets_id = cls._to_beets_int(sid, cls._SNG_ID_PREF)
-                if beets_id is not None:
-                    by_int.setdefault(beets_id, []).append(sid)
+            value, kind = IDs.decode_song(sid)
+
+            if kind == 'mbid':
+                by_mbid.setdefault(value, []).append(sid)
+            elif kind == 'hash':
+                by_hash.setdefault(value, []).append(sid)
+            elif kind == 'legacy_int':
+                by_int.setdefault(value, []).append(sid)
 
         if by_mbid:
             mbids = list(by_mbid)
@@ -530,11 +571,11 @@ class IDMapper:
         return result
 
     @classmethod
-    def resolve_radio(cls, subsonic_id: str) -> Optional[AttrDict]:
+    def radio(cls, subsonic_id: str) -> Optional[AttrDict]:
         """
-        Decode a Subsonic radio id and fetch the station row.
+        Decode a Subsonic radio ID and fetch the station row.
         """
-        radio_id = cls._to_beets_int(subsonic_id, cls._RAD_ID_PREF)
+        radio_id = IDs.decode_int(subsonic_id, IDs._RAD_ID_PREF)
 
         if radio_id is None:
             return None
@@ -550,12 +591,12 @@ class IDMapper:
         return AttrDict(dict(row)) if row else None
 
     @classmethod
-    def resolve_podcast_channel(cls, subsonic_id: str) -> Optional[AttrDict]:
+    def podcast_channel(cls, subsonic_id: str) -> Optional[AttrDict]:
         """
-        Decode a Subsonic podcast channel id and fetch its row.
+        Decode a Subsonic podcast channel ID and fetch its row.
         """
 
-        channel_id = cls._to_beets_int(subsonic_id, cls._PCH_ID_PREF)
+        channel_id = IDs.decode_int(subsonic_id, IDs._PCH_ID_PREF)
         if channel_id is None:
             return None
 
@@ -571,12 +612,12 @@ class IDMapper:
         return AttrDict(dict(row)) if row else None
 
     @classmethod
-    def resolve_podcast_episode(cls, subsonic_id: str) -> Optional[AttrDict]:
+    def podcast_episode(cls, subsonic_id: str) -> Optional[AttrDict]:
         """
-        Decode a Subsonic podcast episode id and fetch its row.
+        Decode a Subsonic podcast episode ID and fetch its row.
         """
 
-        episode_id = cls._to_beets_int(subsonic_id, cls._PEP_ID_PREF)
+        episode_id = IDs.decode_int(subsonic_id, IDs._PEP_ID_PREF)
         if episode_id is None:
             return None
 
@@ -592,52 +633,53 @@ class IDMapper:
         return AttrDict(dict(row)) if row else None
 
     @classmethod
-    def resolve(cls, subsonic_id: str) -> Tuple[Optional[str], Optional[Any]]:
+    def any(cls, subsonic_id: str) -> Tuple[Optional[str], Optional[Any]]:
         """
-        Decode any Subsonic id and fetch its data object. Returns (type, object).
+        Decode any Subsonic ID and fetch its data object. Returns (type, object).
 
-        Note: 'object' is None when the id can't be resolved, or for a type (artist, playlist) that
-        isn't a plain id->db lookup (these need their own dedicated handling).
+        Note: 'object' is None when the ID can't be resolved, or for a type that
+        isn't a plain id->db lookup (like artist or playlist).
         """
-        entry_type = cls.get_type(subsonic_id)
+        entry_type = IDs.decode_type(subsonic_id)
 
-        if entry_type == 'song': return entry_type, cls.resolve_song(subsonic_id)
-        if entry_type == 'album': return entry_type, cls.resolve_album(subsonic_id)
-        if entry_type == 'radio': return entry_type, cls.resolve_radio(subsonic_id)
-        if entry_type == 'podcastChannel': return entry_type, cls.resolve_podcast_channel(subsonic_id)
-        if entry_type == 'episode': return entry_type, cls.resolve_podcast_episode(subsonic_id)
+        if entry_type == 'song': return entry_type, cls.song(subsonic_id)
+        if entry_type == 'album': return entry_type, cls.album(subsonic_id)
+        if entry_type == 'radio': return entry_type, cls.radio(subsonic_id)
+        if entry_type == 'podcastChannel': return entry_type, cls.podcast_channel(subsonic_id)
+        if entry_type == 'episode': return entry_type, cls.podcast_episode(subsonic_id)
 
         return entry_type, None
 
     @classmethod
-    def resolve_many(cls, subsonic_ids: Sequence[str]) -> Dict[str, Tuple[str, Any]]:
+    def multiple(cls, subsonic_ids: Sequence[str]) -> Dict[str, Tuple[str, Any]]:
         """
-        Batched resolve() for a (possibly heterogeneous) list of ids. Returns {id: (type, object)},
+        Batched resolve for a (possibly heterogeneous) list of IDs. Returns {id: (type, object)},
         omitting anything that didn't resolve.
 
         TODO: Only songs are bulk-fetched, maybe this should be extended to everything?
         """
-        songs = cls.resolve_many_songs([sid for sid in subsonic_ids if cls.get_type(sid) == 'song'])
+        songs = cls.songs([sid for sid in subsonic_ids if IDs.decode_type(sid) == 'song'])
 
         result: Dict[str, Tuple[str, Any]] = {}
         for sid in subsonic_ids:
-            entry_type = cls.get_type(sid)
-            obj = songs.get(sid) if entry_type == 'song' else cls.resolve(sid)[1]
+            entry_type = IDs.decode_type(sid)
+            obj = songs.get(sid) if entry_type == 'song' else cls.any(sid)[1]
             if obj is not None:
                 result[sid] = (entry_type, obj)
 
         return result
 
     @classmethod
-    def resolve_playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[Tuple[str, str]]:
+    def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[Tuple[str, str]]:
         """
-        Resolve any playable Subsonic id (song, radio station, or podcast episode) to (id, local path or URL).
+        Resolve any playable Subsonic ID (song, radio station, or podcast episode) to (id, local path or URL).
 
         Args:
             - pre_resolved: An optional {id: (type, object)} map from a prior resolve_many() call.
             Falls back to a single-item resolve() when it's not given or doesn't have the id.
         """
-        entry_type, obj = (pre_resolved or {}).get(entry_id) or cls.resolve(entry_id)
+        entry_type, obj = (pre_resolved or {}).get(entry_id) or Resolve.any(entry_id)
+
         if obj is None:
             bsn_logger.warning(f'Could not resolve {entry_id!r}, skipping.')
             return None
@@ -651,7 +693,7 @@ class IDMapper:
             if not os.path.isfile(path):
                 bsn_logger.warning(f'Path does not exist on disk, sending it anyway: {path!r}')
 
-            return cls.mint_song(standardise_datadict(obj)), path
+            return IDs.encode_song(standardise_datadict(obj)), path
 
         if entry_type == 'radio':
             if not obj.get('stream_url'):
@@ -672,25 +714,24 @@ class IDMapper:
         return None
 
     @classmethod
-    def resolve_playables(cls, entry_ids: Sequence[str]) -> List[Tuple[str, str]]:
+    def playables(cls, entry_ids: Sequence[str]) -> List[Tuple[str, str]]:
         """
-        Batched resolve_playable(). Resolve a list of playable Subsonic ids to (id, local path or URL) pairs,
-        skipping unresolvable ones.
+        Batched playable resolving. Resolves a list of playable Subsonic IDs
+        to (id, local path or URL) pairs, skipping unresolvable ones.
         """
-        resolved = cls.resolve_many(entry_ids)
-        return [playable for entry_id in entry_ids if (playable := cls.resolve_playable(entry_id, resolved))]
+        resolved = cls.multiple(entry_ids)
+        return [item for entry_id in entry_ids if (item := cls.playable(entry_id, resolved)) is not None]
 
     @classmethod
-    def resolve_share(cls, entry_ids: Sequence[str]) -> Tuple[List[Item], List[LibModel]]:
+    def shared_items(cls, entry_ids: Sequence[str]) -> Tuple[List[Item], List[LibModel]]:
         """
-        Split a share's entry ids into resolved song items and album objects.
+        Returns a public share's entry IDs, split into song items and album objects.
         """
-
         songs = []
         albums = []
 
         for entry_id in entry_ids:
-            entry_type, obj = cls.resolve(entry_id)
+            entry_type, obj = cls.any(entry_id)
 
             if entry_type == 'song' and obj:
                 songs.append(obj)
@@ -699,11 +740,18 @@ class IDMapper:
 
         return songs, albums
 
-    ##
-    # Mapping: turn a resolved Beets/db object into its serialised Subsonic response dict
+
+##
+# Serialise: turn a resolved Beets/db object into its serialised Subsonic response dict.
+
+
+class Serialise:
+    """
+    Maps a Beets/db object (as returned by the resolver) to its serialised Subsonic response dict.
+    """
 
     @classmethod
-    def map_media(cls, beets_object: Dict | LibModel) -> dict:
+    def media(cls, beets_object: Dict | LibModel) -> dict:
 
         data = standardise_datadict(beets_object)
 
@@ -712,7 +760,7 @@ class IDMapper:
         main_ar_name = data.get('albumartist') or data.get('artist') or ''
         main_ar_mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
 
-        artist_id = cls.mint_artist(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
+        artist_id = IDs.encode_artist(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
 
         artists, album_artists, contributors, display_composer = _get_artists(data)
 
@@ -754,7 +802,7 @@ class IDMapper:
         return subsonic_media
 
     @classmethod
-    def map_artist(cls, artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> dict:
+    def artist(cls, artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> dict:
 
         # Priority: prefetched -> album query (when with_albums) -> standalone db query
         mbid = ''
@@ -795,7 +843,7 @@ class IDMapper:
         sort_name = sort_name if sort_name != artist_name else meta['sort_name']
         roles = meta['roles']
 
-        subsonic_artist_id = cls.mint_artist(mbid or artist_name, is_mbid=bool(mbid))
+        subsonic_artist_id = IDs.encode_artist(mbid or artist_name, is_mbid=bool(mbid))
 
         subsonic_artist = {
             'id': subsonic_artist_id,
@@ -817,10 +865,10 @@ class IDMapper:
                 albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
 
             preload_albums(albums)
-            song_counts = cls.get_song_counts(albums)
+            song_counts = get_song_counts(albums)
 
             subsonic_artist['album'] = [
-                cls.map_album(alb, include_songs=False, song_counts=song_counts)
+                cls.album(alb, include_songs=False, song_counts=song_counts)
                 for alb in albums
             ]
 
@@ -831,15 +879,15 @@ class IDMapper:
         return subsonic_artist
 
     @classmethod
-    def map_album(cls, album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> dict:
+    def album(cls, album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> dict:
 
         data = standardise_datadict(album_object)
 
         beets_album_id = data.get('id', 0)
-        subsonic_album_id = cls.mint_album(beets_album_id)
+        subsonic_album_id = IDs.encode_album(beets_album_id)
         album_name = data.get('album', '')
 
-        subsonic_album = cls.map_media(data)
+        subsonic_album = cls.media(data)
 
         album_specific = {
             'id': subsonic_album_id,
@@ -939,7 +987,7 @@ class IDMapper:
                     bsn_logger.debug(f"Filesize prefetch failed: {e}")
 
             songs.sort(key=lambda s: (s.get('disc', 1), s.get('track', 1)))
-            subsonic_album['song'] = [cls.map_song(s, prefetched_sizes=song_filesizes) for s in songs]
+            subsonic_album['song'] = [cls.song(s, prefetched_sizes=song_filesizes) for s in songs]
 
         local_avg, local_count = avg_rating(subsonic_album_id)
         discogs_mode = app.config.get('discogs_ratings', 'off')
@@ -967,17 +1015,17 @@ class IDMapper:
         return subsonic_album
 
     @classmethod
-    def map_song(cls, song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> dict:
+    def song(cls, song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> dict:
 
         data = standardise_datadict(song_object)
 
-        song_id = cls.mint_song(data)
+        song_id = IDs.encode_song(data)
         song_title = data.get('title') or ''
 
-        subsonic_song = cls.map_media(data)
+        subsonic_song = cls.media(data)
 
         song_filepath = os.fsdecode(data.get('path', b''))
-        album_id = cls.mint_album(data.get('album_id', 0))
+        album_id = IDs.encode_album(data.get('album_id', 0))
 
         song_specific = {
             'id': song_id,
@@ -1092,7 +1140,7 @@ class IDMapper:
         return subsonic_song
 
     @classmethod
-    def map_playlist(cls, playlist: 'Playlist', include_songs: bool = False) -> dict:
+    def playlist(cls, playlist: 'Playlist', include_songs: bool = False) -> dict:
         subsonic_playlist = {
             'id': playlist.id,
             'name': playlist.name,
@@ -1111,8 +1159,8 @@ class IDMapper:
         return subsonic_playlist
 
     @classmethod
-    def map_radio_station(cls, row: dict) -> dict:
-        station_id = cls.mint_radio(row['id'])
+    def radio(cls, row: dict) -> dict:
+        station_id = IDs.encode_radio(row['id'])
 
         subsonic_radio_station = {
             'id': station_id,
@@ -1124,8 +1172,8 @@ class IDMapper:
         return subsonic_radio_station
 
     @classmethod
-    def map_podcast_channel(cls, row: dict, episodes: Optional[List[dict]] = None) -> dict:
-        channel_id = cls.mint_podcast_channel(row['id'])
+    def podcast_channel(cls, row: dict, episodes: Optional[List[dict]] = None) -> dict:
+        channel_id = IDs.encode_podcast_channel(row['id'])
 
         subsonic_channel = {
             'id': channel_id,
@@ -1141,15 +1189,15 @@ class IDMapper:
             subsonic_channel['errorMessage'] = row['error_message']
 
         if episodes is not None:
-            subsonic_channel['episode'] = [cls.map_podcast_episode(ep, row) for ep in episodes]
+            subsonic_channel['episode'] = [cls.podcast_episode(ep, row) for ep in episodes]
 
         return subsonic_channel
 
     @classmethod
-    def map_podcast_episode(cls, row: dict, channel: Optional[dict] = None) -> dict:
+    def podcast_episode(cls, row: dict, channel: Optional[dict] = None) -> dict:
 
-        episode_id = cls.mint_podcast_episode(row['id'])
-        channel_id = cls.mint_podcast_channel(row['channel_id'])
+        episode_id = IDs.encode_podcast_episode(row['id'])
+        channel_id = IDs.encode_podcast_channel(row['channel_id'])
 
         title = row.get('title') or ''
         channel_title = (channel or {}).get('title') or (channel or {}).get('channel_title') or ''
@@ -1193,43 +1241,44 @@ class IDMapper:
         return subsonic_episode
 
     @classmethod
-    def map_playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[dict]:
+    def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[dict]:
         """
-        Map any playable Subsonic id (song, radio station, or podcast episode) to its serialized entry dict.
+        Map any playable Subsonic ID (song, radio station, or podcast episode) to its serialised entry dict.
 
         Args:
             - pre_resolved: An optional {id: (type, object)} map from a prior resolve_many() call.
             Falls back to a single-item resolve() when it's not given or doesn't have the id.
         """
-        entry_type, obj = (pre_resolved or {}).get(entry_id) or cls.resolve(entry_id)
+
+        entry_type, obj = (pre_resolved or {}).get(entry_id) or Resolve.any(entry_id)
         if obj is None:
             return None
 
         if entry_type == 'song':
-            return cls.map_song(obj)
+            return cls.song(obj)
 
         if entry_type == 'radio':
-            return cls.map_radio_station(dict(obj))
+            return cls.radio(dict(obj))
 
         if entry_type == 'episode':
-            channel = cls.resolve_podcast_channel(cls.mint_podcast_channel(obj['channel_id']))
-            return cls.map_podcast_episode(obj, channel)
+            channel = Resolve.podcast_channel(IDs.encode_podcast_channel(obj['channel_id']))
+            return cls.podcast_episode(obj, channel)
 
         return None
 
     @classmethod
-    def map_playables(cls, entry_ids: Sequence[str]) -> List[dict]:
+    def playables(cls, entry_ids: Sequence[str]) -> List[dict]:
         """
-        Batched map_entry(). Maps a list of playable Subsonic ids to their serialized entry dicts,
-        skipping unresolvable ones.
+        Batched serialisation of playables. Maps a list of playable
+        Subsonic IDs to their serialised entry dicts, skipping unresolvable ones.
         """
-        resolved = cls.resolve_many(entry_ids)
-        return [mapped for entry_id in entry_ids if (mapped := cls.map_playable(entry_id, resolved)) is not None]
+        resolved = Resolve.multiple(entry_ids)
+        return [item for entry_id in entry_ids if (item := cls.playable(entry_id, resolved)) is not None]
 
     @classmethod
-    def map_share(cls, row: dict, entries: Sequence[str]) -> dict:
+    def shared_items(cls, row: dict, entries: Sequence[str]) -> dict:
 
-        songs, albums = cls.resolve_share(entries)
+        songs, albums = Resolve.shared_items(entries)
         share_url = external_url(flask.url_for('public.share_view', share_id=row['id']))
 
         subsonic_share = {
@@ -1240,30 +1289,6 @@ class IDMapper:
             'created': timestamp_to_iso(row['created']),
             'expires': timestamp_to_iso(row['expires']),
             'visitCount': row['visit_count'],
-            'entry': [cls.map_song(s) for s in songs] + [cls.map_album(a, include_songs=False) for a in albums]
+            'entry': [cls.song(s) for s in songs] + [cls.album(a, include_songs=False) for a in albums]
         }
         return subsonic_share
-
-    ##
-    # Other stuff (maybe needs moving)
-
-    @classmethod
-    def get_song_counts(cls, albums: List[Dict]) -> dict:
-        """Get song counts for a list of albums in a single db query."""
-
-        album_ids = [row['id'] for row in albums]
-
-        if album_ids:
-            with (flask.g.lib.transaction() as tx):
-                sql_query = ('SELECT album_id, COUNT(*) as count, CAST(SUM(length) AS INTEGER) as duration'
-                             + ' FROM items WHERE album_id IN ({q}) GROUP BY album_id')
-                count_rows = chunked_query(
-                    db_obj=tx,
-                    query_template=sql_query,
-                    chunked_values=album_ids
-                )
-            counts = {row['album_id']: (row['count'], row['duration'] or 0) for row in count_rows}
-        else:
-            counts = {}
-
-        return counts

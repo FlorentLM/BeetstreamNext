@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Any
 
 import beets
 
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import Resolve
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import CACHE_LOCATION
 from beetsplug.beetstreamnext.core.database import write_beets_field
@@ -92,7 +92,7 @@ def commit_likes(subsonic_id: str, key: str, value: Any) -> None:
      have no row in to attach a value to, so they are silently skipped.
     """
 
-    entry_type, obj = IDMapper.resolve(subsonic_id)
+    entry_type, obj = Resolve.any(subsonic_id)
 
     if entry_type == 'song':
         entity_type, beets_id = 'item', (obj.id if obj else None)

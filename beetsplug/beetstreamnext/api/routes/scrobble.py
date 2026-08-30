@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise, standardise_datadict
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @api_bp.route('/scrobble', methods=['GET', 'POST'])
@@ -58,11 +58,11 @@ def endpoint_scrobble() -> flask.Response:
 
         # Record play stats
         for i, p_id in enumerate(playing_ids):
-            entry_type, item = IDMapper.resolve(p_id)
+            entry_type, item = Resolve.any(p_id)
             if entry_type == 'song':       # only keep count of songs played, not radios
                 if not item:
                     continue
-                canonical_id = IDMapper.mint_song(standardise_datadict(item))
+                canonical_id = IDs.encode_song(standardise_datadict(item))
 
                 try:
                     played_at = times_ms[i] / 1000.0
@@ -111,7 +111,7 @@ def endpoint_get_now_playing() -> flask.Response:
         ).fetchall()
 
     for row in rows:
-        entry = IDMapper.map_playable(row['item_id'])
+        entry = Serialise.playable(row['item_id'])
 
         if entry:
             entry.update({
@@ -188,10 +188,10 @@ def endpoint_report_playback() -> flask.Response:
 
     # Check for scrobble threshold: played for 4 minutes or 50% of total length
     if not ignore_scrobble and state == 'playing':
-        entry_type, item = IDMapper.resolve(media_id)
+        entry_type, item = Resolve.any(media_id)
 
         if entry_type == 'song' and item:
-            canonical_id = IDMapper.mint_song(standardise_datadict(item))
+            canonical_id = IDs.encode_song(standardise_datadict(item))
             duration_ms = (item.get('length') or 0) * 1000
             threshold = min(4 * 60 * 1000, duration_ms * 0.5)
 

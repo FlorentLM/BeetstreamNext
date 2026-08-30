@@ -11,15 +11,15 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
 
 def song_payload(subsonic_song_id: str) -> dict:
-    song_item = IDMapper.resolve_song(subsonic_song_id)
+    song_item = Resolve.song(subsonic_song_id)
     if not song_item:
         return {}
 
     payload = {
-        'song': IDMapper.map_song(song_item)
+        'song': Serialise.song(song_item)
     }
     return payload
 
@@ -120,7 +120,7 @@ def endpoint_songs_by_genre() -> flask.Response:
 
     payload = {
         "songsByGenre": {
-            "song": [IDMapper.map_song(s) for s in songs]
+            "song": [Serialise.song(s) for s in songs]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -172,7 +172,7 @@ def endpoint_get_random_songs() -> flask.Response:
 
     payload = {
         "randomSongs": {
-            "song": list(map(IDMapper.map_song, songs))
+            "song": list(map(Serialise.song, songs))
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -188,8 +188,8 @@ def endpoint_get_top_songs() -> flask.Response:
     req_artist_id = r.get('id', default='', type=safe_str)          # Required (only in OpenSubsonic)
     count = r.get('count', default=50, type=int)
 
-    lookup = req_artist_id if IDMapper.get_type(req_artist_id) == 'artist' else req_artist_name
-    resolved = IDMapper.resolve_artist(lookup)
+    lookup = req_artist_id if IDs.decode_type(req_artist_id) == 'artist' else req_artist_name
+    resolved = Resolve.artist(lookup)
     if not resolved:
         empty_payload = { 'topSongs': { 'song': [] } }
         return subsonic_response(empty_payload, resp_fmt=resp_fmt)
@@ -220,7 +220,7 @@ def endpoint_get_top_songs() -> flask.Response:
 
                 payload = {
                     'topSongs': {
-                        'song': [IDMapper.map_song(s) for s in top_tracks_available]
+                        'song': [Serialise.song(s) for s in top_tracks_available]
                     }
                 }
                 return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -236,7 +236,7 @@ def endpoint_get_top_songs() -> flask.Response:
             """, (flask.g.username,)
         ).fetchall()
 
-    resolved = IDMapper.resolve_many_songs([r['song_id'] for r in stat_rows])
+    resolved = Resolve.songs([r['song_id'] for r in stat_rows])
 
     matches = []
     for r in stat_rows:
@@ -253,7 +253,7 @@ def endpoint_get_top_songs() -> flask.Response:
 
     payload = {
         'topSongs': {
-            'song': [IDMapper.map_song(song) for song in matches]
+            'song': [Serialise.song(song) for song in matches]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -266,7 +266,7 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int
     """
     matches: Dict[int, Dict] = {}
 
-    entry_type, song_item = IDMapper.resolve(req_id)
+    entry_type, song_item = Resolve.any(req_id)
     if entry_type != 'song' or not song_item or not song_item.get('title'):
         return matches
 
@@ -323,7 +323,7 @@ def endpoint_get_similar_songs() -> flask.Response:
     if not req_id:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    resolved = IDMapper.resolve_artist(req_id)
+    resolved = Resolve.artist(req_id)
     if resolved is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -408,7 +408,7 @@ def endpoint_get_similar_songs() -> flask.Response:
 
     payload = {
         tag: {
-            'song': [IDMapper.map_song(s) for s in final_songs]
+            'song': [Serialise.song(s) for s in final_songs]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

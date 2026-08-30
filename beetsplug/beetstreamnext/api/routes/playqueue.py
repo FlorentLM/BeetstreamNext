@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
+from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise, standardise_datadict
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
 @api_bp.route('/getPlayQueue', methods=['GET', 'POST'])
@@ -47,11 +47,11 @@ def endpoint_get_play_queue() -> flask.Response:
         return subsonic_response({}, resp_fmt=resp_fmt)
 
     ordered_ids = [r['song_id'] for r in entry_rows]
-    resolved = IDMapper.resolve_many_songs(ordered_ids)
+    resolved = Resolve.songs(ordered_ids)
     items_in_order = [resolved[sid] for sid in ordered_ids if sid in resolved]
 
     preload_songs(items_in_order)
-    songs = [IDMapper.map_song(item) for item in items_in_order]
+    songs = [Serialise.song(item) for item in items_in_order]
 
     payload = {
         'playQueue': {
@@ -78,13 +78,13 @@ def endpoint_save_play_queue() -> flask.Response:
 
     username = flask.g.username
 
-    resolved = IDMapper.resolve_many_songs(song_ids)
-    canonical_ids = [IDMapper.mint_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
+    resolved = Resolve.songs(song_ids)
+    canonical_ids = [IDs.encode_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
 
     current_item = resolved.get(current_sid) if current_sid else None
     if current_sid and current_item is None:
-        current_item = IDMapper.resolve_song(current_sid)
-    current_canonical = IDMapper.mint_song(standardise_datadict(current_item)) if current_item else None
+        current_item = Resolve.song(current_sid)
+    current_canonical = IDs.encode_song(standardise_datadict(current_item)) if current_item else None
 
     now = time.time()
 
@@ -155,7 +155,7 @@ def endpoint_get_play_queue_by_index() -> flask.Response:
         return subsonic_response({'playQueueByIndex': {}}, resp_fmt=resp_fmt)
 
     ordered_ids = [r['song_id'] for r in entry_rows]
-    resolved = IDMapper.resolve_many_songs(ordered_ids)
+    resolved = Resolve.songs(ordered_ids)
     valid_pairs = [(sid, resolved[sid]) for sid in ordered_ids if sid in resolved]
 
     preload_songs([item for _, item in valid_pairs])
@@ -165,7 +165,7 @@ def endpoint_get_play_queue_by_index() -> flask.Response:
     for i, (sid, item) in enumerate(valid_pairs):
         if sid == current_song_id:
             current_index = i
-        songs.append(IDMapper.map_song(item))
+        songs.append(Serialise.song(item))
 
     payload = {
         'playQueueByIndex': {
@@ -216,8 +216,8 @@ def endpoint_save_play_queue_by_index() -> flask.Response:
     if current_index < 0 or current_index >= len(song_ids):
         return subsonic_error(10, message='currentIndex out of bounds.', resp_fmt=resp_fmt)
 
-    resolved = IDMapper.resolve_many_songs(song_ids)
-    canonical_ids = [IDMapper.mint_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
+    resolved = Resolve.songs(song_ids)
+    canonical_ids = [IDs.encode_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
 
     # And revalidate against parsed list
     if current_index >= len(canonical_ids):

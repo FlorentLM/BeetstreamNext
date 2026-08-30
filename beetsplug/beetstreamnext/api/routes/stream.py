@@ -2,6 +2,7 @@ import os
 import subprocess
 import math
 import hashlib
+import tempfile
 import time
 from pathlib import Path
 import queue
@@ -11,7 +12,7 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR, TRANSCODE_TMP_DIR
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, send_file
@@ -368,6 +369,72 @@ def _send_transcode(
     return response
 
 
+def _send_transcode_tempfile(
+        file_path: str | Path,
+        start_at: float = 0.0,
+        max_bitrate: int = 128,
+        req_format: str = 'mp3',
+        audio_filters: Optional[str] = None
+    ) -> flask.Response | None:
+    """
+    Transcode to a temp file then serve with send_file() for an exact Content-Length and Range/seek support.
+    """
+
+    target = FORMAT_MAP.get(req_format.lower() if req_format else 'mp3', FORMAT_MAP['mp3'])
+    ffmpeg_bin = find_ffmpeg() or 'ffmpeg'
+
+    fd, tmp_name = tempfile.mkstemp(suffix=f".{target['f']}", dir=TRANSCODE_TMP_DIR)
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+
+    command = [ffmpeg_bin, '-hide_banner', '-loglevel', 'error', '-y']
+
+    if start_at > 0:
+        command.extend(['-ss', f'{start_at:.2f}'])
+
+    command.extend(['-i', str(file_path)])
+
+    if audio_filters:
+        command.extend(['-af', audio_filters])
+
+    command.extend([
+        '-vn',
+        '-map_metadata', '-1',
+        '-f', str(target['f']),
+        '-c:a', str(target['c']),
+    ])
+
+    if 'flags' in target:
+        command.extend(['-movflags', str(target['flags'])])
+
+    if not target['lossless']:
+        command.extend(['-b:a', f'{max_bitrate}k'])
+
+    command.append(str(tmp_path))
+
+    try:
+        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        bsn_logger.warning(f"Full transcode of '{file_path}' failed: {e}")
+        tmp_path.unlink(missing_ok=True)
+        return None
+
+    if result.returncode != 0 or not tmp_path.exists() or tmp_path.stat().st_size == 0:
+        stderr = result.stderr.decode('utf-8', errors='replace')[:500]
+        bsn_logger.warning(f"Full transcode of '{file_path}' failed (rc={result.returncode}): {stderr}")
+        tmp_path.unlink(missing_ok=True)
+        return None
+
+    # Bypass send_file()'s reverse-proxy offload which (would race the temp files's deletion below)
+    response = flask.send_file(tmp_path, mimetype=target['mime'], conditional=True)
+
+    @response.call_on_close
+    def _cleanup_tempfile() -> None:
+        tmp_path.unlink(missing_ok=True)
+
+    return response
+
+
 def try_transcode(
         file_path: str | Path,
         start_at: float = 0.0,
@@ -375,22 +442,31 @@ def try_transcode(
         req_format: str = 'mp3',
         duration: float = 0.0,
         estimate_length: bool = False,
-        audio_filters: Optional[str] = None
+        audio_filters: Optional[str] = None,
+        exact_length: bool = False
     ) -> flask.Response | None:
 
-    if FFMPEG_PYTHON or find_ffmpeg():
-        return _send_transcode(
+    if not (FFMPEG_PYTHON or find_ffmpeg()):
+        return send_file(file_path)
+
+    if exact_length:
+        return _send_transcode_tempfile(
             file_path=file_path,
             start_at=start_at,
             max_bitrate=max_bitrate,
             req_format=req_format,
-            duration=duration,
-            estimate_length=estimate_length,
             audio_filters=audio_filters
         )
 
-    else:
-        return send_file(file_path)
+    return _send_transcode(
+        file_path=file_path,
+        start_at=start_at,
+        max_bitrate=max_bitrate,
+        req_format=req_format,
+        duration=duration,
+        estimate_length=estimate_length,
+        audio_filters=audio_filters
+    )
 
 
 ##
@@ -422,6 +498,12 @@ def endpoint_stream_song() -> flask.Response | None:
 
     song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
     norm_filter = get_normalization_filter(song)
+
+    # Flagged by a health scan as having decode errors direct-play can't recover from. Checked
+    # unconditionally (not just as a last-resort elif) since it changes how any resulting transcode
+    # is served, regardless of which other reason also called for one.
+    healing = not isinstance(song, dict) and needs_healing(IDs.encode_song(standardise_datadict(song)))
+
     needs_transcode = False
 
     # Transcode if audio normalisation is required
@@ -440,8 +522,7 @@ def endpoint_stream_song() -> flask.Response | None:
     elif time_offset > 0:
         needs_transcode = True
 
-    # or if flagged by a health scan as having decode errors direct-play can't recover from
-    elif not isinstance(song, dict) and needs_healing(IDs.encode_song(standardise_datadict(song))):
+    elif healing:
         needs_transcode = True
 
     if not needs_transcode:
@@ -449,14 +530,27 @@ def endpoint_stream_song() -> flask.Response | None:
     else:
         target_bitrate = max_bitrate if max_bitrate > 0 else 320
 
+        if req_format != 'raw':
+            target_format = req_format
+        elif max_bitrate <= 0 and song_ext in FORMAT_MAP:
+            # No explicit different-format or bitrate-cap request (e.g. transcoding only to apply
+            # ReplayGain or heal bitstream corruption): keep the original container/codec, so a
+            # healed flac stays flac instead of silently dropping to lossy mp3.
+            target_format = song_ext
+        elif max_bitrate <= 0 and is_lossless(song_ext):
+            target_format = 'flac'
+        else:
+            target_format = 'mp3'
+
         response = try_transcode(
             song_path,
             start_at=time_offset,
             max_bitrate=target_bitrate,
-            req_format=req_format if req_format != 'raw' else 'mp3',
+            req_format=target_format,
             duration=song.get('length') or 0.0,
             estimate_length=estimate_length,
-            audio_filters=norm_filter
+            audio_filters=norm_filter,
+            exact_length=healing
         )
 
     if response is not None:
@@ -535,7 +629,8 @@ def endpoint_get_transcode_decision() -> flask.Response:
         can_direct_play = False
         reasons.append('ServerSideProcessingRequired')
 
-    if not isinstance(item, dict) and needs_healing(IDs.encode_song(standardise_datadict(item))):
+    healing = not isinstance(item, dict) and needs_healing(IDs.encode_song(standardise_datadict(item)))
+    if healing:
         can_direct_play = False
         reasons.append('ServerSideProcessingRequired')
 
@@ -623,7 +718,9 @@ def endpoint_get_transcode_decision() -> flask.Response:
         }
 
         # Encode transcode instructions into a opaque string for getTranscodeStream
-        tx_params = f'{target_container}|{target_br}|{int(bool(norm_filter))}'
+        # 4th field: whether this transcode is (also) needed to heal bitstream corruption, so
+        # getTranscodeStream knows to serve an exact Content-Length instead of an estimated one.
+        tx_params = f'{target_container}|{target_br}|{int(bool(norm_filter))}|{int(healing)}'
 
     decision = {
         'canDirectPlay': can_direct_play,
@@ -672,11 +769,12 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     try:
-        # container | bitrate | norm
+        # container | bitrate | norm | healing
         parts = tx_params_raw.split('|')
         req_format = parts[0]
         max_bitrate = int(float(parts[1]) / 1000) # bps to kbps
         apply_norm = parts[2] == '1'
+        healing = parts[3] == '1' if len(parts) > 3 else False
     except (IndexError, ValueError):
         return subsonic_error(0, 'Invalid transcodeParams', resp_fmt=resp_fmt)
 
@@ -689,7 +787,8 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
         req_format=req_format,
         duration=song.get('length') or 0.0,
         estimate_length=True,
-        audio_filters=norm_filter
+        audio_filters=norm_filter,
+        exact_length=healing
     )
 
 

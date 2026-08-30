@@ -36,6 +36,9 @@ HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 ZIP_CACHE_DIR = CACHE_LOCATION / 'zips'
 ZIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+TRANSCODE_TMP_DIR = CACHE_LOCATION / 'transcode_tmp'
+TRANSCODE_TMP_DIR.mkdir(parents=True, exist_ok=True)
+
 JUKEBOX_SOCK_DIR = CACHE_LOCATION / 'jukebox'
 JUKEBOX_SOCK_DIR.mkdir(parents=True, exist_ok=True)
 

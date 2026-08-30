@@ -18,7 +18,8 @@ from beetsplug.beetstreamnext.utils.general import api_bool, send_file
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
+from beetsplug.beetstreamnext.core.health import needs_healing
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, standardise_datadict
 
 FORMAT_MAP = {
     # Lossy
@@ -439,6 +440,10 @@ def endpoint_stream_song() -> flask.Response | None:
     elif time_offset > 0:
         needs_transcode = True
 
+    # or if flagged by a health scan as having decode errors direct-play can't recover from
+    elif not isinstance(song, dict) and needs_healing(IDs.encode_song(standardise_datadict(song))):
+        needs_transcode = True
+
     if not needs_transcode:
         response = send_file(song_path)
     else:
@@ -527,6 +532,10 @@ def endpoint_get_transcode_decision() -> flask.Response:
     # Server constraints
     norm_filter = get_normalization_filter(item)
     if norm_filter:
+        can_direct_play = False
+        reasons.append('ServerSideProcessingRequired')
+
+    if not isinstance(item, dict) and needs_healing(IDs.encode_song(standardise_datadict(item))):
         can_direct_play = False
         reasons.append('ServerSideProcessingRequired')
 

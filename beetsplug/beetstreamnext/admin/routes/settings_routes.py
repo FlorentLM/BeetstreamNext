@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes,
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage, sweep_stale_references
+from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats, flagged_songs
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
@@ -363,6 +364,21 @@ def route_audiomuse_fingerprint() -> flask.Response:
     return _back_to('maintenance')
 
 
+@admin_bp.route('/maintenance/health-scan', methods=['POST'])
+@admin_required
+def route_health_scan() -> flask.Response:
+    full = flask.request.form.get('full', type=safe_str) == '1'
+    started, message = start_scan(full=full)
+    flask.flash(message, 'success' if started else 'info')
+    return _back_to('maintenance')
+
+
+@admin_bp.route('/maintenance/health-scan-status', methods=['GET'])
+@admin_required
+def route_health_scan_status() -> flask.Response:
+    return flask.jsonify({'scanning': is_scanning(), **health_stats()})
+
+
 @admin_bp.route('/maintenance/rate-limits', methods=['GET'])
 @admin_required
 def route_rate_limits() -> flask.Response:
@@ -509,6 +525,7 @@ def route_settings() -> flask.Response:
             radios=radios,
             podcast_channels=podcast_channels,
             podcast_total_size=human_bytes(podcast_total_bytes),
+            flagged_songs=flagged_songs(),
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),
             radio_form=RadioStationForm(formdata=None),

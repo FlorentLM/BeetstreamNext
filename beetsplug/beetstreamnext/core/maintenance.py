@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_A
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.health import scan_library
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 
@@ -75,6 +76,7 @@ _SONG_REF_TABLES = (
     ('play_queue', 'current'),
     ('play_queue_entries', 'song_id'),
     ('share_entries', 'item_id'),
+    ('song_checks', 'song_id'),
 )
 
 
@@ -204,6 +206,17 @@ def run_periodic():
                 bsn_logger.info(f'{SERVER_NAME} database cleanup purged: {details}')
         except Exception as e:
             bsn_logger.error(f'{SERVER_NAME} database cleanup failed: {e}')
+
+        # Incremental audio health scan
+        try:
+            counts = scan_library(full=False)
+            if counts['flagged'] or counts['checked']:
+                bsn_logger.info(
+                    f"{SERVER_NAME} health scan: {counts['checked']} checked, "
+                    f"{counts['flagged']} flagged, {counts['skipped']} unchanged (skipped)."
+                )
+        except Exception as e:
+            bsn_logger.error(f'{SERVER_NAME} health scan failed: {e}')
 
         # Tidy cache
         cache_dir = app.config['THUMBNAIL_CACHE_PATH']

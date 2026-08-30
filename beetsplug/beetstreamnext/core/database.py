@@ -477,6 +477,24 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        -- one row per (song, check kind): a background health scan's findings for a song.
+        CREATE TABLE IF NOT EXISTS song_checks
+        (
+            song_id    TEXT    NOT NULL, -- subsonic song id
+            kind       TEXT    NOT NULL, -- for example 'decode_errors'
+            mtime      REAL    NOT NULL, -- source file's mtime as of last check
+            ok         INTEGER NOT NULL, -- 1 = passed, 0 = flagged
+            detail     TEXT,             -- short note
+            checked_at REAL    NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (song_id, kind)
+        )
+        """
+    )
+
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_song_checks_kind ON song_checks(kind);""")
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS now_playing
         (
             username      TEXT PRIMARY KEY,

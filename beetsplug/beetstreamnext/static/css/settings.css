@@ -518,6 +518,36 @@ input:focus, select:focus { border-color: var(--primary); }
 }
 .card-body-form { padding: 0 1.5rem 1.5rem; }
 
+/* Row of buttons (each in its own form), left-aligned side by side; stacks full-width on mobile */
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1.5rem;
+}
+.button-row form { flex: 0 0 auto; }
+
+@media (max-width: 720px) {
+    .button-row { flex-direction: column; }
+    .button-row form { flex: 1 1 auto; }
+    .button-row .btn { width: 100%; }
+}
+
+.card-section { padding: 0 1.5rem 1.5rem; }
+
+/* Expandable table rows (click to reveal a detail row underneath) */
+.expand-row { cursor: pointer; }
+.expand-row:hover { background: var(--overlay-weak); }
+.expand-cell { width: 1.5rem; transform: rotate(-90deg); }
+.expand-cell .icon-chevron { width: 14px; height: 14px; transition: transform 0.15s; }
+.expand-row.expanded .icon-chevron { transform: rotate(90deg); }
+.row-detail td {
+    background: var(--overlay-sunken);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 0.75rem 1.5rem;
+}
+
 /* IP lists */
 .announce-form { display: flex; gap: 0.5rem; padding: 0 1.5rem 1.5rem; }
 .announce-form input[type="text"] {

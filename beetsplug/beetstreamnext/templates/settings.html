@@ -166,6 +166,8 @@
 <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
 {%- elif name == 'moon' -%}
 <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+{%- elif name == 'chevron-down' -%}
+<svg class="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
 {%- endif -%}
 {%- endmacro %}
 
@@ -776,6 +778,70 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline">Run cleanup</button>
             </form>
+        </div>
+
+        <div class="card">
+            <div class="table-header">
+                <h2>Audio Health Scan</h2>
+                <button class="btn btn-outline" data-action="refresh-health-status"
+                        data-url="{{ url_for('admin.route_health_scan_status') }}">Refresh</button>
+            </div>
+            <p class="card-hint">
+                Look for bitstream corruption (bad bits that make some clients hang instead of playing,
+                even though the file isn't completely broken). Flagged songs are then transparently transcoded
+                on stream instead of direct-played. Runs incrementally in the background.
+            </p>
+            <dl class="kv-grid">
+                <dt>Status</dt><dd id="health-scan-status-value">Loading...</dd>
+                <dt>Songs checked</dt><dd id="health-scan-total-value">&mdash;</dd>
+                <dt>Flagged songs</dt><dd id="health-scan-count-value">&mdash;</dd>
+            </dl>
+            {% if flagged_songs %}
+            <details class="podcast-episodes card-section">
+                <summary>{{ flagged_songs|length }} flagged song{{ 's' if flagged_songs|length != 1 }}</summary>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Title</th>
+                                <th>Artist</th>
+                                <th>Album</th>
+                                <th>Issue</th>
+                                <th>Checked</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in flagged_songs %}
+                            <tr class="expand-row" data-action="toggle-row-detail">
+                                <td class="expand-cell">{{ icon('chevron-down') }}</td>
+                                <td>{{ s.title or '(untitled)' }}</td>
+                                <td>{{ s.artist or '—' }}</td>
+                                <td>{{ s.album or '—' }}</td>
+                                <td><span class="badge badge-admin">{{ s.label }}</span></td>
+                                <td><span class="chat-time" data-timestamp="{{ (s.checked_at * 1000) | int }}">Loading...</span></td>
+                            </tr>
+                            <tr class="row-detail" hidden>
+                                <td colspan="6">{{ s.detail or 'No further detail available.' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            {% endif %}
+            <div class="button-row">
+                <form method="POST" action="{{ url_for('admin.route_health_scan') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-primary">Scan for changes</button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
+                      data-confirm="Re-check every song in the library, including ones already checked? This can take a while on large libraries.">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="full" value="1">
+                    <button type="submit" class="btn btn-outline">Full re-scan</button>
+                </form>
+            </div>
         </div>
 
         <div class="card">

@@ -46,10 +46,19 @@ def admin_required(f) -> Callable:
     return decorated
 
 
+def back_to(anchor: str) -> flask.Response:
+    return flask.redirect(flask.url_for('admin.route_settings') + f'#{anchor}')
+
+
 from .routes import (
     auth,
     avatars,
+    chat,
+    jukebox,
+    maintenance,
     podcasts_radio,
+    security,
     settings_routes,
+    shares,
     users,
 )

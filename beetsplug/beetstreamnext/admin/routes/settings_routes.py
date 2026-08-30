@@ -1,40 +1,23 @@
-import time
 from typing import Any
 import flask
 
-from .. import admin_bp, admin_required
+from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes, external_url
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
-from beetsplug.beetstreamnext.core.security import rate_limiter
-from beetsplug.beetstreamnext.core.maintenance import clear_caches, cache_disk_usage, sweep_stale_references
-from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats, flagged_songs
+from beetsplug.beetstreamnext.core.maintenance import cache_disk_usage
+from beetsplug.beetstreamnext.core.health import flagged_songs
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.external import (
-    test_lastfm_connection, test_audiomuse_connection, start_audiomuse_analysis
-)
-from beetsplug.beetstreamnext.core.jukebox import sonos_discovery, JukeboxUnavailableException
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, IMPORT_LOG_PATH
+from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.constants import SERVER_NAME
-from beetsplug.beetstreamnext.utils.text import safe_str
-
-
-def _back_to(anchor: str) -> flask.Response:
-    return flask.redirect(flask.url_for('admin.route_settings') + f'#{anchor}')
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
 _CHAT_PAGE_SIZE = 50
-_ANNOUNCEMENT_USERNAME = 'Server'
-_CHAT_MESSAGE_MAX_LEN = 1000
-
-
-# TODO: This file now needs reorganisation / to be split
 
 
 ##
@@ -96,7 +79,7 @@ def route_update_settings(category: str) -> flask.Response:
     elif not updated and not errors:
         flask.flash('No changes.', 'info')
 
-    return _back_to(category)
+    return back_to(category)
 
 
 ##
@@ -113,7 +96,7 @@ def route_clear_setting(category: str, key: str) -> flask.Response:
 
     settings_store.set(key, '')
     flask.flash(f"Cleared '{key}'.", 'success')
-    return _back_to(category)
+    return back_to(category)
 
 
 ##
@@ -131,272 +114,6 @@ def route_test_lastfm() -> flask.Response:
 def route_test_audiomuse() -> flask.Response:
     ok, message = test_audiomuse_connection()
     return flask.jsonify({'ok': ok, 'message': message})
-
-
-##
-# Sonos speaker discovery
-
-@admin_bp.route('/settings/jukebox/discover-speakers', methods=['GET'])
-@admin_required
-def route_discover_sonos_speakers() -> flask.Response:
-    try:
-        speakers = sonos_discovery()
-    except JukeboxUnavailableException as e:
-        return flask.jsonify({'ok': False, 'message': str(e), 'speakers': []})
-
-    if not speakers:
-        return flask.jsonify({'ok': False, 'message': 'No Sonos speakers found.', 'speakers': []})
-
-    plur = 's' if len(speakers) > 1 else ''
-    return flask.jsonify({'ok': True, 'message': f'Found {len(speakers)} speaker{plur}.', 'speakers': speakers})
-
-
-##
-# IP whitelist / blacklist
-
-_IP_LIST_SETTINGS = {'whitelist': 'ip_whitelist', 'blacklist': 'ip_blacklist'}
-
-
-@admin_bp.route('/settings/security/ip/<list_type>/add', methods=['POST'])
-@admin_required
-def route_ip_add(list_type: str) -> flask.Response:
-    key = _IP_LIST_SETTINGS.get(list_type)
-    if key is None:
-        flask.abort(404)
-
-    ip = (flask.request.form.get('ip') or '').strip()
-    if not ip:
-        flask.flash('IP address is required.', 'error')
-        return _back_to('security')
-
-    current = list(settings_store.get(key))
-    if ip in current:
-        flask.flash(f'{ip} is already in the {list_type}.', 'info')
-    else:
-        try:
-            settings_store.set(key, current + [ip])
-            flask.flash(f'Added {ip} to {list_type}.', 'success')
-        except ValueError as e:
-            flask.flash(str(e), 'error')
-
-    return _back_to('security')
-
-
-@admin_bp.route('/settings/security/ip/<list_type>/remove', methods=['POST'])
-@admin_required
-def route_ip_remove(list_type: str) -> flask.Response:
-    key = _IP_LIST_SETTINGS.get(list_type)
-    if key is None:
-        flask.abort(404)
-
-    ip = (flask.request.form.get('ip') or '').strip()
-    current = list(settings_store.get(key))
-
-    if ip in current:
-        current.remove(ip)
-        settings_store.set(key, current)
-        flask.flash(f'Removed {ip} from {list_type}.', 'success')
-    else:
-        flask.flash(f'{ip} not found in {list_type}.', 'info')
-
-    return _back_to('security')
-
-
-##
-# Chat moderation routes
-
-@admin_bp.route('/chat/announce', methods=['POST'])
-@admin_required
-def route_add_announcement() -> flask.Response:
-    message = safe_str(flask.request.form.get('message', '').strip())
-
-    if not message:
-        flask.flash('Announcement cannot be empty.', 'error')
-        return _back_to('chat')
-
-    if len(message) > _CHAT_MESSAGE_MAX_LEN:
-        flask.flash(f'Announcement exceeds maximum length ({_CHAT_MESSAGE_MAX_LEN} characters).', 'error')
-        return _back_to('chat')
-
-    with database() as db:
-        db.execute(
-            """
-            INSERT INTO chat_messages (username, time, message)
-            VALUES (?, ?, ?)
-            """, (_ANNOUNCEMENT_USERNAME, int(time.time() * 1000), message)
-        )
-    flask.flash('Announcement posted.', 'success')
-    return _back_to('chat')
-
-
-@admin_bp.route('/chat/delete/<int:msg_id>', methods=['POST'])
-@admin_required
-def route_delete_chat_message(msg_id: int) -> flask.Response:
-    with database() as db:
-        db.execute(
-            """
-            DELETE FROM chat_messages 
-            WHERE id = ?
-            """, (msg_id,)
-        )
-    flask.flash('Chat message deleted.', 'success')
-    return _back_to('chat')
-
-
-@admin_bp.route('/chat/edit/<int:msg_id>', methods=['POST'])
-@admin_required
-def route_edit_chat_message(msg_id: int) -> flask.Response:
-    new_message = safe_str(flask.request.form.get('message', '').strip())
-
-    if not new_message:
-        flask.flash('Message cannot be empty.', 'error')
-        return _back_to('chat')
-
-    with database() as db:
-        db.execute(
-            """
-            UPDATE chat_messages 
-            SET message = ? 
-            WHERE id = ?
-            """, (new_message, msg_id)
-        )
-    flask.flash('Chat message updated.', 'success')
-    return _back_to('chat')
-
-
-##
-# Shares deletion
-
-@admin_bp.route('/shares/delete/<share_id>', methods=['POST'])
-@admin_required
-def route_delete_share(share_id: str) -> flask.Response:
-
-    with database() as db:
-        db.execute("""DELETE FROM shares WHERE id = ?""", (share_id,))
-
-    flask.flash(f"Share '{share_id}' deleted successfully.", 'success')
-
-    return _back_to('shares')
-
-
-##
-# Beets interaction
-
-@admin_bp.route('/beets/scan', methods=['POST'])
-@admin_required
-def route_beets_scan() -> flask.Response:
-    ok, message, already_running = start_import()
-    flask.flash(message, 'info' if already_running else ('success' if ok else 'error'))
-    return _back_to('beets')
-
-
-@admin_bp.route('/beets/scan-status', methods=['GET'])
-@admin_required
-def route_beets_scan_status() -> flask.Response:
-    lib = flask.current_app.config['lib']
-    try:
-        with lib.transaction() as tx:
-            items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
-    except Exception as e:
-        bsn_logger.warning(f'Could not read item count while checking scan status: {e}')
-        items_count = None
-
-    return flask.jsonify({'scanning': is_importing(), 'count': items_count})
-
-
-@admin_bp.route('/beets/import-log', methods=['GET'])
-@admin_required
-def route_beets_import_log() -> flask.Response:
-    try:
-        with open(IMPORT_LOG_PATH, 'r', errors='replace') as f:
-            lines = f.read().splitlines()[-1000:]
-    except OSError:
-        lines = []
-
-    return flask.jsonify({'lines': lines})
-
-
-##
-# Maintenance
-
-@admin_bp.route('/maintenance/clear-cache', methods=['POST'])
-@admin_required
-def route_clear_cache() -> flask.Response:
-    try:
-        cleared = clear_caches(
-            flask.current_app.config['THUMBNAIL_CACHE_PATH'],
-            flask.current_app.config['HTTP_CACHE_PATH']
-        )
-        if cleared:
-            flask.flash(f"Cleared: {', '.join(cleared)}.", 'success')
-        else:
-            flask.flash('Nothing to clear.', 'info')
-    except RuntimeError as e:
-        flask.flash(str(e), 'error')
-
-    return _back_to('maintenance')
-
-
-@admin_bp.route('/maintenance/database-cleanup', methods=['POST'])
-@admin_required
-def route_database_cleanup() -> flask.Response:
-    try:
-        purged = sweep_stale_references()
-        if purged:
-            details = ', '.join(f'{n} {label}' for label, n in purged.items())
-            flask.flash(f'Purged stale references: {details}.', 'success')
-        else:
-            flask.flash('No stale references found.', 'info')
-
-    except Exception as e:
-        err = f'{SERVER_NAME} database cleanup failed: {e}'
-        bsn_logger.error(err)
-        flask.flash(err, 'error')
-
-    return _back_to('maintenance')
-
-
-@admin_bp.route('/maintenance/audiomuse-fingerprint', methods=['POST'])
-@admin_required
-def route_audiomuse_fingerprint() -> flask.Response:
-    ok, message = start_audiomuse_analysis()
-    flask.flash(message, 'success' if ok else 'error')
-    return _back_to('maintenance')
-
-
-@admin_bp.route('/maintenance/health-scan', methods=['POST'])
-@admin_required
-def route_health_scan() -> flask.Response:
-    full = flask.request.form.get('full', type=safe_str) == '1'
-    started, message = start_scan(full=full)
-    flask.flash(message, 'success' if started else 'info')
-    return _back_to('maintenance')
-
-
-@admin_bp.route('/maintenance/health-scan-status', methods=['GET'])
-@admin_required
-def route_health_scan_status() -> flask.Response:
-    return flask.jsonify({'scanning': is_scanning(), **health_stats()})
-
-
-@admin_bp.route('/maintenance/rate-limits', methods=['GET'])
-@admin_required
-def route_rate_limits() -> flask.Response:
-    return flask.jsonify(rate_limiter.report())
-
-
-@admin_bp.route('/maintenance/logs', methods=['GET'])
-@admin_required
-def route_logs() -> flask.Response:
-    return flask.jsonify({'lines': mem_log.recents})
-
-
-@admin_bp.route('/maintenance/clear-rate-limits', methods=['POST'])
-@admin_required
-def route_clear_rate_limits() -> flask.Response:
-    n = rate_limiter.purge()
-    flask.flash(f'Cleared rate-limit state for {n} entr{"y" if n == 1 else "ies"}.', 'success')
-    return _back_to('maintenance')
 
 
 @admin_bp.route('/')

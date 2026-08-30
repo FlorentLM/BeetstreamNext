@@ -12,9 +12,11 @@ from beetsplug.beetstreamnext.utils.system import find_ffmpeg, resolve_path
 from beetsplug.beetstreamnext.utils.text import format_duration
 
 DECODE_ERRORS_CHECK = 'decode_errors'
+MISSING_FILE_CHECK = 'missing_file'
 
 _KIND_LABELS = {
     DECODE_ERRORS_CHECK: 'Decode errors',
+    MISSING_FILE_CHECK: 'Missing file',
 }
 
 _scan_lock = threading.Lock()
@@ -177,30 +179,21 @@ def scan_library(full: bool = False) -> dict[str, int]:
                 """
             ).fetchall()
 
-            existing: dict[str, tuple[float, int]] = {}
+            existing: dict[str, dict[str, tuple[float, int]]] = {}
             if not full:
-                existing = {
-                    row['song_id']: (row['mtime'], row['ok'])
-                    for row in db.execute(
-                        """
-                        SELECT song_id, mtime, ok 
-                        FROM song_checks 
-                        WHERE kind = ?
-                        """, (DECODE_ERRORS_CHECK,)
-                    ).fetchall()
-                }
+                for row in db.execute(
+                    """
+                    SELECT song_id, kind, mtime, ok
+                    FROM song_checks
+                    WHERE kind IN (?, ?)
+                    """, (DECODE_ERRORS_CHECK, MISSING_FILE_CHECK)
+                ).fetchall():
+                    existing.setdefault(row['song_id'], {})[row['kind']] = (row['mtime'], row['ok'])
 
             for beets_id, mb_trackid, mb_releasetrackid, raw_path, samplerate in item_rows:
                 path = os.fsdecode(raw_path or b'')
                 if not path:
                     continue
-
-                path_obj = resolve_path(path, root_directory)
-
-                try:
-                    mtime = os.path.getmtime(path_obj)
-                except OSError:
-                    continue   # file missing, nothing to check
 
                 song_id = IDs.encode_song({
                     'id': beets_id,
@@ -209,7 +202,47 @@ def scan_library(full: bool = False) -> dict[str, int]:
                     'path': path
                 })
 
-                prev = existing.get(song_id)
+                path_obj = resolve_path(path, root_directory)
+                prev_missing = existing.get(song_id, {}).get(MISSING_FILE_CHECK)
+
+                try:
+                    mtime = os.path.getmtime(path_obj)
+                except OSError:
+                    if prev_missing is not None and prev_missing[1] == 0:
+                        counts['skipped'] += 1
+                        continue   # already flagged missing, nothing new to record
+
+                    counts['checked'] += 1
+                    counts['flagged'] += 1
+                    bsn_logger.warning(f"Health check flagged missing file: '{path_obj}'")
+
+                    db.execute(
+                        """
+                        INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
+                        VALUES (?, ?, 0, 0, 'File not found on disk')
+                        ON CONFLICT (song_id, kind) DO UPDATE SET
+                            mtime = 0, ok = 0,
+                            detail = 'File not found on disk', checked_at = unixepoch()
+                        """, (song_id, MISSING_FILE_CHECK)
+                    )
+                    db.commit()
+                    continue
+
+                if prev_missing is not None and prev_missing[1] == 0:
+                    # File reappeared since it was last flagged missing: clear that flag
+                    db.execute(
+                        """
+                        INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
+                        VALUES (?, ?, ?, 1, '')
+                        ON CONFLICT (song_id, kind) DO UPDATE SET
+                            mtime = excluded.mtime, ok = 1,
+                            detail = '', checked_at = unixepoch()
+                        """, (song_id, MISSING_FILE_CHECK, mtime)
+                    )
+                    db.commit()
+                    bsn_logger.info(f"Health check: '{path_obj}' reappeared, cleared missing-file flag.")
+
+                prev = existing.get(song_id, {}).get(DECODE_ERRORS_CHECK)
                 if prev is not None and prev[0] == mtime:
                     counts['skipped'] += 1
                     continue

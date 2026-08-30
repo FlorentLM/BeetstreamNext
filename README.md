@@ -8,7 +8,7 @@
 
 <h3 align="center">BeetstreamNext</h3>
   <p>
-  A fully-featured OpenSubsonic API server for Beets.io music libraries.
+  A fully-featured music server for Beets.io music libraries implementing the OpenSubsonic API.
   <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
@@ -33,7 +33,7 @@ BeetstreamNext supports pretty much **all** of the Subsonic/OpenSubsonic API spe
 
 Only unsupported features are _video streaming_-related.
 
-It also introduces several enhancements and features though :)
+It also adds several enhancements and cool features :)
 
 ### Core
 
@@ -44,7 +44,7 @@ It also introduces several enhancements and features though :)
 *   **Lyrics retrieval:** Serves internal Beets lyrics or fetches them on-the-fly using the Beets `lyrics` plugin.
 *   **On-the-fly transcoding:** Serves raw files directly or transcodes lossy/lossless targets on-the-fly using FFmpeg.
 *   **HTTP Live Streaming (HLS):** AAC-encoded dynamic HLS streaming with full Adaptive Bitrate (ABR) support for clients that request multi-bitrate variant playlists.
-*   **Jukebox mode:** Play audio directly on the server's own hardware, controlled remotely from any Subsonic client with jukebox support.
+*   **Jukebox mode:** Play audio on the server's own hardware (via `mpv`) or on a Sonos speaker on the local network (via [SoCo](https://github.com/SoCo/SoCo)), controlled remotely from any Subsonic client with jukebox support.
 
 ### Library intelligence
 
@@ -99,7 +99,10 @@ It also introduces several enhancements and features though :)
 
 **Optional system dependencies** (must be on `PATH`, or pointed to explicitly via `ffmpeg_path`/`mpv_path`, see [Configuration](#configuration)):
 *   [`ffmpeg`](https://ffmpeg.org/) for on-the-fly transcoding and HLS streaming.
-*   [`mpv`](https://mpv.io/) for jukebox mode (playing audio on the server's own hardware). Not needed if you don't use jukebox mode.
+*   [`mpv`](https://mpv.io/) for jukebox mode with the `mpv` backend (playing audio on the server's own hardware). Not needed if you use the `sonos` backend, or don't use jukebox mode at all.
+
+**Optional Python dependencies** (`pip install .[extra]`, or add to Poetry's `--extras`):
+*   `sonos`: pulls in [SoCo](https://github.com/SoCo/SoCo), needed for jukebox mode with the `sonos` backend (playing audio on a Sonos speaker).
 
 ---
 
@@ -132,9 +135,11 @@ beetstreamnext:
 
   # Audio
   ffmpeg_path: ''                   # Path to the ffmpeg binary, if not on PATH
-  jukebox_allowed: false            # Allow jukebox mode (server plays audio on its own hardware)
-  mpv_path: ''                      # Path to the mpv binary, if not on PATH
-  jukebox_audio_device: ''          # mpv --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
+  jukebox_allowed: false            # Allow jukebox mode (server plays audio on its own hardware, or on a Sonos speaker)
+  jukebox_backend: 'mpv'            # 'mpv' (server's own hardware) or 'sonos' (a Sonos speaker on the local network)
+  mpv_path: ''                      # mpv backend: path to the mpv binary, if not on PATH
+  jukebox_hardware_device: ''       # mpv backend: mpv --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
+  jukebox_sonos_ip: ''              # sonos backend: IP of the selected speaker (set via 'Discover speakers' in the admin panel)
 ```
 
 ### Environment variables

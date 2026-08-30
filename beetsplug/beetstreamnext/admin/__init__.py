@@ -58,7 +58,7 @@ from .routes import (
     maintenance,
     podcasts_radio,
     security,
-    settings_routes,
+    settings,
     shares,
     users,
 )

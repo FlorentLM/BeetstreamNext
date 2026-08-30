@@ -4,10 +4,10 @@ import flask
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter
+from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter, strip_host_port
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate
-from beetsplug.beetstreamnext.utils.general import grab_auth_params
+from beetsplug.beetstreamnext.utils.general import grab_auth_params, external_url
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 
@@ -19,18 +19,10 @@ def _before_request() -> flask.Response | None:
 
         allowed = {h for h in trusted_raw.split(',') if h}
 
-        raw_host = flask.request.host
         try:
-            if raw_host.startswith('['):
-                # [::1]:8080 -> ::1 (IPv6 literal, optional :port after ']')
-                request_host = raw_host[1:raw_host.index(']')]
-            else:
-                # host:port or bare host -> take the host part
-                request_host = raw_host.split(':')[0]
+            request_host = strip_host_port(flask.request.host).lower()
         except ValueError:
             flask.abort(400)
-
-        request_host = request_host.lower()
 
         if request_host not in allowed and request_host not in LOOPBACK_IPS:
             bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')
@@ -95,7 +87,7 @@ def _before_request() -> flask.Response | None:
     flask.g.user_data = load_user_roles(username)
     flask.g.playlist_provider = app.config['playlist_provider']
     flask.g.podcast_manager = app.config['podcast_manager']
-    flask.g._art_base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
+    flask.g._art_base_url = external_url(flask.url_for('api.endpoint_get_cover_art', **grab_auth_params()))
 
     run_periodic()
 

@@ -277,6 +277,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 host = [h.strip() for h in opts.host.split(',') if h.strip()]
             else:
                 host = [h.strip() for raw in self.config['host'].as_str_seq() for h in raw.split(',') if h.strip()]
+
+            app.config['HOST_LIST'] = host  # WebUI uses them as external_hostname suggestions
             port = opts.port or self.config['port'].get(int)
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)

@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import grab_auth_params
+from beetsplug.beetstreamnext.utils.general import grab_auth_params, external_url
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON
@@ -69,7 +69,7 @@ def image_url(item_id: str, size: Optional[int] = None) -> str:
     # check if the base URL is already built for the current request, if not, build it
     base_url = getattr(flask.g, '_art_base_url', None)
     if not base_url:
-        base_url = flask.url_for('api.endpoint_get_cover_art', _external=True, **grab_auth_params())
+        base_url = external_url(flask.url_for('api.endpoint_get_cover_art', **grab_auth_params()))
         flask.g._art_base_url = base_url
 
     sep = '&' if '?' in base_url else '?'

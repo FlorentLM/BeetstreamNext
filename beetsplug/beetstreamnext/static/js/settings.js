@@ -414,11 +414,12 @@
 
     async function discoverSonosSpeakers(button) {
         const url = button.dataset.url;
-        const select = document.getElementById(button.dataset.select);
+        const input = document.getElementById(button.dataset.select);
+        const datalist = document.getElementById(button.dataset.datalist);
         const result = document.getElementById(button.dataset.result);
-        if (!url || !select) return;
+        if (!url || !input || !datalist) return;
 
-        const previousValue = select.value;
+        const previousValue = input.value;
 
         button.disabled = true;
         if (result) { result.className = 'test-result'; result.textContent = 'Searching...'; }
@@ -428,27 +429,18 @@
             const payload = await resp.json();
             const speakers = payload.speakers || [];
 
-            select.innerHTML = '';
+            datalist.innerHTML = '';
 
             speakers.forEach(sp => {
                 const opt = document.createElement('option');
                 opt.value = sp.ip;
-                opt.textContent = `${sp.name} (${sp.ip})`;
-                if (sp.ip === previousValue) opt.selected = true;
-                select.appendChild(opt);
+                opt.label = `${sp.name} (${sp.ip})`;
+                datalist.appendChild(opt);
             });
 
-            if (previousValue && !speakers.some(sp => sp.ip === previousValue)) {
-                const opt = document.createElement('option');
-                opt.value = previousValue;
-                opt.textContent = `${previousValue} (current, not found)`;
-                opt.selected = true;
-                select.insertBefore(opt, select.firstChild);
-            } else if (speakers.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.textContent = 'No speakers found';
-                select.appendChild(opt);
+            // only fill suggest when the field is empty and discovery found something
+            if (!previousValue && speakers.length === 1) {
+                input.value = speakers[0].ip;
             }
 
             if (result) {

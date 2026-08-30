@@ -4,6 +4,7 @@ import flask
 from flask import Blueprint
 
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles
+from beetsplug.beetstreamnext.core.security import strip_host_port
 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -17,12 +18,8 @@ def restrict_admin_host() -> None:
 
     admin_host = settings_store.get('admin_hostname')
     if admin_host:
-        raw_host = flask.request.host
         try:
-            if raw_host.startswith('['):
-                request_host = raw_host[1:raw_host.index(']')]
-            else:
-                request_host = raw_host.split(':')[0]
+            request_host = strip_host_port(flask.request.host).lower()
         except ValueError:
             flask.abort(400)
 

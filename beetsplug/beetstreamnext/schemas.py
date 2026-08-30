@@ -2,7 +2,7 @@ import shutil
 from typing import TypedDict, Any, Callable, Dict, Tuple
 
 from beetsplug.beetstreamnext.constants import SERVER_NAME
-from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts
+from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts, parse_host
 
 
 ## Allowed image formats
@@ -87,6 +87,30 @@ def _validate_path(x: Any) -> str:
     return s
 
 
+def _validate_admin_hostname(x: Any) -> str:
+    """Bare lowercase hostname/IP. admin_hostname is matched against a port-stripped Host header."""
+    return parse_host(str(x or '')).host
+
+
+def _validate_external_hostname(x: Any) -> str:
+    """Hostname/IP, keeping port if given. Any scheme prefix is stripped."""
+    parsed = parse_host(str(x or ''))
+    if not parsed.host:
+        return ''
+    return f'{parsed.host}:{parsed.port}' if parsed.port else parsed.host
+
+
+def _validate_bare_host(x: Any) -> str:
+    """Bare hostname/IP, no scheme or port allowed."""
+    s = str(x or '').strip()
+    if not s:
+        return ''
+    parsed = parse_host(s)
+    if parsed.scheme or parsed.port:
+        raise ValueError('Enter a bare IP address or hostname, not a URL.')
+    return parsed.host
+
+
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
 
     # Server / network
@@ -95,15 +119,17 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'server',
         'description': f'If set, the admin panel will only be accessible when visited via this hostname '
-                       f'(e.g. https://{SERVER_NAME.lower()}.internal.example.com). Loopback is always allowed.',
+                       f'(e.g. {SERVER_NAME.lower()}.internal.example.com). Loopback is always allowed.',
         'requires_restart': False,
+        'validator': _validate_admin_hostname,
     },
     'external_hostname': {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': 'Your external, public hostname (e.g. https://music.example.com).',
+        'description': 'Your external, public hostname (e.g. music.example.com).',
         'requires_restart': False,
+        'validator': _validate_external_hostname,
     },
     'threads': {
         'type': 'int',
@@ -488,6 +514,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "'Discover speakers' below to scan the local network and pick one."
         ),
         'requires_restart': False,
+        'validator': _validate_bare_host,
     },
     'mpv_path': {
         'type': 'str',

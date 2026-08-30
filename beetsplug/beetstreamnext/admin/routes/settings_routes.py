@@ -390,6 +390,7 @@ def route_settings() -> flask.Response:
     new_api_key = temporary_store.claim(token)
 
     settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
+    host_suggestions = flask.current_app.config.get('HOST_LIST', [])
 
     cache_size = human_bytes(cache_disk_usage(
         flask.current_app.config['THUMBNAIL_CACHE_PATH'],
@@ -517,6 +518,7 @@ def route_settings() -> flask.Response:
             new_api_key=new_api_key,
             settings_categories=SETTINGS_CATEGORIES,
             settings_by_category=settings_by_category,
+            host_suggestions=host_suggestions,
             log_lines=mem_log.recents,
         )
     )

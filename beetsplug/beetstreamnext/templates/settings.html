@@ -6,7 +6,7 @@
 
 {# Macros #}
 
-{% macro render_setting_field(key, info, users=None) -%}
+{% macro render_setting_field(key, info, users=None, host_suggestions=None) -%}
     {%- if key == 'ratings_writeback_user' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <select id="set-{{ key }}" name="{{ key }}">
@@ -41,13 +41,18 @@
         <p class="label-hint">Empty selection = read-only.</p>
     {%- elif key == 'jukebox_sonos_ip' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
-        <select id="set-{{ key }}" name="{{ key }}">
-            {% if info.value %}
-                <option value="{{ info.value }}" selected>{{ info.value }} (current)</option>
-            {% else %}
-                <option value="">Not set</option>
-            {% endif %}
-        </select>
+        <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
+               list="sonos-speakers-list" placeholder="192.168.1.50">
+        <datalist id="sonos-speakers-list"></datalist>
+    {%- elif key == 'external_hostname' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
+               list="external-hostname-suggestions" placeholder="music.example.com">
+        <datalist id="external-hostname-suggestions">
+            {% for h in (host_suggestions or []) %}
+                <option value="{{ h }}"></option>
+            {% endfor %}
+        </datalist>
     {%- elif info.choices -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <select id="set-{{ key }}" name="{{ key }}">
@@ -103,20 +108,21 @@
             <button type="button" class="btn btn-outline" data-action="discover-sonos-speakers"
                     data-url="{{ url_for('admin.route_discover_sonos_speakers') }}"
                     data-select="set-jukebox_sonos_ip"
+                    data-datalist="sonos-speakers-list"
                     data-result="test-result-sonos">Discover speakers</button>
         </p>
         <p class="test-result" id="test-result-sonos"></p>
     {%- endif -%}
 {%- endmacro %}
 
-{% macro render_settings_form(category, settings, users=None) %}
+{% macro render_settings_form(category, settings, users=None, host_suggestions=None) %}
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% for key, info in settings.items() if info.type != 'list[str]' or key == 'external_playlists_editors' %}
             <div class="setting-row">
                 <div class="setting-row-control">
-                    {{ render_setting_field(key, info, users) }}
+                    {{ render_setting_field(key, info, users, host_suggestions) }}
                 </div>
                 <div class="setting-row-meta">
                     <p class="setting-description">{{ info.description }}</p>
@@ -488,7 +494,7 @@
             <p class="card-hint">Values saved here are stored in the database and override
                the beets YAML config on the next startup.</p>
             {% endif %}
-            {{ render_settings_form(cat, settings_by_category[cat], users) }}
+            {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions) }}
         </div>
 
         {% if cat == 'security' %}

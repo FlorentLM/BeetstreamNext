@@ -596,6 +596,18 @@ def _apply_db_migrations(cursor: sqlite3.Cursor) -> None:
     if curr_version < MIGRATION_4_VER:
         curr_version = MIGRATION_4_VER
 
+    ## _________ Migration 5: Version 4 -> 5 (likes/ratings/share_entries switch album ids
+    ##            from the raw beets row id to a stable subsonic album id, same as song ids), 30/08/2026
+    MIGRATION_5_VER = 5
+
+    if curr_version < MIGRATION_5_VER:
+        beets_db_path = flask.current_app.config.get('BEETS_DB_PATH')
+        if beets_db_path and Path(beets_db_path).is_file():
+            _migrate_to_stable_album_ids(cursor.connection, beets_db_path)
+            curr_version = MIGRATION_5_VER
+        else:
+            bsn_logger.warning('Beets database not found - stable album id migration deferred to next startup.')
+
     ## ___________________________________________________________________
 
     # Update version in db
@@ -853,6 +865,80 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
                 except sqlite3.IntegrityError:
                     # a row for (username, new_id) already exists: drop the stale duplicate
                     conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        try:
+            conn.execute("""DETACH DATABASE beets_lib""")
+        except sqlite3.Error:
+            pass
+        conn.execute("""PRAGMA foreign_keys = ON""")
+
+def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path) -> None:
+    """
+    likes/ratings/share_entries could hold album ids keyed on the raw beets row id
+    ('al-<id>'), which a delete+reimport could repoint at a different album.
+
+    Existing rows are re-keyed via a lookup on the current beets library, matched
+    by the row id they were saved under before this migration.
+
+    A row for an album that no longer exists in the library is left untouched,
+    there's nothing to remap it to, and it's harmless anyway.
+    """
+    from beetsplug.beetstreamnext.core.mappings import IDs
+
+    conn.commit()   # close any implicit transaction before toggling FK enforcement
+    conn.execute("""PRAGMA foreign_keys = OFF""")
+    try:
+        conn.execute("""ATTACH DATABASE ? AS beets_lib""", (str(beets_db_path),))
+
+        album_rows = conn.execute(
+            """
+            SELECT id, mb_albumid, albumartist, album
+            FROM beets_lib.albums
+            """
+        ).fetchall()
+
+        id_map = {
+            row[0]: IDs.encode_album(row[0], row[1], row[2], row[3])
+            for row in album_rows
+        }
+
+        conn.execute("""BEGIN""")
+
+        for table in ('likes', 'ratings'):
+            legacy_rows = conn.execute(
+                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'al-[0-9]*'"""
+            ).fetchall()
+            for rowid, item_id in legacy_rows:
+                try:
+                    old_beets_id = int(item_id[len('al-'):])
+                except ValueError:
+                    continue
+                new_id = id_map.get(old_beets_id)
+                if new_id is None or new_id == item_id:
+                    continue
+                try:
+                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))
+                except sqlite3.IntegrityError:
+                    # a row for (username, new_id) already exists: drop the stale duplicate
+                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))
+
+        legacy_shares = conn.execute(
+            """SELECT rowid, item_id FROM share_entries WHERE item_id GLOB 'al-[0-9]*'"""
+        ).fetchall()
+        for rowid, item_id in legacy_shares:
+            try:
+                old_beets_id = int(item_id[len('al-'):])
+            except ValueError:
+                continue
+            new_id = id_map.get(old_beets_id)
+            if new_id is None or new_id == item_id:
+                continue
+            conn.execute("""UPDATE share_entries SET item_id = ? WHERE rowid = ?""", (new_id, rowid))
 
         conn.commit()
     except Exception:

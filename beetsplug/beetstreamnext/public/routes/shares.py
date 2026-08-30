@@ -47,7 +47,7 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
     if not album_id:
         return False
 
-    sub_album_id = IDs.encode_album(album_id)
+    sub_album_id = IDs.encode_album(album_id, item.get('mb_albumid'), item.get('albumartist'), item.get('album'))
     with database() as db:
         album_match = db.execute(
             """

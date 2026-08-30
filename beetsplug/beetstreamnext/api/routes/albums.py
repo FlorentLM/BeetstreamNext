@@ -62,7 +62,14 @@ def endpoint_get_album_info() -> flask.Response:
         beets_album_id = item.get('album_id') if item else None
 
         album = flask.g.lib.get_album(beets_album_id) if beets_album_id else None
-        image_id = IDs.encode_album(beets_album_id or req_id)
+        image_id = (
+            IDs.encode_album(
+                beets_album_id,
+                album.get('mb_albumid'),
+                album.get('albumartist'),
+                album.get('album')
+            ) if album else req_id
+        )
 
     else:
         album = Resolve.album(req_id)

@@ -188,8 +188,12 @@ def preload_songs(beets_items: list):
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
-    from beetsplug.beetstreamnext.core.mappings import IDs
-    sub_ids = [IDs.encode_album(a['id']) for a in beets_albums]
+    from beetsplug.beetstreamnext.core.mappings import IDs, standardise_datadict
+    albums = [standardise_datadict(a) for a in beets_albums]
+    sub_ids = [
+        IDs.encode_album(a.get('id', 0), a.get('mb_albumid'), a.get('albumartist'), a.get('album'))
+        for a in albums
+    ]
 
     batch_likes(sub_ids)
     batch_ratings(sub_ids)

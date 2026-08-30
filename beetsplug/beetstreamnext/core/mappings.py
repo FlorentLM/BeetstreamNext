@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import os
 from pathlib import Path
 import binascii
@@ -257,7 +258,10 @@ class IDs:
     _SNG_MBID_PREF = 'sg-m-'    # sg-m-<base64url(mb_releasetrackid or mb_trackid)>
     _SNG_HASH_PREF = 'sg-h-'    # sg-h-<hash of path relative to root_directory>
 
-    _ALB_ID_PREF = 'al-'
+    _ALB_ID_PREF = 'al-'         # legacy: al-<raw beets row id> (decode-only)
+    _ALB_MBID_PREF = 'al-m-'     # al-m-<base64url(mb_albumid)>
+    _ALB_HASH_PREF = 'al-h-'     # al-h-<hash of "albumartist\x1falbum">
+
     _PLY_ID_PREF = 'pl-'
     _RAD_ID_PREF = 'ir-'
     _PCH_ID_PREF = 'pc-'        # podcast channel: pc-<db id>
@@ -314,6 +318,30 @@ class IDs:
         return None, None
 
     @classmethod
+    def decode_album(cls, subsonic_id: str) -> Tuple[Any, str] | Tuple[None, None]:
+        """Decode any album id (mbid, hash, or legacy row id) into (value, kind)."""
+
+        sid = str(subsonic_id)
+
+        if sid.startswith(cls._ALB_MBID_PREF):
+            payload = sid[len(cls._ALB_MBID_PREF):]
+            padding = (4 - len(payload) % 4) % 4
+            try:
+                mbid = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
+            except (binascii.Error, UnicodeDecodeError):
+                mbid = ''
+            return (mbid, 'mbid') if mbid else (None, None)
+
+        if sid.startswith(cls._ALB_HASH_PREF):
+            return sid[len(cls._ALB_HASH_PREF):], 'hash'
+
+        if sid.startswith(cls._ALB_ID_PREF):
+            beets_id = cls.decode_int(sid, cls._ALB_ID_PREF)
+            return (beets_id, 'legacy_int') if beets_id is not None else (None, None)
+
+        return None, None
+
+    @classmethod
     def decode_artist(cls, subsonic_id: str) -> Tuple[str, bool]:
         """Decode an artist ID back to (name or mbid, is_mbid)."""
 
@@ -352,11 +380,32 @@ class IDs:
         return f"{prefix}{encoded}"
 
     @classmethod
-    def encode_album(cls, beets_id: int) -> str:
+    def encode_album(cls,
+            beets_id: Any,
+            mb_albumid: Optional[str] = None,
+            albumartist: Optional[str] = None,
+            album: Optional[str] = None,
+        ) -> str:
         """
-        Mint an album ID from a beets row ID.
+        Mint the album ID for a beets album: prefers mb_albumid (the MusicBrainz release
+        id), falls back to a hash of albumartist+album title, or to the raw beets row ID
+        if neither is available (unstable across reimports).
+
+        beets_id/mb_albumid/albumartist/album can come from either an album row or a
+        song's own copies of the same fields (items store mb_albumid/albumartist/album
+        directly too).
         """
-        return f"{cls._ALB_ID_PREF}{beets_id}"
+        mbid = str(mb_albumid or '').strip()
+        if mbid:
+            encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
+            return f"{cls._ALB_MBID_PREF}{encoded}"
+
+        key = f"{albumartist or ''}\x1f{album or ''}"
+        if key != '\x1f':
+            digest = hashlib.sha1(key.encode('utf-8')).hexdigest()[:16]
+            return f"{cls._ALB_HASH_PREF}{digest}"
+
+        return f"{cls._ALB_ID_PREF}{beets_id or 0}"
 
     @classmethod
     def encode_song(cls, song: dict, _root_directory: Optional[bytes | str | Path] = None) -> str:
@@ -499,10 +548,43 @@ class Resolve:
     @classmethod
     def album(cls, subsonic_id: str) -> Optional[LibModel]:
         """
-        Decode a Subsonic album ID and fetch the beets album data.
+        Decode a Subsonic album ID (mbid, hash, or legacy row id) and fetch the beets album data.
         """
-        beets_id = IDs.decode_int(subsonic_id, IDs._ALB_ID_PREF)
-        return flask.g.lib.get_album(beets_id) if beets_id is not None else None
+        value, kind = IDs.decode_album(subsonic_id)
+
+        if kind == 'mbid':
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(
+                    """
+                    SELECT id
+                    FROM albums
+                    WHERE mb_albumid = ?
+                    LIMIT 1
+                    """, (value,)
+                )
+            return flask.g.lib.get_album(rows[0][0]) if rows else None
+
+        if kind == 'hash':
+            with flask.g.lib.transaction() as tx:
+                candidates = tx.query(
+                    """
+                    SELECT id, albumartist, album
+                    FROM albums
+                    WHERE mb_albumid IS NULL OR mb_albumid = ''
+                    """
+                )
+
+            for row in candidates:
+                key = f"{row[1] or ''}\x1f{row[2] or ''}"
+                if hashlib.sha1(key.encode('utf-8')).hexdigest()[:16] == value:
+                    return flask.g.lib.get_album(row[0])
+
+            return None
+
+        if kind == 'legacy_int':
+            return flask.g.lib.get_album(value)
+
+        return None
 
     @classmethod
     def song(cls, subsonic_id: str) -> Optional[Item]:
@@ -959,8 +1041,13 @@ class Serialise:
         data = standardise_datadict(album_object)
 
         beets_album_id = data.get('id', 0)
-        subsonic_album_id = IDs.encode_album(beets_album_id)
         album_name = data.get('album', '')
+        subsonic_album_id = IDs.encode_album(
+            beets_album_id,
+            data.get('mb_albumid'),
+            data.get('albumartist'),
+            album_name
+        )
 
         subsonic_album = cls._common(data)
 
@@ -1103,7 +1190,12 @@ class Serialise:
         subsonic_song = cls._common(data)
 
         song_filepath = os.fsdecode(data.get('path', b''))
-        album_id = IDs.encode_album(data.get('album_id', 0))
+        album_id = IDs.encode_album(
+            data.get('album_id', 0),
+            data.get('mb_albumid'),
+            data.get('albumartist'),
+            data.get('album')
+        )
 
         song_specific = {
             'id': song_id,

@@ -2,6 +2,7 @@ import itertools
 import json
 import os
 import random
+import re
 import shlex
 import socket
 import subprocess
@@ -79,7 +80,7 @@ class JukeboxBackend:
     def _backend_clear(self) -> None:
         raise NotImplementedError
 
-    def _backend_append(self, path: str) -> None:
+    def _backend_append(self, entry_id: str, path: str) -> None:
         raise NotImplementedError
 
     def _backend_remove(self, index: int) -> None:
@@ -129,8 +130,8 @@ class JukeboxBackend:
             self._ensure_ready()
             self._backend_clear()
 
-            for _, path in entries:
-                self._backend_append(path)
+            for entry_id, path in entries:
+                self._backend_append(entry_id, path)
 
             self._queue = list(entries)
             if entries:
@@ -139,8 +140,8 @@ class JukeboxBackend:
     def add(self, entries: List[Tuple[str, str]]) -> None:
         with self._lock:
             self._ensure_ready()
-            for _, path in entries:
-                self._backend_append(path)
+            for entry_id, path in entries:
+                self._backend_append(entry_id, path)
             self._queue.extend(entries)
 
     def clear(self) -> None:
@@ -171,8 +172,8 @@ class JukeboxBackend:
             was_playing = self._backend_is_playing()
             random.shuffle(self._queue)
             self._backend_clear()
-            for _, path in self._queue:
-                self._backend_append(path)
+            for entry_id, path in self._queue:
+                self._backend_append(entry_id, path)
             if was_playing:
                 self._backend_play_from(0)
             else:
@@ -376,7 +377,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
         self._command('stop')
         self._command('playlist-clear')
 
-    def _backend_append(self, path: str):
+    def _backend_append(self, entry_id: str, path: str):
         self._loadfile(path, 'append')
 
     def _backend_remove(self, index: int):
@@ -412,12 +413,16 @@ class LocalJukeboxPlayer(JukeboxBackend):
         self._terminate()
 
 
+_URL_EXT_RE = re.compile(r'\.(mp3|aac|ogg|oga|flac|wav|m4a|opus|mp4|m3u8?)(?:$|\?)', re.IGNORECASE)
+
+
 class SonosJukeboxPlayer(JukeboxBackend):
     """
     Wrapper around a Sonos speaker, controlled over the network via SoCo.
 
-    Local files are exposed to the speaker as tokenised stream URLs, and anything that
-    is already directly fetchable (radio streams, un-downloaded podcast episodes) is passed straight through.
+    Local files, and http(s) URLs without a recognisable audio extension
+    are exposed to the speaker as tokenised stream URLs.
+    URLs that already end with a known extension can be passed straight through.
     """
     NAME = 'sonos'
 
@@ -454,18 +459,21 @@ class SonosJukeboxPlayer(JukeboxBackend):
 
     def _resolve_uri(self, path: str) -> str:
         """
-        Local files are exposed to the speaker as tokenised stream URLs, and anything that
-        is already directly fetchable (radio streams, un-downloaded podcast episodes) is passed straight through.
+        Local files, and http(s) URLs without a recognisable audio extension
+        are exposed to the speaker as tokenised stream URLs.
+        URLs that already end with a known extension can be passed straight through.
         """
 
-        if path.startswith(('http://', 'https://')):
+        is_url = path.startswith(('http://', 'https://'))
+        if is_url and _URL_EXT_RE.search(path):
             return path
 
         import flask
 
         token = stream_tokeniser.register(path)
 
-        filename = Path(path).name or 'track.mp3' # Sonos needs an extension in the URL, otherwise it rejects it
+        # Sonos needs an extension in the URL, otherwise it rejects it (UPnP error 804)
+        filename = (Path(path).name if not is_url else '') or 'stream.mp3'
         path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
 
         return external_url(path_part)
@@ -500,9 +508,28 @@ class SonosJukeboxPlayer(JukeboxBackend):
         except Exception as e:
             raise JukeboxUnavailableException(f'Failed to clear the Sonos queue: {e}') from e
 
-    def _backend_append(self, path: str) -> None:
+    def _queue_item(self, entry_id: str, path: str):
+        """
+        Build the DIDL item to hand to AddURIToQueue.
+
+        Radio stations have no fixed duration, and get rejected as ordinary tracks with UPnP error 804 unless
+        they're represented as an audio broadcast with a matching protocol info.
+        """
+        from soco.data_structures import DidlResource, DidlObject, DidlAudioBroadcast
+        from beetsplug.beetstreamnext.core.mappings import IDs
+
+        uri = self._resolve_uri(path)
+
+        if IDs.decode_type(entry_id) == 'radio':
+            res = [DidlResource(uri=uri, protocol_info='http-get:*:audio/mpeg:*')]
+            return DidlAudioBroadcast(title='', parent_id='', item_id='', resources=res)
+
+        res = [DidlResource(uri=uri, protocol_info='x-rincon-playlist:*:*:*')]
+        return DidlObject(title='', parent_id='', item_id='', resources=res)
+
+    def _backend_append(self, entry_id: str, path: str) -> None:
         try:
-            self._target().add_uri_to_queue(self._resolve_uri(path))
+            self._target().add_to_queue(self._queue_item(entry_id, path))
         except Exception as e:
             raise JukeboxUnavailableException(f'Failed to queue track on Sonos: {e}') from e
 

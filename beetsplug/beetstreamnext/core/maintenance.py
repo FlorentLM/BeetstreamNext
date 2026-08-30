@@ -84,7 +84,7 @@ def sweep_stale_references() -> dict[str, int]:
     Finds and deletes rows left behind by deleted content.
     Returns the number of rows purged, keyed by a short description.
     """
-    from beetsplug.beetstreamnext.api.idmapper import Resolve
+    from beetsplug.beetstreamnext.core.mappings import Resolve
 
     purged: dict[str, int] = {}
 

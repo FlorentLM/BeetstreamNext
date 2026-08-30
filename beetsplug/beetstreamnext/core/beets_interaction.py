@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Any
 
 import beets
 
-from beetsplug.beetstreamnext.api.idmapper import Resolve
+from beetsplug.beetstreamnext.core.mappings import Resolve
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import CACHE_LOCATION
 from beetsplug.beetstreamnext.core.database import write_beets_field

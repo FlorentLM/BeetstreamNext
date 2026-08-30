@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden, find_ffmpeg
 from beetsplug.beetstreamnext.api.responses import subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import Resolve
+from beetsplug.beetstreamnext.core.mappings import Resolve
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import (

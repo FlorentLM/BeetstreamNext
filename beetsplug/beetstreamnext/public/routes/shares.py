@@ -14,9 +14,9 @@ from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import send_file
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
-from beetsplug.beetstreamnext.api.idmapper import beets_abspath
+from beetsplug.beetstreamnext.core.mappings import beets_abspath
 
 
 def _safe_filename(name: Any) -> str:

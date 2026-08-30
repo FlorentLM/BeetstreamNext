@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise, standardise_datadict
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise, standardise_datadict
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
 @api_bp.route('/getPlayQueue', methods=['GET', 'POST'])

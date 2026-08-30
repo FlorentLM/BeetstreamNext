@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.core.cache import preload_artists, get_song_counts
 from beetsplug.beetstreamnext.core.images import image_url
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 

@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.utils.system import creation_date
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import fetch_playlist_images
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
 if TYPE_CHECKING:
     from beets.library import Item

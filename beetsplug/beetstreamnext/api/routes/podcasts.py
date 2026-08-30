@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
 def _list_channels(username: str) -> List[dict]:
 

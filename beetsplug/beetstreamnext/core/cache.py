@@ -177,7 +177,7 @@ def one_play_stats(song_id: str) -> dict | None:
 def preload_songs(beets_items: list):
     if not beets_items:
         return
-    from beetsplug.beetstreamnext.api.idmapper import IDs, standardise_datadict
+    from beetsplug.beetstreamnext.core.mappings import IDs, standardise_datadict
     sub_ids = [IDs.encode_song(standardise_datadict(s)) for s in beets_items]
 
     batch_likes(sub_ids)
@@ -188,7 +188,7 @@ def preload_songs(beets_items: list):
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
-    from beetsplug.beetstreamnext.api.idmapper import IDs
+    from beetsplug.beetstreamnext.core.mappings import IDs
     sub_ids = [IDs.encode_album(a['id']) for a in beets_albums]
 
     batch_likes(sub_ids)
@@ -200,7 +200,7 @@ def preload_artists(artists_data):
     if not artists_data:
         return
 
-    from beetsplug.beetstreamnext.api.idmapper import IDs
+    from beetsplug.beetstreamnext.core.mappings import IDs
 
     sub_ids = []
     if isinstance(artists_data, dict):

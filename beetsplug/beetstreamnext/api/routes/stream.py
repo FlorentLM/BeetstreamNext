@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.utils.general import api_bool, send_file
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
 
 FORMAT_MAP = {
     # Lossy

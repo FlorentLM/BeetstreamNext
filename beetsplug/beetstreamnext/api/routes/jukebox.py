@@ -6,7 +6,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxUnavailableException
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.idmapper import Resolve, Serialise
+from beetsplug.beetstreamnext.core.mappings import Resolve, Serialise
 
 ##
 # Endpoint

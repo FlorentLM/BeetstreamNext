@@ -1,12 +1,11 @@
 import urllib.parse
-from typing import Dict
 import flask
 
 from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
-from beetsplug.beetstreamnext.api.idmapper import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.images import image_url

@@ -3,7 +3,7 @@ import flask
 from .. import public_bp
 
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.api.idmapper import Resolve
+from beetsplug.beetstreamnext.core.mappings import Resolve
 
 from beetsplug.beetstreamnext.settings import settings_store
 

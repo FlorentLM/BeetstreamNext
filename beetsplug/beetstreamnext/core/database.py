@@ -689,7 +689,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
 
     Rows for a song that no longer exists in the library are dropped.
     """
-    from beetsplug.beetstreamnext.api.idmapper import IDs
+    from beetsplug.beetstreamnext.core.mappings import IDs
 
     # this migration runs before app.config['root_directory'] is set so this is needed
     _root_dir = beets.config['directory'].get()

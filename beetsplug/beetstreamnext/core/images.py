@@ -401,7 +401,7 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
     if not playlist.songs:
         return None
 
-    from beetsplug.beetstreamnext.api.idmapper import Resolve
+    from beetsplug.beetstreamnext.core.mappings import Resolve
 
     half = max(size // 2, 1)
     tiles = []
@@ -466,7 +466,7 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:
-    from beetsplug.beetstreamnext.api.idmapper import IDs
+    from beetsplug.beetstreamnext.core.mappings import IDs
 
     artist = customstrip(artist)
     if IDs.decode_type(artist) == 'artist':

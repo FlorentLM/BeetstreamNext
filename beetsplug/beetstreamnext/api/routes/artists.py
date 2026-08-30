@@ -2,7 +2,6 @@ import os
 import time
 import urllib.parse
 from collections import defaultdict
-from functools import partial
 import flask
 
 from .. import api_bp
@@ -11,67 +10,26 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
-from beetsplug.beetstreamnext.core.cache import preload_artists, get_song_counts
+from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import image_url
-
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
-
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
 
-    value, is_mbid = IDs.decode_artist(subsonic_artist_id)
+    value, _ = IDs.decode_artist(subsonic_artist_id)
     if not value:
         return {}
 
-    prefetched_albums = None
+    resolved = Resolve.artist(subsonic_artist_id)
+    if not resolved:
+        return {}
 
-    if is_mbid:
-        if with_albums:
-            # fetch albums by mbid to get name and album list in 1 query
-            with flask.g.lib.transaction() as tx:
-                prefetched_albums = list(tx.query(
-                    """
-                    SELECT * FROM albums 
-                    WHERE mb_albumartistid = ?
-                    """, (value,)
-                ))
-            artist_name = prefetched_albums[0]['albumartist'] if prefetched_albums else value
-        else:
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    """
-                    SELECT albumartist 
-                    FROM albums 
-                    WHERE mb_albumartistid = ? 
-                    LIMIT 1
-                    """, (value,)
-                )
-            artist_name = rows[0][0] if rows else value
-    else:
-        artist_name = value
+    artist_name, _ = resolved
 
-    payload = {
-        "artist": {
-            "id": subsonic_artist_id,
-            "name": artist_name,
-        }
-    }
-
-    # When part of a directory response or a ArtistWithAlbumsID3 response
-    if with_albums:
-        if prefetched_albums is not None:
-            albums = prefetched_albums
-        else:
-            albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
-
-        song_counts = get_song_counts(albums)
-
-        payload['artist']['album'] = list(map(partial(Serialise.album, include_songs=False, song_counts=song_counts), albums))
-
-    return payload
+    return {'artist': Serialise.artist(artist_name, with_albums=with_albums)}
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtists/

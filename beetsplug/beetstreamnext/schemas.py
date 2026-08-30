@@ -461,7 +461,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'audio',
         'description': (
-            'Allow jukebox mode: the server can play audio on its own hardware '
+            'Allow jukebox mode: the server can play audio on its own hardware, or on a Sonos speaker '
             "(client apps act as remote controls)."
         ),
         'requires_restart': False,
@@ -494,8 +494,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'audio',
         'description': (
-            "Path to the mpv binary, if it isn't on the system PATH (e.g. /usr/local/bin/mpv). "
-            "Leave empty to auto-detect from PATH."
+            "For mpv backend only. Path to the mpv binary, if it isn't on the system PATH "
+            "(e.g. /usr/local/bin/mpv). Leave empty to auto-detect from PATH."
         ),
         'requires_restart': False,
         'validator': _validate_path,
@@ -505,7 +505,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'audio',
         'description': (
-            "Audio output device for jukebox mode, as mpv's `--audio-device` expects "
+            "For mpv backend only. Audio output device for jukebox mode, as mpv's `--audio-device` expects "
             "(e.g. `alsa/hw:0,0` or `coreaudio/BuiltInSpeakerDevice`). Leave empty to use the system default. "
             "Run `mpv --audio-device=help` on the server to list available devices."
         ),

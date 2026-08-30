@@ -85,6 +85,21 @@ def get_mimetype(path: bytes | str | Path) -> str:
     return mimetypes.guess_type(path)[0] or mimetype_fallback.get(ext, 'application/octet-stream')
 
 
+def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -> Path:
+    """Absolute Path for a beets-stored path, which may be bytes and/or relative to root_directory."""
+
+    if isinstance(path, bytes):
+        path = os.fsdecode(path)
+    path_obj = Path(path)
+
+    if not path_obj.is_absolute():
+        if isinstance(root_directory, bytes):
+            root_directory = os.fsdecode(root_directory)
+        path_obj = Path(root_directory) / path_obj
+
+    return path_obj
+
+
 def path_hash(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:
     """Short hash of a file's path relative to root_directory."""
     if not path:

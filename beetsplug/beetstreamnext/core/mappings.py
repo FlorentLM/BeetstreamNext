@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter, external_url
-from beetsplug.beetstreamnext.utils.system import path_hash, get_mimetype
+from beetsplug.beetstreamnext.utils.system import path_hash, get_mimetype, resolve_path
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.database import database, write_beets_field
 from beetsplug.beetstreamnext.core.external import query_musicbrainz, query_discogs
@@ -29,10 +29,7 @@ def beets_abspath(item: Dict | Item | Any) -> Path:
     Beets sometimes stores paths relative to its 'directory' config.
     This resolves to an absolute path.
     """
-    path_obj = Path(os.fsdecode(item.get('path', b'')))
-    if not path_obj.is_absolute():
-        path_obj = app.config['root_directory'] / path_obj
-    return path_obj
+    return resolve_path(item.get('path', b''), app.config['root_directory'])
 
 
 class AttrDict(dict):

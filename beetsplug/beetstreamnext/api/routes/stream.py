@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, send_file
-from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg
+from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
@@ -146,9 +146,7 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
     if not media_path:
         return None, None, subsonic_error(70, resp_fmt=resp_fmt)
 
-    path_obj = Path(media_path)
-    if not path_obj.is_absolute():
-        media_path = str(app.config['root_directory'] / path_obj)
+    media_path = str(resolve_path(media_path, app.config['root_directory']))
 
     return media, media_path, None
 

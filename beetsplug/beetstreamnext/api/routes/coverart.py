@@ -1,6 +1,5 @@
 import os
 from io import BytesIO
-from pathlib import Path
 import flask
 
 from .. import api_bp
@@ -8,7 +7,7 @@ from .. import api_bp
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.system import make_hidden, find_ffmpeg
+from beetsplug.beetstreamnext.utils.system import make_hidden, find_ffmpeg, resolve_path
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 from beetsplug.beetstreamnext.core.mappings import Resolve
 
@@ -61,10 +60,7 @@ def endpoint_get_cover_art() -> flask.Response:
 
         # Fallback: try to extract cover from the song file
         if FFMPEG_PYTHON or find_ffmpeg():
-            song_path = os.fsdecode(item.path)
-            path_obj = Path(song_path)
-            if not path_obj.is_absolute():
-                song_path = str(app.config['root_directory'] / path_obj)
+            song_path = str(resolve_path(item.path, app.config['root_directory']))
             try:
                 song_mtime = os.path.getmtime(song_path)
             except OSError:

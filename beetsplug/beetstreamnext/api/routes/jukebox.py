@@ -1,12 +1,39 @@
+import time
 import flask
 
 from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxUnavailableException
+from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxBackend, JukeboxUnavailableException
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.mappings import Resolve, Serialise
+
+
+def _sync_now_playing(player: JukeboxBackend, username: str, status: dict) -> None:
+    """Reflect the jukebox's current track in the 'now_playing' table."""
+
+    ids = player.track_ids()
+    index = status.get('currentIndex', -1)
+
+    with database() as db:
+        if status.get('playing') and 0 <= index < len(ids):
+            db.execute(
+                """
+                INSERT INTO now_playing (username, item_id, started_at, player_name, position_ms, state)
+                VALUES (?, ?, ?, ?, ?, 'playing')
+                ON CONFLICT (username) DO UPDATE SET
+                    item_id     = excluded.item_id,
+                    started_at  = CASE WHEN item_id = excluded.item_id THEN started_at ELSE excluded.started_at END,
+                    player_name = excluded.player_name,
+                    position_ms = excluded.position_ms,
+                    state       = 'playing'
+                """, (username, ids[index], time.time(), f'Jukebox ({player.NAME})', int(status.get('position', 0) * 1000))
+            )
+        else:
+            db.execute("DELETE FROM now_playing WHERE username = ?", (username,))
+
 
 ##
 # Endpoint
@@ -28,12 +55,15 @@ def endpoint_jukebox_control() -> flask.Response:
 
     entry_ids = r.getlist('id', type=safe_str)
     player = get_jukebox_player()
+    username = flask.g.username
 
     try:
         if action == 'get':
+            status = player.status()
+            _sync_now_playing(player, username, status)
             payload = {
                 'jukeboxPlaylist': {
-                    **player.status(),
+                    **status,
                     'entry': Serialise.playables(player.track_ids())
                 }
             }
@@ -90,7 +120,10 @@ def endpoint_jukebox_control() -> flask.Response:
     except JukeboxUnavailableException as e:
         return subsonic_error(0, message=str(e), resp_fmt=resp_fmt)
 
+    status = player.status()
+    _sync_now_playing(player, username, status)
+
     payload = {
-        'jukeboxStatus': player.status()
+        'jukeboxStatus': status
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

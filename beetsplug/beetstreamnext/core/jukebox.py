@@ -493,7 +493,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
         if not (0 <= current_index < len(self._queue)):
             current_index = -1
 
-        playing = current_index >= 0 and transport.get('current_transport_state') == 'PLAYING'
+        playing = current_index >= 0 and transport.get('current_transport_state') in ('PLAYING', 'TRANSITIONING')
 
         return {
             'currentIndex': current_index,
@@ -567,7 +567,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
             raise JukeboxUnavailableException(f'Failed to set Sonos volume: {e}') from e
 
     def _backend_is_playing(self) -> bool:
-        return self._target().get_current_transport_info().get('current_transport_state') == 'PLAYING'
+        return self._target().get_current_transport_info().get('current_transport_state') in ('PLAYING', 'TRANSITIONING')
 
     def _backend_shutdown(self) -> None:
         if self._device is not None:

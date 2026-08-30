@@ -615,7 +615,7 @@ class IDMapper:
         Batched resolve() for a (possibly heterogeneous) list of ids. Returns {id: (type, object)},
         omitting anything that didn't resolve.
 
-        TODO: Only songs are bulk-fetched, maybe this shoul dbe extended to everything?
+        TODO: Only songs are bulk-fetched, maybe this should be extended to everything?
         """
         songs = cls.resolve_many_songs([sid for sid in subsonic_ids if cls.get_type(sid) == 'song'])
 

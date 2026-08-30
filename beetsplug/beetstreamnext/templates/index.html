@@ -35,7 +35,7 @@
         <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--primary); font-weight: 700; letter-spacing: 0.08em; margin-bottom: 0.25rem;">Now Playing</div>
             <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ now_playing.title }}</div>
-            <div style="font-size: 0.9rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ now_playing.artist }} &bull; {{ now_playing.album }}</div>
+            <div style="font-size: 0.9rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ now_playing.artist }}{% if now_playing.album %} &bull; {{ now_playing.album }}{% endif %}</div>
             {% if now_playing.player %}
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; font-style: italic;">via {{ now_playing.player }}</div>
             {% endif %}

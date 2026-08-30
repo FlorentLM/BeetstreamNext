@@ -126,7 +126,7 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
         if not media_id:
             return None, None, subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDs.decode_type(media_id) == 'episode':
+    if IDs.decode_type(media_id) == 'podcast_episode':
         episode = Resolve.podcast_episode(media_id)
         if not episode or episode.get('status') != 'completed' or not episode.get('file_path'):
             return None, None, subsonic_error(70, resp_fmt=resp_fmt)
@@ -170,7 +170,7 @@ def _streamdownload_podcast(req_values, required_role: str) -> flask.Response | 
     if not media_id and required_role == 'streamRole':
         media_id = req_values.get('mediaId', default='', type=safe_str)
 
-    if IDs.decode_type(media_id) != 'episode':
+    if IDs.decode_type(media_id) != 'podcast_episode':
         return None
 
     if not bool(flask.g.user_data.get(required_role)):
@@ -650,7 +650,7 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
     if media_type and media_type not in ('song', 'podcast'):
         return subsonic_error(0, message="'mediaType' must be 'song' or 'podcast'.", resp_fmt=resp_fmt)
 
-    resolved_type = 'podcast' if IDs.decode_type(media_id) == 'episode' else 'song'
+    resolved_type = 'podcast' if IDs.decode_type(media_id) == 'podcast_episode' else 'song'
     if media_type and media_type != resolved_type:
         return subsonic_error(0, message=f"'mediaType' ({media_type}) does not match the resolved media ({resolved_type}).", resp_fmt=resp_fmt)
 

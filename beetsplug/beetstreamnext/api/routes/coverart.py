@@ -100,13 +100,13 @@ def endpoint_get_cover_art() -> flask.Response:
             if response is not None:
                 return response
 
-    elif entry_type == 'podcastChannel':
+    elif entry_type == 'podcast_channel':
         if entry:
             response = send_podcast_art(entry['id'], size)
             if response is not None:
                 return response
 
-    elif entry_type == 'episode':
+    elif entry_type == 'podcast_episode':
         if entry:
             response = send_podcast_art(entry['channel_id'], size)
             if response is not None:

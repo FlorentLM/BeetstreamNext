@@ -5,8 +5,6 @@ import urllib.parse
 from pathlib import Path
 from typing import Optional
 
-import flask
-
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.constants import (
     CACHE_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, USER_AGENT

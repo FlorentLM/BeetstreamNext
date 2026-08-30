@@ -292,6 +292,6 @@ def endpoint_get_podcast_episode() -> flask.Response:
     channel = Resolve.podcast_channel(IDs.encode_podcast_channel(episode['channel_id']))
 
     payload = {
-        'episode': Serialise.podcast_episode(episode, channel)
+        'podcastEpisode': Serialise.podcast_episode(episode, channel)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

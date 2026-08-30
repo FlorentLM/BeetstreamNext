@@ -2,7 +2,7 @@ import base64
 import os
 from pathlib import Path
 import binascii
-from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any, Sequence
+from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any, Sequence, Callable
 import flask
 from beets.library import LibModel, Item
 
@@ -165,7 +165,8 @@ def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
     seen_album_artists = set()
     seen_contributors = set()
 
-    def _process(raw_names: str, raw_mbids: str, target_list: list, seen_set: set, is_contributor: bool = False, role: str = ''):
+    def _process(raw_names: str, raw_mbids: str, target_list: list, seen_set: set, is_contributor: bool = False,
+                 role: str = ''):
         if not raw_names:
             return
 
@@ -207,20 +208,37 @@ def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
                     })
 
     _process(data.get('artists') or '', data.get('mb_artistids') or '', artists_array, seen_artists)
-    _process(data.get('albumartists') or '', data.get('mb_albumartistids') or '', album_artists_array, seen_album_artists)
+    _process(data.get('albumartists') or '', data.get('mb_albumartistids') or '', album_artists_array,
+             seen_album_artists)
 
-    _process(data.get('composers') or data.get('composer') or '', '', contributors_array, seen_contributors, True, 'composer')
-    _process(data.get('lyricists') or data.get('lyricist') or '', '', contributors_array, seen_contributors, True, 'lyricist')
-    _process(data.get('remixers') or data.get('remixer') or '', '', contributors_array, seen_contributors, True, 'remixer')
-    _process(data.get('arrangers') or data.get('arranger') or '', '', contributors_array, seen_contributors, True, 'arranger')
+    _process(data.get('composers') or data.get('composer') or '', '', contributors_array, seen_contributors, True,
+             'composer')
+    _process(data.get('lyricists') or data.get('lyricist') or '', '', contributors_array, seen_contributors, True,
+             'lyricist')
+    _process(data.get('remixers') or data.get('remixer') or '', '', contributors_array, seen_contributors, True,
+             'remixer')
+    _process(data.get('arrangers') or data.get('arranger') or '', '', contributors_array, seen_contributors, True,
+             'arranger')
 
     display_composer = ", ".join(composers)
 
     return artists_array, album_artists_array, contributors_array, display_composer
 
-##
 
-# TODO: Having an plainly defined hierarchy of what is 'playable', what is 'media', what is 'any' would help here
+##
+# Data types hierarchy
+
+# Types that OpenSubsonic considers media (ID3-tag -ish)
+TYPES_MEDIA = frozenset({'artist', 'album', 'song', 'podcast_episode'})
+
+# These can be played (streamed)
+TYPES_PLAYABLE = frozenset({'song', 'radio', 'podcast_episode'})
+
+# These are derived (no direct db access) or have a specific object model
+TYPES_SPECIAL = frozenset({'artist', 'playlist'})
+
+# These have a plain id->db row/dict lookup
+TYPES_ANY = frozenset(TYPES_PLAYABLE.union({'album', 'podcast_channel'}))
 
 
 ##
@@ -247,6 +265,9 @@ class IDs:
 
     @staticmethod
     def decode_int(subsonic_id: str, prefix: str) -> int | None:
+        """
+        Strip a known prefix off a Subsonic ID and parse the remainder as an int.
+        """
         sid = str(subsonic_id)
         if not sid.startswith(prefix):
             return None
@@ -264,18 +285,9 @@ class IDs:
         if sid.startswith(cls._SNG_ID_PREF): return 'song'
         if sid.startswith(cls._PLY_ID_PREF): return 'playlist'
         if sid.startswith(cls._RAD_ID_PREF): return 'radio'
-        if sid.startswith(cls._PCH_ID_PREF): return 'podcastChannel'
-        if sid.startswith(cls._PEP_ID_PREF): return 'episode'
+        if sid.startswith(cls._PCH_ID_PREF): return 'podcast_channel'
+        if sid.startswith(cls._PEP_ID_PREF): return 'podcast_episode'
         return None
-
-    @classmethod
-    def decode_song_mbid(cls, subsonic_id: str) -> str:
-        payload = subsonic_id[len(cls._SNG_MBID_PREF):]
-        padding = (4 - len(payload) % 4) % 4
-        try:
-            return base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
-        except (binascii.Error, UnicodeDecodeError):
-            return ''
 
     @classmethod
     def decode_song(cls, subsonic_id: str) -> Tuple[Any, str] | Tuple[None, None]:
@@ -284,7 +296,12 @@ class IDs:
         sid = str(subsonic_id)
 
         if sid.startswith(cls._SNG_MBID_PREF):
-            mbid = cls.decode_song_mbid(sid)
+            payload = sid[len(cls._SNG_MBID_PREF):]
+            padding = (4 - len(payload) % 4) % 4
+            try:
+                mbid = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
+            except (binascii.Error, UnicodeDecodeError):
+                mbid = ''
             return (mbid, 'mbid') if mbid else (None, None)
 
         if sid.startswith(cls._SNG_HASH_PREF):
@@ -298,6 +315,7 @@ class IDs:
 
     @classmethod
     def decode_artist(cls, subsonic_id: str) -> Tuple[str, bool]:
+        """Decode an artist ID back to (name or mbid, is_mbid)."""
 
         sid = str(subsonic_id)
 
@@ -317,6 +335,7 @@ class IDs:
 
     @classmethod
     def decode_playlist(cls, subsonic_id: str) -> str | None:
+        """Decode a playlist ID back to its raw stem (dir id, suffix, and optional owner)."""
         sid = str(subsonic_id)
         if not sid.startswith(cls._PLY_ID_PREF):
             return None
@@ -324,22 +343,29 @@ class IDs:
 
     @classmethod
     def encode_artist(cls, name_or_mbid: Any, is_mbid: bool = True) -> str:
+        """
+        Mint an artist ID from either a mbid or a plain name.
+        """
+
         encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
         prefix = cls._ART_MBID_PREF if is_mbid else cls._ART_NAME_PREF
         return f"{prefix}{encoded}"
 
     @classmethod
     def encode_album(cls, beets_id: int) -> str:
+        """
+        Mint an album ID from a beets row ID.
+        """
         return f"{cls._ALB_ID_PREF}{beets_id}"
 
     @classmethod
     def encode_song(cls, song: dict, _root_directory: Optional[bytes | str | Path] = None) -> str:
         """
-        Mint the song id for a beets item: prefers whatever external database id beets
+        Mint the song ID for a beets item: prefers whatever external database ID beets
         recorded (MusicBrainz, Deezer, Spotify etc... beets always writes them in the mb_* field).
 
         Falls back to a hash of the item's path (relative to the root directory), or to the raw beets
-        row id if neither is available (but this one is unstable across reimports).
+        row ID if neither is available (but this one is unstable across reimports).
 
         Note: _root_directory is only necessary for the db migration callsite, it's called
             before app.config['root_directory'] is set
@@ -357,20 +383,32 @@ class IDs:
 
     @classmethod
     def encode_playlist(cls, dir_id: int, stem_suffix: str, owner: Optional[str] = None) -> str:
+        """
+        Mint a playlist ID from its directory ID and filename stem, optionally scoped to an owner.
+        """
         if owner:
             return f"{cls._PLY_ID_PREF}{dir_id}-{owner}/{stem_suffix}"
         return f"{cls._PLY_ID_PREF}{dir_id}-{stem_suffix}"
 
     @classmethod
     def encode_radio(cls, db_id: int) -> str:
+        """
+        Mint a radio station ID from its db row ID.
+        """
         return f'{cls._RAD_ID_PREF}{db_id}'
 
     @classmethod
     def encode_podcast_channel(cls, db_id: int) -> str:
+        """
+        Mint a podcast channel ID from its db row ID.
+        """
         return f'{cls._PCH_ID_PREF}{db_id}'
 
     @classmethod
     def encode_podcast_episode(cls, db_id: int) -> str:
+        """
+        Mint a podcast episode ID from its db row ID.
+        """
         return f'{cls._PEP_ID_PREF}{db_id}'
 
 
@@ -382,6 +420,8 @@ class Resolve:
     """
     Decode Subsonic IDs (minted by IDs) and fetch the Beets/db object they refer to.
     """
+
+    _method_map: Dict[str, Callable] = {}
 
     @classmethod
     def artist(cls, req_id: str) -> Tuple[str, str] | None:
@@ -477,7 +517,9 @@ class Resolve:
                     """
                     SELECT id
                     FROM items
-                    WHERE mb_releasetrackid = ? OR mb_trackid = ? LIMIT 1
+                    WHERE mb_releasetrackid = ?
+                       OR mb_trackid = ?
+                    LIMIT 1
                     """, (value, value)
                 )
             return flask.g.lib.get_item(rows[0][0]) if rows else None
@@ -488,7 +530,8 @@ class Resolve:
             with flask.g.lib.transaction() as tx:
                 candidates = tx.query(
                     """
-                    SELECT id, path FROM items
+                    SELECT id, path
+                    FROM items
                     WHERE (mb_releasetrackid IS NULL OR mb_releasetrackid = '')
                       AND (mb_trackid IS NULL OR mb_trackid = '')
                     """
@@ -531,8 +574,20 @@ class Resolve:
         if by_mbid:
             mbids = list(by_mbid)
             with flask.g.lib.transaction() as tx:
-                rows = chunked_query(tx, 'SELECT id, mb_releasetrackid, mb_trackid FROM items WHERE mb_releasetrackid IN ({q})', mbids)
-                rows += chunked_query(tx, 'SELECT id, mb_releasetrackid, mb_trackid FROM items WHERE mb_trackid IN ({q})', mbids)
+                rows = chunked_query(tx,
+                    """
+                    SELECT id, mb_releasetrackid, mb_trackid 
+                    FROM items 
+                    WHERE mb_releasetrackid IN ({q})
+                    """, mbids
+                )
+                rows += chunked_query(tx,
+                    """
+                    SELECT id, mb_releasetrackid, mb_trackid 
+                    FROM items 
+                    WHERE mb_trackid IN ({q})
+                    """, mbids
+                )
             seen_rows = set()
             for row in rows:
                 if row[0] in seen_rows:
@@ -548,7 +603,8 @@ class Resolve:
             with flask.g.lib.transaction() as tx:
                 candidates = tx.query(
                     """
-                    SELECT id, path FROM items
+                    SELECT id, path
+                    FROM items
                     WHERE (mb_releasetrackid IS NULL OR mb_releasetrackid = '')
                       AND (mb_trackid IS NULL OR mb_trackid = '')
                     """
@@ -583,7 +639,8 @@ class Resolve:
         with database() as db:
             row = db.execute(
                 """
-                SELECT * FROM internet_radio_stations 
+                SELECT *
+                FROM internet_radio_stations
                 WHERE id = ?
                 """, (radio_id,)
             ).fetchone()
@@ -641,14 +698,8 @@ class Resolve:
         isn't a plain id->db lookup (like artist or playlist).
         """
         entry_type = IDs.decode_type(subsonic_id)
-
-        if entry_type == 'song': return entry_type, cls.song(subsonic_id)
-        if entry_type == 'album': return entry_type, cls.album(subsonic_id)
-        if entry_type == 'radio': return entry_type, cls.radio(subsonic_id)
-        if entry_type == 'podcastChannel': return entry_type, cls.podcast_channel(subsonic_id)
-        if entry_type == 'episode': return entry_type, cls.podcast_episode(subsonic_id)
-
-        return entry_type, None
+        resolver = cls._method_map.get(entry_type)
+        return entry_type, (resolver(subsonic_id) if resolver else None)
 
     @classmethod
     def multiple(cls, subsonic_ids: Sequence[str]) -> Dict[str, Tuple[str, Any]]:
@@ -670,7 +721,8 @@ class Resolve:
         return result
 
     @classmethod
-    def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[Tuple[str, str]]:
+    def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[
+        Tuple[str, str]]:
         """
         Resolve any playable Subsonic ID (song, radio station, or podcast episode) to (id, local path or URL).
 
@@ -682,6 +734,10 @@ class Resolve:
 
         if obj is None:
             bsn_logger.warning(f'Could not resolve {entry_id!r}, skipping.')
+            return None
+
+        if entry_type not in TYPES_PLAYABLE:
+            bsn_logger.warning(f'Unsupported id type for {entry_id!r}, skipping.')
             return None
 
         if entry_type == 'song':
@@ -701,7 +757,7 @@ class Resolve:
                 return None
             return entry_id, obj['stream_url']
 
-        if entry_type == 'episode':
+        if entry_type == 'podcast_episode':
             if obj.get('status') == 'completed' and obj.get('file_path'):
                 return entry_id, obj['file_path']
             if obj.get('audio_url'):
@@ -709,9 +765,6 @@ class Resolve:
 
             bsn_logger.warning(f'Podcast episode {entry_id!r} has no playable source, skipping.')
             return None
-
-        bsn_logger.warning(f'Unsupported id type for {entry_id!r}, skipping.')
-        return None
 
     @classmethod
     def playables(cls, entry_ids: Sequence[str]) -> List[Tuple[str, str]]:
@@ -741,6 +794,15 @@ class Resolve:
         return songs, albums
 
 
+Resolve._method_map = {
+    'song': Resolve.song,
+    'album': Resolve.album,
+    'radio': Resolve.radio,
+    'podcast_channel': Resolve.podcast_channel,
+    'podcast_episode': Resolve.podcast_episode,
+}
+
+
 ##
 # Serialise: turn a resolved Beets/db object into its serialised Subsonic response dict.
 
@@ -750,8 +812,14 @@ class Serialise:
     Maps a Beets/db object (as returned by the resolver) to its serialised Subsonic response dict.
     """
 
+    _method_map: Dict[str, Callable] = {}
+
     @classmethod
-    def media(cls, beets_object: Dict | LibModel) -> dict:
+    def _common(cls, beets_object: Dict | LibModel) -> dict:
+        """
+        Build the tag-derived fields (artist credits, genre, dates...) shared by song
+        and album responses. Internal helper, not a member of the entry-type hierarchy.
+        """
 
         data = standardise_datadict(beets_object)
 
@@ -803,6 +871,9 @@ class Serialise:
 
     @classmethod
     def artist(cls, artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> dict:
+        """
+        Map a beets artist name to its serialised Subsonic ArtistID3 response dict.
+        """
 
         # Priority: prefetched -> album query (when with_albums) -> standalone db query
         mbid = ''
@@ -879,7 +950,11 @@ class Serialise:
         return subsonic_artist
 
     @classmethod
-    def album(cls, album_object: Dict | LibModel, include_songs: bool = True, song_counts: Optional[Dict] = None) -> dict:
+    def album(cls, album_object: Dict | LibModel, include_songs: bool = True,
+              song_counts: Optional[Dict] = None) -> dict:
+        """
+        Map a beets album object to its serialised Subsonic AlbumID3 response dict.
+        """
 
         data = standardise_datadict(album_object)
 
@@ -887,7 +962,7 @@ class Serialise:
         subsonic_album_id = IDs.encode_album(beets_album_id)
         album_name = data.get('album', '')
 
-        subsonic_album = cls.media(data)
+        subsonic_album = cls._common(data)
 
         album_specific = {
             'id': subsonic_album_id,
@@ -1016,13 +1091,16 @@ class Serialise:
 
     @classmethod
     def song(cls, song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> dict:
+        """
+        Map a beets song item to its serialised Subsonic Child response dict.
+        """
 
         data = standardise_datadict(song_object)
 
         song_id = IDs.encode_song(data)
         song_title = data.get('title') or ''
 
-        subsonic_song = cls.media(data)
+        subsonic_song = cls._common(data)
 
         song_filepath = os.fsdecode(data.get('path', b''))
         album_id = IDs.encode_album(data.get('album_id', 0))
@@ -1141,6 +1219,9 @@ class Serialise:
 
     @classmethod
     def playlist(cls, playlist: 'Playlist', include_songs: bool = False) -> dict:
+        """
+        Map a Playlist object to its serialised Subsonic PlaylistWithSongs response dict.
+        """
         subsonic_playlist = {
             'id': playlist.id,
             'name': playlist.name,
@@ -1160,6 +1241,9 @@ class Serialise:
 
     @classmethod
     def radio(cls, row: dict) -> dict:
+        """
+        Map an internet radio station row to its serialised Subsonic InternetRadioStation dict.
+        """
         station_id = IDs.encode_radio(row['id'])
 
         subsonic_radio_station = {
@@ -1241,6 +1325,18 @@ class Serialise:
         return subsonic_episode
 
     @classmethod
+    def any(cls, entry_type: Optional[str], obj: Optional[Any]) -> Optional[dict]:
+        """
+        Map any resolvable Subsonic object (song, album, radio, podcast channel, or
+        episode) to its serialised response dict, given the (type, object) pair
+        returned by Resolve.any().
+        """
+        if obj is None:
+            return None
+        serialiser = cls._method_map.get(entry_type)
+        return serialiser(obj) if serialiser else None
+
+    @classmethod
     def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[dict]:
         """
         Map any playable Subsonic ID (song, radio station, or podcast episode) to its serialised entry dict.
@@ -1251,7 +1347,7 @@ class Serialise:
         """
 
         entry_type, obj = (pre_resolved or {}).get(entry_id) or Resolve.any(entry_id)
-        if obj is None:
+        if obj is None or entry_type not in TYPES_PLAYABLE:
             return None
 
         if entry_type == 'song':
@@ -1260,11 +1356,9 @@ class Serialise:
         if entry_type == 'radio':
             return cls.radio(dict(obj))
 
-        if entry_type == 'episode':
+        if entry_type == 'podcast_episode':
             channel = Resolve.podcast_channel(IDs.encode_podcast_channel(obj['channel_id']))
             return cls.podcast_episode(obj, channel)
-
-        return None
 
     @classmethod
     def playables(cls, entry_ids: Sequence[str]) -> List[dict]:
@@ -1277,6 +1371,9 @@ class Serialise:
 
     @classmethod
     def shared_items(cls, row: dict, entries: Sequence[str]) -> dict:
+        """
+        Map a public share row and its entry IDs to a serialised Subsonic Share dict.
+        """
 
         songs, albums = Resolve.shared_items(entries)
         share_url = external_url(flask.url_for('public.share_view', share_id=row['id']))
@@ -1292,3 +1389,12 @@ class Serialise:
             'entry': [cls.song(s) for s in songs] + [cls.album(a, include_songs=False) for a in albums]
         }
         return subsonic_share
+
+
+Serialise._method_map = {
+    'song': Serialise.song,
+    'album': Serialise.album,
+    'radio': Serialise.radio,
+    'podcast_channel': Serialise.podcast_channel,
+    'podcast_episode': Serialise.podcast_episode,
+}

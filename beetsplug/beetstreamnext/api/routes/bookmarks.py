@@ -68,7 +68,7 @@ def endpoint_create_bookmark() -> flask.Response:
     if not req_id or position < 0.0:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDs.decode_type(req_id) == 'episode':
+    if IDs.decode_type(req_id) == 'podcast_episode':
         episode = Resolve.podcast_episode(req_id)
         if not episode:
             return subsonic_error(70, resp_fmt=resp_fmt)
@@ -110,7 +110,7 @@ def endpoint_delete_bookmark() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDs.decode_type(req_id) == 'episode':
+    if IDs.decode_type(req_id) == 'podcast_episode':
         episode = Resolve.podcast_episode(req_id)
         canonical_id = IDs.encode_podcast_episode(episode['id']) if episode else None
     else:

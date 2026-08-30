@@ -69,6 +69,7 @@ It also adds several enhancements and cool features :)
 
 *   **Access controls:** CIDR-aware IP whitelisting/blacklisting, plus adaptive login rate-limiting on both per-(IP, username) and per-IP-only buckets to slow down distributed brute-force attempts (monitored and cleared via the admin panel).
 *   **Reverse-proxy file offloading:** Supports `X-Accel-Redirect` (Nginx) or `X-Sendfile` (Apache) so direct file serving can bypass the Python process entirely.
+*   **Library health checks & self-healing streams:** A background scan (also triggerable on-demand) probes files for decode errors. Flagged files are automatically streamed through a transcode pass (lossless stays lossless) instead of direct-play so playback doesn't fail.
 
 ### Admin
 

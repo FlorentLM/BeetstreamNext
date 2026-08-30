@@ -466,6 +466,29 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
     },
+    'jukebox_backend': {
+        'type': 'str',
+        'default': 'mpv',
+        'category': 'audio',
+        'description': (
+            "Defines where jukebox mode will play audio from. `mpv` plays on this server's own audio hardware (see "
+            "'mpv_path' and 'jukebox_hardware_device' below). `sonos` streams to a Sonos speaker on the "
+            "local network (see 'jukebox_sonos_ip' directly below)."
+        ),
+        'requires_restart': False,
+        'choices': ('mpv', 'sonos'),
+        'validator': _validate_choice('mpv', 'sonos'),
+    },
+    'jukebox_sonos_ip': {
+        'type': 'str',
+        'default': '',
+        'category': 'audio',
+        'description': (
+            "For Sonos backend only. IP address of the Sonos speaker jukebox mode streams to. Use "
+            "'Discover speakers' below to scan the local network and pick one."
+        ),
+        'requires_restart': False,
+    },
     'mpv_path': {
         'type': 'str',
         'default': '',
@@ -477,7 +500,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'validator': _validate_path,
     },
-    'jukebox_audio_device': {
+    'jukebox_hardware_device': {
         'type': 'str',
         'default': '',
         'category': 'audio',

@@ -39,6 +39,15 @@
             {% endfor %}
         </div>
         <p class="label-hint">Empty selection = read-only.</p>
+    {%- elif key == 'jukebox_sonos_ip' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <select id="set-{{ key }}" name="{{ key }}">
+            {% if info.value %}
+                <option value="{{ info.value }}" selected>{{ info.value }} (current)</option>
+            {% else %}
+                <option value="">Not set</option>
+            {% endif %}
+        </select>
     {%- elif info.choices -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <select id="set-{{ key }}" name="{{ key }}">
@@ -89,6 +98,14 @@
                     data-result="test-result-audiomuse">Test connection</button>
         </p>
         <p class="test-result" id="test-result-audiomuse"></p>
+    {%- elif key == 'jukebox_sonos_ip' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline" data-action="discover-sonos-speakers"
+                    data-url="{{ url_for('admin.route_discover_sonos_speakers') }}"
+                    data-select="set-jukebox_sonos_ip"
+                    data-result="test-result-sonos">Discover speakers</button>
+        </p>
+        <p class="test-result" id="test-result-sonos"></p>
     {%- endif -%}
 {%- endmacro %}
 

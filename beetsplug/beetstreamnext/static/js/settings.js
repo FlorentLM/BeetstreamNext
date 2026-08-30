@@ -412,6 +412,59 @@
         }
     }
 
+    async function discoverSonosSpeakers(button) {
+        const url = button.dataset.url;
+        const select = document.getElementById(button.dataset.select);
+        const result = document.getElementById(button.dataset.result);
+        if (!url || !select) return;
+
+        const previousValue = select.value;
+
+        button.disabled = true;
+        if (result) { result.className = 'test-result'; result.textContent = 'Searching...'; }
+
+        try {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            const payload = await resp.json();
+            const speakers = payload.speakers || [];
+
+            select.innerHTML = '';
+
+            speakers.forEach(sp => {
+                const opt = document.createElement('option');
+                opt.value = sp.ip;
+                opt.textContent = `${sp.name} (${sp.ip})`;
+                if (sp.ip === previousValue) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            if (previousValue && !speakers.some(sp => sp.ip === previousValue)) {
+                const opt = document.createElement('option');
+                opt.value = previousValue;
+                opt.textContent = `${previousValue} (current, not found)`;
+                opt.selected = true;
+                select.insertBefore(opt, select.firstChild);
+            } else if (speakers.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'No speakers found';
+                select.appendChild(opt);
+            }
+
+            if (result) {
+                result.className = 'test-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
+                result.textContent = payload.message || (payload.ok ? 'OK' : 'Failed');
+            }
+        } catch (err) {
+            if (result) {
+                result.className = 'test-result test-result-fail';
+                result.textContent = 'Discovery failed: ' + err.message;
+            }
+        } finally {
+            button.disabled = false;
+        }
+    }
+
     // Events
 
     document.addEventListener('click', event => {
@@ -465,6 +518,9 @@
                 break;
             case 'test-connection':
                 testConnection(target);
+                break;
+            case 'discover-sonos-speakers':
+                discoverSonosSpeakers(target);
                 break;
             case 'toggle-theme':
                 toggleTheme();

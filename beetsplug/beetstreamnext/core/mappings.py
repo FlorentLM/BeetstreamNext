@@ -17,7 +17,7 @@ from beetsplug.beetstreamnext.core.external import query_musicbrainz, query_disc
 from beetsplug.beetstreamnext.core.cache import (
     preload_songs, preload_albums, one_rating, one_like, one_play_stats, avg_rating, get_song_counts
 )
-from beetsplug.beetstreamnext.core.images import image_url
+from beetsplug.beetstreamnext.core.images import tokenised_image_url
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.playlists import Playlist
@@ -926,7 +926,7 @@ class Serialise:
             'albumCount': album_count,
             'coverArt': subsonic_artist_id,
             'userRating': one_rating(subsonic_artist_id),
-            'artistImageUrl': image_url(subsonic_artist_id),
+            'artistImageUrl': tokenised_image_url(subsonic_artist_id),
             'mediaType': 'artist'
         }
 

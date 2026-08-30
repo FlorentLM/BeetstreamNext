@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.core.cache import preload_artists
-from beetsplug.beetstreamnext.core.images import image_url
+from beetsplug.beetstreamnext.core.images import tokenised_image_url
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
@@ -182,9 +182,9 @@ def endpoint_artist_info() -> flask.Response:
             'biography': short_bio,
             'musicBrainzId': artist_mbid,
             'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
-            'largeImageUrl': image_url(image_id, size=1200),
-            'mediumImageUrl': image_url(image_id, size=500),
-            'smallImageUrl': image_url(image_id, size=250)
+            'largeImageUrl': tokenised_image_url(image_id, size=1200),
+            'mediumImageUrl': tokenised_image_url(image_id, size=500),
+            'smallImageUrl': tokenised_image_url(image_id, size=250)
         }
     }
 

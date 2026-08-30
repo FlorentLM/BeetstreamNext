@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import grab_auth_params, external_url
+from beetsplug.beetstreamnext.utils.general import external_url
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON
@@ -62,21 +62,18 @@ def sniff_image(data: bytes) -> str | None:
     return None
 
 
-def image_url(item_id: str, size: Optional[int] = None) -> str:
-    if not item_id:
+def tokenised_image_url(subsonic_id: str, size: Optional[int] = None) -> str:
+    """
+    Token-gated URL for an image, to be included inside another endpoint's response.
+    (they can't carry the caller's own Subsonic auth params)
+    """
+    if not subsonic_id:
         return ''
 
-    # check if the base URL is already built for the current request, if not, build it
-    base_url = getattr(flask.g, '_art_base_url', None)
-    if not base_url:
-        base_url = external_url(flask.url_for('api.endpoint_get_cover_art', **grab_auth_params()))
-        flask.g._art_base_url = base_url
+    from beetsplug.beetstreamnext.public.tokeniser import image_tokeniser
 
-    sep = '&' if '?' in base_url else '?'
-    url = f"{base_url}{sep}id={item_id}"
-    if size:
-        url += f"&size={size}"
-    return url
+    token = image_tokeniser.register(f'{subsonic_id}|{size or ""}')
+    return external_url(flask.url_for('public.tokenised_image', token=token))
 
 
 def thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = None) -> Path:

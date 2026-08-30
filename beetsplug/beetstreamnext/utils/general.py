@@ -17,16 +17,6 @@ from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, SERVER_
 ##
 # General helpers
 
-def grab_auth_params() -> Dict[str, str]:
-    r = flask.request.values
-
-    auth_params = {k: r.get(k, default='', type=str) for k in ['s', 't', 'p', 'apiKey'] if k in r}
-    other_auth_params = {k: r.get(k, default='', type=safe_str) for k in ['u', 'c', 'v'] if k in r}
-    auth_params.update(other_auth_params)
-
-    return auth_params
-
-
 def external_url(path_part: str) -> str:
     """
     Build an absolute URL for 'path_part' with external hostname taking precedence.

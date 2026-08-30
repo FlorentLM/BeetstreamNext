@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.images import image_url
+from beetsplug.beetstreamnext.core.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.database import dual_database
 from beetsplug.beetstreamnext.core.cache import preload_albums, get_song_counts
 
@@ -80,9 +80,9 @@ def endpoint_get_album_info() -> flask.Response:
         tag: {
             'musicBrainzId': album.get('mb_albumid', ''),
             'lastFmUrl': lastfm_url,
-            'smallImageUrl': image_url(image_id, size=250),
-            'mediumImageUrl': image_url(image_id, size=500),
-            'largeImageUrl': image_url(image_id, size=1200)
+            'smallImageUrl': tokenised_image_url(image_id, size=250),
+            'mediumImageUrl': tokenised_image_url(image_id, size=500),
+            'largeImageUrl': tokenised_image_url(image_id, size=1200)
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

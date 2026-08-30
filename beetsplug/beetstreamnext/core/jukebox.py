@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR, SOCO
-from beetsplug.beetstreamnext.public.tokenizer import stream_tokens
+from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.system import find_mpv
 from beetsplug.beetstreamnext.utils.text import parse_duration, format_duration
 from beetsplug.beetstreamnext.utils.general import external_url
@@ -463,7 +463,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
 
         import flask
 
-        token = stream_tokens.register(path)
+        token = stream_tokeniser.register(path)
 
         filename = Path(path).name or 'track.mp3' # Sonos needs an extension in the URL, otherwise it rejects it
         path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
@@ -552,7 +552,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
         self._device = None
         self._device_ip = None
 
-        stream_tokens.clear()
+        stream_tokeniser.clear()
 
 
 ##

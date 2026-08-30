@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import (
     test_lastfm_connection, test_audiomuse_connection, start_audiomuse_analysis
 )
+from beetsplug.beetstreamnext.core.jukebox import sonos_discovery, JukeboxUnavailableException
 from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm

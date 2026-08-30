@@ -8,7 +8,8 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.application import app
 
 if TYPE_CHECKING:

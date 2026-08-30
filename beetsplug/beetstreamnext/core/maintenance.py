@@ -129,7 +129,7 @@ def sweep_stale_references() -> dict[str, int]:
             all_refs.update(ids)
 
         if all_refs:
-            resolved = IDMapper.resolve_songs_bulk(list(all_refs))
+            resolved = IDMapper.resolve_many_songs(list(all_refs))
             stale_songs = all_refs - resolved.keys()
 
             for (table, column), ids in refs_by_table.items():

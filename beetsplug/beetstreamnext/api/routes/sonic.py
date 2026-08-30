@@ -3,7 +3,8 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.core.external import _audiomuse_get
@@ -18,7 +19,7 @@ def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:
         return []
 
     ids_in_order = [t['item_id'] for t in tracks if t.get('item_id')]
-    resolved = IDMapper.resolve_songs_bulk(ids_in_order)
+    resolved = IDMapper.resolve_many_songs(ids_in_order)
     preload_songs(list(resolved.values()))
 
     matches = []
@@ -27,7 +28,7 @@ def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:
         if not item:
             continue
 
-        match = {'entry': map_song(item)}
+        match = {'entry': IDMapper.map_song(item)}
         if with_distance and t.get('distance') is not None:
             match['distance'] = round(t['distance'], 4)
         matches.append(match)

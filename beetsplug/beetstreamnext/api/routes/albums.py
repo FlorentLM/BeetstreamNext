@@ -6,7 +6,8 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
-from beetsplug.beetstreamnext.api.serializers import map_album, get_song_counts, IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.images import image_url
 from beetsplug.beetstreamnext.core.database import dual_database
@@ -21,7 +22,7 @@ def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
 
     payload = {
         "album": {
-            **map_album(album_object, include_songs=include_songs)
+            **IDMapper.map_album(album_object, include_songs=include_songs)
         }
     }
     return payload
@@ -227,12 +228,12 @@ def endpoint_get_album_list() -> flask.Response:
 
         albums_dict = [dict(album) for album in albums]
 
-    song_counts = get_song_counts(albums_dict)
+    song_counts = IDMapper.get_song_counts(albums_dict)
     preload_albums(albums_dict)
 
     payload = {
         tag: {
-            "album": [map_album(a, include_songs=False, song_counts=song_counts) for a in albums_dict]
+            "album": [IDMapper.map_album(a, include_songs=False, song_counts=song_counts) for a in albums_dict]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

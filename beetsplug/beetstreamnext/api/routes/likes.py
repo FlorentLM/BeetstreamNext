@@ -8,9 +8,8 @@ from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import (
-    IDMapper, map_album, map_song, map_artist, get_song_counts, commit_likes
-)
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+from beetsplug.beetstreamnext.core.beets_interaction import commit_likes
 
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:
@@ -111,18 +110,18 @@ def endpoint_get_starred() -> flask.Response:
         ).fetchall()
 
     song_ids_ordered = [row['item_id'] for row in song_id_rows]
-    resolved = IDMapper.resolve_songs_bulk(song_ids_ordered)
+    resolved = IDMapper.resolve_many_songs(song_ids_ordered)
     song_items = [resolved[sid] for sid in song_ids_ordered if sid in resolved]
 
     preload_songs(song_items)
 
-    songs = [map_song(item) for item in song_items]
+    songs = [IDMapper.map_song(item) for item in song_items]
     album_dicts = [dict(row) for row in album_rows]
 
     preload_albums(album_dicts)
 
-    song_counts = get_song_counts(album_dicts)
-    albums = [map_album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
+    song_counts = IDMapper.get_song_counts(album_dicts)
+    albums = [IDMapper.map_album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
 
     mbids_to_resolve = []
     beets_artist_names = []
@@ -162,7 +161,7 @@ def endpoint_get_starred() -> flask.Response:
 
     preload_artists(prefetched)
 
-    artists = [map_artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
+    artists = [IDMapper.map_artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
 
     tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {

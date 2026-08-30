@@ -10,7 +10,8 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden, find_ffmpeg
 from beetsplug.beetstreamnext.api.responses import subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import (
     round_image_size, send_album_art, thumbnail_path, playlist_mosaic, image_from_song,
@@ -38,16 +39,17 @@ def endpoint_get_cover_art() -> flask.Response:
     if req_id == app.config['root_directory'].name or req_id == 'm-0':
         return flask.send_file(app.config['IMAGES_PATH'] / 'logo.png', mimetype='image/png')
 
+    entry_type, entry = IDMapper.resolve(req_id)
+
     # album requests
-    if IDMapper.get_type(req_id) == 'album':
-        album = IDMapper.resolve_album(req_id)
-        response = send_album_art(album.id, size) if album else None
+    if entry_type == 'album':
+        response = send_album_art(entry.id, size) if entry else None
         if response is not None:
             return response
 
     # song requests
-    elif IDMapper.get_type(req_id) == 'song':
-        item = IDMapper.resolve_song(req_id)
+    elif entry_type == 'song':
+        item = entry
         if not item:
             return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -92,28 +94,25 @@ def endpoint_get_cover_art() -> flask.Response:
                     # can still serve from memory if disk write failed
                     return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
-    elif IDMapper.get_type(req_id) == 'radio':
-        station = IDMapper.resolve_radio(req_id)
-        if station:
-            response = send_radio_art(station['id'])
+    elif entry_type == 'radio':
+        if entry:
+            response = send_radio_art(entry['id'])
             if response is not None:
                 return response
 
-    elif IDMapper.get_type(req_id) == 'podcastChannel':
-        channel = IDMapper.resolve_podcast_channel(req_id)
-        if channel:
-            response = send_podcast_art(channel['id'], size)
+    elif entry_type == 'podcastChannel':
+        if entry:
+            response = send_podcast_art(entry['id'], size)
             if response is not None:
                 return response
 
-    elif IDMapper.get_type(req_id) == 'podcastEpisode':
-        episode = IDMapper.resolve_podcast_episode(req_id)
-        if episode:
-            response = send_podcast_art(episode['channel_id'], size)
+    elif entry_type == 'episode':
+        if entry:
+            response = send_podcast_art(entry['channel_id'], size)
             if response is not None:
                 return response
 
-    elif IDMapper.get_type(req_id) == 'playlist':
+    elif entry_type == 'playlist':
         playlist = flask.g.playlist_provider.get(req_id)
         if playlist:
             mosaic = playlist_mosaic(playlist, size or 500)

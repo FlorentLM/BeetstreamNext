@@ -15,7 +15,8 @@ from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import image_url
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_album, map_artist, get_song_counts
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 
 
@@ -66,9 +67,9 @@ def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
         else:
             albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
 
-        song_counts = get_song_counts(albums)
+        song_counts = IDMapper.get_song_counts(albums)
 
-        payload['artist']['album'] = list(map(partial(map_album, include_songs=False, song_counts=song_counts), albums))
+        payload['artist']['album'] = list(map(partial(IDMapper.map_album, include_songs=False, song_counts=song_counts), albums))
 
     return payload
 
@@ -139,7 +140,7 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
             'index': [
                 {
                     'name': char,
-                    'artist': [map_artist(a, with_albums=False, prefetched=artist_prefetch) for a in artists]
+                    'artist': [IDMapper.map_artist(a, with_albums=False, prefetched=artist_prefetch) for a in artists]
                 }
                 for char, artists in sorted(alphanum_dict.items())
             ]
@@ -240,7 +241,7 @@ def endpoint_artist_info() -> flask.Response:
             name = entry.get('name')
             if not name:
                 continue
-            mapped = map_artist(name, with_albums=False)
+            mapped = IDMapper.map_artist(name, with_albums=False)
             if not include_not_present and not mapped['albumCount']:
                 continue
             similar_artists.append(mapped)

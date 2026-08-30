@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import commit_likes
+from beetsplug.beetstreamnext.core.beets_interaction import commit_likes
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/

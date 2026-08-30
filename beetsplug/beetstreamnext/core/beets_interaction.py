@@ -3,12 +3,14 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
 import beets
 
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import CACHE_LOCATION
+from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 _lock = threading.Lock()
@@ -79,3 +81,30 @@ def start_import() -> Tuple[bool, str, bool]:
 
         bsn_logger.info(f"Started beets import (pid {proc.pid}): {' '.join(shlex.quote(c) for c in command)}")
         return True, 'Import started.', False
+
+
+def commit_likes(subsonic_id: str, key: str, value: Any) -> None:
+    """
+    Apply one user's Likes/Rating value to Beets's db
+    (only one user can be applied because Beets is single-user)
+
+    Note: non-song and non-album (artists, playlists, radios, podcasts)
+     have no row in to attach a value to, so they are silently skipped.
+    """
+
+    entry_type, obj = IDMapper.resolve(subsonic_id)
+
+    if entry_type == 'song':
+        entity_type, beets_id = 'item', (obj.id if obj else None)
+    elif entry_type == 'album':
+        entity_type, beets_id = 'album', (obj.id if obj else None)
+    else:
+        return
+
+    if beets_id is None:
+        return
+
+    try:
+        write_beets_field(entity_type, beets_id, key, value, allow_flex=True)
+    except Exception as e:
+        bsn_logger.warning(f"Failed to mirror '{key}' to beets {entity_type} {beets_id}: {e}")

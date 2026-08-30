@@ -7,7 +7,8 @@ from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_playlist
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 
@@ -52,7 +53,7 @@ def endpoint_get_playlists() -> flask.Response:
 
     payload = {
         'playlists': {
-            'playlist': [map_playlist(p) for p in playlists]
+            'playlist': [IDMapper.map_playlist(p) for p in playlists]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -75,7 +76,7 @@ def endpoint_get_playlist() -> flask.Response:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
-        'playlist': map_playlist(playlist, include_songs=True)
+        'playlist': IDMapper.map_playlist(playlist, include_songs=True)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -105,7 +106,7 @@ def endpoint_create_playlist() -> flask.Response:
     flask.g.playlist_provider.register(playlist)
 
     payload = {
-        'playlist': map_playlist(playlist)
+        'playlist': IDMapper.map_playlist(playlist)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 

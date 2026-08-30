@@ -6,8 +6,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_radio_station
-
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
 
 def radios_payload() -> dict:
 
@@ -21,7 +20,7 @@ def radios_payload() -> dict:
 
     payload = {
         'internetRadioStations': {
-            'internetRadioStation': [map_radio_station(dict(row)) for row in rows]
+            'internetRadioStation': [IDMapper.map_radio_station(dict(row)) for row in rows]
         }
     }
 

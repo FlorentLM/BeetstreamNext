@@ -3,7 +3,8 @@ import flask
 from .. import public_bp
 
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.settings import settings_store
 
 
@@ -31,20 +32,17 @@ def now_playing_cover() -> flask.Response:
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 
-    item_id = row['item_id']
-    id_type = IDMapper.get_type(item_id)
+    entry_type, entry = IDMapper.resolve(row['item_id'])
 
-    if id_type == 'song':
-        song = IDMapper.resolve_song(item_id)
-        if song and song.get('album_id'):
-            response = send_album_art(song.get('album_id'), rounded_size)
+    if entry_type == 'song':
+        if entry and entry.get('album_id'):
+            response = send_album_art(entry.get('album_id'), rounded_size)
             if response:
                 return response
 
-    elif id_type == 'radio':
-        station = IDMapper.resolve_radio(item_id)
-        if station:
-            response = send_radio_art(station['id'])
+    elif entry_type == 'radio':
+        if entry:
+            response = send_radio_art(entry['id'])
             if response:
                 return response
 

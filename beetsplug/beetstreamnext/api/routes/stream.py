@@ -18,8 +18,7 @@ from beetsplug.beetstreamnext.utils.general import api_bool, send_file
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper
-
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
 
 FORMAT_MAP = {
     # Lossy
@@ -127,7 +126,7 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
         if not media_id:
             return None, None, subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDMapper.get_type(media_id) == 'podcastEpisode':
+    if IDMapper.get_type(media_id) == 'episode':
         episode = IDMapper.resolve_podcast_episode(media_id)
         if not episode or episode.get('status') != 'completed' or not episode.get('file_path'):
             return None, None, subsonic_error(70, resp_fmt=resp_fmt)
@@ -171,7 +170,7 @@ def _streamdownload_podcast(req_values, required_role: str) -> flask.Response | 
     if not media_id and required_role == 'streamRole':
         media_id = req_values.get('mediaId', default='', type=safe_str)
 
-    if IDMapper.get_type(media_id) != 'podcastEpisode':
+    if IDMapper.get_type(media_id) != 'episode':
         return None
 
     if not bool(flask.g.user_data.get(required_role)):
@@ -651,7 +650,7 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
     if media_type and media_type not in ('song', 'podcast'):
         return subsonic_error(0, message="'mediaType' must be 'song' or 'podcast'.", resp_fmt=resp_fmt)
 
-    resolved_type = 'podcast' if IDMapper.get_type(media_id) == 'podcastEpisode' else 'song'
+    resolved_type = 'podcast' if IDMapper.get_type(media_id) == 'episode' else 'song'
     if media_type and media_type != resolved_type:
         return subsonic_error(0, message=f"'mediaType' ({media_type}) does not match the resolved media ({resolved_type}).", resp_fmt=resp_fmt)
 

@@ -8,8 +8,7 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_podcast_episode, standardise_datadict
-
+from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
 @api_bp.route('/getBookmarks', methods=['GET', 'POST'])
@@ -29,28 +28,14 @@ def endpoint_get_bookmarks() -> flask.Response:
             """, (username,)
         ).fetchall()
 
-    song_ids = [row['song_id'] for row in rows if IDMapper.get_type(row['song_id']) != 'podcastEpisode']
-    items_by_song_id = IDMapper.resolve_songs_bulk(song_ids)
-    preload_songs(list(items_by_song_id.values()))
+    resolved = IDMapper.resolve_many([row['song_id'] for row in rows])
+    preload_songs([obj for entry_type, obj in resolved.values() if entry_type == 'song'])
 
     bookmarks = []
     for row in rows:
-        bookmarked_id = row['song_id']
-
-        if IDMapper.get_type(bookmarked_id) == 'podcastEpisode':
-            episode = IDMapper.resolve_podcast_episode(bookmarked_id)
-            if not episode:
-                continue
-
-            channel = IDMapper.resolve_podcast_channel(IDMapper.mint_podcast_channel(episode['channel_id']))
-            entry = map_podcast_episode(episode, channel)
-
-        else:
-            item = items_by_song_id.get(bookmarked_id)
-            if not item:
-                continue
-
-            entry = map_song(item)
+        entry = IDMapper.map_playable(row['song_id'], resolved)
+        if not entry:
+            continue
 
         bookmarks.append({
             'entry': entry,
@@ -83,7 +68,7 @@ def endpoint_create_bookmark() -> flask.Response:
     if not req_id or position < 0.0:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDMapper.get_type(req_id) == 'podcastEpisode':
+    if IDMapper.get_type(req_id) == 'episode':
         episode = IDMapper.resolve_podcast_episode(req_id)
         if not episode:
             return subsonic_error(70, resp_fmt=resp_fmt)
@@ -125,7 +110,7 @@ def endpoint_delete_bookmark() -> flask.Response:
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if IDMapper.get_type(req_id) == 'podcastEpisode':
+    if IDMapper.get_type(req_id) == 'episode':
         episode = IDMapper.resolve_podcast_episode(req_id)
         canonical_id = IDMapper.mint_podcast_episode(episode['id']) if episode else None
     else:

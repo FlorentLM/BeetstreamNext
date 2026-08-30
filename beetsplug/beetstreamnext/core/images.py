@@ -10,7 +10,6 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.api.idmapper import IDMapper
 from beetsplug.beetstreamnext.utils.general import grab_auth_params
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg
@@ -402,6 +401,8 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
     if not playlist.songs:
         return None
 
+    from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
     half = max(size // 2, 1)
     tiles = []
     used_album_ids = []
@@ -465,6 +466,7 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:
+    from beetsplug.beetstreamnext.api.idmapper import IDMapper
 
     artist = customstrip(artist)
     if IDMapper.get_type(artist) == 'artist':

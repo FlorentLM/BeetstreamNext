@@ -6,8 +6,7 @@ from .. import api_bp
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists
 from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import map_album, map_song, map_artist, get_song_counts
-
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
 @api_bp.route('/search', methods=['GET', 'POST'])
@@ -171,7 +170,7 @@ def endpoint_search() -> flask.Response:
             artists.append(name)
             artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
 
-    song_counts = get_song_counts(albums)
+    song_counts = IDMapper.get_song_counts(albums)
 
     preload_songs(songs)
     preload_albums(albums)
@@ -179,9 +178,9 @@ def endpoint_search() -> flask.Response:
 
     payload = {
         tag: {
-            'artist': [map_artist(name, with_albums=False, prefetched=artist_prefetch) for name in artists],
-            'album': [map_album(alb, include_songs=False, song_counts=song_counts) for alb in albums],
-            'song': [map_song(s) for s in songs]
+            'artist': [IDMapper.map_artist(name, with_albums=False, prefetched=artist_prefetch) for name in artists],
+            'album': [IDMapper.map_album(alb, include_songs=False, song_counts=song_counts) for alb in albums],
+            'song': [IDMapper.map_song(s) for s in songs]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

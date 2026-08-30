@@ -9,8 +9,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_song, map_podcast_episode, standardise_datadict
-
+from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @api_bp.route('/scrobble', methods=['GET', 'POST'])
@@ -59,8 +58,8 @@ def endpoint_scrobble() -> flask.Response:
 
         # Record play stats
         for i, p_id in enumerate(playing_ids):
-            if IDMapper.get_type(p_id) == 'song':       # only keep count of songs played, not radios
-                item = IDMapper.resolve_song(p_id)
+            entry_type, item = IDMapper.resolve(p_id)
+            if entry_type == 'song':       # only keep count of songs played, not radios
                 if not item:
                     continue
                 canonical_id = IDMapper.mint_song(standardise_datadict(item))
@@ -112,29 +111,7 @@ def endpoint_get_now_playing() -> flask.Response:
         ).fetchall()
 
     for row in rows:
-        p_id = row['item_id']
-        entry = None
-
-        if p_id.startswith('sg-'):
-            item = IDMapper.resolve_song(p_id)
-            if item:
-                entry = map_song(item)
-
-        elif p_id.startswith('ir-'):
-            station = IDMapper.resolve_radio(p_id)
-            if station:
-                    entry = {
-                        'id': p_id,
-                        'title': station['name'],
-                        'isDir': False,
-                        'coverArt': p_id,
-                    }
-
-        elif p_id.startswith('pe-'):
-            episode = IDMapper.resolve_podcast_episode(p_id)
-            if episode:
-                channel = IDMapper.resolve_podcast_channel(IDMapper.mint_podcast_channel(episode['channel_id']))
-                entry = map_podcast_episode(episode, channel)
+        entry = IDMapper.map_playable(row['item_id'])
 
         if entry:
             entry.update({
@@ -210,10 +187,10 @@ def endpoint_report_playback() -> flask.Response:
             )
 
     # Check for scrobble threshold: played for 4 minutes or 50% of total length
-    if not ignore_scrobble and state == 'playing' and IDMapper.get_type(media_id) == 'song':
-        item = IDMapper.resolve_song(media_id)
+    if not ignore_scrobble and state == 'playing':
+        entry_type, item = IDMapper.resolve(media_id)
 
-        if item:
+        if entry_type == 'song' and item:
             canonical_id = IDMapper.mint_song(standardise_datadict(item))
             duration_ms = (item.get('length') or 0) * 1000
             threshold = min(4 * 60 * 1000, duration_ms * 0.5)

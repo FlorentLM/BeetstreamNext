@@ -1,7 +1,6 @@
 from typing import List, Tuple
 import flask
 
-from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.utils.text import validate_mbid
@@ -178,6 +177,7 @@ def one_play_stats(song_id: str) -> dict | None:
 def preload_songs(beets_items: list):
     if not beets_items:
         return
+    from beetsplug.beetstreamnext.api.idmapper import IDMapper, standardise_datadict
     sub_ids = [IDMapper.mint_song(standardise_datadict(s)) for s in beets_items]
 
     batch_likes(sub_ids)
@@ -188,6 +188,7 @@ def preload_songs(beets_items: list):
 def preload_albums(beets_albums: list):
     if not beets_albums:
         return
+    from beetsplug.beetstreamnext.api.idmapper import IDMapper
     sub_ids = [IDMapper.mint_album(a['id']) for a in beets_albums]
 
     batch_likes(sub_ids)
@@ -198,6 +199,8 @@ def preload_artists(artists_data):
 
     if not artists_data:
         return
+
+    from beetsplug.beetstreamnext.api.idmapper import IDMapper
 
     sub_ids = []
     if isinstance(artists_data, dict):

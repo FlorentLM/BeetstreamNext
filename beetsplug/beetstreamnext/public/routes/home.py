@@ -4,7 +4,8 @@ from flask import render_template
 from .. import public_bp
 
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.api.serializers import IDMapper
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
+
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import get_server_info, external_url
 
@@ -30,30 +31,25 @@ def home() -> str:
             ).fetchone()
 
         if row:
-            item_id = row['item_id']
-            id_type = IDMapper.get_type(item_id)
+            entry_type, entry = IDMapper.resolve(row['item_id'])
 
-            if id_type == 'song':
-                song = IDMapper.resolve_song(item_id)
-                if song:
-                    now_playing = {
-                        'title': song.title,
-                        'artist': song.artist,
-                        'album': song.album,
-                        'player': row['player_name'],
-                        'username': row['username']
-                    }
+            if entry_type == 'song' and entry:
+                now_playing = {
+                    'title': entry.title,
+                    'artist': entry.artist,
+                    'album': entry.album,
+                    'player': row['player_name'],
+                    'username': row['username']
+                }
 
-            elif id_type == 'radio':
-                station = IDMapper.resolve_radio(item_id)
-                if station:
-                    now_playing = {
-                        'title': station['name'],
-                        'artist': 'Internet Radio',
-                        'album': '',
-                        'player': row['player_name'],
-                        'username': row['username']
-                    }
+            elif entry_type == 'radio' and entry:
+                now_playing = {
+                    'title': entry['name'],
+                    'artist': 'Internet Radio',
+                    'album': '',
+                    'player': row['player_name'],
+                    'username': row['username']
+                }
 
     server_url = external_url('/')
 

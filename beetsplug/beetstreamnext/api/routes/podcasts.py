@@ -8,8 +8,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.api.serializers import IDMapper, map_podcast_channel, map_podcast_episode
-
+from beetsplug.beetstreamnext.api.idmapper import IDMapper
 
 def _list_channels(username: str) -> List[dict]:
 
@@ -98,7 +97,7 @@ def endpoint_get_podcasts() -> flask.Response:
         channels = _list_channels(username)
 
     entries = [
-        map_podcast_channel(ch, _list_episodes(ch['id']) if include_episodes else None)
+        IDMapper.map_podcast_channel(ch, _list_episodes(ch['id']) if include_episodes else None)
         for ch in channels
     ]
 
@@ -119,7 +118,7 @@ def endpoint_get_newest_podcasts() -> flask.Response:
     count = r.get('count', default=20, type=int)
 
     entries = [
-        map_podcast_episode(row, {'channel_title': row.get('channel_title')})
+        IDMapper.map_podcast_episode(row, {'channel_title': row.get('channel_title')})
         for row in _newest_episodes(flask.g.username, count)
     ]
 
@@ -293,6 +292,6 @@ def endpoint_get_podcast_episode() -> flask.Response:
     channel = IDMapper.resolve_podcast_channel(IDMapper.mint_podcast_channel(episode['channel_id']))
 
     payload = {
-        'podcastEpisode': map_podcast_episode(episode, channel)
+        'episode': IDMapper.map_podcast_episode(episode, channel)
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

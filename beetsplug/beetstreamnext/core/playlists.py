@@ -495,6 +495,8 @@ class PlaylistProvider:
     def get(self, playlist_id: str) -> Playlist | None:
         """Get a playlist by its id, reloading from disk if file changed."""
 
+        # TODO: Probably should use the IDMapper class here
+
         with self._lock:
             if not playlist_id.startswith(IDMapper._PLY_ID_PREF):
                 return None

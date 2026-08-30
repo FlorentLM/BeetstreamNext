@@ -346,7 +346,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
         image_bytes = _album_art_bytes(album_id, size)
         return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg') if image_bytes else None
 
-    # No size requested: serve original file as-is (in its own format)
+    # No size requested: serve original file as-is (if not oversized)
     art_path = os.fsdecode(album.get('artpath') or b'')
     if art_path:
         path_obj = Path(art_path)
@@ -355,6 +355,10 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
         if os.path.isfile(art_path):
             try:
+                if os.path.getsize(art_path) > RAW_ART_MAX_BYTES:
+                    resized = _cached_resize(art_path, size=ALLOWED_THUMBNAIL_SIZES[-1])
+                    return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+
                 return flask.send_file(art_path, mimetype=get_mimetype(art_path))
             except Exception as e:
                 bsn_logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
@@ -371,8 +375,9 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
 
         if found_art:
             try:
-                if found_art.suffix.lower() in ('.tiff', '.tif'):
-                    resized = _cached_resize(found_art, size=1200)
+                oversized = found_art.stat().st_size > RAW_ART_MAX_BYTES
+                if oversized or found_art.suffix.lower() in ('.tiff', '.tif'):
+                    resized = _cached_resize(found_art, size=ALLOWED_THUMBNAIL_SIZES[-1])
                     return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
                 return flask.send_file(found_art, mimetype=get_mimetype(found_art))
@@ -516,8 +521,8 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
 
         # Serve local if it exists now
         if os.path.isfile(local_image_path):
-            if size:
-                resized = _cached_resize(local_image_path, size)
+            if size or os.path.getsize(local_image_path) > RAW_ART_MAX_BYTES:
+                resized = _cached_resize(local_image_path, size or ALLOWED_THUMBNAIL_SIZES[-1])
                 return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
             return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))

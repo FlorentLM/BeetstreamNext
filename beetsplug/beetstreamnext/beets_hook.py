@@ -28,7 +28,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from waitress import serve
 
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, CACHE_LOCATION, MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL, bsn_logger, RedactingTransLogger, apply_logs_redaction
 from beetsplug.beetstreamnext.application import app
@@ -73,22 +73,22 @@ class BeetstreamNextPlugin(BeetsPlugin):
         self.config.add({
             'host': '0.0.0.0',
             'port': 8080,
-            'ip_whitelist': [],
-            'ip_blacklist': [],
-            'cors': '',
+            'ip_whitelist': SETTINGS_SCHEMA['ip_whitelist']['default'],
+            'ip_blacklist': SETTINGS_SCHEMA['ip_blacklist']['default'],
+            'cors': SETTINGS_SCHEMA['cors_origins']['default'],
             'debug': False,
             'force_trust_host': False,
-            'cors_supports_credentials': False,
-            'reverse_proxy': False,
-            'proxy_hops': 1,
-            'legacy_auth': True,
-            'never_transcode': False,
-            'fetch_artists_images': False,
-            'save_artists_images': False,
-            'save_album_art': False,
-            'lastfm_api_key': '',
+            'cors_supports_credentials': SETTINGS_SCHEMA['cors_supports_credentials']['default'],
+            'reverse_proxy': SETTINGS_SCHEMA['reverse_proxy']['default'],
+            'proxy_hops': SETTINGS_SCHEMA['proxy_hops']['default'],
+            'legacy_auth': SETTINGS_SCHEMA['legacy_auth']['default'],
+            'never_transcode': SETTINGS_SCHEMA['never_transcode']['default'],
+            'fetch_artists_images': SETTINGS_SCHEMA['fetch_artists_images']['default'],
+            'save_artists_images': SETTINGS_SCHEMA['save_artists_images']['default'],
+            'save_album_art': SETTINGS_SCHEMA['save_album_art']['default'],
+            'lastfm_api_key': SETTINGS_SCHEMA['lastfm_api_key']['default'],
             'playlist_dir': '',
-            'threads': 16,
+            'threads': SETTINGS_SCHEMA['threads']['default'],
         })
         self.config['lastfm_api_key'].redact = True
 

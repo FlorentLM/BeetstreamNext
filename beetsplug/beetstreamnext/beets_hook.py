@@ -15,7 +15,6 @@
 import os
 import sys
 import getpass
-import logging
 import optparse
 from pathlib import Path
 from typing import List, Optional
@@ -23,23 +22,16 @@ from typing import List, Optional
 import beets
 from beets.plugins import BeetsPlugin
 
-from flask_cors import CORS
-from werkzeug.middleware.proxy_fix import ProxyFix
-from waitress import serve
-
+from beetsplug.beetstreamnext.core.startup import run_server, prestartup_config
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, SETTINGS_SCHEMA
-from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, CACHE_LOCATION, MIN_PASSWORD_LEN
-from beetsplug.beetstreamnext.core.logging import LOG_LEVEL, bsn_logger, RedactingTransLogger, apply_logs_redaction
+from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
-from beetsplug.beetstreamnext.core.security import ip_filter
 from beetsplug.beetstreamnext.core.maintenance import clear_caches
-from beetsplug.beetstreamnext.core.database import initialise_db, rotate_session_key, ensure_secret
+from beetsplug.beetstreamnext.core.database import initialise_db
 from beetsplug.beetstreamnext.core.users_crud import update_user, delete_user, load_all_users, create_user, load_user_roles
-from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
-from beetsplug.beetstreamnext.core.podcasts import PodcastManager
-from beetsplug.beetstreamnext.settings import settings_store
+
 
 
 def _detect_config_override(argv: List[str]) -> Optional[str]:
@@ -117,20 +109,17 @@ class BeetstreamNextPlugin(BeetsPlugin):
         def func(lib, opts, args):
 
             beets_db_path = Path(beets.config['library'].get())
+
             if not beets_db_path.is_file():
                 raise RuntimeError(f'Beets database not found at `{beets_db_path}`.')
 
-            app.config.update(
-                BEETS_DB_PATH=beets_db_path,
-                BSN_DB_PATH=beets_db_path.parent / 'beetstreamnext.db',
-                BEETS_CONFIG_PATH=_detect_config_override(sys.argv[1:]),
+            prestartup_config(
+                beets_db_path=beets_db_path,
+                bsn_db_path=beets_db_path.parent / 'beetstreamnext.db',
+                beets_config_path=_detect_config_override(sys.argv[1:]),
+                ip_whitelist=self.config['ip_whitelist'].as_str_seq(),
+                ip_blacklist=self.config['ip_blacklist'].as_str_seq(),
             )
-
-            ip_filter.whitelist = self.config['ip_whitelist'].as_str_seq()
-            ip_filter.blacklist = self.config['ip_blacklist'].as_str_seq()
-
-            ensure_secret(app.config['BSN_DB_PATH'])
-            app.config.update(SECRET_KEY=rotate_session_key(CACHE_LOCATION))
 
             # Cache clearing
             if opts.clear_cache:
@@ -278,7 +267,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
             else:
                 host = [h.strip() for raw in self.config['host'].as_str_seq() for h in raw.split(',') if h.strip()]
 
-            app.config['HOST_LIST'] = host  # WebUI uses them as external_hostname suggestions
             port = opts.port or self.config['port'].get(int)
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
@@ -299,74 +287,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 'ip_blacklist': self.config['ip_blacklist'].as_str_seq(),
             }
 
-            with app.app_context():
-                initialise_db()
-                # Read db, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING
-                settings_store.initialise(yaml_defaults)
-
-            if debug and any(h not in LOOPBACK_IPS for h in host):
-                if force_trust_host:
-                    print_box([
-                        '',
-                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  !!! SUPER IMPORTANT WARNING !!!  {TermColors.ENDC}',
-                        '',
-                        f"Debug mode is force-enabled on {', '.join(host)}.",
-                        f'The Werkzeug debugger allows arbitrary remote code execution.',
-                        '',
-                        "I hope you know what you're doing!",
-                        '',
-                    ], color=TermColors.WARNING)
-
-                else:
-                    print_box([
-                        '',
-                        f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
-                        '',
-                        f'Debug mode can only be used on localhost.',
-                        f'The Werkzeug debugger allows arbitrary remote code execution.',
-                        '',
-                    ], color=TermColors.FAIL)
-                    return
-
-            if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
-                if any(h not in LOOPBACK_IPS for h in host):
-                    print_box([
-                        '',
-                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                        '',
-                        'Legacy authentication is enabled, and the server',
-                        f"is listening on {', '.join(f'http://{h}:{port}' for h in host)}",
-                        'without a reverse proxy.',
-                        '',
-                        'Passwords from legacy clients may be',
-                        'transmitted in cleartext over HTTP.',
-                        '',
-                    ], color=TermColors.WARNING)
-
-            if settings_store.get('reverse_proxy'):
-                if any(h not in LOOPBACK_IPS for h in host):
-                    print_box([
-                        '',
-                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                        '',
-                        'reverse_proxy is enabled and the server is bound to',
-                        f"{', '.join(host)}:{port} (not loopback).",
-                        '',
-                        'Make sure this address is *not* reachable without going through the proxy.',
-                        '',
-                        'Bind to 127.0.0.1 (or a unix socket), unless a firewall',
-                        'guarantees only the proxy can reach this port.',
-                        '',
-                    ], color=TermColors.WARNING)
-
-                # Trusting 'proxy_hops' number of forwarded entries
-                hops = max(1, settings_store.get('proxy_hops'))
-                app.wsgi_app = ProxyFix(
-                    app.wsgi_app,
-                    x_for=hops, x_proto=hops, x_host=hops, x_port=hops, x_prefix=hops,
-                )
-                app.config.update(SESSION_COOKIE_SECURE=True)
-
             possible_paths = [
                 (0, self.config['playlist_dir'].as_str()),  # BeetstreamNext's own
                 (1, beets.config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
@@ -375,70 +295,16 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             playlist_dirs = {k: Path(os.fsdecode(path)) if path else None for k, path in possible_paths}
 
-            # App-level things that don't belong in db settings
-            app.config.update(
-                lib=lib,
+            run_server(
+                lib,
+                host=host,
+                port=port,
+                debug=debug,
+                force_trust_host=force_trust_host,
                 root_directory=Path(beets.config['directory'].get()),
-                playlist_dirs=playlist_dirs
+                playlist_dirs=playlist_dirs,
+                yaml_defaults=yaml_defaults,
             )
-
-            app.config.update(playlist_provider=PlaylistProvider())
-            app.config.update(podcast_manager=PodcastManager())
-
-            # Handle "requires restart" settings
-            cors_origin = settings_store.get('cors_origins')
-            supports_creds = settings_store.get('cors_supports_credentials')
-
-            # Enable CORS if required
-            if cors_origin:
-                if cors_origin == '*' and supports_creds:
-                    print_box([
-                        '',
-                        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                        '',
-                        f"CORS is set to allow all origins ('*') WITH credentials.",
-                        f'This could allow any malicious website you visit to silently interact',
-                        f'with your BeetstreamNext server in the background.',
-                        '',
-                        "It is highly recommended to only allow your specific player's URL.",
-                        ''
-                    ], color=TermColors.WARNING)
-                else:
-                    bsn_logger.info(f'Enabling CORS for origin(s): {cors_origin}')
-
-                origins_list = [o.strip() for o in cors_origin.split(',')] if ',' in cors_origin else cors_origin
-                app.config.update(
-                    CORS_ALLOW_HEADERS='Content-Type',
-                    CORS_RESOURCES={r"/*": {"origins": origins_list}}
-                )
-                CORS(app, supports_credentials=supports_creds)
-            else:
-                bsn_logger.info('CORS is disabled (secure default). Web-based clients will be blocked by browsers.')
-
-            apply_logs_redaction()
-            if debug:
-                if len(host) > 1:
-                    bsn_logger.warning(
-                        f"Debug mode (Werkzeug) can only bind one interface, ignoring all but '{host[0]}' "
-                        f"(configured: {', '.join(host)})."
-                    )
-                app.run(host=host[0], port=port, debug=True, threaded=True)
-
-            else:
-                logging.getLogger('waitress').setLevel(LOG_LEVEL)
-                threads = settings_store.get('threads')
-                channel_timeout = settings_store.get('channel_timeout')
-                connection_limit = settings_store.get('connection_limit')
-                logging.getLogger('waitress').setLevel(LOG_LEVEL)
-                if LOG_LEVEL > logging.INFO:
-                    urls = ', '.join(f'http://{h}:{port}' for h in host)
-                    print(f'BeetstreamNext server running on {urls}...')
-                logged_app = RedactingTransLogger(app, setup_console_handler=True)
-
-                serve(
-                    logged_app, listen=[f'{h}:{port}' for h in host], threads=threads,
-                    channel_timeout=channel_timeout, connection_limit=connection_limit
-                )
 
         cmd.func = func
 

@@ -285,6 +285,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
 
     # Library
+    'allow_disk_writes': {
+        'type': 'bool',
+        'default': False,
+        'category': 'library',
+        'description': "Required to allow 'beet import' scans to modify content on disk (writing tags in the files "
+                        "or copying/moving files). Not required if the loaded beets config has write/copy/move all disabled.",
+        'requires_restart': False,
+    },
     'never_transcode': {
         'type': 'bool',
         'default': False,

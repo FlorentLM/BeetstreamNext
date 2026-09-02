@@ -6,18 +6,32 @@ import time
 from typing import Optional, Tuple, Any
 
 import beets
+import confuse
 
 from beetsplug.beetstreamnext.core.mappings import Resolve
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import CACHE_LOCATION
 from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.settings import settings_store
+
 
 _lock = threading.Lock()
 _process: Optional[subprocess.Popen] = None
 _started_at: Optional[float] = None
 
 IMPORT_LOG_PATH = CACHE_LOCATION / 'last_import.log'
+
+
+def _diskwrite_safe() -> bool:
+    """
+    Returns True if the resolved beets config has no disk-affecting side effects
+    (no file modification, moving or copying)
+    """
+    try:
+        return not any(beets.config['import'][key].get(bool) for key in ('move', 'copy', 'write'))
+    except confuse.ConfigError:
+        return False
 
 
 def is_importing() -> bool:
@@ -32,7 +46,8 @@ def start_import() -> Tuple[bool, str, bool]:
     background subprocess (in the same Python environment BSN itself runs in) so newly-added
     files that haven't been imported yet get picked up.
 
-    Refuses to start if beets' timid mode is on.
+    Refuses to start if beets' timid mode is on. Setting 'allow_disk_writes' must be on to allow
+    any beets configuration that touches the disk (file modification, copy, or write).
 
     Returns (ok, message, already_running)
     """
@@ -42,8 +57,12 @@ def start_import() -> Tuple[bool, str, bool]:
         if _process is not None and _process.poll() is None:
             return False, 'An import is already running.', True
 
+        if not _diskwrite_safe() and not settings_store.get('allow_disk_writes'):
+            return False, ("Refusing to import: the active beets config would write tags or copy/move files. "
+                            "Enable 'allow_disk_writes' to allow this."), False
+
         if beets.config['import']['timid'].get(bool):
-            return False, "Can't run incremental import because beets' timid mode is enabled.", False
+            return False, "Can't run incremental import: beets' timid mode is enabled.", False
 
         root_directory = str(app.config['root_directory'])
         library_path = str(app.config['BEETS_DB_PATH'])

@@ -68,20 +68,23 @@ def _fetch_lyrics_data(item) -> dict | None:
     # Check database first
     lyrics_text = item.get('lyrics')
 
-    if not lyrics_text and app.config.get('fetch_lyrics'):
-        lyrics_plugin = _get_lyrics_plugin()
-        if lyrics_plugin:
-            try:
-                if app.config.get('save_lyrics'):
-                    lyrics_plugin.add_item_lyrics(item, write=False)  # write is 'write to song file' so NOPE
-                    lyrics_text = item.get('lyrics')
-                else:
-                    lyrics = lyrics_plugin.find_lyrics(item)
-                    lyrics_text = lyrics.text
-            except Exception as e:
-                bsn_logger.error(f'Error calling lyrics plugin: {e}')
+    if not lyrics_text:
+        if not app.config.get('fetch_lyrics'):
+            bsn_logger.info(f'No lyrics in database, and `fetch_lyrics` not enabled in config. Skipping.')
         else:
-            bsn_logger.info(f'Lyrics plugin not found in beets. Is it enabled?')
+            lyrics_plugin = _get_lyrics_plugin()
+            if lyrics_plugin:
+                try:
+                    if app.config.get('save_lyrics'):
+                        lyrics_plugin.add_item_lyrics(item, write=False)  # write is 'write to song file' so NOPE
+                        lyrics_text = item.get('lyrics')
+                    else:
+                        lyrics = lyrics_plugin.find_lyrics(item)
+                        lyrics_text = lyrics.text
+                except Exception as e:
+                    bsn_logger.error(f'Error calling lyrics plugin: {e}')
+            else:
+                bsn_logger.info(f'Lyrics plugin not found in beets. Is it enabled?')
 
     if not lyrics_text:
         return None

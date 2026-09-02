@@ -201,6 +201,8 @@ class SettingsStore:
                     entry['is_set'] = bool(val)
                 else:
                     entry['value'] = val
+                    if spec['type'] == 'str' and not val:
+                        entry['placeholder'] = spec['on_empty']() if 'on_empty' in spec else 'Not set'
                 result[key] = entry
         return result
 

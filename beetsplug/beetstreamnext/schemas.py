@@ -1,7 +1,7 @@
 import shutil
 from typing import TypedDict, Any, Callable, Dict, Tuple
 
-from beetsplug.beetstreamnext.constants import SERVER_NAME
+from beetsplug.beetstreamnext.constants import SERVER_NAME, CACHE_LOCATION
 from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts, parse_host
 
 
@@ -60,6 +60,7 @@ class SettingDescriptor(TypedDict, total=False):
     validator: Callable[[Any], Any]     # Raise ValueError on bad input
     choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
     help: str                           # If set, admin UI shows this as a dotted box
+    on_empty: Callable[[], str]         # Admin UI placeholder text/value shown while this is unset
 
 
 def _validate_int_range(lo: int, hi: int) -> Callable[[Any], int]:
@@ -109,6 +110,32 @@ def _validate_bare_host(x: Any) -> str:
     if parsed.scheme or parsed.port:
         raise ValueError('Enter a bare IP address or hostname, not a URL.')
     return parsed.host
+
+
+# (Lazy imported inside each function to avoid import cycles)
+
+def _effective_library_path() -> str:
+    from beetsplug.beetstreamnext.application import app
+    return str(app.config.get('BEETS_DB_PATH') or '') or 'Not set'
+
+
+def _effective_music_root() -> str:
+    from beetsplug.beetstreamnext.application import app
+    return str(app.config.get('root_directory') or '') or 'Not set'
+
+
+def _effective_podcast_dir() -> str:
+    return str(CACHE_LOCATION / 'podcasts')
+
+
+def _effective_ffmpeg_path() -> str:
+    from beetsplug.beetstreamnext.utils.system import find_ffmpeg
+    return find_ffmpeg() or 'Not found on PATH'
+
+
+def _effective_mpv_path() -> str:
+    from beetsplug.beetstreamnext.utils.system import find_mpv
+    return find_mpv() or 'Not found on PATH'
 
 
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
@@ -427,6 +454,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "default cache location."
         ),
         'requires_restart': False,
+        'on_empty': _effective_podcast_dir,
     },
     'podcast_auto_download_count': {
         'type': 'int',
@@ -481,6 +509,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'validator': _validate_path,
+        'on_empty': _effective_ffmpeg_path,
     },
     'jukebox_allowed': {
         'type': 'bool',
@@ -526,6 +555,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'validator': _validate_path,
+        'on_empty': _effective_mpv_path,
     },
     'jukebox_hardware_device': {
         'type': 'str',

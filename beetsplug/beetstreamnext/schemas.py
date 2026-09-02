@@ -1,7 +1,10 @@
 import shutil
 from typing import TypedDict, Any, Callable, Dict, Tuple
 
-from beetsplug.beetstreamnext.constants import SERVER_NAME, CACHE_LOCATION
+from beetsplug.beetstreamnext.constants import (
+    SERVER_NAME, CACHE_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
+    RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW
+)
 from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts, parse_host
 
 
@@ -597,7 +600,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
     'rate_limit_max_failures': {
         'type': 'int',
-        'default': 5,
+        'default': RATE_LIMIT_MAX_FAILURES,
         'category': 'security',
         'description': 'Failed attempts before an IP is rate-limited.',
         'requires_restart': False,
@@ -605,7 +608,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
     'rate_limit_block_window': {
         'type': 'int',
-        'default': 300,
+        'default': RATE_LIMIT_BLOCK_WINDOW,
         'category': 'security',
         'description': 'Seconds before failures roll off.',
         'requires_restart': False,
@@ -613,7 +616,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
     'rate_limit_ip_max_failures': {
         'type': 'int',
-        'default': 20,
+        'default': RATE_LIMIT_IP_MAX_FAILURES,
         'category': 'security',
         'description': 'Failed attempts from a single IP (across any usernames tried) before that IP is blocked outright. Catches attackers rotating usernames to dodge the per-user limit above.',
         'requires_restart': False,
@@ -621,7 +624,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
     'rate_limit_ip_block_window': {
         'type': 'int',
-        'default': 3600,
+        'default': RATE_LIMIT_IP_BLOCK_WINDOW,
         'category': 'security',
         'description': 'Seconds before an IP-wide failure count rolls off.',
         'requires_restart': False,

@@ -7,7 +7,9 @@ from typing import Dict
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location
 
 
+
 START_TIME = time.time()    # not a constant but...yeah
+
 
 ## Versions
 
@@ -18,6 +20,7 @@ SUBSONIC_API_VER: str = '1.16.1'
 SERVER_VERSION: str = '1.8.5'
 
 USER_AGENT: str = f'{SERVER_NAME}/{SERVER_VERSION} ( {REPO_URL} )'
+
 
 ## Paths and deps
 
@@ -78,6 +81,15 @@ RATE_LIMIT_IP_MAX_FAILURES: int = 20
 RATE_LIMIT_IP_BLOCK_WINDOW: int = 3600
 
 MIN_PASSWORD_LEN: int = 8
+
+
+## Server defaults
+
+DEFAULT_HOST: str = '0.0.0.0'
+DEFAULT_PORT: int = 8080
+
+DB_BUSY_TIMEOUT_MS: int = 5000
+DEFAULT_DB_TIMEOUT: float = DB_BUSY_TIMEOUT_MS / 1000   # beets' 'timeout' kept in sync with the busy_timeout PRAGMA in BSN's db
 
 
 ## URLs cleanup constants

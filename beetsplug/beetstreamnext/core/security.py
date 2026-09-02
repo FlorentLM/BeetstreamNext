@@ -23,10 +23,10 @@ class RateLimiter:
 
     def __init__(
             self,
-            max_failures: int = 5,
-            block_window: int = 300,
-            ip_max_failures: int = 20,
-            ip_block_window: int = 3600
+            max_failures: int = RATE_LIMIT_MAX_FAILURES,
+            block_window: int = RATE_LIMIT_BLOCK_WINDOW,
+            ip_max_failures: int = RATE_LIMIT_IP_MAX_FAILURES,
+            ip_block_window: int = RATE_LIMIT_IP_BLOCK_WINDOW
         ):
 
         self._lock = threading.Lock()

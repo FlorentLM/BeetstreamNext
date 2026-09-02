@@ -16,7 +16,7 @@ from functools import lru_cache
 import flask
 
 from beetsplug.beetstreamnext.console import print_box, TermColors
-from beetsplug.beetstreamnext.constants import ALPHANUM_CHARS, SESSION_KEY_ROTATION_DAYS
+from beetsplug.beetstreamnext.constants import ALPHANUM_CHARS, SESSION_KEY_ROTATION_DAYS, DB_BUSY_TIMEOUT_MS
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
@@ -176,7 +176,7 @@ def initialise_db() -> None:
     conn = sqlite3.connect(flask.current_app.config['BSN_DB_PATH'])
     cur = conn.cursor()
 
-    cur.execute("PRAGMA busy_timeout = 5000;")
+    cur.execute(f"PRAGMA busy_timeout = {int(DB_BUSY_TIMEOUT_MS)};")
     cur.execute("PRAGMA journal_mode = WAL;")
     cur.execute("PRAGMA synchronous = NORMAL;")
     cur.execute("PRAGMA foreign_keys = ON;")
@@ -985,7 +985,7 @@ def database() -> sqlite3.Connection:
         flask.g.db = sqlite3.connect(flask.current_app.config['BSN_DB_PATH'])
         flask.g.db.execute("""PRAGMA main.journal_mode = WAL;""")
         flask.g.db.execute("""PRAGMA synchronous = NORMAL;""")
-        flask.g.db.execute("""PRAGMA busy_timeout = 5000;""")
+        flask.g.db.execute(f"""PRAGMA busy_timeout = {int(DB_BUSY_TIMEOUT_MS)};""")
         flask.g.db.execute("""PRAGMA foreign_keys = ON;""")
         flask.g.db.row_factory = sqlite3.Row
     return flask.g.db

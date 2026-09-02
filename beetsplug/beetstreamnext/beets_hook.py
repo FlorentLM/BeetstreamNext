@@ -22,6 +22,7 @@ import beets
 from beets.plugins import BeetsPlugin
 
 from beetsplug.beetstreamnext.utils.text import split_list
+from beetsplug.beetstreamnext.constants import DEFAULT_HOST, DEFAULT_PORT
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.startup import run_server, prestartup_config
@@ -60,8 +61,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
         super(BeetstreamNextPlugin, self).__init__('beetstreamnext')
 
         self.config.add({
-            'host': '0.0.0.0',
-            'port': 8080,
+            'host': DEFAULT_HOST,
+            'port': DEFAULT_PORT,
             'ip_whitelist': SETTINGS_SCHEMA['ip_whitelist']['default'],
             'ip_blacklist': SETTINGS_SCHEMA['ip_blacklist']['default'],
             'cors': SETTINGS_SCHEMA['cors_origins']['default'],

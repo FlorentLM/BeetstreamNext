@@ -31,6 +31,7 @@ app.config.update(
     HTTP_CACHE_PATH=CACHE_LOCATION / 'httpcache.sqlite',
     THUMBNAIL_CACHE_PATH=CACHE_LOCATION / 'thumbnails',
     TRUSTED_HOSTS='',
+    STANDALONE_MODE=False,
 )
 app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 

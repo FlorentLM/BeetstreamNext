@@ -22,6 +22,7 @@ def prestartup_config(
         beets_config_path: Optional[str | Path],
         ip_whitelist: Iterable[str] = (),
         ip_blacklist: Iterable[str] = (),
+        standalone: bool = False,
     ) -> None:
     """
     Setup configs and secrets needed before anything else touches the db
@@ -31,6 +32,7 @@ def prestartup_config(
         BEETS_DB_PATH=Path(beets_db_path),
         BSN_DB_PATH=Path(bsn_db_path),
         BEETS_CONFIG_PATH=beets_config_path,
+        STANDALONE_MODE=standalone,
     )
 
     ip_filter.whitelist = list(ip_whitelist)

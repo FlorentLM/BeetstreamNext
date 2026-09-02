@@ -56,6 +56,7 @@ class SettingDescriptor(TypedDict, total=False):
     category: str
     description: str
     requires_restart: bool
+    standalone_only: bool               # Standalone run mode only, these don't concern plugin run mode
     sensitive: bool                     # Encrypt at rest, hide from logs, etc
     validator: Callable[[Any], Any]     # Raise ValueError on bad input
     choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text

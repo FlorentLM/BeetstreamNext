@@ -181,9 +181,15 @@ class SettingsStore:
     def get_for_ui(self, category: str) -> Dict[str, Dict[str, Any]]:
         """For UI rendering. Sensitive values are only reported as 'is_set' booleans."""
         result = {}
+        standalone = app.config.get('STANDALONE_MODE', False)
+
         with self._lock:
             for key, spec in SETTINGS_SCHEMA.items():
+
                 if spec.get('category') != category:
+                    continue
+
+                if spec.get('standalone_only') and not standalone:
                     continue
 
                 val = self._cache.get(key, spec['default'])

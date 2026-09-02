@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter, strip_host_port
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, split_list
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 
 
@@ -16,7 +16,7 @@ def _before_request() -> flask.Response | None:
     trusted_raw = app.config.get('trusted_hosts', '')
     if trusted_raw:
 
-        allowed = {h for h in trusted_raw.split(',') if h}
+        allowed = set(split_list(trusted_raw))
 
         try:
             request_host = strip_host_port(flask.request.host).lower()

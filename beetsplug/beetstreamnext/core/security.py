@@ -5,12 +5,12 @@ import ipaddress
 from collections import defaultdict
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
+from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.constants import (
     LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
     RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW
 )
-
 
 class RateLimiter:
     """
@@ -221,18 +221,10 @@ class IPFilter:
     @staticmethod
     def parse_ips(values: Optional[str | Sequence[str]] = None) -> Set[str]:
         """Validate a comma-separated (or sequence of) IPs/CIDR ranges, returning normalised strings."""
-        if not values:
-            return set()
-
-        if isinstance(values, str):
-            raw_items = [v.strip() for v in values.split(',')]
-        else:
-            raw_items = [vv.strip() for v in values for vv in v.split(',')]
+        raw_items = split_list(values)
 
         final_ips = set()
         for item in raw_items:
-            if not item:
-                continue
             try:
                 if '/' in item:
                     net = ipaddress.ip_network(item, strict=False)
@@ -362,11 +354,7 @@ def validate_trusted_hosts(raw: str) -> str:
     entries: Set[str] = set()
     invalid: List[str] = []
 
-    for item in raw.split(','):
-        item = item.strip()
-        if not item:
-            continue
-
+    for item in split_list(raw):
         candidate = item[1:-1] if item.startswith('[') and item.endswith(']') else item
 
         try:

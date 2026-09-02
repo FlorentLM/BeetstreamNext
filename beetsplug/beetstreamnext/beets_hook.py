@@ -21,9 +21,10 @@ from typing import List, Optional
 import beets
 from beets.plugins import BeetsPlugin
 
-from beetsplug.beetstreamnext.core.startup import run_server, prestartup_config
+from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.startup import run_server, prestartup_config
 from beetsplug.beetstreamnext.core.database import initialise_db
 from beetsplug.beetstreamnext.core.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd
@@ -153,10 +154,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     cmd_change_passwd(opts.passwd_user)
                 return
 
-            if opts.host:
-                host = [h.strip() for h in opts.host.split(',') if h.strip()]
-            else:
-                host = [h.strip() for raw in self.config['host'].as_str_seq() for h in raw.split(',') if h.strip()]
+            host = split_list(opts.host) if opts.host else split_list(self.config['host'].as_str_seq())
 
             port = opts.port or self.config['port'].get(int)
             debug = opts.debug or self.config['debug'].get(bool)

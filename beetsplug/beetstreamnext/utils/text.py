@@ -3,7 +3,7 @@ import re
 import string
 import unicodedata
 from html.parser import HTMLParser
-from typing import Any, Sequence, List
+from typing import Any, Optional, Sequence, List
 
 from beetsplug.beetstreamnext.constants import MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
 
@@ -35,6 +35,17 @@ def split_beets_multi(stringlist: Sequence[Any] | str) -> List[str]:
 
     splitted = str(stringlist).split(BEETS_MULTI_DELIM)
     return [s.strip('\\\u2400') for s in splitted if s]
+
+
+def split_list(value: Optional[Any], delim: str = ',') -> List[str]:
+    """
+    Normalise a delimited string, a sequence of strings (each of which could contain
+    delim-separated items), or None/empty, into a flat list of trimmed, non-empty strings.
+    """
+    if not value:
+        return []
+    items = [value] if isinstance(value, str) else value
+    return [s.strip() for raw in items for s in str(raw).split(delim) if s.strip()]
 
 
 def customstrip(value: Any, punctuation: bool = False) -> str:

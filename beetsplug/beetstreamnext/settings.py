@@ -3,6 +3,7 @@ import threading
 from typing import Any, Dict, Optional, Callable
 
 from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.database import database, get_cipher
@@ -19,9 +20,7 @@ def coerce_setting(value: Any, type_str: str) -> Any:
     if type_str == 'str':
         return '' if value is None else str(value)
     if type_str == 'list[str]':
-        if isinstance(value, str):
-            return [s.strip() for s in value.split(',') if s.strip()]
-        return [str(s) for s in (value or [])]
+        return split_list(value)
     raise ValueError(f'Unknown type: {type_str}')
 
 

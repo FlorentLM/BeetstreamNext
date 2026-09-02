@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.security import ip_filter
 from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.utils.text import split_list
 
 
 def prestartup_config(
@@ -157,7 +158,8 @@ def run_server(
         else:
             bsn_logger.info(f'Enabling CORS for origin(s): {cors_origin}')
 
-        origins_list = [o.strip() for o in cors_origin.split(',')] if ',' in cors_origin else cors_origin
+        origins = split_list(cors_origin)
+        origins_list = origins[0] if len(origins) == 1 else origins
         app.config.update(
             CORS_ALLOW_HEADERS='Content-Type',
             CORS_RESOURCES={r"/*": {"origins": origins_list}}

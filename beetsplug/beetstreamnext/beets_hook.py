@@ -92,7 +92,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('--port', dest='port', type='int', help='Port to listen on')
         cmd.parser.add_option('--host', dest='host', help='Host(s) to listen on, comma-separated (e.g. 192.168.1.10,100.64.0.5)')
         cmd.parser.add_option('--threads', dest='threads', type='int', help='Waitress worker threads')
-        cmd.parser.add_option('--playlist-dir', dest='playlist_dir', help="Directory for BeetstreamNext's own playlists")
 
         # User management
         cmd.parser.add_option('-c', '--create-user', action='store_true', default=False, help='Create a new user')
@@ -178,7 +177,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 'host': _beets_yaml_get('host', cli_value=opts.host),
                 'port': _beets_yaml_get('port', cli_value=opts.port),
                 'threads': _beets_yaml_get('threads', cli_value=opts.threads),
-                'playlist_dir': _beets_yaml_get('playlist_dir', cli_value=opts.playlist_dir),
             }
 
             for key, spec in SETTINGS_SCHEMA.items():

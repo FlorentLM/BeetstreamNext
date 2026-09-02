@@ -122,7 +122,7 @@ beetstreamnext:
   external_hostname: ''         # Force public shares to generate with this domain name
   ip_whitelist: ''              # List of IPs (space or comma-separated) to allow
   ip_blacklist: ''              # List of IPs (space or comma-separated) to block
-  cors: ''                      # Allowed CORS origins for web-based clients
+  cors_origins: ''              # Allowed CORS origins for web-based clients
   
   # Library options
   enable_public_now_playing: false  # Toggle the public homepage widget
@@ -184,7 +184,7 @@ you must allow the web player's URL in your Beets config, otherwise your web bro
 
 ```yaml
 beetstreamnext:
-    cors: 'https://music.example.com' # also accepts a comma-separated list or a wildcard '*'
+    cors_origins: 'https://music.example.com' # also accepts a comma-separated list or a wildcard '*'
 ```
 
 If you are using a SSO gateway (Authelia, Authentik, etc.), or if the web-based player is a bit quirky, you might also
@@ -195,7 +195,7 @@ beetstreamnext:
     cors_supports_credentials: true
 ```
 
-**Warning:** DO NOT set `cors: '*'` alongside `cors_supports_credentials: yes`. 
+**Warning:** DO NOT set `cors_origins: '*'` alongside `cors_supports_credentials: yes`. 
 Doing so could allow *any* malicious website you visit to silently interact with your BeetstreamNext server in the background.
 
 ---

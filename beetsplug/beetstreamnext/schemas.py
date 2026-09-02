@@ -1,9 +1,9 @@
 import shutil
-from typing import TypedDict, Any, Callable, Dict, Tuple
+from typing import TypedDict, Any, Callable, Dict, List, Tuple
 
 from beetsplug.beetstreamnext.constants import (
     SERVER_NAME, CACHE_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
-    RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW
+    RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW, DEFAULT_HOST, DEFAULT_PORT
 )
 from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts, parse_host
 
@@ -116,6 +116,17 @@ def _validate_bare_host(x: Any) -> str:
     return parsed.host
 
 
+def _validate_host_list(hosts: List[str]) -> List[str]:
+    """Each entry must be a bare hostname/IP to bind to, no scheme or port."""
+    result = []
+    for h in hosts:
+        parsed = parse_host(h)
+        if not parsed.host or parsed.scheme or parsed.port:
+            raise ValueError(f"'{h}' is not a bare hostname or IP address.")
+        result.append(parsed.host)
+    return result
+
+
 # (Lazy imported inside each function to avoid import cycles)
 
 def _effective_library_path() -> str:
@@ -161,6 +172,22 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Your external, public hostname (e.g. music.example.com).',
         'requires_restart': False,
         'validator': _validate_external_hostname,
+    },
+    'host': {
+        'type': 'list[str]',
+        'default': DEFAULT_HOST,
+        'category': 'server',
+        'description': 'Host(s) to listen on (comma-separated for multiple).',
+        'requires_restart': True,
+        'validator': _validate_host_list,
+    },
+    'port': {
+        'type': 'int',
+        'default': DEFAULT_PORT,
+        'category': 'server',
+        'description': 'Port to listen on.',
+        'requires_restart': True,
+        'validator': _validate_int_range(1, 65535),
     },
     'threads': {
         'type': 'int',
@@ -286,6 +313,13 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Show the currently playing song on the public home page.',
         'requires_restart': False,
+    },
+    'playlist_dir': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': "Directory for BeetstreamNext's own playlists. Leave empty to disable.",
+        'requires_restart': True,
     },
 
     # Library

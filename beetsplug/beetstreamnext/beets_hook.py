@@ -16,14 +16,13 @@ import os
 import sys
 import optparse
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import beets
 from beets.plugins import BeetsPlugin
 
-from beetsplug.beetstreamnext.utils.text import split_list
-from beetsplug.beetstreamnext.constants import DEFAULT_HOST, DEFAULT_PORT
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.settings import coerce_setting, settings_store
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.startup import run_server, prestartup_config
 from beetsplug.beetstreamnext.core.database import initialise_db
@@ -61,11 +60,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
         super(BeetstreamNextPlugin, self).__init__('beetstreamnext')
 
         self.config.add({
-            'host': DEFAULT_HOST,
-            'port': DEFAULT_PORT,
+            'host': SETTINGS_SCHEMA['host']['default'],
+            'port': SETTINGS_SCHEMA['port']['default'],
             'ip_whitelist': SETTINGS_SCHEMA['ip_whitelist']['default'],
             'ip_blacklist': SETTINGS_SCHEMA['ip_blacklist']['default'],
-            'cors': SETTINGS_SCHEMA['cors_origins']['default'],
+            'cors_origins': SETTINGS_SCHEMA['cors_origins']['default'],
             'debug': False,
             'force_trust_host': False,
             'cors_supports_credentials': SETTINGS_SCHEMA['cors_supports_credentials']['default'],
@@ -77,7 +76,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             'save_artists_images': SETTINGS_SCHEMA['save_artists_images']['default'],
             'save_album_art': SETTINGS_SCHEMA['save_album_art']['default'],
             'lastfm_api_key': SETTINGS_SCHEMA['lastfm_api_key']['default'],
-            'playlist_dir': '',
+            'playlist_dir': SETTINGS_SCHEMA['playlist_dir']['default'],
             'threads': SETTINGS_SCHEMA['threads']['default'],
         })
         self.config['lastfm_api_key'].redact = True
@@ -89,10 +88,11 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         # Server options
         cmd.parser.add_option('--debug', dest='debug', action='store_true', default=False, help='Run server in debug mode')
-        cmd.parser.add_option('--force_trust_host', dest='force_trust_host', action='store_true', default=False, help='Force debug mode on non-localhost')
+        cmd.parser.add_option('--force-trust-host', dest='force_trust_host', action='store_true', default=False, help='Force debug mode on non-localhost')
         cmd.parser.add_option('--port', dest='port', type='int', help='Port to listen on')
         cmd.parser.add_option('--host', dest='host', help='Host(s) to listen on, comma-separated (e.g. 192.168.1.10,100.64.0.5)')
         cmd.parser.add_option('--threads', dest='threads', type='int', help='Waitress worker threads')
+        cmd.parser.add_option('--playlist-dir', dest='playlist_dir', help="Directory for BeetstreamNext's own playlists")
 
         # User management
         cmd.parser.add_option('-c', '--create-user', action='store_true', default=False, help='Create a new user')
@@ -155,30 +155,46 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     cmd_change_passwd(opts.passwd_user)
                 return
 
-            host = split_list(opts.host) if opts.host else split_list(self.config['host'].as_str_seq())
+            def _beets_yaml_get(key: str, cli_value: Any = None) -> Any:
+                """
+                Get a setting value: CLI flag > beets' config key
+                Coerced to the settings schema's type.
+                """
+                stypes_map = {'bool': bool, 'int': int, 'str': str}
 
-            port = opts.port or self.config['port'].get(int)
+                spec = SETTINGS_SCHEMA[key]
+                if cli_value:
+                    raw = cli_value
+                elif spec['type'] == 'list[str]':
+                    raw = self.config[key].as_str_seq()
+                else:
+                    raw = self.config[key].get(stypes_map[spec['type']])
+                return coerce_setting(raw, spec['type'])
+
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
             yaml_defaults = {
-                'threads': self.config['threads'].get(int),
-                'cors_origins': self.config['cors'].get(str),
-                'cors_supports_credentials': self.config['cors_supports_credentials'].get(bool),
-                'reverse_proxy': self.config['reverse_proxy'].get(bool),
-                'proxy_hops': self.config['proxy_hops'].get(int),
-                'legacy_auth': self.config['legacy_auth'].get(bool),
-                'never_transcode': self.config['never_transcode'].get(bool),
-                'fetch_artists_images': self.config['fetch_artists_images'].get(bool),
-                'save_artists_images': self.config['save_artists_images'].get(bool),
-                'save_album_art': self.config['save_album_art'].get(bool),
-                'lastfm_api_key': self.config['lastfm_api_key'].get(str),
-                'ip_whitelist': self.config['ip_whitelist'].as_str_seq(),
-                'ip_blacklist': self.config['ip_blacklist'].as_str_seq(),
+                'host': _beets_yaml_get('host', cli_value=opts.host),
+                'port': _beets_yaml_get('port', cli_value=opts.port),
+                'threads': _beets_yaml_get('threads', cli_value=opts.threads),
+                'playlist_dir': _beets_yaml_get('playlist_dir', cli_value=opts.playlist_dir),
             }
 
+            for key, spec in SETTINGS_SCHEMA.items():
+                if key in yaml_defaults or 'env_var' not in spec:
+                    continue
+                yaml_defaults[key] = _beets_yaml_get(key)
+
+            with app.app_context():
+                initialise_db()
+                settings_store.initialise(yaml_defaults)
+
+            host = settings_store.get('host')
+            port = settings_store.get('port')
+
             possible_paths = [
-                (0, self.config['playlist_dir'].as_str()),  # BeetstreamNext's own
+                (0, settings_store.get('playlist_dir')),  # BeetstreamNext's own
                 (1, beets.config['playlist']['playlist_dir'].get(None)),  # Playlist plugin
                 (2, beets.config['smartplaylist']['playlist_dir'].get(None))  # Smartplaylist plugin
             ]

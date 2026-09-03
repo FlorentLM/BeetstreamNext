@@ -11,6 +11,25 @@ from beetsplug.beetstreamnext.core.users_crud import (
 )
 
 
+def _prompt_password(label: str) -> str:
+    """Prompt for a password twice"""
+    pw_hint = f'{label}: '
+
+    while True:
+        password = getpass.getpass(pw_hint)
+        if len(password) < MIN_PASSWORD_LEN:
+            pw_hint = f'{label} (at least {MIN_PASSWORD_LEN} chars): '
+            continue
+
+        confirm = getpass.getpass(f'Confirm {label.lower()}: ')
+        if confirm != password:
+            print('Passwords did not match, try again.')
+            pw_hint = f'{label}: '
+            continue
+
+        return password
+
+
 def cmd_create_user(force_admin: bool = False) -> None:
     """
     CLI command: Create a new user
@@ -30,15 +49,7 @@ def cmd_create_user(force_admin: bool = False) -> None:
         else:
             username_ok = True
 
-    password_ok = False
-
-    pw_hint = 'Password: '
-    while not password_ok:
-        password = getpass.getpass(pw_hint)
-        if len(password) < MIN_PASSWORD_LEN:
-            pw_hint = f'Password (at least {MIN_PASSWORD_LEN} chars): '
-        else:
-            password_ok = True
+    password = _prompt_password('Password')
 
     is_admin = True if force_admin else input('Admin? [y/n]: ').lower() == 'y'
 
@@ -129,16 +140,8 @@ def cmd_change_passwd(username: str) -> None:
     CLI command: Change a user's password
     """
 
-    password_ok = False
-    pw_hint = f"New password for '{username}': "
+    new_pw = _prompt_password(f"New password for '{username}'")
 
-    while not password_ok:
-        new_pw = getpass.getpass(pw_hint)
-
-        if len(new_pw) < MIN_PASSWORD_LEN:
-            pw_hint = f"New password for '{username}' (at least {MIN_PASSWORD_LEN} chars): "
-        else:
-            password_ok = True
     try:
         update_user(username, password=new_pw)
         print('Password updated successfully.')

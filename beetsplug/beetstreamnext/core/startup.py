@@ -188,7 +188,7 @@ def run_server(
         CORS(app, supports_credentials=supports_creds)
 
     else:
-        bsn_logger.info('CORS is disabled (secure default). Web-based clients will be blocked by browsers.')
+        bsn_logger.info('CORS is disabled. Web-based OpenSubsonic clients will be blocked by browsers.')
 
     apply_logs_redaction()
     if debug:

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 import beets
+import confuse
 from beets.plugins import BeetsPlugin
 
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
@@ -62,27 +63,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
     def __init__(self):
         super(BeetstreamNextPlugin, self).__init__('beetstreamnext')
 
-        self.config.add({
-            'host': SETTINGS_SCHEMA['host']['default'],
-            'port': SETTINGS_SCHEMA['port']['default'],
-            'ip_whitelist': SETTINGS_SCHEMA['ip_whitelist']['default'],
-            'ip_blacklist': SETTINGS_SCHEMA['ip_blacklist']['default'],
-            'cors_origins': SETTINGS_SCHEMA['cors_origins']['default'],
-            'debug': False,
-            'force_trust_host': False,
-            'cors_supports_credentials': SETTINGS_SCHEMA['cors_supports_credentials']['default'],
-            'reverse_proxy': SETTINGS_SCHEMA['reverse_proxy']['default'],
-            'proxy_hops': SETTINGS_SCHEMA['proxy_hops']['default'],
-            'legacy_auth': SETTINGS_SCHEMA['legacy_auth']['default'],
-            'never_transcode': SETTINGS_SCHEMA['never_transcode']['default'],
-            'fetch_artists_images': SETTINGS_SCHEMA['fetch_artists_images']['default'],
-            'save_artists_images': SETTINGS_SCHEMA['save_artists_images']['default'],
-            'save_album_art': SETTINGS_SCHEMA['save_album_art']['default'],
-            'lastfm_api_key': SETTINGS_SCHEMA['lastfm_api_key']['default'],
-            'playlist_dir': SETTINGS_SCHEMA['playlist_dir']['default'],
-            'threads': SETTINGS_SCHEMA['threads']['default'],
-        })
-        self.config['lastfm_api_key'].redact = True
+        self.config.add({key: spec['default'] for key, spec in SETTINGS_SCHEMA.items() if not spec.get('standalone_only')})
+        self.config.add({'debug': False, 'force_trust_host': False})
+
+        for key, spec in SETTINGS_SCHEMA.items():
+            if spec.get('sensitive'):
+                self.config[key].redact = True
 
     item_types = {}
 
@@ -159,18 +145,22 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             def _beets_yaml_get(key: str, cli_value: Any = None) -> Any:
                 """
-                Get a setting value: CLI flag > beets' config key
-                Coerced to the settings schema's type.
+                Get a setting value: CLI flag > beets' config key ('beetstreamnext:' block)
+                Coerced to the settings schema's type. None if unset anywhere.
                 """
                 stypes_map = {'bool': bool, 'int': int, 'str': str}
 
                 spec = SETTINGS_SCHEMA[key]
                 if cli_value:
                     raw = cli_value
-                elif spec['type'] == 'list[str]':
-                    raw = self.config[key].as_str_seq()
+
                 else:
-                    raw = self.config[key].get(stypes_map[spec['type']])
+                    try:
+                        raw = self.config[key].as_str_seq() if spec['type'] == 'list[str]' \
+                            else self.config[key].get(stypes_map[spec['type']])
+                    except confuse.NotFoundError:
+                        return None
+
                 return coerce_setting(raw, spec['type'])
 
             debug = opts.debug or self.config['debug'].get(bool)
@@ -183,9 +173,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
             }
 
             for key, spec in SETTINGS_SCHEMA.items():
-                if key in yaml_defaults or 'env_var' not in spec:
+                if key in yaml_defaults or spec.get('standalone_only'):
                     continue
-                yaml_defaults[key] = _beets_yaml_get(key)
+
+                value = _beets_yaml_get(key)
+                if value is not None:
+                    yaml_defaults[key] = value
 
             with app.app_context():
                 initialise_db()

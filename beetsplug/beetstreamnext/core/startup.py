@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import TermColors, print_box
 from beetsplug.beetstreamnext.constants import CACHE_LOCATION, LOOPBACK_IPS
 from beetsplug.beetstreamnext.core.database import ensure_secret, initialise_db, rotate_session_key
+from beetsplug.beetstreamnext.core.health import startup_path_check
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL, RedactingTransLogger, apply_logs_redaction, bsn_logger
 from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.podcasts import PodcastManager
@@ -133,6 +134,26 @@ def run_server(
         root_directory=root_directory,
         playlist_dirs=playlist_dirs
     )
+
+    checked_paths, missing_paths = startup_path_check(root_directory)
+    if checked_paths and missing_paths == checked_paths:
+        print_box([
+            '',
+            f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
+            '',
+            f'None of {checked_paths} sampled library item paths were found on disk under:',
+            f'  {root_directory}',
+            '',
+            'This probably means an incorrect path-mapping/mount config.',
+            'Check your `music_root`/`library_local_path`/`library_remote_path` settings.',
+            '',
+        ], color=TermColors.WARNING)
+
+    elif missing_paths:
+        bsn_logger.warning(
+            f'Startup path check: {missing_paths}/{checked_paths} sampled library item paths not found on disk '
+            f'(root: {root_directory}).'
+        )
 
     app.config.update(playlist_provider=PlaylistProvider())
     app.config.update(podcast_manager=PodcastManager())

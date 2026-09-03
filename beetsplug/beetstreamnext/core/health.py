@@ -270,6 +270,36 @@ def scan_library(full: bool = False) -> dict[str, int]:
     return counts
 
 
+@with_app_context
+def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> tuple[int, int]:
+    """
+    Stats a random sample of resolved item paths. Meant to be called once at boot, so a
+    bad path-mapping/mount config is caught fast.
+
+    Returns (checked, missing) counts.
+    """
+    with dual_database() as db:
+        rows = db.execute(
+            """
+            SELECT path 
+            FROM beets.items 
+            ORDER BY RANDOM() LIMIT ?
+            """, (sample_size,)
+        ).fetchall()
+
+    checked = 0
+    missing = 0
+    for row in rows:
+        path = os.fsdecode(row['path'] or b'')
+        if not path:
+            continue
+        checked += 1
+        if not resolve_path(path, root_directory).exists():
+            missing += 1
+
+    return checked, missing
+
+
 def start_scan(full: bool = False) -> tuple[bool, str]:
     """
     Starts a health scan on a background thread. Returns (started, message).

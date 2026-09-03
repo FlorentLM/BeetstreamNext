@@ -35,7 +35,7 @@ beautifulsoup4 = ">=4.15.0"
 pyyaml = ">=6.0.3"
 
 [tool.poetry.scripts]
-beetstreamnext = "beetsplug.beetstreamnext.cli:main"
+beetstreamnext = "beetsplug.beetstreamnext.standalone_mode:main"
 
 [tool.poetry.extras]
 transcode = ["ffmpeg-python"]

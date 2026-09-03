@@ -33,6 +33,8 @@ SOCO: bool = is_installed('soco')
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()
 
+DEFAULT_CONFIG_PATH: Path = Path('/config/beetstreamnext.yaml')     # standalone mode only
+
 HLS_CACHE_DIR = CACHE_LOCATION / 'hls'
 HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 

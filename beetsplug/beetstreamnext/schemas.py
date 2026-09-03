@@ -314,6 +314,36 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Show the currently playing song on the public home page.',
         'requires_restart': False,
     },
+    'music_root': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': "Root directory your beets library's file paths are relative to.",
+        'requires_restart': True,
+        'standalone_only': True,
+        'on_empty': _effective_music_root,
+    },
+    'library_path': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': "Path to the beets library.db to serve.",
+        'requires_restart': True,
+        'standalone_only': True,
+        'on_empty': _effective_library_path,
+    },
+    'library_remote_path': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': (
+            "Optional, mount point used by another container that accesses the beets library (e.g. Betanin), "
+            "if it differs from where 'music_root' mounts it in the BeetstreamNext container. "
+            "Leave empty if both containers mount the music volume at the same path."
+        ),
+        'requires_restart': False,
+        'standalone_only': True,
+    },
     'playlist_dir': {
         'type': 'str',
         'default': '',

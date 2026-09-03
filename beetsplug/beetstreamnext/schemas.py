@@ -59,12 +59,13 @@ class SettingDescriptor(TypedDict, total=False):
     category: str
     description: str
     requires_restart: bool
-    standalone_only: bool               # Standalone run mode only, these don't concern plugin run mode
+    standalone_only: bool               # Standalone run mode only: these don't concern plugin run mode
     sensitive: bool                     # Encrypt at rest, hide from logs, etc
     validator: Callable[[Any], Any]     # Raise ValueError on bad input
     choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
     help: str                           # If set, admin UI shows this as a dotted box
     on_empty: Callable[[], str]         # Admin UI placeholder text/value shown while this is unset
+    env_var: str                        # Name of the env var that can also set this key (standalone mode only)
 
 
 def _validate_int_range(lo: int, hi: int) -> Callable[[Any], int]:
@@ -163,6 +164,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': f'If set, the admin panel will only be accessible when visited via this hostname '
                        f'(e.g. {SERVER_NAME.lower()}.internal.example.com). Loopback is always allowed.',
         'requires_restart': False,
+        'env_var': 'BSN_ADMIN_HOSTNAME',
         'validator': _validate_admin_hostname,
     },
     'external_hostname': {
@@ -171,6 +173,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Your external, public hostname (e.g. music.example.com).',
         'requires_restart': False,
+        'env_var': 'BSN_EXTERNAL_HOSTNAME',
         'validator': _validate_external_hostname,
     },
     'host': {
@@ -179,6 +182,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Host(s) to listen on (comma-separated for multiple).',
         'requires_restart': True,
+        'env_var': 'BSN_HOST',
         'validator': _validate_host_list,
     },
     'port': {
@@ -187,6 +191,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Port to listen on.',
         'requires_restart': True,
+        'env_var': 'BSN_PORT',
         'validator': _validate_int_range(1, 65535),
     },
     'threads': {
@@ -195,6 +200,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Worker threads for serving requests.',
         'requires_restart': True,
+        'env_var': 'BSN_THREADS',
         'validator': _validate_int_range(1, 128),
     },
     'channel_timeout': {
@@ -219,6 +225,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': "Allowed CORS origins (comma-separated, '*' for all). Empty to disable CORS.",
         'requires_restart': True,
+        'env_var': 'BSN_CORS_ORIGINS',
     },
     'cors_supports_credentials': {
         'type': 'bool',
@@ -226,6 +233,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Allow CORS requests with credentials (cookies, HTTP auth).',
         'requires_restart': True,
+        'env_var': 'BSN_CORS_CREDENTIALS',
     },
     'reverse_proxy': {
         'type': 'bool',
@@ -233,6 +241,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Server is behind a reverse proxy (Nginx, Caddy, Traefik, etc.).',
         'requires_restart': True,
+        'env_var': 'BSN_REVERSE_PROXY',
         'help': (
             f"# Example Nginx configuration (adjust to match your {SERVER_NAME} host/port):\n"
             "\n"
@@ -253,6 +262,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Number of trusted reverse proxies in front of the server. Only used if `reverse_proxy` is enabled',
         'requires_restart': True,
+        'env_var': 'BSN_PROXY_HOPS',
         'validator': _validate_int_range(1, 10),
     },
     'sendfile_method': {
@@ -298,6 +308,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Allowed Host headers (domain names/IPs, comma-separated). If empty, all hosts are allowed. Loopback is always allowed.',
         'requires_restart': False,
+        'env_var': 'BSN_TRUSTED_HOSTS',
         'validator': validate_trusted_hosts,
     },
     'legacy_auth': {
@@ -306,6 +317,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Allow legacy MD5 token / cleartext password authentication. API-key authentication always works.',
         'requires_restart': False,
+        'env_var': 'BSN_LEGACY_AUTH',
     },
     'public_now_playing': {
         'type': 'bool',
@@ -350,6 +362,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': "Directory for BeetstreamNext's own playlists. Leave empty to disable.",
         'requires_restart': True,
+        'env_var': 'BSN_PLAYLIST_DIR',
     },
 
     # Library
@@ -360,6 +373,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': "Required to allow 'beet import' scans to modify content on disk (writing tags in the files "
                         "or copying/moving files). Not required if the loaded beets config has write/copy/move all disabled.",
         'requires_restart': False,
+        'env_var': 'BSN_ALLOW_DISK_WRITES',
     },
     'never_transcode': {
         'type': 'bool',
@@ -367,6 +381,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': 'Never transcode files, always stream the original.',
         'requires_restart': False,
+        'env_var': 'BSN_NEVER_TRANSCODE',
     },
     'lastfm_api_key': {
         'type': 'str',
@@ -375,6 +390,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Last.fm API key for fetching metadata.',
         'requires_restart': False,
         'sensitive': True,
+        'env_var': 'BSN_LASTFM_API_KEY',
     },
     'fetch_artists_images': {
         'type': 'bool',
@@ -382,6 +398,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': 'Fetch missing artist images from external services.',
         'requires_restart': False,
+        'env_var': 'BSN_FETCH_ARTISTS_IMAGES',
     },
     'save_artists_images': {
         'type': 'bool',
@@ -389,6 +406,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': 'Save fetched artist images to disk.',
         'requires_restart': False,
+        'env_var': 'BSN_SAVE_ARTISTS_IMAGES',
     },
     'fetch_artists_biographies': {
         'type': 'bool',
@@ -403,6 +421,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': 'Save fetched album art alongside music files.',
         'requires_restart': False,
+        'env_var': 'BSN_SAVE_ALBUM_ART',
     },
     'follow_playlist_embedded_urls': {
         'type': 'bool',
@@ -511,6 +530,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'API token for your AudioMuse-AI instance.',
         'requires_restart': False,
         'sensitive': True,
+        'env_var': 'BSN_AUDIOMUSE_API_TOKEN',
     },
     'audiomuse_url': {
         'type': 'str',
@@ -652,6 +672,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'security',
         'description': 'Allowed IPs (empty = allow all except blacklist).',
         'requires_restart': False,
+        'env_var': 'BSN_IP_WHITELIST',
         'validator': ip_filter.parse_ips,
     },
     'ip_blacklist': {
@@ -660,6 +681,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'security',
         'description': 'Banned IPs.',
         'requires_restart': False,
+        'env_var': 'BSN_IP_BLACKLIST',
         'validator': ip_filter.parse_ips,
     },
     'rate_limit_max_failures': {

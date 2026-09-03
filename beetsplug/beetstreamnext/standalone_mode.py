@@ -127,11 +127,12 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     def _yaml_get(key: str) -> Any:
         """
-        Get a setting value: CLI flag > env var > YAML key
+        Get a setting value: CLI flag > env var (if this setting has one) > YAML key
         Coerced to the settings schema's type. None if unset anywhere.
         """
         spec = SETTINGS_SCHEMA[key]
-        raw = _cascade_value(_cli_flags.get(key), get_env(spec['env_var']), yaml_cfg.get(key))
+        env_val = get_env(spec['env_var']) if 'env_var' in spec else None
+        raw = _cascade_value(_cli_flags.get(key), env_val, yaml_cfg.get(key))
         return coerce_setting(raw, spec['type']) if raw is not None else None
 
     library_db = _cascade_value(args.library_db, get_env('BEETS_LIBRARY_DB'), yaml_cfg.get('library_db'), _beets_cfg('library'))
@@ -184,8 +185,8 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     yaml_defaults: Dict[str, Any] = {}
 
-    for key, spec in SETTINGS_SCHEMA.items():
-        if 'env_var' not in spec or key in ('ip_whitelist', 'ip_blacklist'):
+    for key in SETTINGS_SCHEMA:
+        if key in ('ip_whitelist', 'ip_blacklist'):  # these are resolved differently for pre-startup config
             continue
         value = _yaml_get(key)
         if value is not None:

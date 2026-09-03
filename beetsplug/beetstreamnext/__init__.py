@@ -17,4 +17,4 @@ app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
 
 # And import the beets hook
-from .beets_hook import BeetstreamNextPlugin
+from .beetsplugin_hook import BeetstreamNextPlugin

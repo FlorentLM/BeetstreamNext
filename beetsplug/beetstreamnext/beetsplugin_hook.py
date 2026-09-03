@@ -54,6 +54,9 @@ def _detect_config_override(argv: List[str]) -> Optional[str]:
     return options.config
 
 
+##
+# Plugin mode entrypoint
+
 class BeetstreamNextPlugin(BeetsPlugin):
 
     def __init__(self):

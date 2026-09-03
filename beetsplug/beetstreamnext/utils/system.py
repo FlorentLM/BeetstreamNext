@@ -19,6 +19,12 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 _VERSION_RE = re.compile(r'\d+(?:\.\d+){1,3}')
 
 
+def get_env(var_name: str) -> Optional[str]:
+    """Load a env var value, treating unset or empty-string as None."""
+    val = os.environ.get(var_name)
+    return val if val not in (None, '') else None
+
+
 def is_installed(package_name: str) -> bool:
     try:
         version(package_name)
@@ -85,6 +91,27 @@ def get_mimetype(path: bytes | str | Path) -> str:
     return mimetypes.guess_type(path)[0] or mimetype_fallback.get(ext, 'application/octet-stream')
 
 
+def _remap_mount(path_obj: Path, root_directory: bytes | str | Path) -> Path:
+    """
+    Substitute root_directory for 'library_remote_path' when another container
+    and this one mount the music volume at different paths.
+    """
+    from beetsplug.beetstreamnext.settings import settings_store
+
+    remote = settings_store.get('library_remote_path')
+    if not remote:
+        return path_obj
+
+    try:
+        rel = path_obj.relative_to(remote)
+    except ValueError:
+        return path_obj
+
+    if isinstance(root_directory, bytes):
+        root_directory = os.fsdecode(root_directory)
+    return Path(root_directory) / rel
+
+
 def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -> Path:
     """Absolute Path for a beets-stored path, which may be bytes and/or relative to root_directory."""
 
@@ -92,12 +119,13 @@ def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -
         path = os.fsdecode(path)
     path_obj = Path(path)
 
+    if isinstance(root_directory, bytes):
+        root_directory = os.fsdecode(root_directory)
+
     if not path_obj.is_absolute():
-        if isinstance(root_directory, bytes):
-            root_directory = os.fsdecode(root_directory)
         path_obj = Path(root_directory) / path_obj
 
-    return path_obj
+    return _remap_mount(path_obj, root_directory)
 
 
 def path_hash(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:

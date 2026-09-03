@@ -98,6 +98,8 @@ def _csp_nonce() -> None:
 
 @app.after_request
 def _add_security_headers(response):
+    # TODO: Might make these configurable
+
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'

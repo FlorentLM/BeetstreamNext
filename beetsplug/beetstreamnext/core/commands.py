@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.core.users_crud import (
 )
 
 
-def cmd_create_user() -> None:
+def cmd_create_user(force_admin: bool = False) -> None:
     """
     CLI command: Create a new user
     """
@@ -40,7 +40,7 @@ def cmd_create_user() -> None:
         else:
             password_ok = True
 
-    is_admin = input('Admin? [y/n]: ').lower() == 'y'
+    is_admin = True if force_admin else input('Admin? [y/n]: ').lower() == 'y'
 
     try:
         api_key = create_user(username, password, admin=is_admin)

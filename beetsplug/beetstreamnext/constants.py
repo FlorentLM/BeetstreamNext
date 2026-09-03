@@ -17,7 +17,7 @@ SERVER_NAME: str = 'BeetstreamNext'
 
 REPO_URL: str = f'https://github.com/FlorentLM/BeetstreamNext'
 SUBSONIC_API_VER: str = '1.16.1'
-SERVER_VERSION: str = '1.8.5'
+SERVER_VERSION: str = '1.9.9'
 
 USER_AGENT: str = f'{SERVER_NAME}/{SERVER_VERSION} ( {REPO_URL} )'
 

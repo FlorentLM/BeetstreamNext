@@ -10,7 +10,7 @@ Only the current pre-release version is supported
 
 | Version | Supported          |
 |---------| ------------------ |
-| 1.9.0   | :white_check_mark: |
+| 1.9.9   | :white_check_mark: |
 | 1.8.5   | :white_check_mark: |
 | 1.8.0   | :white_check_mark: |
 | < 1.8.0 | :x:                |

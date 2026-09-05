@@ -703,9 +703,9 @@
                 </p>
                 <div class="button-row config-editor-actions">
                     <button type="button" class="btn btn-outline" data-action="reload-beets-config"
-                            data-url="{{ url_for('admin.route_beets_config') }}">Reload</button>
+                            data-url="{{ url_for('admin.route_read_beets_config') }}">Reload</button>
                     <button type="button" class="btn btn-primary" id="beetsConfigSaveBtn"
-                            data-action="save-beets-config" data-url="{{ url_for('admin.route_beets_config') }}"
+                            data-action="save-beets-config" data-url="{{ url_for('admin.route_save_beets_config') }}"
                             {% if beets_config.read_only %}disabled{% endif %}>Save</button>
                 </div>
             </div>

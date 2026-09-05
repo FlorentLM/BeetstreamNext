@@ -687,6 +687,7 @@
         <div class="card">
             <div class="table-header"><h2>Beets Configuration</h2></div>
             <p class="card-hint">
+                <span class="config-label">Loaded config file:</span>
                 <code id="beetsConfigPath">{{ beets_config.path }}</code>
                 <span class="badge badge-admin" id="beetsConfigReadOnlyBadge" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
             </p>
@@ -743,24 +744,6 @@
                 </div>
             </div>
             <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
-        </div>
-
-        <div class="card">
-            <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
-            <p class="card-hint">
-                Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
-                <code>audiomuse_url</code> to be configured under Library settings.
-            </p>
-            <p class="card-hint">
-                Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)
-                but it doesn't expose them through its API. So writing them back into beets' <code>acoustid_id</code>
-                / <code>acoustid_fingerprint</code> fields isn't currently possible.
-            </p>
-            <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
-                  data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Fingerprint library</button>
-            </form>
         </div>
     </section>
 
@@ -884,6 +867,24 @@
         </div>
 
         <div class="card">
+            <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
+            <p class="card-hint">
+                Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
+                <code>audiomuse_url</code> to be configured under Library settings.
+            </p>
+            <p class="card-hint">
+                Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)
+                but it doesn't expose them through its API. So writing them back into beets' <code>acoustid_id</code>
+                / <code>acoustid_fingerprint</code> fields isn't currently possible.
+            </p>
+            <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
+                  data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline">Fingerprint library</button>
+            </form>
+        </div>
+
+        <div class="card">
             <div class="table-header"><h2>Server Info</h2></div>
             <dl class="kv-grid">
                 <dt>BeetstreamNext</dt><dd>v{{ server_info.version }}</dd>
@@ -915,12 +916,11 @@
                     </label>
                     <button type="button" class="btn btn-outline" data-action="copy-log" data-target="serverLogText">{{ icon('copy') }} <span class="btn-label">Copy</span></button>
                     <button type="button" class="btn btn-outline" id="refresh-log-btn" data-action="refresh-log"
-                            data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText" data-hint="serverLogHint">
+                            data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText">
                         {{ icon('refresh') }} <span class="btn-label">Refresh</span>
                     </button>
                 </div>
             </div>
-            <p class="card-hint" id="serverLogHint">Last {{ log_lines|length }} log line{{ 's' if log_lines|length != 1 }} captured since server start.</p>
             <pre class="log-view" id="serverLogText">{% if log_lines %}{{ log_lines|join('\n') }}{% else %}(no log output yet){% endif %}</pre>
         </div>
     </section>

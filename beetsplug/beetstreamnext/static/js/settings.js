@@ -253,10 +253,10 @@
         };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(key).then(done).catch(() => selectKey(el));
+            navigator.clipboard.writeText(key).then(done).catch(() => { if (copySel(key)) done(); });
         } else {
-            // No clipboard API over plain HTTP
-            selectKey(el);
+            // No Clipboard API over plain HTTP, fallback to execCommand
+            if (copySel(key)) done();
         }
     }
 
@@ -274,18 +274,28 @@
         };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(() => selectKey(el));
+            navigator.clipboard.writeText(text).then(done).catch(() => { if (copySel(text)) done(); });
         } else {
-            selectKey(el);
+            if (copySel(text)) done();
         }
     }
 
-    function selectKey(el) {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
+    function copySel(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        let ok = false;
+        try {
+            ok = document.execCommand('copy');
+        } catch (e) {
+            // ignore
+        }
+        document.body.removeChild(ta);
+        return ok;
     }
 
     // Rate-limit panel
@@ -380,7 +390,6 @@
     async function refreshLogs(button) {
         const url = button.dataset.url;
         const target = document.getElementById(button.dataset.target);
-        const hint = document.getElementById(button.dataset.hint);
         if (!target || !url) return;
         try {
             const resp = await fetch(url, { credentials: 'same-origin' });
@@ -390,7 +399,6 @@
             const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
             target.innerHTML = lines.length ? lines.map(ansiLineToHtml).join('\n') : '(no log output yet)';
             if (wasAtBottom) target.scrollTop = target.scrollHeight;
-            if (hint) hint.textContent = `Last ${lines.length} log line${lines.length !== 1 ? 's' : ''} captured since server start.`;
         } catch (err) {
             target.textContent = 'Failed to load log: ' + err.message;
         }

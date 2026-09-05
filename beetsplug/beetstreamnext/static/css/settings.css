@@ -544,13 +544,14 @@ input:focus, select:focus { border-color: var(--primary); }
 .card-section { padding: 0 1.5rem 1.5rem; }
 
 /* Beets config editor */
+.config-label { font-weight: 600; }
 .code-editor {
     display: block;
     width: 100%;
     height: 60vh;
     max-height: 800px;
     padding: 1rem;
-    background: var(--overlay-sunken);
+    background: #000;
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
@@ -560,6 +561,7 @@ input:focus, select:focus { border-color: var(--primary); }
     resize: vertical;
     tab-size: 4;
 }
+:root[data-theme="light"] .code-editor { background: #fff; }
 .code-editor:focus { outline: none; border-color: var(--primary); }
 .code-editor[readonly] { color: var(--text-muted); cursor: default; }
 

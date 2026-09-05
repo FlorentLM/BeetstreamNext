@@ -7,6 +7,7 @@ from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes,
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_disk_usage
 from beetsplug.beetstreamnext.core.health import flagged_songs
+from beetsplug.beetstreamnext.core.beets_config import read_config
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
@@ -243,6 +244,7 @@ def route_settings() -> flask.Response:
             podcast_channels=podcast_channels,
             podcast_total_size=human_bytes(podcast_total_bytes),
             flagged_songs=flagged_songs(),
+            beets_config=read_config(),
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),
             radio_form=RadioStationForm(formdata=None),

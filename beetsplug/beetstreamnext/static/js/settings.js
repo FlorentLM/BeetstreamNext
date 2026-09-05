@@ -466,6 +466,88 @@
         }
     }
 
+    // Beets config editor
+
+    function formatConfigTime(el) {
+        const ms = parseInt(el.dataset.timestamp);
+        el.textContent = isNaN(ms) ? '—' : new Date(ms).toLocaleTimeString();
+    }
+
+    function applyBeetsConfigState(payload) {
+        const editor = document.getElementById('beetsConfigEditor');
+        const pathEl = document.getElementById('beetsConfigPath');
+        const badge = document.getElementById('beetsConfigReadOnlyBadge');
+        const saveBtn = document.getElementById('beetsConfigSaveBtn');
+        const loadedEl = document.getElementById('beetsConfigLoadedAt');
+        if (!editor) return;
+
+        if (payload.content !== undefined) editor.value = payload.content;
+        if (payload.path !== undefined && pathEl) pathEl.textContent = payload.path;
+        if (payload.read_only !== undefined) {
+            editor.readOnly = payload.read_only;
+            if (badge) badge.hidden = !payload.read_only;
+            if (saveBtn) saveBtn.disabled = payload.read_only;
+        }
+        if (payload.loaded_at !== undefined && loadedEl) {
+            loadedEl.dataset.timestamp = String(payload.loaded_at * 1000);
+            formatConfigTime(loadedEl);
+        }
+    }
+
+    async function reloadBeetsConfig(button) {
+        const url = button.dataset.url;
+        const result = document.getElementById('beetsConfigResult');
+        if (!url) return;
+
+        button.disabled = true;
+        try {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            applyBeetsConfigState(await resp.json());
+            if (result) { result.className = 'test-result config-editor-result'; result.textContent = ''; }
+        } catch (err) {
+            if (result) {
+                result.className = 'test-result config-editor-result test-result-fail';
+                result.textContent = 'Failed to reload: ' + err.message;
+            }
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    async function saveBeetsConfig(button) {
+        const url = button.dataset.url;
+        const editor = document.getElementById('beetsConfigEditor');
+        const result = document.getElementById('beetsConfigResult');
+        if (!url || !editor) return;
+
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        button.disabled = true;
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                },
+                body: JSON.stringify({ content: editor.value })
+            });
+            const payload = await resp.json();
+            applyBeetsConfigState(payload);
+            if (result) {
+                result.className = 'test-result config-editor-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
+                result.textContent = payload.message || (payload.ok ? 'Saved.' : 'Failed to save.');
+            }
+        } catch (err) {
+            button.disabled = false;
+            if (result) {
+                result.className = 'test-result config-editor-result test-result-fail';
+                result.textContent = 'Failed to save: ' + err.message;
+            }
+        }
+    }
+
     async function testConnection(button) {
         const url = button.dataset.url;
         const result = document.getElementById(button.dataset.result);
@@ -589,6 +671,12 @@
             case 'refresh-log':
                 refreshLogs(target);
                 break;
+            case 'reload-beets-config':
+                reloadBeetsConfig(target);
+                break;
+            case 'save-beets-config':
+                saveBeetsConfig(target);
+                break;
             case 'test-connection':
                 testConnection(target);
                 break;
@@ -684,6 +772,19 @@
         if (!isNaN(ms)) {
             el.textContent = new Date(ms).toLocaleString();
         }
+    });
+
+    document.querySelectorAll('.config-time').forEach(formatConfigTime);
+
+    // Tab key insert a tab instead of moving focus
+    document.querySelectorAll('.code-editor').forEach(editor => {
+        editor.addEventListener('keydown', event => {
+            if (event.key !== 'Tab' || editor.readOnly) return;
+            event.preventDefault();
+            const start = editor.selectionStart, end = editor.selectionEnd;
+            editor.value = editor.value.slice(0, start) + '  ' + editor.value.slice(end);
+            editor.selectionStart = editor.selectionEnd = start + 2;
+        });
     });
 
     // Auto-show the one-time API key modal if the server rendered one

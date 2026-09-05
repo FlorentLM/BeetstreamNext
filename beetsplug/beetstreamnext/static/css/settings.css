@@ -543,6 +543,39 @@ input:focus, select:focus { border-color: var(--primary); }
 
 .card-section { padding: 0 1.5rem 1.5rem; }
 
+/* Beets config editor */
+.code-editor {
+    display: block;
+    width: 100%;
+    height: 60vh;
+    max-height: 800px;
+    padding: 1rem;
+    background: var(--overlay-sunken);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    resize: vertical;
+    tab-size: 4;
+}
+.code-editor:focus { outline: none; border-color: var(--primary); }
+.code-editor[readonly] { color: var(--text-muted); cursor: default; }
+
+.config-editor-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1.5rem;
+}
+.config-editor-footer .card-hint { margin: 0; }
+.config-editor-actions { padding: 0; }
+.config-editor-result { margin-left: 0.6rem; }
+.config-editor-result:empty { margin-left: 0; }
+
 /* Expandable table rows (click to reveal a detail row underneath) */
 .expand-row { cursor: pointer; }
 .expand-row:hover { background: var(--overlay-weak); }

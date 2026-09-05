@@ -685,6 +685,33 @@
     <section class="tab-content" id="tab-beets" data-tab-content="beets" role="tabpanel">
 
         <div class="card">
+            <div class="table-header"><h2>Beets Configuration</h2></div>
+            <p class="card-hint">
+                <code id="beetsConfigPath">{{ beets_config.path }}</code>
+                <span class="badge badge-admin" id="beetsConfigReadOnlyBadge" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
+            </p>
+            <div class="card-section">
+                <textarea id="beetsConfigEditor" class="code-editor" spellcheck="false" autocomplete="off"
+                          autocapitalize="off" wrap="off"
+                          {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+            </div>
+            <div class="config-editor-footer">
+                <p class="card-hint config-editor-loaded">
+                    Last read at
+                    <strong class="config-time" id="beetsConfigLoadedAt" data-timestamp="{{ (beets_config.loaded_at * 1000) | int }}">&mdash;</strong>
+                    <span class="test-result config-editor-result" id="beetsConfigResult"></span>
+                </p>
+                <div class="button-row config-editor-actions">
+                    <button type="button" class="btn btn-outline" data-action="reload-beets-config"
+                            data-url="{{ url_for('admin.route_beets_config') }}">Reload</button>
+                    <button type="button" class="btn btn-primary" id="beetsConfigSaveBtn"
+                            data-action="save-beets-config" data-url="{{ url_for('admin.route_beets_config') }}"
+                            {% if beets_config.read_only %}disabled{% endif %}>Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
             <div class="table-header">
                 <h2>Library Scan</h2>
                 <button class="btn btn-outline" data-action="refresh-scan-status"

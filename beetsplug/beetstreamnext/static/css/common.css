@@ -138,6 +138,9 @@ a:hover { opacity: 0.8; }
     font-family: inherit;
 }
 .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+[hidden] { display: none !important; }
 .btn-primary { background: var(--primary); color: white; }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }

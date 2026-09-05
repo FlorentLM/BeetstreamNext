@@ -2,6 +2,9 @@
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.setuptools.packages.find]
+namespaces = true
+
 [tool.poetry]
 name = "beetstreamnext"
 version = "1.9.9"

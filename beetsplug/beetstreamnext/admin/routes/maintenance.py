@@ -6,7 +6,8 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import clear_caches, sweep_stale_references
 from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats
 from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, IMPORT_LOG_PATH
+from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing
+from beetsplug.beetstreamnext.core.beets_config import read_config, write_config
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import SERVER_NAME
 
@@ -39,6 +40,7 @@ def route_beets_import_log() -> flask.Response:
     try:
         with open(IMPORT_LOG_PATH, 'r', errors='replace') as f:
             lines = f.read().splitlines()[-1000:]
+        with open(BEETS_IMPORT_LOG_PATH, 'r', errors='replace') as f:
     except OSError:
         lines = []
 

@@ -10,7 +10,7 @@ import confuse
 
 from beetsplug.beetstreamnext.core.mappings import Resolve
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import CACHE_LOCATION
+from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
@@ -19,8 +19,6 @@ from beetsplug.beetstreamnext.settings import settings_store
 _lock = threading.Lock()
 _process: Optional[subprocess.Popen] = None
 _started_at: Optional[float] = None
-
-IMPORT_LOG_PATH = CACHE_LOCATION / 'last_import.log'
 
 
 def _diskwrite_safe() -> bool:
@@ -80,7 +78,7 @@ def start_import() -> Tuple[bool, str, bool]:
         ]
 
         try:
-            log_file = open(IMPORT_LOG_PATH, 'wb')
+            log_file = open(BEETS_IMPORT_LOG_PATH, 'wb')
         except OSError as e:
             bsn_logger.error(f'Could not open import log file: {e}')
             return False, 'Failed to start the import (could not open log file).', False

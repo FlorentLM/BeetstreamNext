@@ -895,7 +895,22 @@
         <p id="confirmMessage" class="confirm-text"></p>
         <div class="confirm-actions">
             <button type="button" class="btn btn-outline" data-action="close-modal" data-target="confirmModal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="confirmProceed">Confirm</button>
+            <button type="button" class="btn btn-primary" data-action="confirm-proceed" id="confirmProceed">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Prompt modal -->
+<div class="modal-overlay modal-confirm" id="promptModal" data-action="modal-backdrop">
+    <div class="modal-content modal-content-small">
+        <h2>Edit</h2>
+        <p id="promptMessage" class="confirm-text"></p>
+        <div class="form-group">
+            <input type="text" id="promptInput" autocomplete="off">
+        </div>
+        <div class="confirm-actions">
+            <button type="button" class="btn btn-outline" data-action="close-modal" data-target="promptModal">Cancel</button>
+            <button type="button" class="btn btn-primary" data-action="prompt-proceed" id="promptProceed">OK</button>
         </div>
     </div>
 </div>

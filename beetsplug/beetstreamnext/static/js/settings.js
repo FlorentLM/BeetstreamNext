@@ -58,11 +58,61 @@
     function closeModal(id) {
         const el = document.getElementById(id);
         if (el) el.classList.remove('active');
+        if (id === 'confirmModal') settleConfirm(false);
+        if (id === 'promptModal') settlePrompt(null);
     }
 
     function closeAllModals() {
         document.querySelectorAll('.modal-overlay.active').forEach(m => {
             m.classList.remove('active');
+        });
+        settleConfirm(false);
+        settlePrompt(null);
+    }
+
+    let confirmSettle = null;
+    let promptSettle = null;
+
+    function settleConfirm(result) {
+        if (!confirmSettle) return;
+        const settle = confirmSettle;
+        confirmSettle = null;
+        settle(result);
+    }
+
+    function settlePrompt(result) {
+        if (!promptSettle) return;
+        const settle = promptSettle;
+        promptSettle = null;
+        settle(result);
+    }
+
+    function confirmModal(message) {
+        return new Promise(resolve => {
+            confirmSettle = resolve;
+            document.getElementById('confirmMessage').textContent = message;
+            openModal('confirmModal');
+        });
+    }
+
+    function submitPrompt() {
+        const input = document.getElementById('promptInput');
+        settlePrompt(input ? input.value : '');
+        closeModal('promptModal');
+    }
+
+    function promptModal(message, defaultValue) {
+        return new Promise(resolve => {
+            promptSettle = resolve;
+            document.getElementById('promptMessage').textContent = message;
+            const input = document.getElementById('promptInput');
+            if (input) {
+                input.value = defaultValue || '';
+                openModal('promptModal');
+                setTimeout(() => { input.focus(); input.select(); }, 50);
+            } else {
+                openModal('promptModal');
+            }
         });
     }
 
@@ -548,30 +598,38 @@
             case 'toggle-theme':
                 toggleTheme();
                 break;
+            case 'confirm-proceed':
+                settleConfirm(true);
+                closeModal('confirmModal');
+                break;
+            case 'prompt-proceed':
+                submitPrompt();
+                break;
             case 'edit-chat':
                 const msgId = target.dataset.id;
                 const oldText = target.dataset.text;
-                const newText = window.prompt("Edit user's chat message:", oldText);
-                if (newText !== null && newText.trim() !== "") {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = `/admin/chat/edit/${msgId}`;
+                promptModal("Edit user's chat message:", oldText).then(newText => {
+                    if (newText !== null && newText.trim() !== "") {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = `/admin/chat/edit/${msgId}`;
 
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = 'csrf_token';
-                    csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
-                    form.appendChild(csrfInput);
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = 'csrf_token';
+                        csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
+                        form.appendChild(csrfInput);
 
-                    const msgInput = document.createElement('input');
-                    msgInput.type = 'hidden';
-                    msgInput.name = 'message';
-                    msgInput.value = newText;
-                    form.appendChild(msgInput);
+                        const msgInput = document.createElement('input');
+                        msgInput.type = 'hidden';
+                        msgInput.name = 'message';
+                        msgInput.value = newText;
+                        form.appendChild(msgInput);
 
-                    document.body.appendChild(form);
-                    form.submit();
-                }
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
                 break;
         }
     });
@@ -585,8 +643,17 @@
     document.addEventListener('submit', event => {
         const form = event.target.closest('form[data-confirm]');
         if (!form) return;
-        if (!window.confirm(form.dataset.confirm)) {
+        event.preventDefault();
+        confirmModal(form.dataset.confirm).then(ok => {
+            if (ok) form.submit();
+        });
+    });
+
+    document.addEventListener('keydown', event => {
+        // Enter submits
+        if (event.key === 'Enter' && event.target.id === 'promptInput') {
             event.preventDefault();
+            submitPrompt();
         }
     });
 

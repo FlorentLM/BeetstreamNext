@@ -1,6 +1,6 @@
 # Dependency Licenses
 
-This fork includes code from the parent project. The original license and copyright notices are preserved below.
+This project originated as a fork of Beetsream. While it has now fully separated, and shares almost no code anymore with the original project, Beetsream original license and copyright notices are preserved below.
 
 ---
 

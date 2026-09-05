@@ -27,6 +27,8 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 
 ---
 
+This project originated as a fork of [this](https://github.com/BinaryBrain/Beetstream). While it has now fully separated, and shares almost no code anymore with the original project, it is still important to mention it :)
+
 ## API coverage & Features
 
 BeetstreamNext supports pretty much **all** of the Subsonic/OpenSubsonic API specification.

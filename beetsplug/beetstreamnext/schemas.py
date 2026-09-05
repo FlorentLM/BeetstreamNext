@@ -364,6 +364,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': True,
         'env_var': 'BSN_PLAYLIST_DIR',
     },
+    'strict_beets_version_check': {
+        'type': 'bool',
+        'default': False,
+        'category': 'server',
+        'description': "Refuse to start on beets version mismatch (see Server Info) instead of just warning.",
+        'requires_restart': True,
+        'standalone_only': True,
+    },
 
     # Library
     'allow_disk_writes': {

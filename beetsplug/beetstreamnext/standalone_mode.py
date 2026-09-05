@@ -8,8 +8,10 @@ import confuse
 import yaml
 from beets.library import Library
 
+from beetsplug.beetstreamnext.console import print_box, TermColors
 from beetsplug.beetstreamnext.constants import DEFAULT_CONFIG_PATH, DEFAULT_DB_TIMEOUT
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.health import detect_beets_drift
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.settings import coerce_setting, settings_store
 from beetsplug.beetstreamnext.core.startup import prestartup_config, run_server
@@ -49,6 +51,69 @@ def _cascade_value(*values: Any, default: Any = None) -> Any:
         if v is not None:
             return v
     return default
+
+
+def _drift_lines(drift: dict[str, dict]) -> List[str]:
+    lines = []
+    for table, info in drift.items():
+        if 'unknown_migrations' in info:
+            lines.append(f"  ▶  {table}: unrecognized migration(s) — {', '.join(info['unknown_migrations'])}")
+        else:
+            if info['unknown_columns']:
+                lines.append(f"  ▶  {table}: unrecognized column(s) — {', '.join(info['unknown_columns'])}")
+            if info['missing_columns']:
+                lines.append(f"  ▶  {table}: missing expected column(s) — {', '.join(info['missing_columns'])}")
+    return lines
+
+
+def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
+    """False = abort startup (drift detected and 'strict_beets_version_check' is enabled)."""
+
+    drift = detect_beets_drift(beets_db_path)
+    app.config['BEETS_SCHEMA_DRIFT'] = drift
+
+    if not drift:
+        return True
+
+    detail = '; '.join(
+        f"{table}: {', '.join(info.get('unknown_migrations') or info.get('unknown_columns') or info.get('missing_columns') or [])}"
+        for table, info in drift.items()
+    )
+    bsn_logger.warning(f'Beets schema drift detected against library.db: {detail}')
+
+    if settings_store.get('strict_beets_version_check'):
+        print_box([
+            '',
+            f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
+            '',
+            "This library.db shows signs of having been modified by a different beets version:",
+            '',
+            *_drift_lines(drift),
+            '',
+            "Disable 'strict_beets_version_check' to start anyway (with a warning) instead.",
+            '',
+        ], color=TermColors.FAIL)
+        return False
+
+    print_box([
+        '',
+        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
+        '',
+        "This library.db shows signs of having been ",
+        "modified by a different beets version:",
+        '',
+        *_drift_lines(drift),
+        '',
+        "This is probably fine.",
+        '',
+        "But if you have another beets install using this library, ",
+        "(e.g. in another container or on your host machine), ",
+        "it would be safer to make sure the versions match. "
+        '',
+    ], color=TermColors.WARNING)
+
+    return True
+
 
 
 ##
@@ -218,6 +283,9 @@ def main(argv: Optional[List[str]] = None) -> None:
         app.config['BEETS_DB_PATH'] = final_library_db
 
     beets.config['timeout'] = DEFAULT_DB_TIMEOUT   # beets.library.Library() has no timeout kwarg?
+
+    if not _beets_version_healthcheck(final_library_db):
+        return
 
     lib = Library(str(final_library_db), str(final_music_root))
 

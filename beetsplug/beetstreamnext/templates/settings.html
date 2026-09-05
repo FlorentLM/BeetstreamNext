@@ -888,7 +888,11 @@
             <div class="table-header"><h2>Server Info</h2></div>
             <dl class="kv-grid">
                 <dt>BeetstreamNext</dt><dd>v{{ server_info.version }}</dd>
-                <dt>Beets</dt>          <dd>v{{ server_info.beets_version }}</dd>
+                <dt>Beets</dt>
+                <dd>
+                    v{{ server_info.beets_version }}
+                    {% if beets_schema_drift %}<span class="badge badge-admin">schema drift</span>{% endif %}
+                </dd>
                 <dt>Python</dt>         <dd>{{ server_info.python_version }}</dd>
                 <dt>OS</dt>             <dd>{{ server_info.os }}</dd>
                 <dt>Uptime</dt>         <dd>{{ server_info.uptime }}</dd>
@@ -904,6 +908,21 @@
                     <code>{{ server_info.mpv_path }}</code> {% if server_info.mpv_version %}  (v{{ server_info.mpv_version }}){% endif %}
                 </dd>
             </dl>
+            {% if beets_schema_drift %}
+            <details class="podcast-episodes card-section">
+                <summary>Beets schema drift ({{ beets_schema_drift|length }} table{{ 's' if beets_schema_drift|length != 1 }})</summary>
+                <p class="card-hint">Another beets install may have touched this library.db... Just saying.</p>
+                <ul>
+                {% for table, info in beets_schema_drift.items() %}
+                    <li><code>{{ table }}</code>:
+                        {% if info.unknown_migrations %}unrecognized migration(s) — {{ info.unknown_migrations|join(', ') }}{% endif %}
+                        {% if info.unknown_columns %}unrecognized column(s) — {{ info.unknown_columns|join(', ') }}{% endif %}
+                        {% if info.missing_columns %}missing expected column(s) — {{ info.missing_columns|join(', ') }}{% endif %}
+                    </li>
+                {% endfor %}
+                </ul>
+            </details>
+            {% endif %}
         </div>
 
         <div class="card">

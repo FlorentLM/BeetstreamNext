@@ -247,6 +247,7 @@ def route_settings() -> flask.Response:
             podcast_channels=podcast_channels,
             podcast_total_size=human_bytes(podcast_total_bytes),
             flagged_songs=flagged_songs(),
+            beets_schema_drift=flask.current_app.config.get('BEETS_SCHEMA_DRIFT', {}),
             beets_config=read_config(),
             create_form=UserForm(formdata=None),
             edit_form=EditUserForm(formdata=None),

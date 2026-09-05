@@ -1,8 +1,11 @@
 import os
 import re
+import sqlite3
 import subprocess
 import threading
 from pathlib import Path
+
+from beets.library import Album, Item, Library as BeetsLibrary
 
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database, dual_database
@@ -298,6 +301,64 @@ def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> tup
             missing += 1
 
     return checked, missing
+
+
+def detect_beets_drift(db_path: str | Path) -> dict[str, dict]:
+    """
+    Compares items/albums tables in a beets db against this install's expected schema, before Library() opens it.
+    """
+
+    models = {'items': Item, 'albums': Album}
+    migrations = {'items': set(), 'albums': set()}
+
+    for migration_cls, model_classes in BeetsLibrary._migrations:
+        for model_cls in model_classes:
+            for table, cls in models.items():
+                if model_cls is cls:
+                    migrations[table].add(migration_cls.name)
+
+    expected = {
+        table: {'columns': set(cls._fields), 'migrations': migrations[table]}
+        for table, cls in models.items()
+    }
+
+    result = {}
+
+    conn = sqlite3.connect(f'file:{Path(db_path).as_posix()}?mode=ro', uri=True)
+    try:
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+
+        for table in models:
+            if table not in tables:
+                continue
+
+            if 'migrations' in tables:
+                recorded = {
+                    row[0] for row in
+                    conn.execute(
+                        """
+                        SELECT name 
+                        FROM migrations 
+                        WHERE table_name = ?
+                        """, (table,)
+                    )
+                }
+                unknown_migrations = sorted(recorded - expected[table]['migrations'])
+                if unknown_migrations:
+                    result[table] = {'unknown_migrations': unknown_migrations}
+                continue
+
+            actual_columns = {row[1] for row in conn.execute(f'PRAGMA table_info({table})')}
+            unknown_columns = sorted(actual_columns - expected[table]['columns'])
+            missing_columns = sorted(expected[table]['columns'] - actual_columns)
+
+            if unknown_columns or missing_columns:
+                result[table] = {'unknown_columns': unknown_columns, 'missing_columns': missing_columns}
+
+    finally:
+        conn.close()
+
+    return result
 
 
 def start_scan(full: bool = False) -> tuple[bool, str]:

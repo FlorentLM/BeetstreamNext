@@ -6,6 +6,7 @@ import re
 import platform
 import shutil
 import subprocess
+import time
 from functools import lru_cache
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
@@ -196,3 +197,45 @@ def binary_version(bin_path: str, version_flag: str) -> Optional[str]:
     first_line = next(iter((result.stdout or result.stderr).splitlines()), '')
     match = _VERSION_RE.search(first_line)
     return match.group(0) if match else None
+
+
+def dir_size(path: Path) -> int:
+    """Size (in bytes) of everything under path."""
+    if not path.exists():
+        return 0
+    return sum(f.stat().st_size for f in path.rglob('*') if f.is_file())
+
+
+def purge(folder: Path, max_age: Optional[float] = None, now: Optional[float] = None, suffix: Optional[str] = None) -> int:
+    """
+    Removes old elements inside a folder: files are deleted, subdirectories
+    removed recursively.
+    """
+    if not folder.exists():
+        return 0
+
+    now = time.time() if now is None else now
+    n = 0
+
+    for entry in folder.iterdir():
+        is_dir = entry.is_dir()
+
+        if suffix:
+            if is_dir or entry.suffix != suffix:
+                continue
+            age = entry.stat().st_mtime
+        elif is_dir:
+            age = max((f.stat().st_mtime for f in entry.rglob('*') if f.is_file()), default=entry.stat().st_mtime)
+        elif entry.is_file():
+            age = entry.stat().st_mtime
+        else:
+            continue
+
+        try:
+            if max_age is None or (now - age) > max_age:
+                shutil.rmtree(entry) if is_dir else entry.unlink(missing_ok=True)
+                n += 1
+        except OSError as e:
+            bsn_logger.warning(f"Failed to delete '{entry}': {e}")
+
+    return n

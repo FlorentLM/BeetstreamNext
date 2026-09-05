@@ -768,15 +768,26 @@
     <section class="tab-content" id="tab-maintenance" data-tab-content="maintenance" role="tabpanel">
 
         <div class="card">
-            <div class="table-header"><h2>Caches</h2></div>
-            <p class="card-hint">Clears thumbnails on disk and the HTTP response cache. Active streams are unaffected.</p>
-            <p class="card-hint">Currently using <strong>{{ cache_size }}</strong> on disk.</p>
-            <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
-                  class="card-body-form"
-                  data-confirm="Clear all cached thumbnails and the HTTP cache?">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Clear caches</button>
-            </form>
+            <div class="table-header"><h2>Offline files & Caches</h2></div>
+            <p class="card-hint">Disk usage: <strong>{{ cache_size }}</strong> total</p>
+            <dl class="kv-grid">
+                {% for label, size in cache_sizes.items() %}
+                <dt>{{ label }}</dt><dd>{{ size }}</dd>
+                {% endfor %}
+            </dl>
+            <div class="button-row">
+                <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
+                      data-confirm="Clear all cached HTTP requests and thumbnails?">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Clear thumbnails &amp; HTTP cache</button>
+                </form>
+
+                <form method="POST" action="{{ url_for('admin.route_cleanup_offlines') }}"
+                        data-confirm="Clear old offline files?">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Cleanup leftover files</button>
+                </form>
+            </div>
         </div>
 
         <div class="card">

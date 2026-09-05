@@ -4,37 +4,44 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from beetsplug.beetstreamnext.constants import CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME
+from beetsplug.beetstreamnext.constants import (
+    CACHE_LOCATION, CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME,
+    TRANSCODE_TMP_DIR, HLS_CACHE_DIR, ZIP_CACHE_DIR,
+    TRANSCODE_MAX_AGE_SEC, HLS_MAX_AGE_SEC, ZIP_MAX_AGE_SEC,
+)
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.health import scan_library
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
-
+from beetsplug.beetstreamnext.utils.system import purge, dir_size
 
 _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
 
 
-def cache_disk_usage(thumb_dir: str | Path, http_cache: str | Path) -> int:
-    """Total bytes currently used by the thumbnail and HTTP caches on disk."""
-    total = 0
-
-    thumb_dir = Path(thumb_dir)
-    if thumb_dir.exists():
-        for f in thumb_dir.iterdir():
-            if f.is_file():
-                total += f.stat().st_size
-
+def cache_breakdown(thumb_dir: str | Path, http_cache: str | Path) -> dict[str, int]:
+    """Size (in bytes) of each disk cache/tmp category."""
     http_cache = Path(http_cache)
-    if http_cache.exists():
-        total += http_cache.stat().st_size
 
-    return total
+    breakdown = {
+        'Image thumbnails': dir_size(Path(thumb_dir)),
+        'HTTP cache': http_cache.stat().st_size if http_cache.exists() else 0,
+        'Transcode tempfiles': dir_size(TRANSCODE_TMP_DIR),
+        'HLS sessions': dir_size(HLS_CACHE_DIR),
+        'Zip downloads': dir_size(ZIP_CACHE_DIR),
+        'Podcast downloads': dir_size(app.config['podcast_manager'].storage_dir()),
+    }
+
+    other = dir_size(CACHE_LOCATION) - sum(breakdown.values())
+    if other > 0:
+        breakdown['Other'] = other
+
+    return breakdown
 
 
-def clear_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
+def clear_requests_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
     """Clears thumbnails and HTTP cache. Returns a list of what was cleared."""
     cleared = []
 
@@ -44,11 +51,7 @@ def clear_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
     # Thumbnails
     if thumb_dir.exists():
         try:
-            n = 0
-            for f in thumb_dir.iterdir():
-                if f.is_file() and f.suffix == '.jpg':
-                    f.unlink(missing_ok=True)
-                    n += 1
+            n = purge(thumb_dir, suffix='.jpg')
             if n > 0:
                 cleared.append(f'{n} thumbnail(s)')
         except Exception as e:
@@ -65,6 +68,43 @@ def clear_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
             raise RuntimeError(f"Error clearing HTTP cache: {e}")
 
     return cleared
+
+
+def clear_tmp_files() -> dict[str, int]:
+    """Removes leaked transcode tempfiles, abandoned HLS sessions and old zip downloads."""
+    now = time.time()
+    purged: dict[str, int] = {}
+
+    n = purge(TRANSCODE_TMP_DIR, TRANSCODE_MAX_AGE_SEC, now)
+    if n:
+        purged['transcode tempfile(s)'] = n
+
+    n = purge(HLS_CACHE_DIR, HLS_MAX_AGE_SEC, now)
+    if n:
+        purged['abandoned HLS session(s)'] = n
+
+    n = purge(ZIP_CACHE_DIR, ZIP_MAX_AGE_SEC, now)
+    if n:
+        purged['old zip download(s)'] = n
+
+    return purged
+
+
+def clear_offline_files() -> dict[str, int]:
+    """
+    Remove all old/unneeded offline files (tmp, hls, zips and leftover podcast files).
+    """
+    purge_report = clear_tmp_files()
+
+    try:
+        pm = app.config['podcast_manager']
+        rep = pm.remove_leftovers()
+        purge_report.update(rep)
+
+    except Exception as e:
+        bsn_logger.error(f'Leftover podcasts cleanup failed: {e}')
+
+    return purge_report
 
 
 # Tables (and id column) that can hold a stale song reference
@@ -219,15 +259,19 @@ def run_periodic():
             bsn_logger.error(f'{SERVER_NAME} health scan failed: {e}')
 
         # Tidy cache
-        cache_dir = app.config['THUMBNAIL_CACHE_PATH']
-        if cache_dir.exists():
-            max_age_seconds = MAX_CACHE_AGE_DAYS * 86400
-            try:
-                for f in cache_dir.iterdir():
-                    if f.suffix == '.jpg' and (now - f.stat().st_mtime > max_age_seconds):
-                        f.unlink(missing_ok=True)
-            except Exception as e:
-                bsn_logger.error(f"Error cleaning thumbnail cache: {e}")
+        try:
+            purge(app.config['THUMBNAIL_CACHE_PATH'], MAX_CACHE_AGE_DAYS * 86400, now, suffix='.jpg')
+        except Exception as e:
+            bsn_logger.error(f"Error cleaning thumbnail cache: {e}")
+
+        # Delete old tmp/session files and leftover podcast files
+        try:
+            purged = clear_offline_files()
+            if purged:
+                details = ', '.join(f'{n} {label}' for label, n in purged.items())
+                bsn_logger.info(f'{SERVER_NAME} cache cleanup purged: {details}')
+        except Exception as e:
+            bsn_logger.error(f'{SERVER_NAME} cache cleanup failed: {e}')
 
         bsn_logger.info(f"[{datetime.fromtimestamp(now)}] Background maintenance complete.")
 

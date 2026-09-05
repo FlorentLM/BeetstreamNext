@@ -5,7 +5,7 @@ import flask
 from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
-from beetsplug.beetstreamnext.core.maintenance import clear_caches, sweep_stale_references
+from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
 from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats
 from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
 from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing
@@ -87,7 +87,7 @@ def route_save_beets_config() -> flask.Response:
 @admin_required
 def route_clear_cache() -> flask.Response:
     try:
-        cleared = clear_caches(
+        cleared = clear_requests_caches(
             flask.current_app.config['THUMBNAIL_CACHE_PATH'],
             flask.current_app.config['HTTP_CACHE_PATH']
         )
@@ -114,6 +114,24 @@ def route_database_cleanup() -> flask.Response:
 
     except Exception as e:
         err = f'{SERVER_NAME} database cleanup failed: {e}'
+        bsn_logger.error(err)
+        flask.flash(err, 'error')
+
+    return back_to('maintenance')
+
+
+@admin_bp.route('/maintenance/cleanup-offline-files', methods=['POST'])
+@admin_required
+def route_cleanup_offlines() -> flask.Response:
+    try:
+        purged = clear_offline_files()
+        if purged:
+            details = ', '.join(f'{n} {label}' for label, n in purged.items())
+            flask.flash(f'Swept: {details}.', 'success')
+        else:
+            flask.flash('Nothing to sweep.', 'info')
+    except Exception as e:
+        err = f'{SERVER_NAME} cache sweep failed: {e}'
         bsn_logger.error(err)
         flask.flash(err, 'error')
 

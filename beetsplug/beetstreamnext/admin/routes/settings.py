@@ -5,7 +5,7 @@ from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes, external_url
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
-from beetsplug.beetstreamnext.core.maintenance import cache_disk_usage
+from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.health import flagged_songs
 from beetsplug.beetstreamnext.core.beets_config import read_config
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
@@ -126,10 +126,12 @@ def route_settings() -> flask.Response:
     settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
     host_suggestions = flask.current_app.config.get('HOST_LIST', [])
 
-    cache_size = human_bytes(cache_disk_usage(
+    cache_bytes = cache_breakdown(
         flask.current_app.config['THUMBNAIL_CACHE_PATH'],
         flask.current_app.config['HTTP_CACHE_PATH']
-    ))
+    )
+    cache_sizes = {label: human_bytes(n) for label, n in cache_bytes.items() if n > 0}
+    cache_size = human_bytes(sum(cache_bytes.values()))
 
     users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
     for u in users:
@@ -239,6 +241,7 @@ def route_settings() -> flask.Response:
             chat_page=chat_page,
             chat_pages=chat_pages,
             cache_size=cache_size,
+            cache_sizes=cache_sizes,
             shares=shares_list,
             radios=radios,
             podcast_channels=podcast_channels,

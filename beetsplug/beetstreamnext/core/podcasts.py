@@ -1,19 +1,22 @@
 import calendar
 import os
+import shutil
+import time
 from threading import Thread, Lock
 import urllib.parse
 from pathlib import Path
 from typing import Optional
 
-from beetsplug.beetstreamnext.application import app, with_app_context
+from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    CACHE_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, USER_AGENT
+    CACHE_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch, normalize_url, https_variant
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.utils.system import purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
 
 
@@ -100,6 +103,61 @@ class PodcastManager:
     def is_downloading(self, episode_id: Optional[int] = None) -> bool:
         with self._download_lock:
             return bool(self._downloading_episodes) if episode_id is None else episode_id in self._downloading_episodes
+
+    @with_app_context
+    def remove_leftovers(self) -> dict[str, int]:
+        """
+        Removes on-disk episode files/channel dirs with no matching db row,
+        and any '.part' downloads.
+        """
+
+        base = self.storage_dir()
+        now = time.time()
+        purged: dict[str, int] = {}
+
+        with database() as db:
+            channel_ids = {row[0] for row in db.execute("""SELECT id FROM podcast_channels""").fetchall()}
+            valid_paths = {
+                row[0] for row in db.execute(
+                    """
+                    SELECT file_path 
+                    FROM podcast_episodes 
+                    WHERE file_path IS NOT NULL
+                    """
+                ).fetchall()
+            }
+
+        for channel_dir in base.iterdir():
+
+            if channel_dir.is_dir():
+
+                try:
+                    cid = int(channel_dir.name)
+                except ValueError:
+                    cid = None
+
+                if cid is None or cid not in channel_ids:
+                    try:
+                        shutil.rmtree(channel_dir)
+                        purged['leftover podcast file(s)'] = purged.get('leftover podcast file(s)', 0) + 1
+                    except OSError as e:
+                        bsn_logger.warning(f"Failed to remove leftover podcast directory '{channel_dir}': {e}")
+                    continue
+
+                n = purge(channel_dir, PART_MAX_AGE_SEC, now, suffix='.part')
+                if n:
+                    purged['old partial download(s)'] = purged.get('old partial download(s)', 0) + n
+
+                for f in channel_dir.iterdir():
+                    if f.is_file() and f.suffix != '.part' and str(f) not in valid_paths:
+                        f.unlink(missing_ok=True)
+                        purged['leftover podcast file(s)'] = purged.get('leftover podcast file(s)', 0) + 1
+                try:
+                    next(channel_dir.iterdir())
+                except StopIteration:
+                    channel_dir.rmdir()
+
+        return purged
 
     # Channels
 

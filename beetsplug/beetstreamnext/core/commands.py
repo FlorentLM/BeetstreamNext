@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box, TermColors
-from beetsplug.beetstreamnext.core.maintenance import clear_caches
+from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches
 from beetsplug.beetstreamnext.core.users_crud import (
     create_user, delete_user, load_all_users, load_user_roles, update_user
 )
@@ -211,7 +211,7 @@ def cmd_clear_cache() -> None:
     """
 
     try:
-        cleared = clear_caches(
+        cleared = clear_requests_caches(
             app.config['THUMBNAIL_CACHE_PATH'],
             app.config['HTTP_CACHE_PATH']
         )

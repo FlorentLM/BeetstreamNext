@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %} - Setup{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="login-wrapper">
+    <div class="logo-container">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
+    </div>
+    <div class="login-card">
+        <h2>Welcome to BeetstreamNext!</h2>
+        <p class="setup-hint">Please create your admin account.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, msg in messages %}
+                <div class="flash flash-error">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+        <form method="POST">
+            {{ form.csrf_token }}
+            <label>Administrator</label>
+            <div class="input-group">
+                {{ form.username(placeholder="Username", required=True) }}
+            </div>
+            <div class="input-group">
+                {{ form.password(placeholder="Password", required=True) }}
+            </div>
+            <div class="input-group">
+                {{ form.confirm_password(placeholder="Confirm password", required=True) }}
+            </div>
+            <label>Server key</label>
+            <div class="input-group">
+                {{ form.setup_key(placeholder="BEETSTREAMNEXT_KEY", autofocus=True, required=True) }}
+            </div>
+            <p class="field-hint">(as was shown in the console on startup)</p>
+            <button type="submit" class="btn-submit">Create admin account</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

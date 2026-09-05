@@ -6,9 +6,22 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter, strip_host_port
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles, authenticate
+from beetsplug.beetstreamnext.core.users_crud import load_all_users, load_user_roles, authenticate
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
 from beetsplug.beetstreamnext.api.responses import subsonic_error
+
+
+def _any_users_exist() -> bool:
+    """
+    Whether the users table has ever been seen not empty.
+    (cached once true)
+    """
+    if app.config.get('_users_exist_cache'):
+        return True
+    if load_all_users(fields=['username']):
+        app.config['_users_exist_cache'] = True
+        return True
+    return False
 
 
 @app.before_request
@@ -45,6 +58,13 @@ def _before_request() -> flask.Response | None:
         if is_api:
             return subsonic_error(40, message='Too many failed login attempts. Try again later.', resp_fmt=resp_fmt)
         flask.abort(429)
+
+    # First-run onboarding: no admin exists yet, redirect everything to /admin/setup
+    if not flask.request.path.startswith('/static') and not _any_users_exist():
+        if flask.request.path.rstrip('/') != '/admin/setup':
+            if is_api:
+                return subsonic_error(40, message='Setup required: no users exist yet.', resp_fmt=resp_fmt)
+            return flask.redirect('/admin/setup')
 
     # Allow public homepage, public share routes, and token-based stream/tokenised-image URLs
     if flask.request.path == '/' or flask.request.path.startswith(('/share/', '/now-playing/', '/tokenised-stream/', '/tokenised-image/')):

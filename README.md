@@ -8,7 +8,7 @@
 
 <h3 align="center">BeetstreamNext</h3>
   <p>
-  A fully-featured music server for Beets.io music libraries implementing the OpenSubsonic API.
+  Fully-featured music server for Beets.io music libraries implementing the OpenSubsonic API
   <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  

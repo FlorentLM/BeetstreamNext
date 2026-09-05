@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import TermColors, print_box
 from beetsplug.beetstreamnext.constants import CACHE_LOCATION, LOOPBACK_IPS
+from beetsplug.beetstreamnext.core.commands import check_onboarding
 from beetsplug.beetstreamnext.core.database import ensure_secret, initialise_db, rotate_session_key
 from beetsplug.beetstreamnext.core.health import startup_path_check
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL, RedactingTransLogger, apply_logs_redaction, bsn_logger
@@ -61,8 +62,9 @@ def run_server(
     app.config['HOST_LIST'] = host  # WebUI uses them as external_hostname suggestions
 
     with app.app_context():
+        # Read db, check if first run, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING
         initialise_db()
-        # Read db, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING
+        check_onboarding(app.config.get('STANDALONE_MODE', False), host=host, port=port)
         settings_store.initialise(yaml_defaults)
 
     if debug and any(h not in LOOPBACK_IPS for h in host):

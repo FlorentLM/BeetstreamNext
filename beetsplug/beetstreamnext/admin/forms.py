@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SelectField, StringField
-from wtforms.validators import DataRequired, Length, Optional, Email
+from wtforms.validators import DataRequired, EqualTo, Length, Optional, Email
 
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, BITRATE_CHOICES_STR
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
@@ -13,6 +13,19 @@ class LoginForm(FlaskForm):
     """
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
+
+
+class OnboardingForm(FlaskForm):
+    """
+    Create the first admin account.
+    """
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=MIN_PASSWORD_LEN)])
+    confirm_password = PasswordField(
+        'Confirm password',
+        validators=[DataRequired(), EqualTo('password', message='Passwords must match.')]
+    )
+    setup_key = PasswordField('Server key', validators=[DataRequired()])
 
 
 class UserForm(FlaskForm):

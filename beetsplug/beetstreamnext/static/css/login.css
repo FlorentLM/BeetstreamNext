@@ -29,6 +29,25 @@ h2 {
     font-size: 1.4rem;
 }
 
+.setup-hint {
+    margin: -1rem 0 1.5rem 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+form label {
+    display: block;
+    text-align: left;
+    margin: 2rem 0 0.5rem 0;
+}
+
+.field-hint {
+    margin: -0.35rem 0 0.75rem 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-align: left;
+}
+
 .input-group {
     margin-bottom: 1rem;
     text-align: left;

@@ -1,4 +1,5 @@
 import re
+import sys
 from typing import Optional
 
 
@@ -26,3 +27,4 @@ def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) ->
         to_print = f'{line:<{w}}' if line.startswith('  ▶') else line.center(w, ' ')
         print(f'{col}║{TermColors.ENDC}{to_print}{col}║{TermColors.ENDC}')
     print(f'{col}╚{border}╝{TermColors.ENDC}\n')
+    sys.stdout.flush()  # stdout is fully-buffered when not a TTY (docker logs, etc) without this

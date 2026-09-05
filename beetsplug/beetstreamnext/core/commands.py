@@ -1,6 +1,9 @@
 import getpass
+import sys
+from typing import Sequence
 
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.system import get_env
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.application import app
@@ -69,6 +72,58 @@ def cmd_create_user(force_admin: bool = False) -> None:
         "  ▶  It won't be shown again. Store it safely.",
         '',
     ])
+
+
+def check_onboarding(standalone: bool, host: Sequence[str] = (), port: int = 0) -> None:
+    """
+    First-run onboarding?
+
+    If standalone mode, BSN_ADMIN_USER and BSN_ADMIN_PASSWORD are tried first.
+    If unset and there's no TTY attached, onboarding needs to be done via the WebUI.
+    """
+
+    if load_all_users():    # users exist, nothing to do
+        return
+
+    if standalone:
+        env_user = get_env('BSN_ADMIN_USER')
+        env_password = get_env('BSN_ADMIN_PASSWORD')
+
+        if env_user and env_password:
+            try:
+                api_key = create_user(env_user, env_password, admin=True)
+            except ValueError as e:
+                print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
+                raise SystemExit(1)
+
+            print_box([
+                '',
+                f"{TermColors.OKGREEN + TermColors.BOLD}Admin user '{safe_str(env_user)}' created "
+                f"from BSN_ADMIN_USER/BSN_ADMIN_PASSWORD.{TermColors.ENDC}",
+                '',
+                f'USER API KEY: {api_key}',
+                '',
+                '  ▶  You can use this key in your Subsonic client instead of a password.',
+                "  ▶  It won't be shown again. Store it safely.",
+                '',
+            ])
+            return
+
+    if sys.stdin.isatty():
+        print_box(['', 'Welcome to BeetstreamNext! Please create your admin account.', ''])
+        cmd_create_user(force_admin=True)
+        return
+
+    setup_url = f'http://{host[0]}:{port}/admin/setup' if host else '.../admin/setup'
+    print_box([
+        '',
+        f'{TermColors.WARNING + TermColors.BOLD}No users exist yet, and no TTY detected.{TermColors.ENDC}',
+        '',
+        'Please finish setup from a browser:',
+        '',
+        f'  ▶  {setup_url}',
+        '',
+    ], color=TermColors.WARNING)
 
 
 def cmd_update_user(username: str) -> None:

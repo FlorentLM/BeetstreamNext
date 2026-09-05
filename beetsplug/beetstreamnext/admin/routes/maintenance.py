@@ -1,3 +1,5 @@
+from typing import List
+from itertools import groupby
 import flask
 
 from .. import admin_bp, admin_required, back_to
@@ -9,7 +11,28 @@ from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
 from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing
 from beetsplug.beetstreamnext.core.beets_config import read_config, write_config
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.constants import SERVER_NAME
+from beetsplug.beetstreamnext.constants import SERVER_NAME, BEETS_IMPORT_LOG_PATH
+
+
+def drop_python_tracebacks(log_lines: List[str]) -> List[str]:
+    python_tracebacks = (
+        'The above exception was the direct cause of the following exception:',
+        'During handling of the above exception, another exception occurred:',
+        'Traceback (most recent call last):'
+    )
+    kept = []
+    for _, group in groupby(log_lines, key=bool):
+        chunk = list(group)
+        if not chunk[0].startswith(python_tracebacks):
+            kept.extend(chunk)
+
+    result = []
+    for line, group in groupby(kept, key=bool):
+        if line:
+            result.extend(group)
+        else:
+            result.append('')
+    return result
 
 
 @admin_bp.route('/beets/scan', methods=['POST'])
@@ -38,9 +61,8 @@ def route_beets_scan_status() -> flask.Response:
 @admin_required
 def route_beets_import_log() -> flask.Response:
     try:
-        with open(IMPORT_LOG_PATH, 'r', errors='replace') as f:
-            lines = f.read().splitlines()[-1000:]
         with open(BEETS_IMPORT_LOG_PATH, 'r', errors='replace') as f:
+            lines = drop_python_tracebacks(f.read().splitlines()[-1000:])
     except OSError:
         lines = []
 

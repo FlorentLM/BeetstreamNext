@@ -65,7 +65,7 @@ def start_import() -> Tuple[bool, str, bool]:
         root_directory = str(app.config['root_directory'])
         library_path = str(app.config['BEETS_DB_PATH'])
 
-        command = [sys.executable, '-m', 'beets']
+        command = [sys.executable, '-m', 'beets', '-P', 'beetstreamnext']
 
         config_path = app.config.get('BEETS_CONFIG_PATH')
         if config_path:

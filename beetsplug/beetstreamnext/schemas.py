@@ -260,8 +260,9 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': (
             "Offload direct (non-transcoded) file serving to the reverse proxy instead of streaming bytes "
-            "through Python. Use <code>x-accel-redirect</code> for Nginx, <code>x-sendfile</code> for Apache. Only takes effect when "
-            "<code>reverse_proxy</code> is enabled and the proxy is configured to honor the header."
+            "through Python. Use <code>x-accel-redirect</code> for Nginx, <code>x-sendfile</code> for Apache."
+            "<br>"
+            "Only takes effect when <code>reverse_proxy</code> is enabled and the proxy is configured to honor the header."
         ),
         'requires_restart': False,
         'choices': ('off', 'x-accel-redirect', 'x-sendfile'),
@@ -279,7 +280,9 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': (
             "Internal URI prefix your Nginx config maps, via an internal-only <code>location</code> block, to the music "
-            "root directory. Only used when sendfile_method is <code>x-accel-redirect</code>."
+            "root directory."
+            "<br>"
+            "Only used when <code>sendfile_method</code> is <code>x-accel-redirect</code>."
         ),
         'requires_restart': False,
         'help': (

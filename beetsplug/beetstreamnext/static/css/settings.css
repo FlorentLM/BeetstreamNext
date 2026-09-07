@@ -213,6 +213,9 @@ tr:hover td { background: var(--overlay-hover); }
     word-break: break-all;
     color: var(--text);
     user-select: all;
+    background: none;
+    padding: 0;
+    border-radius: 0;
 }
 .btn-copy { padding: 0.4rem 0.8rem; font-size: 0.8rem; flex-shrink: 0; }
 
@@ -638,7 +641,7 @@ input:focus, select:focus { border-color: var(--primary); }
     display: block;
     padding: 1rem;
 }
-.ip-list code { font-family: ui-monospace, monospace; font-size: 0.9rem; color: var(--text); }
+.ip-list code { font-family: ui-monospace, monospace; font-size: 0.9rem; color: var(--text); background: none; padding: 0; border-radius: 0; }
 
 /* Rate-limit panel */
 .rate-limit-state { padding: 0 1.5rem 1rem; }

@@ -151,7 +151,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'server',
         'description': f'If set, the admin panel will only be accessible when visited via this hostname '
-                       f'(e.g. {SERVER_NAME.lower()}.internal.example.com). Loopback is always allowed.',
+                       f'(e.g. <code>{SERVER_NAME.lower()}.internal.example.com</code>). Loopback is always allowed.',
         'requires_restart': False,
         'env_var': 'BSN_ADMIN_HOSTNAME',
         'validator': _validate_admin_hostname,
@@ -160,7 +160,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': 'Your external, public hostname (e.g. music.example.com).',
+        'description': 'Your external, public hostname (e.g. <code>music.example.com</code>).',
         'requires_restart': False,
         'env_var': 'BSN_EXTERNAL_HOSTNAME',
         'validator': _validate_external_hostname,
@@ -212,7 +212,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': "Allowed CORS origins (comma-separated, '*' for all). Empty to disable CORS.",
+        'description': "Allowed CORS origins (comma-separated, <code>*</code> for all). Empty to disable CORS.",
         'requires_restart': True,
         'env_var': 'BSN_CORS_ORIGINS',
     },
@@ -249,7 +249,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'int',
         'default': 1,
         'category': 'server',
-        'description': 'Number of trusted reverse proxies in front of the server. Only used if `reverse_proxy` is enabled',
+        'description': 'Number of trusted reverse proxies in front of the server. Only used if <code>reverse_proxy</code> is enabled',
         'requires_restart': True,
         'env_var': 'BSN_PROXY_HOPS',
         'validator': _validate_int_range(1, 10),
@@ -260,8 +260,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': (
             "Offload direct (non-transcoded) file serving to the reverse proxy instead of streaming bytes "
-            "through Python. 'x-accel-redirect' for Nginx, 'x-sendfile' for Apache. Only takes effect when "
-            "'reverse_proxy' is enabled and the proxy is configured to honor the header."
+            "through Python. Use <code>x-accel-redirect</code> for Nginx, <code>x-sendfile</code> for Apache. Only takes effect when "
+            "<code>reverse_proxy</code> is enabled and the proxy is configured to honor the header."
         ),
         'requires_restart': False,
         'choices': ('off', 'x-accel-redirect', 'x-sendfile'),
@@ -278,8 +278,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '/_bsn_internal',
         'category': 'server',
         'description': (
-            "Internal URI prefix your Nginx config maps, via an internal-only 'location' block, to the music "
-            "root directory. Only used when sendfile_method is 'x-accel-redirect'."
+            "Internal URI prefix your Nginx config maps, via an internal-only <code>location</code> block, to the music "
+            "root directory. Only used when sendfile_method is <code>x-accel-redirect</code>."
         ),
         'requires_restart': False,
         'help': (
@@ -367,7 +367,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'bool',
         'default': False,
         'category': 'library',
-        'description': "Required to allow 'beet import' scans to modify content on disk (writing tags in the files "
+        'description': "Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files "
                         "or copying/moving files). Not required if the loaded beets config has write/copy/move all disabled.",
         'requires_restart': False,
         'env_var': 'BSN_ALLOW_DISK_WRITES',
@@ -425,7 +425,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'library',
         'description': (
-            "Fetch external images from foreign playlists' #EXTALBUMARTURL lines (for albums that "
+            "Fetch external images from foreign playlists' <code>#EXTALBUMARTURL</code> lines (for albums that "
             "have no art locally). Only enable this if you trust the source of your imported playlists."
         ),
         'requires_restart': False,
@@ -448,7 +448,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'bool',
         'default': False,
         'category': 'library',
-        'description': "Fetch album version info ('Deluxe Edition', 'Japanese Expanded Edition', etc.) from MusicBrainz.",
+        'description': 'Fetch album version info ("Deluxe Edition", "Japanese Expanded Edition", etc.) from MusicBrainz.',
         'requires_restart': False,
     },
     'save_album_version': {
@@ -463,10 +463,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': 'off',
         'category': 'library',
         'description': (
-            "Use Discogs' public community rating for an album's averageRating. `fallback`: Only "
-            "use Discogs when nobody on this server has rated the album locally. It never overrides a "
-            "local rating. `prefer`: Always uses Discogs when available (falling back "
-            "to the local average when it isn't)."
+            "Use Discogs' public community rating for an album's averageRating."
+            "<br>"
+            "<br>"
+            "<code>fallback</code>: Only use Discogs when nobody on this server has rated the album locally. "
+            "It never overrides a local rating."
+            "<br>"
+            "<br>"
+            "<code>prefer</code>: Always uses Discogs when available (falling back to the local average when it isn't)."
         ),
         'requires_restart': False,
         'choices': ('off', 'fallback', 'prefer'),
@@ -480,7 +484,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': (
             'Space-separated articles (across any language) to ignore when sorting '
-            "artists alphabetically (for instance, 'The Beatles' -> B). "
+            'artists alphabetically (for instance, "The Beatles" -> B).'
         ),
         'requires_restart': False,
     },
@@ -500,9 +504,11 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': [],
         'category': 'library',
         'description': (
-            f"Who can rename/edit/delete non{SERVER_NAME} playlists "
-            "(from Beets' `playlist` plugin directory)."
-            "Smartplaylist-generated playlists are always read-only."
+            f"Who can rename/edit/delete non-{SERVER_NAME} playlists "
+            "(from Beets' <code>playlist</code> plugin directory). "
+            "<br>"
+            "<br>"
+            "<code>smartplaylist</code>-generated playlists are always read-only."
         ),
         'requires_restart': False,
     },
@@ -533,7 +539,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'library',
-        'description': 'URL to your AudioMuse-AI instance (e.g. http://localhost:8000) to enable sonic similarity endpoints.',
+        'description': 'URL to your AudioMuse-AI instance (e.g. <code>http://localhost:8000</code>) to enable sonic similarity endpoints.',
         'requires_restart': False,
     },
 
@@ -555,7 +561,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'podcasts',
         'description': (
             "Number of episodes to download of a channel's most recent episodes when "
-            "added. Set to 0 to disable and only download episodes on request."
+            "added. Set to <code>0</code> to disable and only download episodes on request."
         ),
         'requires_restart': False,
         'validator': _validate_int_range(0, 200),
@@ -597,7 +603,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'audio',
         'description': (
-            "Path to the ffmpeg binary, if it isn't on the system PATH (e.g. /usr/local/bin/ffmpeg). "
+            "Path to the ffmpeg binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/ffmpeg</code>). "
             "Leave empty to auto-detect from PATH."
         ),
         'requires_restart': False,
@@ -619,8 +625,11 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': 'server_hardware',
         'category': 'audio',
         'description': (
-            "Defines where jukebox mode will play audio from. `server_hardware` plays on this server's own audio "
-            "hardware using mpv. `sonos` or `chromecast` stream to a speaker on the local network."
+            "Defines where jukebox mode will play audio from."
+            "<br>"
+            "<code>server_hardware</code> plays on this server's own audio hardware using mpv."
+            "<br>"
+            "<code>sonos</code> or <code>chromecast</code> stream to a speaker on the local network."
         ),
         'requires_restart': False,
         'choices': ('server_hardware', 'sonos', 'chromecast'),
@@ -631,9 +640,15 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'audio',
         'description': (
-            "Which hardware jukebox mode plays audio on. For `server_hardware`, this is the audio output device as mpv's "
-            "`--audio-device` expects (e.g. `alsa/hw:0,0` or `coreaudio/BuiltInSpeakerDevice`), or empty to "
-            "use the system default. For `sonos`, the speaker's IP address. For `chromecast`, the device's UUID. "
+            "Which hardware jukebox mode plays audio on."
+            "<br>"
+            "For <code>server_hardware</code>, this is the audio output device as mpv's <code>--audio-device</code> "
+            "expects (e.g. <code>alsa/hw:0,0</code> or <code>coreaudio/BuiltInSpeakerDevice</code>), or empty to "
+            "use the system default."
+            "<br>"
+            "For <code>sonos</code>, the speaker's IP address."
+            "<br>"
+            "For <code>chromecast</code>, the device's UUID. "
             "Use 'Discover devices' below to scan for what's available and pick one."
         ),
         'requires_restart': False,
@@ -643,8 +658,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'audio',
         'description': (
-            "For `server_hardware` backend only. Path to the mpv binary, if it isn't on the system PATH "
-            "(e.g. /usr/local/bin/mpv). Leave empty to auto-detect from PATH."
+            "For <code>server_hardware</code> backend only. Path to the mpv binary, if it isn't on the system PATH "
+            "(e.g. <code>/usr/local/bin/mpv</code>). Leave empty to auto-detect from PATH."
         ),
         'requires_restart': False,
         'validator': _validate_path,

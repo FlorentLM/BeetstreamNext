@@ -79,7 +79,7 @@ It also adds several enhancements and cool features :)
 
 ---
 
-## Installation & Deployment
+## Installation
 
 1.  **Clone and Install:**
     ```bash
@@ -91,11 +91,8 @@ It also adds several enhancements and cool features :)
     ```yaml
     plugins: beetstreamnext
     ```
-3.  **Create your admin user:**
-    ```bash
-    beet beetstreamnext --create-user
     ```
-4.  **Run:**
+3**Run:**
     ```bash
     beet beetstreamnext
     ```

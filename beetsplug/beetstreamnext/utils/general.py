@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import beets
 import flask
 
+from beetsplug.beetstreamnext.core.beets_interaction import config_path
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
 from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
@@ -29,14 +30,6 @@ def external_url(path_part: str) -> str:
 
     scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
     return f'{scheme}://{external_host}{path_part}'
-
-
-def _default_config_path() -> str:
-    """Where beets would load its config from when not started with an explicit -c/--config."""
-    try:
-        return beets.config.user_config_path()
-    except Exception:
-        return 'default location'
 
 
 def human_bytes(n: int) -> str:
@@ -75,6 +68,11 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
         ffmpeg_path = find_ffmpeg()
         mpv_path = find_mpv()
 
+        try:
+            cfg_path = str(config_path())
+        except Exception:
+            cfg_path = 'default location'
+
         additional_info = {
             'version': SERVER_VERSION,
             'beets_version': beets.__version__,
@@ -83,7 +81,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'uptime': human_time(time.time() - START_TIME),
             'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
-            'config_path': str(app.config.get('BEETS_CONFIG_PATH')) if app.config.get('BEETS_CONFIG_PATH') else _default_config_path(),
+            'config_path': cfg_path,
             'ffmpeg_path': ffmpeg_path or 'not found',
             'ffmpeg_version': (binary_version(ffmpeg_path, '-version') or 'unknown') if ffmpeg_path else None,
             'mpv_path': mpv_path or 'not found',

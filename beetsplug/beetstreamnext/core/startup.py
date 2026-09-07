@@ -1,4 +1,5 @@
 import logging
+import socket
 from pathlib import Path
 from typing import Iterable, List, Optional
 from flask_cors import CORS
@@ -45,6 +46,22 @@ def prestartup_config(
     app.config.update(SECRET_KEY=rotate_session_key(CACHE_LOCATION))
 
 
+def _bindable(host: str, port: int) -> bool:
+    """Check if `host` can be bound at all on this machine now."""
+    try:
+        family = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)[0][0]
+    except socket.gaierror:
+        return False
+
+    with socket.socket(family, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind((host, port))
+            return True
+        except OSError:
+            return False
+
+
 def run_server(
         lib,
         host: List[str],
@@ -60,6 +77,36 @@ def run_server(
     """
 
     app.config['HOST_LIST'] = host  # WebUI uses them as external_hostname suggestions
+
+    if len(host) == 1:
+        if not _bindable(host[0], port):
+            print_box([
+                '',
+                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
+                '',
+                f"The configured host ({host[0]}) can't be bound right now.",
+                '',
+            ], color=TermColors.FAIL)
+            return
+        bindable_host = host
+    else:
+        bindable_host = [h for h in host if _bindable(h, port)]
+
+        for h in host:
+            if h not in bindable_host:
+                bsn_logger.warning(f"Configured host '{h}' isn't bindable right now. Skipping it.")
+
+        if not bindable_host:
+            print_box([
+                '',
+                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
+                '',
+                f"None of the configured hosts ({', '.join(host)}) can be bound right now.",
+                '',
+            ], color=TermColors.FAIL)
+            return
+
+    host = bindable_host
 
     with app.app_context():
         # Read db, check if first run, merge with yaml_defaults, populate the cache, and trigger all LIVE_APPLY_SETTING

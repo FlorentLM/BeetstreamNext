@@ -11,7 +11,6 @@ import beets
 import confuse
 import yaml
 
-from beetsplug.beetstreamnext.core.mappings import Resolve
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.core.database import write_beets_field
@@ -110,6 +109,8 @@ def commit_likes(subsonic_id: str, key: str, value: Any) -> None:
     Note: non-song and non-album (artists, playlists, radios, podcasts)
      have no row in to attach a value to, so they are silently skipped.
     """
+
+    from beetsplug.beetstreamnext.core.mappings import Resolve
 
     entry_type, obj = Resolve.any(subsonic_id)
 

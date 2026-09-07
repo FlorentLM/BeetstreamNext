@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 import beets
 import flask
 
-from beetsplug.beetstreamnext.core.beets_interaction import config_path
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
 from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
@@ -67,6 +66,8 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
     if extended:
         ffmpeg_path = find_ffmpeg()
         mpv_path = find_mpv()
+
+        from beetsplug.beetstreamnext.core.beets_interaction import config_path
 
         try:
             cfg_path = str(config_path())

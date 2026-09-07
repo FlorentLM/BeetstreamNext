@@ -39,11 +39,11 @@
             {% endfor %}
         </div>
         <p class="label-hint">Empty selection = read-only.</p>
-    {%- elif key == 'jukebox_sonos_ip' -%}
+    {%- elif key == 'jukebox_hardware_device' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
-               list="sonos-speakers-list" placeholder="192.168.1.50">
-        <datalist id="sonos-speakers-list"></datalist>
+               list="jukebox-devices-list" placeholder="mpv audio device, Sonos IP, Chromecast UUID">
+        <datalist id="jukebox-devices-list"></datalist>
     {%- elif key == 'external_hostname' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
@@ -104,15 +104,15 @@
                     data-result="test-result-audiomuse">Test connection</button>
         </p>
         <p class="test-result" id="test-result-audiomuse"></p>
-    {%- elif key == 'jukebox_sonos_ip' -%}
+    {%- elif key == 'jukebox_hardware_device' -%}
         <p class="setting-row-actions">
-            <button type="button" class="btn btn-outline" data-action="discover-sonos-speakers"
-                    data-url="{{ url_for('admin.route_discover_sonos_speakers') }}"
-                    data-select="set-jukebox_sonos_ip"
-                    data-datalist="sonos-speakers-list"
-                    data-result="test-result-sonos">Discover speakers</button>
+            <button type="button" class="btn btn-outline" data-action="discover-devices"
+                    data-url="{{ url_for('admin.route_discover_devices') }}"
+                    data-select="set-{{ key }}"
+                    data-datalist="jukebox-devices-list"
+                    data-result="test-result-{{ key }}">Discover devices</button>
         </p>
-        <p class="test-result" id="test-result-sonos"></p>
+        <p class="test-result" id="test-result-{{ key }}"></p>
     {%- endif -%}
 {%- endmacro %}
 

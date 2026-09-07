@@ -29,6 +29,7 @@ WIKI_API: bool = is_installed('wikipedia-api')
 RADIO_BROWSER: bool = is_installed('radios')
 FEEDPARSER: bool = is_installed('feedparser')
 SOCO: bool = is_installed('soco')
+PYCHROMECAST: bool = is_installed('pychromecast')
 
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()

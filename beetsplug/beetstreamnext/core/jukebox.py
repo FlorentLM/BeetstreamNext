@@ -9,20 +9,27 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
-from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR, SOCO
+from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR, SOCO, PYCHROMECAST
 from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
-from beetsplug.beetstreamnext.utils.system import find_mpv
+from beetsplug.beetstreamnext.utils.system import find_mpv, get_mimetype, AUDIO_MIMETYPES
 from beetsplug.beetstreamnext.utils.text import parse_duration, format_duration
 from beetsplug.beetstreamnext.utils.general import external_url
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
+if TYPE_CHECKING and PYCHROMECAST:
+    from pychromecast import Chromecast, CastBrowser
 
 
 if SOCO:
     import soco.config
     soco.config.REQUEST_TIMEOUT = 20    # Just to give a bit more time to wireless speakers to wake up
+
+
+
+_PLAYABLE_URL_EXT = re.compile(r'\.(' + '|'.join(AUDIO_MIMETYPES) + r')(?:$|\?)', re.IGNORECASE)
+
 
 
 def sonos_discovery(timeout: float = 5.0) -> List[dict]:
@@ -42,6 +49,62 @@ def sonos_discovery(timeout: float = 5.0) -> List[dict]:
     speakers.sort(key=lambda z: z['name'].lower())
     return speakers
 
+
+def chromecast_discovery(timeout: float = 5.0) -> List[dict]:
+    """Scan the network for Chromecast devices. Returns [{'name', 'host', 'uuid'}, ...]."""
+
+    if not PYCHROMECAST:
+        raise JukeboxUnavailableException("The 'pychromecast' package isn't installed. Install the 'chromecast' extra to use this backend.")
+
+    import pychromecast
+    import zeroconf
+
+    try:
+        zconf = zeroconf.Zeroconf()
+        browser = pychromecast.CastBrowser(pychromecast.SimpleCastListener(), zconf)
+        browser.start_discovery()
+        try:
+            time.sleep(timeout)
+        finally:
+            browser.stop_discovery()
+    except Exception as e:
+        raise JukeboxUnavailableException(f'Chromecast discovery failed: {e}') from e
+
+    devices = [
+        {'name': info.friendly_name or str(uuid), 'host': info.host, 'uuid': str(uuid)}
+        for uuid, info in browser.devices.items()
+    ]
+    devices.sort(key=lambda d: d['name'].lower())
+    return devices
+
+
+_MPV_DEVICE_RE = re.compile(r"^'([^']+)'\s*\(([^)]*)\)$")
+
+
+def mpv_discovery(timeout: float = 5.0) -> List[dict]:
+    """List the audio output devices mpv can see on this machine. Returns [{'name', 'device'}, ...]."""
+
+    mpv_bin = find_mpv()
+    if not mpv_bin:
+        raise JukeboxUnavailableException("mpv wasn't found. Install it, or update the 'mpv_path' setting.")
+
+    try:
+        result = subprocess.run([mpv_bin, '--audio-device=help'], capture_output=True, text=True, timeout=timeout)
+    except Exception as e:
+        raise JukeboxUnavailableException(f'mpv device listing failed: {e}') from e
+
+    devices = []
+    for line in result.stdout.splitlines():
+        match = _MPV_DEVICE_RE.match(line.strip())
+        if not match:
+            continue
+        device, description = match.groups()
+        if device == 'auto':
+            continue
+        devices.append({'name': description or device, 'device': device})
+
+    devices.sort(key=lambda d: d['name'].lower())
+    return devices
 
 
 ##
@@ -65,6 +128,30 @@ class JukeboxBackend:
     def __init__(self):
         self._lock = threading.RLock()
         self._queue: List[Tuple[str, str]] = []   # (id, local path or playable URL)
+
+    def _resolve_uri(self, path: str) -> str:
+        """
+        Local files and URLs without a recognisable audio extension are exposed as tokenised stream URLs,
+        and URLs ending with a known extension can be passed straight through.
+        """
+
+        is_url = path.startswith(('http://', 'https://'))
+        if is_url and _PLAYABLE_URL_EXT.search(path):
+            return path
+
+        import flask
+
+        token = stream_tokeniser.register(path)
+
+        filename = (Path(path).name if not is_url else '') or 'stream.mp3'
+        path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
+
+        return external_url(path_part)
+
+    def _content_type(self, path: str) -> str:
+        """Best-effort mimetype sniffing (defaults to audio/mpeg)."""
+        match = _PLAYABLE_URL_EXT.search(path)
+        return get_mimetype(match.group(1) if match else 'mp3')
 
     def _is_ready(self) -> bool:
         """Quick check (no erroring): is there a live connection to the backend?"""
@@ -226,7 +313,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
     """
     Wrapper around a local mpv process controlled over its json IPC socket.
     """
-    NAME = 'mpv'
+    NAME = 'server_hardware'
 
     def __init__(self):
         super().__init__()
@@ -294,7 +381,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
         for raw_line in proc.stdout:
             line = raw_line.decode('utf-8', errors='replace').rstrip()
             if line:
-                bsn_logger.warning(f'Jukebox: [mpv] {line}')
+                bsn_logger.warning(f'Jukebox: [server_hardware] {line}')
 
     def _terminate(self):
         if self._sock_file:
@@ -413,9 +500,6 @@ class LocalJukeboxPlayer(JukeboxBackend):
         self._terminate()
 
 
-_URL_EXT_RE = re.compile(r'\.(mp3|aac|ogg|oga|flac|wav|m4a|opus|mp4|m3u8?)(?:$|\?)', re.IGNORECASE)
-
-
 class SonosJukeboxPlayer(JukeboxBackend):
     """
     Wrapper around a Sonos speaker, controlled over the network via SoCo.
@@ -448,7 +532,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
 
         from beetsplug.beetstreamnext.settings import settings_store
 
-        ip = settings_store.get('jukebox_sonos_ip')
+        ip = settings_store.get('jukebox_hardware_device')
         if not ip:
             raise JukeboxUnavailableException('No Sonos speaker selected. Pick one in the admin panel.')
 
@@ -456,27 +540,6 @@ class SonosJukeboxPlayer(JukeboxBackend):
             import soco
             self._device = soco.SoCo(ip)
             self._device_ip = ip
-
-    def _resolve_uri(self, path: str) -> str:
-        """
-        Local files, and http(s) URLs without a recognisable audio extension
-        are exposed to the speaker as tokenised stream URLs.
-        URLs that already end with a known extension can be passed straight through.
-        """
-
-        is_url = path.startswith(('http://', 'https://'))
-        if is_url and _URL_EXT_RE.search(path):
-            return path
-
-        import flask
-
-        token = stream_tokeniser.register(path)
-
-        # Sonos needs an extension in the URL, otherwise it rejects it (UPnP error 804)
-        filename = (Path(path).name if not is_url else '') or 'stream.mp3'
-        path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
-
-        return external_url(path_part)
 
     def _live_status(self) -> dict:
 
@@ -582,8 +645,227 @@ class SonosJukeboxPlayer(JukeboxBackend):
         stream_tokeniser.clear()
 
 
+class ChromecastJukeboxPlayer(JukeboxBackend):
+    """
+    Wrapper around a Chromecast device, controlled over the network via pychromecast.
+    """
+    NAME = 'chromecast'
+
+    def __init__(self):
+        super().__init__()
+        self._device: Optional['Chromecast'] = None
+        self._browser: Optional['CastBrowser'] = None
+        self._device_uuid: Optional[str] = None
+        self._current_index: int = -1
+
+    def _disconnect_device(self) -> None:
+        if self._device is not None:
+            try:
+                self._device.disconnect(timeout=2)
+            except Exception:
+                pass
+        if self._browser is not None:
+            try:
+                self._browser.stop_discovery()
+            except Exception:
+                pass
+        self._device = None
+        self._browser = None
+
+    def _is_ready(self) -> bool:
+        return (
+            self._device is not None
+            and self._device.socket_client.is_alive()
+            and self._device.socket_client.is_connected
+        )
+
+    def _ensure_ready(self) -> None:
+        if not PYCHROMECAST:
+            raise JukeboxUnavailableException("The 'pychromecast' package isn't installed. Install the 'chromecast' extra to use this backend.")
+
+        from beetsplug.beetstreamnext.settings import settings_store
+
+        uuid_str = settings_store.get('jukebox_hardware_device')
+        if not uuid_str:
+            raise JukeboxUnavailableException('No Chromecast selected. Pick one in the admin panel.')
+
+        if self._is_ready() and self._device_uuid == uuid_str:
+            return
+
+        import pychromecast
+        from uuid import UUID
+
+        try:
+            target_uuid = UUID(uuid_str)
+        except ValueError as e:
+            raise JukeboxUnavailableException(f'Invalid Chromecast UUID: {uuid_str!r}') from e
+
+        self._disconnect_device()
+
+        try:
+            devices, browser = pychromecast.get_listed_chromecasts(uuids=[target_uuid], discovery_timeout=10)
+        except Exception as e:
+            raise JukeboxUnavailableException(f'Chromecast discovery failed: {e}') from e
+
+        if not devices:
+            browser.stop_discovery()
+            raise JukeboxUnavailableException(f'Chromecast {uuid_str} not found on the network.')
+
+        device = devices[0]
+        try:
+            device.wait(timeout=10)
+        except Exception as e:
+            browser.stop_discovery()
+            raise JukeboxUnavailableException(f'Failed to connect to Chromecast: {e}') from e
+
+        self._device = device
+        self._browser = browser
+        self._device_uuid = uuid_str
+        self._current_index = -1
+
+    def _live_status(self) -> dict:
+        status = self._device.media_controller.status
+        volume = self._device.status.volume_level if self._device.status else 1.0
+
+        current_index = self._current_index if 0 <= self._current_index < len(self._queue) else -1
+        playing = current_index >= 0 and status.player_is_playing
+
+        return {
+            'currentIndex': current_index,
+            'playing': playing,
+            'gain': round(volume or 0, 4),
+            'position': int(status.adjusted_current_time or 0),
+        }
+
+    def _backend_clear(self) -> None:
+        try:
+            self._device.media_controller.stop()
+        except Exception:
+            pass  # Nothing was loaded, nothing to stop
+        self._current_index = -1
+
+    def _backend_append(self, entry_id: str, path: str) -> None:
+        pass  # No native queue in Chromecasts. self._queue is the only queue
+
+    def _backend_remove(self, index: int) -> None:
+        # self._queue shrinks, current track pointer must follow
+        if index < self._current_index:
+            self._current_index -= 1
+        elif index == self._current_index:
+            self._current_index = -1
+
+    @staticmethod
+    def _cast_metadata(entry_id: str) -> dict:
+        """Metadata and cover art for the Chromecast 'now playing' screen."""
+
+        from pychromecast.controllers.media import METADATA_TYPE_MUSICTRACK
+        from beetsplug.beetstreamnext.core.mappings import Serialise
+        from beetsplug.beetstreamnext.core.images import tokenised_image_url
+
+        try:
+            entry = Serialise.playable(entry_id) or {}
+        except Exception:
+            entry = {}
+
+        thumb = None
+        cover_art_id = entry.get('coverArt')
+        if cover_art_id:
+            try:
+                thumb = tokenised_image_url(cover_art_id, size=500)
+            except Exception:
+                thumb = None
+
+        return {
+            'title': entry.get('title') or entry.get('name') or None,
+            'thumb': thumb,
+            'metadata': {
+                'metadataType': METADATA_TYPE_MUSICTRACK,
+                'artist': entry.get('artist') or '',
+                'albumName': entry.get('album') or '',
+            },
+        }
+
+    def _backend_play_from(self, index: int) -> None:
+        from beetsplug.beetstreamnext.core.mappings import IDs
+
+        entry_id, path = self._queue[index]
+        uri = self._resolve_uri(path)
+        content_type = self._content_type(path)
+        stream_type = 'LIVE' if IDs.decode_type(entry_id) == 'radio' else 'BUFFERED'
+        cast_meta = self._cast_metadata(entry_id)
+
+        bsn_logger.info(f'Jukebox ({self.NAME}): loading {uri!r} ({content_type})')
+
+        mc = self._device.media_controller
+        receiver = self._device.socket_client.receiver_controller
+
+        # Force a fresh status so the cache is accurate before play_media()
+        refreshed = threading.Event()
+        receiver.update_status(callback_function=lambda *_: refreshed.set())
+        refreshed.wait(timeout=5)
+
+        try:
+            mc.play_media(
+                uri, content_type, autoplay=True, stream_type=stream_type,
+                title=cast_meta['title'], thumb=cast_meta['thumb'], metadata=cast_meta['metadata'],
+            )
+        except Exception as e:
+            raise JukeboxUnavailableException(f'Failed to play on Chromecast: {e}') from e
+
+        for _ in range(100):
+            if mc.status.content_id == uri:
+                break
+            time.sleep(0.1)
+        else:
+            raise JukeboxUnavailableException(f"Chromecast didn't confirm loading the track.")
+
+        self._current_index = index
+
+    def _backend_resume(self) -> None:
+        try:
+            self._device.media_controller.play()
+        except Exception as e:
+            raise JukeboxUnavailableException(f'Failed to start Chromecast playback: {e}') from e
+
+    def _backend_pause(self) -> None:
+        try:
+            self._device.media_controller.pause()
+        except Exception as e:
+            raise JukeboxUnavailableException(f'Failed to pause Chromecast: {e}') from e
+
+    def _backend_seek(self, offset: float) -> None:
+        try:
+            self._device.media_controller.seek(offset)
+        except Exception as e:
+            raise JukeboxUnavailableException(f'Failed to seek on Chromecast: {e}') from e
+
+    def _backend_set_volume(self, gain: float) -> None:
+        try:
+            self._device.set_volume(gain)
+        except Exception as e:
+            raise JukeboxUnavailableException(f'Failed to set Chromecast volume: {e}') from e
+
+    def _backend_is_playing(self) -> bool:
+        return self._device.media_controller.status.player_is_playing
+
+    def _backend_shutdown(self) -> None:
+        if self._device is not None:
+            try:
+                self._device.media_controller.stop()
+            except Exception:
+                pass
+
+        self._disconnect_device()
+        self._device_uuid = None
+        self._current_index = -1
+
+        stream_tokeniser.clear()
+
+
 ##
 # Lazy instantiation (but with hot-swap)
+
+_JUKEBOX_BACKENDS = {'sonos': SonosJukeboxPlayer, 'chromecast': ChromecastJukeboxPlayer}
 
 _jukebox_player: Optional[JukeboxBackend] = None
 _jukebox_backend: Optional[str] = None
@@ -602,7 +884,7 @@ def get_jukebox_player() -> JukeboxBackend | None:
             if _jukebox_player is None or _jukebox_backend != backend:
                 if _jukebox_player is not None:
                     _jukebox_player.shutdown()
-                _jukebox_player = SonosJukeboxPlayer() if backend == 'sonos' else LocalJukeboxPlayer()
+                _jukebox_player = _JUKEBOX_BACKENDS.get(backend, LocalJukeboxPlayer)()
                 _jukebox_backend = backend
 
     return _jukebox_player

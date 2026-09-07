@@ -46,7 +46,7 @@ It also adds several enhancements and cool features :)
 *   **Lyrics retrieval:** Serves internal Beets lyrics or fetches them on-the-fly using the Beets `lyrics` plugin.
 *   **On-the-fly transcoding:** Serves raw files directly or transcodes lossy/lossless targets on-the-fly using FFmpeg.
 *   **HTTP Live Streaming (HLS):** AAC-encoded dynamic HLS streaming with full Adaptive Bitrate (ABR) support for clients that request multi-bitrate variant playlists.
-*   **Jukebox mode:** Play audio on the server's own hardware (via `mpv`) or on a Sonos speaker on the local network (via [SoCo](https://github.com/SoCo/SoCo)), controlled remotely from any Subsonic client with jukebox support.
+*   **Jukebox mode:** Play audio on the server's own hardware (via `mpv`), on a Sonos speaker (via [SoCo](https://github.com/SoCo/SoCo)), or on a Chromecast (via [pychromecast](https://github.com/home-assistant-libs/pychromecast)) on the local network, controlled remotely from any Subsonic client with jukebox support.
 
 ### Library intelligence
 
@@ -102,10 +102,11 @@ It also adds several enhancements and cool features :)
 
 **Optional system dependencies** (must be on `PATH`, or pointed to explicitly via `ffmpeg_path`/`mpv_path`, see [Configuration](#configuration)):
 *   [`ffmpeg`](https://ffmpeg.org/) for on-the-fly transcoding and HLS streaming.
-*   [`mpv`](https://mpv.io/) for jukebox mode with the `mpv` backend (playing audio on the server's own hardware). Not needed if you use the `sonos` backend, or don't use jukebox mode at all.
+*   [`mpv`](https://mpv.io/) for jukebox mode with the `server_hardware` backend (playing audio on the server's own hardware). Not needed if you use the `sonos`/`chromecast` backends, or don't use jukebox mode at all.
 
 **Optional Python dependencies** (`pip install .[extra]`, or add to Poetry's `--extras`):
 *   `sonos`: pulls in [SoCo](https://github.com/SoCo/SoCo), needed for jukebox mode with the `sonos` backend (playing audio on a Sonos speaker).
+*   `chromecast`: pulls in [pychromecast](https://github.com/home-assistant-libs/pychromecast), needed for jukebox mode with the `chromecast` backend (playing audio on a Chromecast device).
 
 ---
 
@@ -138,11 +139,12 @@ beetstreamnext:
 
   # Audio
   ffmpeg_path: ''                   # Path to the ffmpeg binary, if not on PATH
-  jukebox_allowed: false            # Allow jukebox mode (server plays audio on its own hardware, or on a Sonos speaker)
-  jukebox_backend: 'mpv'            # 'mpv' (server's own hardware) or 'sonos' (a Sonos speaker on the local network)
+  jukebox_allowed: false            # Allow jukebox mode (server plays audio on its own hardware, or on a Sonos/Chromecast speaker)
+  jukebox_backend: 'mpv'            # 'mpv' (server's own hardware), 'sonos', or 'chromecast' (a speaker on the local network)
   mpv_path: ''                      # mpv backend: path to the mpv binary, if not on PATH
-  jukebox_hardware_device: ''       # mpv backend: mpv --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
-  jukebox_sonos_ip: ''              # sonos backend: IP of the selected speaker (set via 'Discover speakers' in the admin panel)
+  jukebox_hardware_device: ''       # mpv: --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
+                                     # sonos: IP of the speaker / chromecast: UUID of the device
+                                     # (set via 'Discover devices' in the admin panel)
 ```
 
 ### Environment variables

@@ -106,17 +106,6 @@ def _validate_external_hostname(x: Any) -> str:
     return f'{parsed.host}:{parsed.port}' if parsed.port else parsed.host
 
 
-def _validate_bare_host(x: Any) -> str:
-    """Bare hostname/IP, no scheme or port allowed."""
-    s = str(x or '').strip()
-    if not s:
-        return ''
-    parsed = parse_host(s)
-    if parsed.scheme or parsed.port:
-        raise ValueError('Enter a bare IP address or hostname, not a URL.')
-    return parsed.host
-
-
 def _validate_host_list(hosts: List[str]) -> List[str]:
     """Each entry must be a bare hostname/IP to bind to, no scheme or port."""
     result = []
@@ -620,57 +609,46 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'audio',
         'description': (
-            'Allow jukebox mode: the server can play audio on its own hardware, or on a Sonos speaker '
-            "(client apps act as remote controls)."
+            'Allow jukebox mode: the server can play audio on its own hardware, or on a Sonos/Chromecast compatible '
+            'speaker (client apps act as remote controls).'
         ),
         'requires_restart': False,
     },
     'jukebox_backend': {
         'type': 'str',
-        'default': 'mpv',
+        'default': 'server_hardware',
         'category': 'audio',
         'description': (
-            "Defines where jukebox mode will play audio from. `mpv` plays on this server's own audio hardware (see "
-            "'mpv_path' and 'jukebox_hardware_device' below). `sonos` streams to a Sonos speaker on the "
-            "local network (see 'jukebox_sonos_ip' directly below)."
+            "Defines where jukebox mode will play audio from. `server_hardware` plays on this server's own audio "
+            "hardware using mpv. `sonos` or `chromecast` stream to a speaker on the local network."
         ),
         'requires_restart': False,
-        'choices': ('mpv', 'sonos'),
-        'validator': _validate_choice('mpv', 'sonos'),
-    },
-    'jukebox_sonos_ip': {
-        'type': 'str',
-        'default': '',
-        'category': 'audio',
-        'description': (
-            "For Sonos backend only. IP address of the Sonos speaker jukebox mode streams to. Use "
-            "'Discover speakers' below to scan the local network and pick one."
-        ),
-        'requires_restart': False,
-        'validator': _validate_bare_host,
-    },
-    'mpv_path': {
-        'type': 'str',
-        'default': '',
-        'category': 'audio',
-        'description': (
-            "For mpv backend only. Path to the mpv binary, if it isn't on the system PATH "
-            "(e.g. /usr/local/bin/mpv). Leave empty to auto-detect from PATH."
-        ),
-        'requires_restart': False,
-        'validator': _validate_path,
-        'on_empty': _effective_mpv_path,
+        'choices': ('server_hardware', 'sonos', 'chromecast'),
+        'validator': _validate_choice('server_hardware', 'sonos', 'chromecast'),
     },
     'jukebox_hardware_device': {
         'type': 'str',
         'default': '',
         'category': 'audio',
         'description': (
-            "For mpv backend only. Audio output device for jukebox mode, as mpv's `--audio-device` expects "
-            "(e.g. `alsa/hw:0,0` or `coreaudio/BuiltInSpeakerDevice`). Leave empty to use the system default. "
-            "Run `mpv --audio-device=help` on the server to list available devices."
+            "Which hardware jukebox mode plays audio on. For `server_hardware`, this is the audio output device as mpv's "
+            "`--audio-device` expects (e.g. `alsa/hw:0,0` or `coreaudio/BuiltInSpeakerDevice`), or empty to "
+            "use the system default. For `sonos`, the speaker's IP address. For `chromecast`, the device's UUID. "
+            "Use 'Discover devices' below to scan for what's available and pick one."
         ),
         'requires_restart': False,
+    },
+    'mpv_path': {
+        'type': 'str',
+        'default': '',
+        'category': 'audio',
+        'description': (
+            "For `server_hardware` backend only. Path to the mpv binary, if it isn't on the system PATH "
+            "(e.g. /usr/local/bin/mpv). Leave empty to auto-detect from PATH."
+        ),
+        'requires_restart': False,
+        'validator': _validate_path,
+        'on_empty': _effective_mpv_path,
     },
 
     # Security

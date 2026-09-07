@@ -577,7 +577,7 @@
         }
     }
 
-    async function discoverSonosSpeakers(button) {
+    async function discoverDevices(button) {
         const url = button.dataset.url;
         const input = document.getElementById(button.dataset.select);
         const datalist = document.getElementById(button.dataset.datalist);
@@ -586,26 +586,29 @@
 
         const previousValue = input.value;
 
+        const backendSelect = document.getElementById('set-jukebox_backend');
+        const discoverUrl = backendSelect ? `${url}?backend=${encodeURIComponent(backendSelect.value)}` : url;
+
         button.disabled = true;
         if (result) { result.className = 'test-result'; result.textContent = 'Searching...'; }
 
         try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
+            const resp = await fetch(discoverUrl, { credentials: 'same-origin' });
             const payload = await resp.json();
-            const speakers = payload.speakers || [];
+            const devices = payload.devices || [];
 
             datalist.innerHTML = '';
 
-            speakers.forEach(sp => {
+            devices.forEach(dev => {
                 const opt = document.createElement('option');
-                opt.value = sp.ip;
-                opt.label = `${sp.name} (${sp.ip})`;
+                opt.value = dev.id;
+                opt.label = `${dev.name} (${dev.detail})`;
                 datalist.appendChild(opt);
             });
 
             // only fill suggest when the field is empty and discovery found something
-            if (!previousValue && speakers.length === 1) {
-                input.value = speakers[0].ip;
+            if (!previousValue && devices.length === 1) {
+                input.value = devices[0].id;
             }
 
             if (result) {
@@ -688,8 +691,8 @@
             case 'test-connection':
                 testConnection(target);
                 break;
-            case 'discover-sonos-speakers':
-                discoverSonosSpeakers(target);
+            case 'discover-devices':
+                discoverDevices(target);
                 break;
             case 'toggle-theme':
                 toggleTheme();
@@ -733,6 +736,17 @@
     document.addEventListener('change', event => {
         const target = event.target.closest('[data-action="toggle-log-autorefresh"]');
         if (target) toggleLogAutoRefresh(target);
+
+        if (event.target.id === 'set-jukebox_backend') {
+            const deviceInput = document.getElementById('set-jukebox_hardware_device');
+            if (deviceInput && deviceInput.value) deviceInput.value = '';
+
+            const datalist = document.getElementById('jukebox-devices-list');
+            if (datalist) datalist.innerHTML = '';
+
+            const result = document.getElementById('test-result-jukebox_hardware_device');
+            if (result) { result.className = 'test-result'; result.textContent = ''; }
+        }
     });
 
     // Confirm dialogs

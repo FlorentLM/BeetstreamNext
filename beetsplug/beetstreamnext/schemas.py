@@ -151,7 +151,9 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'server',
         'description': f'If set, the admin panel will only be accessible when visited via this hostname '
-                       f'(e.g. <code>{SERVER_NAME.lower()}.internal.example.com</code>). Loopback is always allowed.',
+                       f'(e.g. <code>{SERVER_NAME.lower()}.internal.example.com</code>).'
+                       '<br>'
+                       'Loopback is always allowed.',
         'requires_restart': False,
         'env_var': 'BSN_ADMIN_HOSTNAME',
         'validator': _validate_admin_hostname,
@@ -298,7 +300,11 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': 'Allowed Host headers (domain names/IPs, comma-separated). If empty, all hosts are allowed. Loopback is always allowed.',
+        'description': 'Allowed Host headers (domain names/IPs, comma-separated).'
+                       '<br>'
+                       'If empty, all hosts are allowed.'
+                      '<br>'
+                       'Loopback is always allowed.',
         'requires_restart': False,
         'env_var': 'BSN_TRUSTED_HOSTS',
         'validator': validate_trusted_hosts,
@@ -371,7 +377,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'library',
         'description': "Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files "
-                        "or copying/moving files). Not required if the loaded beets config has write/copy/move all disabled.",
+                        "or copying/moving files). Not required if the loaded beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.",
         'requires_restart': False,
         'env_var': 'BSN_ALLOW_DISK_WRITES',
     },
@@ -419,7 +425,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'bool',
         'default': False,
         'category': 'library',
-        'description': 'Save fetched album art alongside music files.',
+        'description': 'Save fetched album art on disk, alongside music files.',
         'requires_restart': False,
         'env_var': 'BSN_SAVE_ALBUM_ART',
     },
@@ -466,7 +472,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': 'off',
         'category': 'library',
         'description': (
-            "Use Discogs' public community rating for an album's averageRating."
+            "Use Discogs' public community rating for an album's average rating."
             "<br>"
             "<br>"
             "<code>fallback</code>: Only use Discogs when nobody on this server has rated the album locally. "
@@ -498,7 +504,9 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': (
             "Commit this user's Likes and Ratings into the Beets library so they survive outside "
             f"{SERVER_NAME}. Beets has no concept of per-user data, so only one user's changes can "
-            "be committed this way. Leave unset to disable."
+            "be committed this way."
+            "<br>"
+            "Leave unset to disable."
         ),
         'requires_restart': False,
     },
@@ -607,6 +615,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'audio',
         'description': (
             "Path to the ffmpeg binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/ffmpeg</code>). "
+            "<br>"
             "Leave empty to auto-detect from PATH."
         ),
         'requires_restart': False,
@@ -652,7 +661,6 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "For <code>sonos</code>, the speaker's IP address."
             "<br>"
             "For <code>chromecast</code>, the device's UUID. "
-            "Use 'Discover devices' below to scan for what's available and pick one."
         ),
         'requires_restart': False,
     },
@@ -662,7 +670,9 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'audio',
         'description': (
             "For <code>server_hardware</code> backend only. Path to the mpv binary, if it isn't on the system PATH "
-            "(e.g. <code>/usr/local/bin/mpv</code>). Leave empty to auto-detect from PATH."
+            "(e.g. <code>/usr/local/bin/mpv</code>)."
+            "<br>"
+            "Leave empty to auto-detect from PATH."
         ),
         'requires_restart': False,
         'validator': _validate_path,

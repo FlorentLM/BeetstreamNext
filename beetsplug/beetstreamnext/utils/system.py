@@ -10,7 +10,7 @@ import time
 from functools import lru_cache
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
-from typing import Optional
+from typing import Dict, Optional
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
@@ -65,6 +65,15 @@ def creation_date(filepath: bytes | str | Path) -> float:
     return getattr(stat, 'st_birthtime', stat.st_mtime)
 
 
+# Audio/playlist mimetypes keyed by extension
+# (taking precedence over mimetypes.guess() which tends to guess everything is a video...)
+AUDIO_MIMETYPES: Dict[str, str] = {
+    'mp3': 'audio/mpeg', 'aac': 'audio/aac', 'ogg': 'audio/ogg', 'oga': 'audio/ogg',
+    'flac': 'audio/flac', 'wav': 'audio/wav', 'm4a': 'audio/mp4', 'opus': 'audio/opus',
+    'mp4': 'audio/mp4', 'm3u8': 'application/x-mpegURL', 'm3u': 'application/x-mpegURL',
+}
+
+
 def get_mimetype(path: bytes | str | Path) -> str:
     """Infer a file's mimetype."""
 
@@ -79,17 +88,8 @@ def get_mimetype(path: bytes | str | Path) -> str:
         # Assume the passed arg is just an extension
         path = Path('file').with_suffix('.' + path.name.strip('.'))
 
-    mimetype_fallback = {
-        '.aac': 'audio/aac',
-        '.flac': 'audio/flac',
-        '.mp3': 'audio/mpeg',
-        '.mp4': 'audio/mp4',
-        '.m4a': 'audio/mp4',
-        '.ogg': 'audio/ogg',
-        '.opus': 'audio/opus'
-    }
-    ext = path.suffix.lower()
-    return mimetypes.guess_type(path)[0] or mimetype_fallback.get(ext, 'application/octet-stream')
+    ext = path.suffix.lower().lstrip('.')
+    return AUDIO_MIMETYPES.get(ext) or mimetypes.guess_type(path)[0] or 'application/octet-stream'
 
 
 def _remap_mount(path_obj: Path, root_directory: bytes | str | Path) -> Path:

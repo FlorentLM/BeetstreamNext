@@ -8,8 +8,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
 from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats
 from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing
-from beetsplug.beetstreamnext.core.beets_config import read_config, write_config
+from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, read_config, write_config
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import SERVER_NAME, BEETS_IMPORT_LOG_PATH
 

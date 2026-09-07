@@ -493,10 +493,6 @@
     <section class="tab-content" id="tab-{{ cat }}" data-tab-content="{{ cat }}" role="tabpanel">
         <div class="card">
             <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
-            {% if loop.first %}
-            <p class="card-hint">Values saved here are stored in the database and override
-               the beets YAML config on the next startup.</p>
-            {% endif %}
             {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions) }}
         </div>
 

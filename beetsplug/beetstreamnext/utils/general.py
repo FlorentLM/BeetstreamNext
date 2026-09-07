@@ -22,12 +22,18 @@ def external_url(path_part: str) -> str:
     Build an absolute URL for 'path_part' with external hostname taking precedence.
     """
     from beetsplug.beetstreamnext.settings import settings_store
+    from beetsplug.beetstreamnext.core.security import parse_host
 
     external_host = settings_store.get('external_hostname')
     if not external_host:
         return flask.request.host_url.rstrip('/') + path_part
 
-    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+    reverse_proxy = settings_store.get('reverse_proxy')
+    scheme = 'https' if (flask.request.is_secure or reverse_proxy) else 'http'
+
+    if not reverse_proxy and parse_host(external_host).port is None:
+        external_host = f'{external_host}:{settings_store.get("port")}'
+
     return f'{scheme}://{external_host}{path_part}'
 
 

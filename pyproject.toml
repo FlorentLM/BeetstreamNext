@@ -36,12 +36,12 @@ Repository = "https://github.com/FlorentLM/BeetstreamNext"
 beetstreamnext = "beetsplug.beetstreamnext.standalone_mode:main"
 
 [project.optional-dependencies]
-transcode = ["ffmpeg-python>=0.2.0"]
 wiki = ["wikipedia-api>=0.15.0"]
 podcasts = ["feedparser>=6.0.11"]
+radio = ["radios>=0.3.2"]
 sonos = ["soco>=0.30.0"]
 chromecast = ["pychromecast>=14.0.0"]
-all = ["beetstreamnext[transcode,wiki,podcasts,sonos,chromecast]"]
+all = ["beetstreamnext[wiki,podcasts,radio,sonos,chromecast]"]
 
 [dependency-groups]
 dev = [

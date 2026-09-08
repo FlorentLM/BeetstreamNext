@@ -530,13 +530,13 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Enable Radio Browser API for station discovery.',
         'requires_restart': False,
     },
-    # 'fetch_radio_images': {
-    #     'type': 'bool',
-    #     'default': True,
-    #     'category': 'library',
-    #     'description': 'Automatically fetch station icons when adding from Radio Browser.',
-    #     'requires_restart': False,
-    # },
+    'fetch_radio_images': {
+        'type': 'bool',
+        'default': True,
+        'category': 'library',
+        'description': 'Automatically fetch station icon when adding a new radio station.',
+        'requires_restart': False,
+    },
     'audiomuse_api_token': {
         'type': 'str',
         'default': '',
@@ -560,8 +560,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'podcasts',
         'description': (
-            "Directory to store downloaded podcast episode audio. Leave empty to use the "
-            "default cache location."
+            "Directory to store downloaded podcast episode audio. Leave empty to use the default cache location."
         ),
         'requires_restart': False,
         'on_empty': _effective_podcast_dir,

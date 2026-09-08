@@ -101,7 +101,7 @@ It also adds several enhancements and cool features :)
 *   [`ffmpeg`](https://ffmpeg.org/) for on-the-fly transcoding and HLS streaming.
 *   [`mpv`](https://mpv.io/) for jukebox mode with the `server_hardware` backend (playing audio on the server's own hardware). Not needed if you use the `sonos`/`chromecast` backends, or don't use jukebox mode at all.
 
-**Optional Python dependencies** (`pip install .[extra]`, or add to Poetry's `--extras`):
+**Optional Python dependencies** (`pip install .[extra]`, or `uv sync --extra <extra>`, or use `all` to pull in every extra at once):
 *   `sonos`: pulls in [SoCo](https://github.com/SoCo/SoCo), needed for jukebox mode with the `sonos` backend (playing audio on a Sonos speaker).
 *   `chromecast`: pulls in [pychromecast](https://github.com/home-assistant-libs/pychromecast), needed for jukebox mode with the `chromecast` backend (playing audio on a Chromecast device).
 

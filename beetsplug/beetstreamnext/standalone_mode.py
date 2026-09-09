@@ -294,7 +294,6 @@ def main(argv: Optional[List[str]] = None) -> None:
         force_trust_host=force_trust_host,
         root_directory=Path(final_music_root),
         playlist_dirs=playlist_dirs,
-        yaml_defaults=yaml_defaults,
     )
 
 

@@ -175,17 +175,14 @@ class BeetstreamNextPlugin(BeetsPlugin):
             debug = opts.debug or self.config['debug'].get(bool)
             force_trust_host = opts.force_trust_host or self.config['force_trust_host'].get(bool)
 
-            yaml_defaults = {
-                'host': _beets_yaml_get('host', cli_value=opts.host),
-                'port': _beets_yaml_get('port', cli_value=opts.port),
-                'threads': _beets_yaml_get('threads', cli_value=opts.threads),
-            }
+            _cli_flags = {'host': opts.host, 'port': opts.port, 'threads': opts.threads}
 
+            yaml_defaults = {}
             for key, spec in SETTINGS_SCHEMA.items():
-                if key in yaml_defaults or spec.get('standalone_only'):
+                if spec.get('standalone_only'):
                     continue
 
-                value = _beets_yaml_get(key)
+                value = _beets_yaml_get(key, cli_value=_cli_flags.get(key))
                 if value is not None:
                     yaml_defaults[key] = value
 
@@ -212,7 +209,6 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 force_trust_host=force_trust_host,
                 root_directory=Path(beets.config['directory'].get()),
                 playlist_dirs=playlist_dirs,
-                yaml_defaults=yaml_defaults,
             )
 
         cmd.func = func

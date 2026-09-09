@@ -94,6 +94,9 @@ def endpoint_create_playlist() -> flask.Response:
     if playlist_id:
         return endpoint_update_playlist()
 
+    if not flask.g.user_data.get('playlistRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
@@ -118,6 +121,9 @@ def endpoint_delete_playlist() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('id', default='', type=safe_str)     # Required
+
+    if not flask.g.user_data.get('playlistRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

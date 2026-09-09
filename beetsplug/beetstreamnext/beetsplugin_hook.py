@@ -63,8 +63,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
     def __init__(self):
         super(BeetstreamNextPlugin, self).__init__('beetstreamnext')
 
-        self.config.add({key: spec['default'] for key, spec in SETTINGS_SCHEMA.items() if not spec.get('standalone_only')})
-        self.config.add({'debug': False, 'force_trust_host': False})
+        _defaults = {key: spec['default'] for key, spec in SETTINGS_SCHEMA.items() if not spec.get('standalone_only')}
+        _defaults.update({'debug': False, 'force_trust_host': False})
+
+        self.config.root().add(confuse.ConfigSource({'beetstreamnext': _defaults}, default=True))
 
         for key, spec in SETTINGS_SCHEMA.items():
             if spec.get('sensitive'):
@@ -143,10 +145,13 @@ class BeetstreamNextPlugin(BeetsPlugin):
                     cmd_change_passwd(opts.passwd_user)
                 return
 
+            def _explicitly_set(view: confuse.ConfigView) -> bool:
+                return any(not getattr(source, 'default', False) for _, source in view.resolve())
+
             def _beets_yaml_get(key: str, cli_value: Any = None) -> Any:
                 """
-                Get a setting value: CLI flag > beets' config key ('beetstreamnext:' block)
-                Coerced to the settings schema's type. None if unset anywhere.
+                Get a setting value: CLI flag > beets' config key ('beetstreamnext:' block, if set in there).
+                Coerced to the settings schema's type. None if unset anywhere but the registered default.
                 """
                 stypes_map = {'bool': bool, 'int': int, 'str': str}
 
@@ -154,12 +159,12 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 if cli_value:
                     raw = cli_value
 
+                elif _explicitly_set(self.config[key]):
+                    raw = self.config[key].as_str_seq() if spec['type'] == 'list[str]' \
+                        else self.config[key].get(stypes_map[spec['type']])
+
                 else:
-                    try:
-                        raw = self.config[key].as_str_seq() if spec['type'] == 'list[str]' \
-                            else self.config[key].get(stypes_map[spec['type']])
-                    except confuse.NotFoundError:
-                        return None
+                    return None
 
                 return coerce_setting(raw, spec['type'])
 

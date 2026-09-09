@@ -208,6 +208,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     if not library_db.is_file():
         parser.error(f'Beets database not found at `{library_db}`.')
 
+    music_root_val = _cascade_value(args.music_root, get_env('MUSIC_ROOT'), yaml_cfg.get('music_root'), _beets_cfg('directory'))
+
     bsn_db = _cascade_value(args.bsn_db, get_env('BSN_DB_PATH'), yaml_cfg.get('bsn_db'))
     bsn_db_path = Path(bsn_db) if bsn_db else library_db.parent / 'beetstreamnext.db'
 
@@ -248,11 +250,14 @@ def main(argv: Optional[List[str]] = None) -> None:
                 cmd_list_users()
         return
 
-    yaml_defaults: Dict[str, Any] = {}
+    # TODO: 'library_path' always comes from the library_db cascade above: it's needed to locate BSN's db, so it can never be set via WebUI... Change this maybe?
+    yaml_defaults: Dict[str, Any] = {'library_path': str(library_db)}
+    if music_root_val:
+        yaml_defaults['music_root'] = music_root_val
 
     for key in SETTINGS_SCHEMA:
-        if key in ('ip_whitelist', 'ip_blacklist'):  # these are resolved differently for pre-startup config
-            continue
+        if key in ('ip_whitelist', 'ip_blacklist', 'library_path', 'music_root'):
+            continue  # these are resolved differently
         value = _yaml_get(key)
         if value is not None:
             yaml_defaults[key] = value
@@ -268,10 +273,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         initialise_db()
         settings_store.initialise(yaml_defaults)
 
-    # If 'library_path' or 'music_root' is set from the WebUI, they override the values above
-    final_library_db = Path(settings_store.get('library_path')) if settings_store.get('library_path') else library_db
-    music_root = _cascade_value(args.music_root, get_env('MUSIC_ROOT'), yaml_cfg.get('music_root'), _beets_cfg('directory'))
-    final_music_root = settings_store.get('music_root') or music_root
+    final_library_db = Path(settings_store.get('library_path'))
+    final_music_root = settings_store.get('music_root')
 
     if not final_music_root:
         parser.error("Music root directory is required (--music-root, MUSIC_ROOT, 'music_root' in --config, 'directory' in --beets-config, or the 'music_root' setting).")

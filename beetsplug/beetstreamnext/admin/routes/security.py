@@ -28,7 +28,7 @@ def route_ip_add(list_type: str) -> flask.Response:
         try:
             settings_store.set(key, current + [ip])
             flask.flash(f'Added {ip} to {list_type}.', 'success')
-        except ValueError as e:
+        except (ValueError, PermissionError) as e:
             flask.flash(str(e), 'error')
 
     return back_to('security')
@@ -42,12 +42,20 @@ def route_ip_remove(list_type: str) -> flask.Response:
         flask.abort(404)
 
     ip = (flask.request.form.get('ip') or '').strip()
+
+    if ip in settings_store.pinned(key):
+        flask.flash(f"'{ip}' is explicitly set via a CLI flag, environment variable, or config file. It can't be removed from here.", 'error')
+        return back_to('security')
+
     current = list(settings_store.get(key))
 
     if ip in current:
         current.remove(ip)
-        settings_store.set(key, current)
-        flask.flash(f'Removed {ip} from {list_type}.', 'success')
+        try:
+            settings_store.set(key, current)
+            flask.flash(f'Removed {ip} from {list_type}.', 'success')
+        except PermissionError as e:
+            flask.flash(str(e), 'error')
     else:
         flask.flash(f'{ip} not found in {list_type}.', 'info')
 

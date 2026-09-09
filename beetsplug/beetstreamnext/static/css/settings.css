@@ -451,6 +451,12 @@ input:focus, select:focus { border-color: var(--primary); }
     color: #fbbf24;
     font-weight: 500;
 }
+.setting-locked-note {
+    margin: 0.4rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
 .setting-help {
     margin: 0.6rem 0 0;
     padding: 0.7rem 0.9rem;

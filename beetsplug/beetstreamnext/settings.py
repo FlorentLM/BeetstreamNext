@@ -24,11 +24,28 @@ def coerce_setting(value: Any, type_str: str) -> Any:
     raise ValueError(f'Unknown type: {type_str}')
 
 
+def _merge_pinned(pinned: Any, extra: Any) -> Any:
+    if isinstance(pinned, set):
+        return pinned | set(extra)
+    merged = list(pinned)
+    merged += [v for v in extra if v not in merged]
+    return merged
+
+
+def _strip_pinned(value: Any, pinned: Any) -> Any:
+    if isinstance(pinned, set):
+        return set(value) - pinned
+    pinned_list = list(pinned)
+    return [v for v in value if v not in pinned_list]
+
+
 class SettingsStore:
     def __init__(self):
         self._lock = threading.RLock()
 
         self._cache: Dict[str, Any] = {}
+        self._locked: set = set()       # settings explicitly set via a CLI flag/env var/YAML/beets-config are locked
+        self._pinned: Dict[str, Any] = {}   # list[str] keys: explicitly set items are locked
         self._directly_applicable: Optional[Dict[str, Callable]] = None
 
     def _init_directly_applicable(self):
@@ -65,7 +82,7 @@ class SettingsStore:
     def initialise(self, yaml_defaults: Optional[Dict[str, Any]] = None):
         """
         Populate the in-memory cache and apply settings to live runtime stuff.
-        Resolution order (per key): db -> yaml default -> schema default.
+        Resolution order (per key): CLI flag/env var/YAML/beets-config (yaml_defaults) -> db -> schema default.
         """
         self._init_directly_applicable()
         yaml_defaults = yaml_defaults or {}
@@ -97,11 +114,22 @@ class SettingsStore:
 
         with self._lock:
             self._cache.clear()
+            self._locked = set()
+            self._pinned = {}
 
             for key, spec in SETTINGS_SCHEMA.items():
-                val = db_values.get(key)
-                if val is None:
-                    val = yaml_defaults.get(key, spec['default'])
+                is_list = spec['type'] == 'list[str]'
+                external = key in yaml_defaults
+
+                if external and is_list:
+                    val = list(yaml_defaults[key] or []) + list(db_values.get(key) or [])
+                elif external:
+                    self._locked.add(key)
+                    val = yaml_defaults[key]
+                else:
+                    val = db_values.get(key)
+                    if val is None:
+                        val = spec['default']
 
                 try:
                     val = coerce_setting(val, spec['type'])
@@ -110,6 +138,16 @@ class SettingsStore:
                 except (ValueError, TypeError) as e:
                     bsn_logger.warning(f"Invalid value for '{key}' ({e}), using default.")
                     val = spec['default']
+
+                if external and is_list:
+                    try:
+                        pinned_val = coerce_setting(yaml_defaults[key], spec['type'])
+                        if 'validator' in spec:
+                            pinned_val = spec['validator'](pinned_val)
+                    except (ValueError, TypeError) as e:
+                        bsn_logger.warning(f"Invalid pinned value for '{key}' ({e}), ignoring it.")
+                        pinned_val = spec['default']
+                    self._pinned[key] = pinned_val
 
                 self._cache[key] = val
 
@@ -126,18 +164,60 @@ class SettingsStore:
         with self._lock:
             return self._cache.get(key, SETTINGS_SCHEMA[key]['default'])
 
+    def locked(self, key: str) -> bool:
+        """
+        True if setting is explicitly set by a CLI flag/env var/YAML/beets-config.
+        """
+        with self._lock:
+            return key in self._locked
+    
+    def pinned(self, key: str) -> Any:
+        """
+        For a list setting: items explicitly set from a CLI flag/env var/YAML/beets-config are locked.
+        Others can still be added/removed.
+        """
+        with self._lock:
+            return self._pinned.get(key, SETTINGS_SCHEMA[key]['default'] if key in SETTINGS_SCHEMA else [])
+
+    def would_change(self, key: str, value: Any) -> bool:
+        """
+        True if 'value' (after coercing/validating) differs from its currently set value.
+        """
+        if key not in SETTINGS_SCHEMA:
+            raise KeyError(f'Unknown setting: {key}')
+
+        spec = SETTINGS_SCHEMA[key]
+        try:
+            coerced = coerce_setting(value, spec['type'])
+            if 'validator' in spec:
+                coerced = spec['validator'](coerced)
+        except (ValueError, TypeError):
+            return True  # let set() raise the real error
+
+        return coerced != self.get(key)
+
     def set(self, key: str, value: Any) -> Any:
         """Validate, persist, apply live, cache. Returns the coerced/validated value."""
 
         if key not in SETTINGS_SCHEMA:
             raise KeyError(f'Unknown setting: {key}')
 
+        pinned = self._pinned.get(key)
+
+        if pinned is None and self.locked(key):
+            raise PermissionError(
+                f"'{key}' is explicitly set via a CLI flag, environment variable, or config file. It can't be modified from here."
+            )
+
         spec = SETTINGS_SCHEMA[key]
         value = coerce_setting(value, spec['type'])
         if 'validator' in spec:
             value = spec['validator'](value)
 
-        serializable_value = list(value) if isinstance(value, set) else value
+
+        # For list setting the pinned items always come back
+        to_store = _strip_pinned(value, pinned) if pinned is not None else value
+        serializable_value = list(to_store) if isinstance(to_store, set) else to_store
 
         # Persist to db
         cipher = get_cipher()
@@ -163,16 +243,53 @@ class SettingsStore:
                 """, (key, stored_val, encrypted_flag)
             )
 
+        final_value = _merge_pinned(pinned, to_store) if pinned is not None else value
+
         # Update cache
         with self._lock:
-            self._cache[key] = value
+            self._cache[key] = final_value
 
         # Apply live ones
         if key in self._directly_applicable:
             try:
-                self._directly_applicable[key](value)
+                self._directly_applicable[key](final_value)
             except Exception as e:
                 bsn_logger.error(f"Persisted '{key}' but failed to apply live: {e}")
+                raise
+
+        return final_value
+
+    def reset(self, key: str) -> Any:
+
+        if key not in SETTINGS_SCHEMA:
+            raise KeyError(f'Unknown setting: {key}')
+
+        pinned = self._pinned.get(key)
+
+        if pinned is None and self.locked(key):
+            raise PermissionError(
+                f"'{key}' is set explicitly via a CLI flag, environment variable, or config file. It can't be reset from here."
+            )
+
+        with database() as db:
+            db.execute(
+                """
+                DELETE FROM settings 
+                WHERE key = ?
+                """, (key,)
+            )
+
+        spec = SETTINGS_SCHEMA[key]
+        value = pinned if pinned is not None else spec['default']
+
+        with self._lock:
+            self._cache[key] = value
+
+        if key in self._directly_applicable:
+            try:
+                self._directly_applicable[key](value)
+            except Exception as e:
+                bsn_logger.error(f"Reset '{key}' but failed to apply live: {e}")
                 raise
 
         return value
@@ -192,11 +309,18 @@ class SettingsStore:
                     continue
 
                 val = self._cache.get(key, spec['default'])
+                pinned = self._pinned.get(key)
+
+                overridden = bool(_strip_pinned(val, pinned)) if pinned is not None else val != spec['default']
+
                 entry = {
                     'type': spec['type'],
                     'description': spec.get('description', ''),
                     'requires_restart': bool(spec.get('requires_restart')),
                     'sensitive': bool(spec.get('sensitive')),
+                    'locked': key in self._locked,
+                    'overridden': overridden,
+                    'pinned': list(pinned) if pinned is not None else [],
                 }
                 if 'choices' in spec:
                     entry['choices'] = spec['choices']

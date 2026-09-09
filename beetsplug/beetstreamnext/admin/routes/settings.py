@@ -41,6 +41,8 @@ def route_update_settings(category: str) -> flask.Response:
             continue
         if spec['type'] == 'list[str]' and key not in _CAN_MULTISELECT:
             continue   # Handled by dedicated endpoints
+        if settings_store.locked(key):
+            continue   # set explicitly (via CLI/env/config) so not editable here
 
         if spec['type'] == 'bool':
             value: Any = key in submitted
@@ -53,16 +55,19 @@ def route_update_settings(category: str) -> flask.Response:
         else:
             continue
 
+        if not settings_store.would_change(key, value):
+            continue   # field unchanged
+
         try:
-            current = settings_store.get(key)
-            new_value = settings_store.set(key, value)
-            if new_value != current:
-                updated.append(key)
-                if spec.get('requires_restart'):
-                    restart_needed = True
+            settings_store.set(key, value)
+            updated.append(key)
+            if spec.get('requires_restart'):
+                restart_needed = True
         except (ValueError, TypeError) as e:
             errors.append(f"{key}: {e}")
             bsn_logger.warning(f"Invalid value submitted for '{key}': {e}")
+        except PermissionError as e:
+            errors.append(str(e))
         except Exception as e:
             # .set() re-raises applicable failures after persisting
             errors.append(f'{key}: saved, but failed to apply: {e}')
@@ -84,7 +89,7 @@ def route_update_settings(category: str) -> flask.Response:
 
 
 ##
-# Sensitive settings: dedicated clearing endpoint
+# Reset a setting to its default (deletes the stored db row)
 
 @admin_bp.route('/settings/<category>/clear/<key>', methods=['POST'])
 @admin_required
@@ -92,11 +97,15 @@ def route_clear_setting(category: str, key: str) -> flask.Response:
     if category not in SETTINGS_CATEGORIES:
         flask.abort(404)
     spec = SETTINGS_SCHEMA.get(key)
-    if not spec or spec.get('category') != category or not spec.get('sensitive'):
+    if not spec or spec.get('category') != category:
         flask.abort(404)
 
-    settings_store.set(key, '')
-    flask.flash(f"Cleared '{key}'.", 'success')
+    try:
+        settings_store.reset(key)
+        flask.flash(f"Reset '{key}' to default.", 'success')
+    except PermissionError as e:
+        flask.flash(str(e), 'error')
+
     return back_to(category)
 
 

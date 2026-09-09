@@ -12,6 +12,7 @@ Fully-featured music server for Beets.io music libraries implementing the OpenSu
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docs](https://img.shields.io/badge/docs-mdBook-blue.svg)](https://florentlm.github.io/BeetstreamNext/)
 
 </p>
 

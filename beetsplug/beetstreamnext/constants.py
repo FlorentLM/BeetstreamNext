@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Dict
 
-from beetsplug.beetstreamnext.utils.system import is_installed, cache_location
+from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location
 
 
 
@@ -34,7 +34,7 @@ PYCHROMECAST: bool = is_installed('pychromecast')
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()
 
-DEFAULT_CONFIG_PATH: Path = Path('/config/beetstreamnext.yaml')     # standalone mode only
+DEFAULT_CONFIG_PATH: Path = config_location() / 'beetstreamnext.yaml'     # standalone mode only
 
 HLS_CACHE_DIR: Path = CACHE_LOCATION / 'hls'
 HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)

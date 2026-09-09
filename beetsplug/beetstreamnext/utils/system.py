@@ -47,6 +47,29 @@ def cache_location() -> Path:
     return final_path
 
 
+def config_location() -> Path:
+    """Default dir for beetstreamnext.yaml"""
+
+    # if running in a docker container: '/config'
+    if Path('/.dockerenv').exists():
+        return Path('/config')
+    try:
+        docker = 'docker' in Path('/proc/1/cgroup').read_text()
+    except OSError:
+        docker = False
+
+    if docker:
+        return Path('/config')
+
+    # Otherwise: OS default
+    if platform.system() == 'Windows':
+        config_dir = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
+    else:
+        config_dir = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config'))
+
+    return config_dir / 'beetstreamnext'
+
+
 def creation_date(filepath: bytes | str | Path) -> float:
     """Get a file's creation date."""
 

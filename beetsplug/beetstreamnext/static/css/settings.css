@@ -264,7 +264,7 @@ tr:hover td { background: var(--overlay-hover); }
 .close-modal:hover { color: var(--text); }
 
 .modal-content-small { max-width: 380px; }
-.confirm-text { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.confirm-text { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; white-space: pre-line; }
 .confirm-actions {
     display: flex;
     justify-content: flex-end;

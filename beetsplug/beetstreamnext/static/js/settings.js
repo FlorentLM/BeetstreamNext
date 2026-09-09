@@ -759,6 +759,38 @@
         });
     });
 
+    // Roughly same input validation as the server does, just to know "this'll get rejected" or not
+    function looksLikeIpOrCidr(s) {
+        const ipv4 = /^(\d{1,3})(\.\d{1,3}){3}(\/\d{1,2})?$/;
+        if (ipv4.test(s)) {
+            return s.split('/')[0].split('.').every(o => Number(o) >= 0 && Number(o) <= 255);
+        }
+        return s.includes(':') && /^[0-9a-fA-F:]+(\/\d{1,3})?$/.test(s);
+    }
+
+    // Warn before adding the first whitelist entry/entries if current IP not in there
+    document.addEventListener('submit', event => {
+        const form = event.target.closest('form.ip-add-form[data-list-type="whitelist"][data-first-entry="true"]');
+        if (!form) return;
+
+        const ipInput = form.querySelector('input[name="ip"]');
+        const raw = ipInput ? ipInput.value : '';
+        const clientIp = form.dataset.clientIp || '';
+
+        const entries = raw.split(',').map(s => s.trim()).filter(Boolean).filter(looksLikeIpOrCidr);
+        if (entries.length === 0) return;          // garbage, let server reject it
+        if (entries.includes(clientIp)) return;    // current IP is one of the entries: no problemo
+
+        event.preventDefault();
+        const listed = entries.map(e => `'${e}'`).join(', ');
+        confirmModal(
+            `Warning: Your current IP (${clientIp || 'unknown'}) is NOT ${entries.length === 1 ? "" : "listed in"} ${listed}. ` +
+            `\n\nAccess will be restricted to ${entries.length === 1 ? "that IP" : "these IPs"} and the current IP will lose access immediately.\n\nContinue?`
+        ).then(ok => {
+            if (ok) form.submit();
+        });
+    });
+
     document.addEventListener('keydown', event => {
         // Enter submits
         if (event.key === 'Enter' && event.target.id === 'promptInput') {

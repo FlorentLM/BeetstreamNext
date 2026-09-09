@@ -191,7 +191,10 @@
         {% endif %}
         <form method="POST"
               action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
-              class="ip-add-form">
+              class="ip-add-form"
+              data-list-type="{{ list_type }}"
+              data-first-entry="{{ 'true' if not ips else 'false' }}"
+              data-client-ip="{{ request.remote_addr }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="ip" placeholder="{{ placeholder }}" required>
             <button type="submit" class="btn btn-primary">Add</button>

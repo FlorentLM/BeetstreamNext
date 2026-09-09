@@ -1,0 +1,230 @@
+/*
+ * Recolour mdBook's 'Light' and 'Coal' themes to match BeetstreamNext's WebUI palette
+ */
+
+.light, html:not(.js) {
+    --bg: #faf6f4;
+    --fg: #241512;
+
+    --sidebar-bg: #ffffff;
+    --sidebar-fg: #241512;
+    --sidebar-non-existant: #6b5c58;
+    --sidebar-active: #954039;
+    --sidebar-spacer: rgba(0, 0, 0, 0.1);
+    --sidebar-header-border-color: #954039;
+
+    --scrollbar: #6b5c58;
+
+    --icons: #6b5c58;
+    --icons-hover: #241512;
+
+    --links: #954039;
+    --inline-code-color: #954039;
+
+    --theme-popup-bg: #ffffff;
+    --theme-popup-border: rgba(0, 0, 0, 0.1);
+    --theme-hover: rgba(0, 0, 0, 0.04);
+
+    --quote-bg: rgba(149, 64, 57, 0.06);
+    --quote-border: rgba(149, 64, 57, 0.18);
+
+    --table-border-color: rgba(0, 0, 0, 0.1);
+    --table-header-bg: rgba(0, 0, 0, 0.06);
+    --table-alternate-bg: rgba(0, 0, 0, 0.02);
+
+    --searchbar-border-color: rgba(0, 0, 0, 0.1);
+    --searchbar-bg: #ffffff;
+    --searchbar-fg: #241512;
+    --searchbar-shadow-color: rgba(0, 0, 0, 0.08);
+    --searchresults-header-fg: #6b5c58;
+    --searchresults-border-color: rgba(0, 0, 0, 0.1);
+    --searchresults-li-bg: rgba(149, 64, 57, 0.08);
+    --search-mark-bg: rgba(149, 64, 57, 0.25);
+}
+
+.coal {
+    --bg: #180100;
+    --fg: #f8fafc;
+
+    --sidebar-bg: #260201;
+    --sidebar-fg: #f8fafc;
+    --sidebar-non-existant: #94a3b8;
+    --sidebar-active: #b34d45;
+    --sidebar-spacer: rgba(255, 255, 255, 0.1);
+    --sidebar-header-border-color: #b34d45;
+
+    --scrollbar: #94a3b8;
+
+    --icons: #94a3b8;
+    --icons-hover: #f8fafc;
+
+    --links: #b34d45;
+    --inline-code-color: #b34d45;
+
+    --theme-popup-bg: #260201;
+    --theme-popup-border: rgba(255, 255, 255, 0.1);
+    --theme-hover: rgba(255, 255, 255, 0.05);
+
+    --quote-bg: rgba(179, 77, 69, 0.12);
+    --quote-border: rgba(179, 77, 69, 0.3);
+
+    --table-border-color: rgba(255, 255, 255, 0.1);
+    --table-header-bg: rgba(255, 255, 255, 0.1);
+    --table-alternate-bg: rgba(255, 255, 255, 0.02);
+
+    --searchbar-border-color: rgba(255, 255, 255, 0.1);
+    --searchbar-bg: #260201;
+    --searchbar-fg: #f8fafc;
+    --searchbar-shadow-color: rgba(0, 0, 0, 0.5);
+    --searchresults-header-fg: #94a3b8;
+    --searchresults-border-color: rgba(255, 255, 255, 0.1);
+    --searchresults-li-bg: rgba(179, 77, 69, 0.15);
+    --search-mark-bg: rgba(179, 77, 69, 0.35);
+}
+
+/*
+ * Syntax highlighting (highlight.js)
+ */
+
+.light code.hljs,
+.light .hljs {
+    background: rgba(0, 0, 0, 0.045);
+    color: #241512;
+}
+
+.light .hljs-comment,
+.light .hljs-quote {
+    color: #6b7280; /* ansi-bright-black */
+}
+
+.light .hljs-variable,
+.light .hljs-template-variable,
+.light .hljs-attribute,
+.light .hljs-attr,
+.light .hljs-tag,
+.light .hljs-name,
+.light .hljs-regexp,
+.light .hljs-link,
+.light .hljs-selector-id,
+.light .hljs-selector-class {
+    color: #dc2626; /* ansi-red */
+}
+
+.light .hljs-number,
+.light .hljs-meta,
+.light .hljs-built_in,
+.light .hljs-builtin-name,
+.light .hljs-literal,
+.light .hljs-type,
+.light .hljs-params,
+.light .hljs-preprocessor,
+.light .hljs-pragma,
+.light .hljs-constant {
+    color: #ca8a04; /* ansi-yellow */
+}
+
+.light .hljs-string,
+.light .hljs-symbol,
+.light .hljs-bullet,
+.light .hljs-value,
+.light .hljs-inheritance,
+.light .hljs-header {
+    color: #16a34a; /* ansi-green */
+}
+
+.light .hljs-title,
+.light .hljs-section,
+.light .hljs-function {
+    color: #2563eb; /* ansi-blue */
+}
+
+.light .hljs-keyword,
+.light .hljs-selector-tag {
+    color: #9333ea; /* ansi-magenta */
+}
+
+.light .hljs-addition {
+    color: #16a34a;
+    background-color: rgba(22, 163, 74, 0.1);
+}
+
+.light .hljs-deletion {
+    color: #dc2626;
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+.coal code.hljs,
+.coal .hljs {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f8fafc;
+}
+
+.coal .hljs-comment,
+.coal .hljs-quote {
+    color: #9ca3af; /* ansi-bright-black */
+}
+
+.coal .hljs-variable,
+.coal .hljs-template-variable,
+.coal .hljs-attribute,
+.coal .hljs-attr,
+.coal .hljs-tag,
+.coal .hljs-name,
+.coal .hljs-regexp,
+.coal .hljs-link,
+.coal .hljs-selector-id,
+.coal .hljs-selector-class {
+    color: #f87171; /* ansi-red */
+}
+
+.coal .hljs-number,
+.coal .hljs-meta,
+.coal .hljs-built_in,
+.coal .hljs-builtin-name,
+.coal .hljs-literal,
+.coal .hljs-type,
+.coal .hljs-params,
+.coal .hljs-preprocessor,
+.coal .hljs-pragma,
+.coal .hljs-constant {
+    color: #facc15; /* ansi-yellow */
+}
+
+.coal .hljs-string,
+.coal .hljs-symbol,
+.coal .hljs-bullet,
+.coal .hljs-value,
+.coal .hljs-inheritance,
+.coal .hljs-header {
+    color: #4ade80; /* ansi-green */
+}
+
+.coal .hljs-title,
+.coal .hljs-section,
+.coal .hljs-function {
+    color: #60a5fa; /* ansi-blue */
+}
+
+.coal .hljs-keyword,
+.coal .hljs-selector-tag {
+    color: #c084fc; /* ansi-magenta */
+}
+
+.coal .hljs-addition {
+    color: #4ade80;
+    background-color: rgba(74, 222, 128, 0.12);
+}
+
+.coal .hljs-deletion {
+    color: #f87171;
+    background-color: rgba(248, 113, 113, 0.12);
+}
+
+/*
+ * Hide the unbranded theme choices from the picker
+ */
+/*#mdbook-theme-list button#mdbook-theme-rust,*/
+/*#mdbook-theme-list button#mdbook-theme-navy,*/
+/*#mdbook-theme-list button#mdbook-theme-ayu {*/
+/*    display: none;*/
+/*}*/

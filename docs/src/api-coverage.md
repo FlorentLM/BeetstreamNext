@@ -1,6 +1,15 @@
-# OpenSubsonic API
+# API coverage
 
-## All endpoints
+> See [Features](./features/index.md) for what BeetstreamNext adds on top of the spec itself :)
+
+BeetstreamNext implements essentially the entire Subsonic/OpenSubsonic REST API. The only unsupported endpoints are video-related:
+
+- [`getCaptions`](https://opensubsonic.netlify.app/docs/endpoints/getcaptions/)
+- [`getVideoInfo`](https://opensubsonic.netlify.app/docs/endpoints/getvideoinfo/)
+- [`getVideos`](https://opensubsonic.netlify.app/docs/endpoints/getvideos/)
+
+<details>
+<summary>Full endpoint-by-endpoint checklist</summary>
 
 - [x] [addChatMessage](https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/)
 - [x] [changePassword](https://opensubsonic.netlify.app/docs/endpoints/changepassword/)
@@ -89,3 +98,33 @@
 - [x] [updatePlaylist](https://opensubsonic.netlify.app/docs/endpoints/updateplaylist/)
 - [x] [updateShare](https://opensubsonic.netlify.app/docs/endpoints/updateshare/)
 - [x] [updateUser](https://opensubsonic.netlify.app/docs/endpoints/updateuser/)
+
+</details>
+
+> **Note:** Following the reference Subsonic specification, error responses are returned with an **HTTP 200** status. The actual outcome is in the response body's `status` field (`"ok"` or `"failed"`, with an error `code`/`message` on failure). Don't rely on the HTTP status alone to detect a failed call.
+
+## Extensions
+
+Alongside the base spec, BeetstreamNext implements every [OpenSubsonic extension](https://opensubsonic.netlify.app/docs/extensions/).
+
+| Extension                                                                                    | Description                                                                                                  |
+|----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| [`apiKeyAuthentication`](https://opensubsonic.netlify.app/docs/extensions/apikeyauth/)       | Authenticating with an API key alone, no password                                                            |
+| [`formPost`](https://opensubsonic.netlify.app/docs/extensions/formpost/)                     | Accepting requests as `application/x-www-form-urlencoded` POST bodies                                        |
+| [`getPodcastEpisode`](https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/)   | Retrieving a single podcast episode's metadata by ID                                                         |
+| [`indexBasedQueue`](https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/)       | Setting/reading the play queue by index instead of only by ID                                                |
+| [`playbackReport`](https://opensubsonic.netlify.app/docs/extensions/playbackreport/)         | Clients reporting their playback timeline back to the server                                                 |
+| [`songLyrics`](https://opensubsonic.netlify.app/docs/extensions/songlyrics/)                 | Synchronized, multi-language lyrics, retrievable by song ID                                                  |
+| [`topSongsByArtistId`](https://opensubsonic.netlify.app/docs/extensions/topsongsbyartistid/) | Retrieving an artist's top songs by artist ID                                                                |
+| [`transcodeOffset`](https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/)       | Starting a transcode from a given time offset                                                                |
+| [`transcoding`](https://opensubsonic.netlify.app/docs/extensions/transcoding/)               | Clients making their own transcoding decisions and requesting transcoded streams directly                    |
+| [`sonicSimilarity`](https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/)       | Acoustic similarity and playlist path-finding (see [Library augmentation](features/library-augmentation.md)) |
+
+> **Note:** All these extensions are always advertised by the server except `sonicSimilarity`, which only appears if an [AudioMuse-AI instance is configured](./configuration.md#audiomuse_url).
+
+## Authentication
+
+Both authentication schemes from the spec are supported:
+
+- **API-key authentication** (recommended): Always available.
+- **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](./configuration.md#legacy_auth) if your client needs it.

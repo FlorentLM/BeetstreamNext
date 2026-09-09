@@ -48,7 +48,7 @@ It also adds several enhancements and cool features :)
 *   **HTTP Live Streaming (HLS):** AAC-encoded dynamic HLS streaming with full Adaptive Bitrate (ABR) support for clients that request multi-bitrate variant playlists.
 *   **Jukebox mode:** Play audio on the server's own hardware (via `mpv`), on a Sonos speaker (via [SoCo](https://github.com/SoCo/SoCo)), or on a Chromecast (via [pychromecast](https://github.com/home-assistant-libs/pychromecast)) on the local network, controlled remotely from any Subsonic client with jukebox support.
 
-### Library intelligence
+### Library augmentation
 
 *   **Metadata integration:** Retrieves artist biographies, top tracks, and similar artists or songs from Last.fm or Wikipedia, ratings from Discogs, etc.
 *   **Album artworks / Artist images:** Grabs and serves the local album art path from your Beets library, or fetches and saves the images from [Cover Art Archive](https://coverartarchive.org/) and Deezer.
@@ -135,18 +135,18 @@ beetstreamnext:
   podcast_auto_download_count: 10   # Number of episodes to auto-download when a channel is added (0 to disable)
 
   # Audio
-  ffmpeg_path: ''                   # Path to the ffmpeg binary, if not on PATH
-  jukebox_allowed: false            # Allow jukebox mode (server plays audio on its own hardware, or on a Sonos/Chromecast speaker)
-  jukebox_backend: 'mpv'            # 'mpv' (server's own hardware), 'sonos', or 'chromecast' (a speaker on the local network)
-  mpv_path: ''                      # mpv backend: path to the mpv binary, if not on PATH
-  jukebox_hardware_device: ''       # mpv: --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
-                                     # sonos: IP of the speaker / chromecast: UUID of the device
-                                     # (set via 'Discover devices' in the admin panel)
+  ffmpeg_path: ''                     # Path to the ffmpeg binary, if not on PATH
+  jukebox_allowed: false              # Allow jukebox mode (server plays audio on its own hardware, or on a Sonos/Chromecast speaker)
+  jukebox_backend: 'server_hardware'  # Uses the server's own hardware. Or 'sonos' or 'chromecast': Use a speaker on the local network
+  mpv_path: ''                        # mpv backend: path to the mpv binary, if not on PATH
+  jukebox_hardware_device: ''         # mpv: --audio-device value (e.g. 'alsa/hw:0,0'), empty = system default
+                                      # sonos: IP of the speaker / chromecast: UUID of the device
+                                      # (set via 'Discover devices' in the admin panel)
 ```
 
 ### Environment variables
 *   `BEETSTREAMNEXT_KEY`: Secret key used to encrypt legacy passwords at rest.
-*   `LASTFM_API_KEY`: (Optional) To enable biographies, top tracks, and similar artist queries.
+*   `BSN_LASTFM_API_KEY`: (Optional) To enable biographies, top tracks, and similar artist queries.
 
 ## Using behind a reverse proxy
 
@@ -226,12 +226,6 @@ I tested it and confirmed it working with:
 #### Desktop
 - [Feishin](https://github.com/jeffvli/feishin)
 - [Aonsoku](https://github.com/victoralvesf/aonsoku)
-
----
-
-## Missing endpoints
-
-None, except video-streaming-related (see [here](OpenSubsonic_endpoints.md))
 
 ---
 

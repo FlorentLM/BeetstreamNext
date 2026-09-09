@@ -63,12 +63,13 @@ def rotate_session_key(cache_dir: str | Path) -> str:
 
 def ensure_secret(db_path: str | Path) -> None:
     """
-    Called once at startup, before initialise_db().
-    Generates the BEETSTREAMNEXT_KEY, saves it to .env, displays it. Once.
+    Resolves BEETSTREAMNEXT_KEY. Called once at startup, before initialise_db().
     """
 
     db_path = Path(db_path)
     env_path = db_path.parent / '.env'
+
+    externally_provided = bool(os.environ.get('BEETSTREAMNEXT_KEY'))
 
     # Load whatever is already in the env before deciding
     if env_path.exists():
@@ -79,37 +80,52 @@ def ensure_secret(db_path: str | Path) -> None:
     is_first_run = not db_path.exists()
 
     if is_first_run:
-        existing_lines = env_path.read_text().splitlines() if env_path.exists() else []
-        already_set = {line.split('=', 1)[0] for line in existing_lines if '=' in line}
+        if externally_provided:
+            enc_key = os.environ['BEETSTREAMNEXT_KEY']
+            print_box([
+                '',
+                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
+                '',
+                'Using the BEETSTREAMNEXT_KEY already set in the environment.',
+                '',
+                "  ▶  It has NOT been written to disk here.",
+                "  ▶  Keep it safe wherever you're managing it. If you lose it, stored",
+                '     passwords become unrecoverable.',
+                '',
+            ], color=TermColors.WARNING)
 
-        new_lines = list(existing_lines)
-
-        # Generate and record key
-        if 'BEETSTREAMNEXT_KEY' not in already_set:
-            enc_key = Fernet.generate_key().decode()
-            new_lines.append(f'BEETSTREAMNEXT_KEY={enc_key}')
-            os.environ['BEETSTREAMNEXT_KEY'] = enc_key
         else:
-            enc_key = os.environ['BEETSTREAMNEXT_KEY']   # was loaded by load_dotenv above
+            existing_lines = env_path.read_text().splitlines() if env_path.exists() else []
+            already_set = {line.split('=', 1)[0] for line in existing_lines if '=' in line}
 
-        _write_secret_file(env_path, '\n'.join(new_lines) + '\n')
+            new_lines = list(existing_lines)
 
-        print_box([
-            '',
-            f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
-            '',
-            'An encryption key has been generated for your database:',
-            '',
-            f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
-            f'{enc_key}{TermColors.ENDC}',
-            '',
-            'It has been saved to:',
-            f'{env_path}',
-            '',
-            "  ▶  It won't be shown again. Store it safely.",
-            '  ▶  If you lose it, stored passwords will be unrecoverable.',
-            '',
-        ], color=TermColors.WARNING)
+            # Generate and record key
+            if 'BEETSTREAMNEXT_KEY' not in already_set:
+                enc_key = Fernet.generate_key().decode()
+                new_lines.append(f'BEETSTREAMNEXT_KEY={enc_key}')
+                os.environ['BEETSTREAMNEXT_KEY'] = enc_key
+            else:
+                enc_key = os.environ['BEETSTREAMNEXT_KEY']   # was loaded by load_dotenv above
+
+            _write_secret_file(env_path, '\n'.join(new_lines) + '\n')
+
+            print_box([
+                '',
+                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
+                '',
+                'An encryption key has been generated for your database:',
+                '',
+                f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
+                f'{enc_key}{TermColors.ENDC}',
+                '',
+                'It has been saved to:',
+                f'{env_path}',
+                '',
+                "  ▶  It won't be shown again. Store it safely.",
+                '  ▶  If you lose it, stored passwords will be unrecoverable.',
+                '',
+            ], color=TermColors.WARNING)
 
     else:
         # Not first run, key must be present

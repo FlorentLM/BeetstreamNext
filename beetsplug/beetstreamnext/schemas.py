@@ -65,7 +65,7 @@ class SettingDescriptor(TypedDict, total=False):
     choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
     help: str                           # If set, admin UI shows this as a dotted box
     on_empty: Callable[[], str]         # Admin UI placeholder text/value shown while this is unset
-    env_var: str                        # Name of the env var that can also set this key (standalone mode only)
+    env_var: str                        # Name of the env var that can also set this key
 
 
 def _validate_int_range(lo: int, hi: int) -> Callable[[Any], int]:

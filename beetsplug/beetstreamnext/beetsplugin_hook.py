@@ -30,6 +30,7 @@ from beetsplug.beetstreamnext.core.database import initialise_db
 from beetsplug.beetstreamnext.core.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd
 )
+from beetsplug.beetstreamnext.utils.system import get_env
 
 
 def _detect_config_override(argv: List[str]) -> Optional[str]:
@@ -154,14 +155,20 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             def _beets_yaml_get(key: str, cli_value: Any = None) -> Any:
                 """
-                Get a setting value: CLI flag > beets' config key ('beetstreamnext:' block, if set in there).
+                Get a setting value: CLI flag > env var (if this setting has one) > beets' config key
+                ('beetstreamnext:' block, if set in there).
                 Coerced to the settings schema's type. None if unset anywhere but the registered default.
                 """
                 stypes_map = {'bool': bool, 'int': int, 'str': str}
 
                 spec = SETTINGS_SCHEMA[key]
+                env_value = get_env(spec['env_var']) if 'env_var' in spec else None
+
                 if cli_value:
                     raw = cli_value
+
+                elif env_value is not None:
+                    raw = env_value
 
                 elif _explicitly_set(self.config[key]):
                     raw = self.config[key].as_str_seq() if spec['type'] == 'list[str]' \

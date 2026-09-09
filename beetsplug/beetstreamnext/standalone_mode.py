@@ -133,11 +133,16 @@ def main(argv: Optional[List[str]] = None) -> None:
                         help='Run server in debug mode')
     parser.add_argument('--force-trust-host', action='store_true', default=None,
                         help='Force debug mode on non-localhost')
+    parser.add_argument('--noinput', action='store_true', default=False,
+                        help="With create-user: non-interactive one-time setup, requires BSN_ADMIN_USER/BSN_ADMIN_PASSWORD")
 
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
     if args.command in _USER_ARG_COMMANDS and not args.username:
         parser.error(f"'{args.command}' requires a USERNAME argument.")
+
+    if args.noinput and args.command != 'create-user':
+        parser.error("--noinput is only valid with the 'create-user' command")
 
     config_path = Path(args.config) if args.config else (DEFAULT_CONFIG_PATH if DEFAULT_CONFIG_PATH.is_file() else None)
 
@@ -216,7 +221,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             initialise_db()
 
             if args.command == 'create-user':
-                cmd_create_user()
+                cmd_create_user(noinput=args.noinput)
 
             elif args.command == 'update-user':
                 cmd_update_user(args.username)

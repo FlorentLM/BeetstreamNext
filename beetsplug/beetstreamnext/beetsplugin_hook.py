@@ -86,6 +86,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         # User management
         cmd.parser.add_option('-c', '--create-user', action='store_true', default=False, help='Create a new user')
+        cmd.parser.add_option('--noinput', action='store_true', default=False, help="With --create-user: non-interactive one-time setup, requires BSN_ADMIN_USER/BSN_ADMIN_PASSWORD")
         cmd.parser.add_option('-u', '--update-user', dest='update_user', metavar='USERNAME', help='Update roles for a user')
         cmd.parser.add_option('-d', '--delete-user', dest='delete_user', metavar='USERNAME', help='Delete a user')
         cmd.parser.add_option('-p', '--password', dest='passwd_user', metavar='USERNAME', help='Change password for a user')
@@ -95,6 +96,9 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('--clear-cache', action='store_true', help="Clear thumbnail and HTTP cache")
 
         def func(lib, opts, args):
+
+            if opts.noinput and not opts.create_user:
+                cmd.parser.error('--noinput is only valid with --create-user.')
 
             beets_db_path = Path(beets.config['library'].get())
 
@@ -118,7 +122,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
             if opts.create_user:
                 with app.app_context():
                     initialise_db()
-                    cmd_create_user()
+                    cmd_create_user(noinput=opts.noinput)
                 return
 
             # Update a user's roles

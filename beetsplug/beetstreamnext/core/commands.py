@@ -33,10 +33,51 @@ def _prompt_password(label: str) -> str:
         return password
 
 
-def cmd_create_user(force_admin: bool = False) -> None:
+def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
     """
-    CLI command: Create a new user
+    CLI command: Create a new user.
     """
+    if noinput:
+        if load_all_users():
+            print_box([
+                '',
+                "[ERROR] Can't use --noinput: user account(s) already present.",
+                '',
+                "Use the Admin panel, or 'create-user' interactively, to add more users.",
+                '',
+            ], color=TermColors.FAIL)
+            raise SystemExit(1)
+
+        env_user = get_env('BSN_ADMIN_USER')
+        env_password = get_env('BSN_ADMIN_PASSWORD')
+
+        if not (env_user and env_password):
+            print_box([
+                '',
+                '[ERROR] --noinput requires both BSN_ADMIN_USER and BSN_ADMIN_PASSWORD to be set.',
+                '',
+            ], color=TermColors.FAIL)
+            raise SystemExit(1)
+
+        try:
+            api_key = create_user(env_user, env_password, admin=True)
+        except ValueError as e:
+            print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
+            raise SystemExit(1)
+
+        print_box([
+            '',
+            f"{TermColors.OKGREEN + TermColors.BOLD}Admin user '{safe_str(env_user)}' created "
+            f"from BSN_ADMIN_USER/BSN_ADMIN_PASSWORD.{TermColors.ENDC}",
+            '',
+            f'USER API KEY: {api_key}',
+            '',
+            '  ▶  You can enter this key in your Subsonic client instead of a password.',
+            "  ▶  It won't be shown again. Store it safely.",
+            '',
+        ])
+        return
+
     username_ok = False
 
     while not username_ok:
@@ -78,50 +119,30 @@ def check_onboarding(standalone: bool, host: Sequence[str] = (), port: int = 0) 
     """
     First-run onboarding?
 
-    If standalone mode, BSN_ADMIN_USER and BSN_ADMIN_PASSWORD are tried first.
-    If unset and there's no TTY attached, onboarding needs to be done via the WebUI.
+    If a TTY is attached it prompts there. Otherwise it directs to WebUI setup page.
     """
 
     if load_all_users():    # users exist, nothing to do
         return
-
-    if standalone:
-        env_user = get_env('BSN_ADMIN_USER')
-        env_password = get_env('BSN_ADMIN_PASSWORD')
-
-        if env_user and env_password:
-            try:
-                api_key = create_user(env_user, env_password, admin=True)
-            except ValueError as e:
-                print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
-                raise SystemExit(1)
-
-            print_box([
-                '',
-                f"{TermColors.OKGREEN + TermColors.BOLD}Admin user '{safe_str(env_user)}' created "
-                f"from BSN_ADMIN_USER/BSN_ADMIN_PASSWORD.{TermColors.ENDC}",
-                '',
-                f'USER API KEY: {api_key}',
-                '',
-                '  ▶  You can use this key in your Subsonic client instead of a password.',
-                "  ▶  It won't be shown again. Store it safely.",
-                '',
-            ])
-            return
 
     if sys.stdin.isatty():
         print_box(['', 'Welcome to BeetstreamNext! Please create your admin account.', ''])
         cmd_create_user(force_admin=True)
         return
 
+    create_user_cmd = 'beetstreamnext create-user --noinput' if standalone else 'beet beetstreamnext --create-user --noinput'
     setup_url = f'http://{host[0]}:{port}/admin/setup' if host else '.../admin/setup'
     print_box([
         '',
         f'{TermColors.WARNING + TermColors.BOLD}No users exist yet, and no TTY detected.{TermColors.ENDC}',
         '',
-        'Please finish setup from a browser:',
+        'Finish setup from a browser:',
         '',
         f'  ▶  {setup_url}',
+        '',
+        'Or, before starting the server, run this once with BSN_ADMIN_USER/BSN_ADMIN_PASSWORD set:',
+        '',
+        f'  ▶  {create_user_cmd}',
         '',
     ], color=TermColors.WARNING)
 

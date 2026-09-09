@@ -24,25 +24,6 @@ from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.system import get_env
 
 
-## TODO: Add this info in the readme
-#
-# beets_config_path:
-#   --beets-config > BSN_BEETS_CONFIG > 'beets_config' in yaml > none
-#
-# then if beets_config_path is still not set, import stays at beets' defaults/discovery
-# but if beets_config_path is set, everything else reads from it:
-# 
-# library_db:
-#   order is: --library-db > BEETS_LIBRARY_DB > 'library_db' in yaml > beets.config['library'] (only if beets_config_path was resolved) > Error
-# 
-# music_root:
-#   order is: --music-root > MUSIC_ROOT > 'music_root' in yaml > beets.config['directory'] (only if beets_config_path was resolved) > Error
-# 
-# After db is up, WebUI configurable settings still win over everything:
-#   final_library_db: settings_store.get('library_path') from UI, otherwise library_db as resolved above
-#   final_music_root: settings_store.get('music_root') from UI, otherwise music_root as resolved above
-
-
 _USER_ARG_COMMANDS = {'update-user', 'delete-user', 'passwd'}
 
 

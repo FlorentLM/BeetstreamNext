@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./images/logo.svg" alt="BeetstreamNext logo" width="128" height="128">
+</p>
+
 # BeetstreamNext
 
 **BeetstreamNext** exposes your **[Beets](https://beets.io)** music library over the **[OpenSubsonic API](https://opensubsonic.netlify.app/)**, letting you stream your music to any Subsonic/OpenSubsonic/Navidrome-compatible client.

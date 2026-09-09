@@ -209,7 +209,7 @@ Allow legacy MD5 token / cleartext password authentication. API-key authenticati
 
 *type:* `bool`
 
-*default:* `True`
+*default:* `False`
 
 *env:* `BSN_LEGACY_AUTH`
 

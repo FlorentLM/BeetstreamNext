@@ -311,7 +311,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
     'legacy_auth': {
         'type': 'bool',
-        'default': True,
+        'default': False,
         'category': 'server',
         'description': 'Allow legacy MD5 token / cleartext password authentication. API-key authentication always works.',
         'requires_restart': False,

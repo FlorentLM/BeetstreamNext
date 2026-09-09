@@ -27,19 +27,19 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 
 ## Features
 
-- **Multi-user accounts**: per-user bookmarks, ratings, favorites, play queues... ([details](docs/src/features/accounts-and-permissions.md))
-- **Streaming**: direct play, on-the-fly transcoding, adaptive-bitrate HLS, server-side ReplayGain, self-healing streams ([details](docs/src/features/streaming.md))
-- **Jukebox mode**: play on the server's own hardware, a Sonos speaker, or a Chromecast device ([details](docs/src/features/jukebox.md))
-- **Library augmentation**: artist bios, similar artists/songs, ratings, lyrics, sonic similarity ([details](docs/src/features/library-augmentation.md))
-- **Internet radio & podcasts**, managed independently of your Beets library ([details](docs/src/features/radio-and-podcasts.md))
-- **Playlists**: BeetstreamNext's own per-user playlists, plus read/write access to Beets' `playlist`/`smartplaylist` files ([details](docs/src/features/playlists.md))
-- **Public shares**: landing pages and download links, no client or account required ([details](docs/src/features/public-shares.md))
-- **Security**: IP allow/deny lists, adaptive rate-limiting ([details](docs/src/features/security.md))
+- **Multi-user accounts**: per-user bookmarks, ratings, favorites, play queues... ([details](https://florentlm.github.io/BeetstreamNext/features/accounts-and-permissions.html))
+- **Streaming**: direct play, on-the-fly transcoding, adaptive-bitrate HLS, server-side ReplayGain, self-healing streams ([details](https://florentlm.github.io/BeetstreamNext/features/streaming.html))
+- **Jukebox mode**: play on the server's own hardware, a Sonos speaker, or a Chromecast device ([details](https://florentlm.github.io/BeetstreamNext/features/jukebox.html))
+- **Library augmentation**: artist bios, similar artists/songs, ratings, lyrics, sonic similarity ([details](https://florentlm.github.io/BeetstreamNext/features/library-augmentation.html))
+- **Internet radio & podcasts**, managed independently of your Beets library ([details](https://florentlm.github.io/BeetstreamNext/features/radio-and-podcasts.html))
+- **Playlists**: BeetstreamNext's own per-user playlists, plus read/write access to Beets' `playlist`/`smartplaylist` files ([details](https://florentlm.github.io/BeetstreamNext/features/playlists.html))
+- **Public shares**: landing pages and download links, no client or account required ([details](https://florentlm.github.io/BeetstreamNext/features/public-shares.html))
+- **Security**: IP allow/deny lists, adaptive rate-limiting ([details](https://florentlm.github.io/BeetstreamNext/features/security.html))
 - **Advanced Beets queries**: prefix a client search with `beets:`/`b:` to run a full Beets query instead of a simple search
 
 ## Documentation
 
-**[Read the full docs](docs/src/index.md)** for installation (as a **Beets plugin**, or in **standalone** mode), configuration reference, all features in detail, API coverage, reverse-proxy/CORS setup, and tested clients.
+**[Read the full docs](https://florentlm.github.io/BeetstreamNext/)** for installation (as a **Beets plugin**, or in **standalone** mode), configuration reference, all features in detail, API coverage, reverse-proxy/CORS setup, and tested clients.
 
 ## Quick start
 
@@ -61,7 +61,7 @@ Then run it:
 beet beetstreamnext
 ```
 
-BeetstreamNext can also run standalone, see [Installation](docs/src/installation.md).
+BeetstreamNext can also run standalone, see [Installation](https://florentlm.github.io/BeetstreamNext/installation.html).
 
 ## License
 

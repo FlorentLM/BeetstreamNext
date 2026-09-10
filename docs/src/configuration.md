@@ -551,7 +551,7 @@ Number of episodes to download of a channel's most recent episodes when added. S
 
 *type:* `int`
 
-*default:* `10`
+*default:* `3`
 
 ---
 

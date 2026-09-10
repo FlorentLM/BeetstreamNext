@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, load_all_users, load_user_roles, authenticate
-from beetsplug.beetstreamnext.admin.forms import LoginForm, OnboardingForm
+from beetsplug.beetstreamnext.admin.forms import LoginForm, OnboardingForm, flash_form_errors
 
 
 @admin_bp.route('/setup', methods=['GET', 'POST'])
@@ -46,10 +46,7 @@ def route_setup() -> flask.Response:
             return flask.redirect(flask.url_for('admin.route_settings'))
 
     elif form.is_submitted():
-        for field_name, errors in form.errors.items():
-            for error in errors:
-                msg = error if field_name == 'confirm_password' else f'{field_name}: {error}'
-                flask.flash(msg, 'error')
+        flash_form_errors(form)
 
     return flask.make_response(flask.render_template('setup.html', form=form))
 

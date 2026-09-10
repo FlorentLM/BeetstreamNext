@@ -1,5 +1,4 @@
 import flask
-from flask_wtf import FlaskForm
 
 from .. import admin_bp, admin_required
 
@@ -7,15 +6,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key
-from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, collect_form_data
-
-
-# Helpers
-
-def _flash_multiple_errors(form: FlaskForm) -> None:
-    for field_name, errors in form.errors.items():
-        for error in errors:
-            flask.flash(f'{field_name}: {error}', 'error')
+from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, collect_form_data, flash_form_errors
 
 
 @admin_bp.route('/users/create', methods=['POST'])
@@ -51,7 +42,7 @@ def route_create_user() -> flask.Response:
             bsn_logger.error(f'Unexpected error creating user: {e}')
             flask.flash('An unexpected error occurred while creating the user.', 'error')
     else:
-        _flash_multiple_errors(form)
+        flash_form_errors(form)
 
     return flask.redirect(flask.url_for('admin.route_settings'))
 
@@ -82,7 +73,7 @@ def route_update_user(username) -> flask.Response:
             bsn_logger.error(f"Unexpected error updating user '{username}': {e}")
             flask.flash('An unexpected error occurred while updating the user.', 'error')
     else:
-        _flash_multiple_errors(form)
+        flash_form_errors(form)
 
     return flask.redirect(flask.url_for('admin.route_settings'))
 

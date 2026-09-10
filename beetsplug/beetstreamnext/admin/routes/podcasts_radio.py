@@ -8,15 +8,9 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, ImageTooLarge, send_radio_art, send_podcast_art
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser, query_podcastindex
-from beetsplug.beetstreamnext.admin.forms import RadioStationForm
+from beetsplug.beetstreamnext.admin.forms import RadioStationForm, flash_form_errors
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import human_bytes
-
-
-def _flash_form_errors(form) -> None:
-    for field_name, errors in form.errors.items():
-        for error in errors:
-            flask.flash(f'{field_name}: {error}', 'error')
 
 
 def _uploaded_image() -> bytes | None:
@@ -49,7 +43,7 @@ def route_create_radio() -> flask.Response:
     form = RadioStationForm()
 
     if not form.validate_on_submit():
-        _flash_form_errors(form)
+        flash_form_errors(form)
         return back_to('radios')
 
     try:
@@ -71,7 +65,7 @@ def route_update_radio(station_id: int) -> flask.Response:
     form = RadioStationForm()
 
     if not form.validate_on_submit():
-        _flash_form_errors(form)
+        flash_form_errors(form)
         return back_to('radios')
 
     try:

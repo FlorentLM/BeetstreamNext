@@ -1,3 +1,4 @@
+import flask
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SelectField, StringField
 from wtforms.validators import DataRequired, EqualTo, Length, Optional, Email
@@ -61,6 +62,14 @@ class RadioStationForm(FlaskForm):
 for _name, _label, _default in USER_ROLES_SCHEMA:
     setattr(UserForm, _name, BooleanField(_label, default=_default))
     setattr(EditUserForm, _name, BooleanField(_label))
+
+
+def flash_form_errors(form: FlaskForm) -> None:
+    """Flash every WTForms validation error on form (one flash message per error)."""
+    for field_name, errors in form.errors.items():
+        for error in errors:
+            msg = error if field_name == 'confirm_password' else f'{field_name}: {error}'
+            flask.flash(msg, 'error')
 
 
 def collect_form_data(form: FlaskForm) -> dict:

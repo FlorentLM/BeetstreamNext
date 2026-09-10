@@ -27,12 +27,13 @@ pip install .
 Optional extras pull in Python dependencies for specific features:
 
 ```bash
-pip install .[wiki]         # Wikipedia artist-biographies (using wikipedia-api)
-pip install .[podcasts]     # Podcast support (using feedparser for the RSS feeds)
-pip install .[radio]        # Internet radio support
-pip install .[sonos]        # Sonos speaker jukebox backend (using SoCo)
-pip install .[chromecast]   # Chromecast jukebox backend (using pychromecast)
-pip install .[all]          # Installs all optional dependencies
+pip install .[wiki]              # Wikipedia artist-biographies (using wikipedia-api)
+pip install .[podcasts]          # Podcast support (using feedparser for the RSS feeds)
+pip install .[podcast-discovery] # Podcast channel discovery (using the Podcast Index API)
+pip install .[radio-discovery]   # Internet radio station discovery (using the Radio Browser API)
+pip install .[sonos]             # Sonos speaker jukebox backend (using SoCo)
+pip install .[chromecast]        # Chromecast jukebox backend (using pychromecast)
+pip install .[all]               # Installs all optional dependencies
 ```
 
 (With `uv`, use for instance `uv sync --extra podcasts`, or `uv sync --extra all`)

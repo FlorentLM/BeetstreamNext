@@ -553,6 +553,44 @@ Number of episodes to download of a channel's most recent episodes when added. S
 
 *default:* `10`
 
+---
+
+### `enable_podcast_discovery`
+
+Enable Podcast Index API for channel discovery.
+
+*type:* `bool`
+
+*default:* `False`
+
+---
+
+### `podcastindex_api_key`
+
+API key for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, used for podcast channel discovery.
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_PODCASTINDEX_API_KEY`
+
+---
+
+### `podcastindex_api_secret`
+
+API secret for the Podcast Index.
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_PODCASTINDEX_API_SECRET`
+
 ## Audio & jukebox
 
 ### `replaygain_enabled`

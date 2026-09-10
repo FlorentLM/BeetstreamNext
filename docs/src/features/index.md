@@ -40,9 +40,8 @@ Everything below is fetched live from third-party services (entirely optional, a
 | Album edition/version info (e.g. "Deluxe Edition") | [MusicBrainz](https://musicbrainz.org/)                                                                     | `fetch_album_version`                     |
 | Acoustic similarity & playlist path-finding        | [AudioMuse-AI](https://github.com/NeptuneHub/AudioMuse-AI) (your own self-hosted instance)                  | `audiomuse_url` and `audiomuse_api_token` |
 | Radio station / podcast favicons                   | The station/feed's own site, falling back to DuckDuckGo's icon proxy                                        | automatic, when an icon isn't supplied    |
+| Internet radio station discovery                   | [Radio Browser](https://www.radio-browser.info/)                                                            | `enable_radio_discovery`                  |
 | Song Lyrics                                        | Uses Beets' `lyrics` plugin's configured external sources                                                   | `fetch_lyrics`/`save_lyrics`              |
-
-[//]: # (| Internet radio station discovery                   | [Radio Browser]&#40;https://www.radio-browser.info/&#41;                                                            | `enable_radio_discovery`                  |)
 
 > **Note:** None of these ever get written back into Beets or your files unless the matching `save_*` setting is also enabled. See [Library augmentation](library-augmentation.md) for more detail.
 

@@ -8,7 +8,7 @@ BeetstreamNext implements the Subsonic internet radio endpoints (`getInternetRad
 
 Radio stations can be managed from the admin panel or any client that supports them.
 
-[//]: # (- **Station discovery &#40;external&#41;**: Set `enable_radio_discovery` to search [Radio Browser]&#40;https://www.radio-browser.info/&#41;, a community-maintained directory of internet radio streams.)
+- **Station discovery (external)**: Set `enable_radio_discovery` to search [Radio Browser](https://www.radio-browser.info/), a community-maintained directory of internet radio streams.
 - **Icons**: BeetstreamNext tries to scrape icons from the station homepage's `<link rel="icon">`/`apple-touch-icon` tags, or falls back to [DuckDuckGo's icon proxy](https://duckduckgo.com/duckduckgo-help-pages/privacy/favicons). **(external)**
 
 ## Podcasts

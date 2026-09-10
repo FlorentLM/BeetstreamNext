@@ -50,9 +50,7 @@ Live view of the current _IP allow/deny_ lists and _rate-limit_ state (see [Secu
 
 ### Podcasts & radio
 
-Add/refresh/delete podcast subscriptions and internet radio stations server-wide
-
-[//]: # (including radio [station discovery]&#40;../features/radio-and-podcasts.md#internet-radio&#41; when `enable_radio_discovery` is on.)
+Add/refresh/delete podcast subscriptions and internet radio stations server-wide including radio [station discovery](../features/radio-and-podcasts.md#internet-radio) when `enable_radio_discovery` is on.
 
 > 🖼️ *Screenshot: Radios*
 

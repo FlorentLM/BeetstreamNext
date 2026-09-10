@@ -1,3 +1,4 @@
+import os
 import functools
 import flask
 from flask import Flask
@@ -38,6 +39,17 @@ app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 app.jinja_env.filters['duration'] = format_duration
 
 csrf = CSRFProtect(app)
+
+
+@app.url_defaults
+def _add_static_version(endpoint, values):
+    """Adds v=<mtime to static URLs so browsers fetch fresh JS/CSS after an edit."""
+    if endpoint == 'static' and 'filename' in values:
+        asset_path = os.path.join(app.static_folder, values['filename'])
+        try:
+            values['v'] = int(os.stat(asset_path).st_mtime)
+        except OSError:
+            pass
 
 
 ##

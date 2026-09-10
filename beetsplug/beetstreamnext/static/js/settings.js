@@ -223,13 +223,13 @@
         form.querySelector('#editRadioStreamUrl').value = station.stream_url || '';
         form.querySelector('#editRadioHomepageUrl').value = station.homepage_url || '';
         form.querySelector('#editRadioRemoveImage').checked = false;
-        form.querySelector('input[type="file"]').value = '';
+        form.querySelector('#editRadioImage').value = '';
 
         const preview = document.getElementById('editRadioImagePreview');
         if (preview) {
             if (station.has_image) {
-                const imgBase = preview.getAttribute('data-image-url-base') || '';
-                preview.src = imgBase.slice(0, -1) + station.id;
+                const imgTmpl = preview.getAttribute('data-image-url-tmpl') || '';
+                preview.src = imgTmpl.replace('__STATION_ID__', station.id);
                 preview.classList.remove('hidden');
             } else {
                 preview.removeAttribute('src');
@@ -625,6 +625,159 @@
         }
     }
 
+    async function searchRadioStations(button) {
+        const url = button.dataset.url;
+        const input = document.getElementById(button.dataset.input);
+        const results = document.getElementById(button.dataset.results);
+        if (!url || !input || !results) return;
+
+        const q = input.value.trim();
+        if (!q) return;
+
+        button.disabled = true;
+        results.classList.remove('hidden');
+        results.innerHTML = '';
+        const status = document.createElement('p');
+        status.className = 'test-result radio-search-status';
+        status.textContent = 'Searching...';
+        results.appendChild(status);
+
+        try {
+            const resp = await fetch(`${url}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
+            const payload = await resp.json();
+            const stations = payload.stations || [];
+
+            results.innerHTML = '';
+
+            if (!stations.length) {
+                const p = document.createElement('p');
+                p.className = 'test-result test-result-fail';
+                p.textContent = payload.message || 'No stations found.';
+                results.appendChild(p);
+                return;
+            }
+
+            stations.forEach(station => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'radio-result-item';
+                item.dataset.action = 'use-radio-result';
+                item.dataset.name = station.name || '';
+                item.dataset.streamUrl = station.stream_url || '';
+                item.dataset.homepageUrl = station.homepage_url || '';
+                item.dataset.favicon = station.favicon || '';
+
+                const name = document.createElement('span');
+                name.className = 'radio-result-name';
+                name.textContent = station.name || '(unnamed)';
+                item.appendChild(name);
+
+                const streamUrl = document.createElement('span');
+                streamUrl.className = 'radio-result-url';
+                streamUrl.textContent = station.stream_url || '';
+                item.appendChild(streamUrl);
+
+                results.appendChild(item);
+            });
+        } catch (err) {
+            results.innerHTML = '';
+            const p = document.createElement('p');
+            p.className = 'test-result test-result-fail';
+            p.textContent = 'Search failed: ' + err.message;
+            results.appendChild(p);
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    async function useRadioResult(target) {
+        const nameInput = document.getElementById('createRadioName');
+        const streamInput = document.getElementById('createRadioStreamUrl');
+        const homepageInput = document.getElementById('createRadioHomepageUrl');
+        if (nameInput) nameInput.value = target.dataset.name || '';
+        if (streamInput) streamInput.value = target.dataset.streamUrl || '';
+        if (homepageInput) homepageInput.value = target.dataset.homepageUrl || '';
+
+        const favicon = target.dataset.favicon || '';
+        const faviconInput = document.getElementById('createRadioFavicon');
+
+        // Kept for create_station() in case the icon fetch here fails client-side
+        if (faviconInput) faviconInput.value = favicon;
+
+        const imageInput = document.getElementById('createRadioImage');
+        if (imageInput) imageInput.value = '';
+
+        const results = document.getElementById('radioDiscoveryResults');
+        if (results) results.classList.add('hidden');
+
+        const preview = document.getElementById('createRadioIconPreview');
+        if (!preview) return;
+
+        if (preview.dataset.blobUrl) {
+            URL.revokeObjectURL(preview.dataset.blobUrl);
+            delete preview.dataset.blobUrl;
+        }
+        preview.removeAttribute('src');
+        preview.classList.add('hidden');
+
+        const searchButton = document.querySelector('[data-action="discover-radios"]');
+        const proxyBase = searchButton ? searchButton.dataset.faviconProxy : '';
+        const name = target.dataset.name || '';
+        const homepage = target.dataset.homepageUrl || '';
+        if (!proxyBase || !name) return;
+
+        // Fetch the resolved icon here so it can be reused in create_station()
+        const params = new URLSearchParams({ name });
+        if (favicon) params.set('url', favicon);
+        if (homepage) params.set('homepage', homepage);
+
+        try {
+            const resp = await fetch(`${proxyBase}?${params.toString()}`, { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            const blob = await resp.blob();
+
+            const blobUrl = URL.createObjectURL(blob);
+            preview.dataset.blobUrl = blobUrl;
+            preview.src = blobUrl;
+            preview.classList.remove('hidden');
+
+            if (imageInput && typeof DataTransfer !== 'undefined') {
+                const file = new File([blob], 'icon', { type: blob.type || 'application/octet-stream' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                imageInput.files = dt.files;
+            }
+        } catch (err) {
+            // Left empty, favicon_url still lets create_station() try server-side
+        }
+    }
+
+    function previewLocalRadioIcon(fileInput, previewId, faviconInputId) {
+        const file = fileInput.files[0];
+        const preview = document.getElementById(previewId);
+        if (faviconInputId) {
+            const faviconInput = document.getElementById(faviconInputId);
+            if (faviconInput) faviconInput.value = '';
+        }
+
+        if (preview && preview.dataset.blobUrl) {
+            URL.revokeObjectURL(preview.dataset.blobUrl);
+            delete preview.dataset.blobUrl;
+        }
+
+        if (file && preview) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                preview.src = reader.result;
+                preview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else if (preview) {
+            preview.removeAttribute('src');
+            preview.classList.add('hidden');
+        }
+    }
+
     // Events
 
     document.addEventListener('click', event => {
@@ -694,6 +847,16 @@
             case 'discover-devices':
                 discoverDevices(target);
                 break;
+            case 'discover-radios':
+                searchRadioStations(target);
+                break;
+            case 'use-radio-result':
+                useRadioResult(target);
+                break;
+            case 'pick-radio-icon':
+                const iconInput = document.getElementById(target.dataset.target);
+                if (iconInput) iconInput.click();
+                break;
             case 'toggle-theme':
                 toggleTheme();
                 break;
@@ -733,9 +896,27 @@
         }
     });
 
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && event.target.id === 'radioDiscoveryQuery') {
+            event.preventDefault();
+            const button = document.querySelector('[data-action="discover-radios"]');
+            if (button) searchRadioStations(button);
+        }
+    });
+
     document.addEventListener('change', event => {
         const target = event.target.closest('[data-action="toggle-log-autorefresh"]');
         if (target) toggleLogAutoRefresh(target);
+
+        if (event.target.id === 'createRadioImage') {
+            previewLocalRadioIcon(event.target, 'createRadioIconPreview', 'createRadioFavicon');
+        }
+
+        if (event.target.id === 'editRadioImage') {
+            previewLocalRadioIcon(event.target, 'editRadioImagePreview', null);
+            const removeCheckbox = document.getElementById('editRadioRemoveImage');
+            if (removeCheckbox && event.target.files.length) removeCheckbox.checked = false;
+        }
 
         if (event.target.id === 'set-jukebox_backend') {
             const deviceInput = document.getElementById('set-jukebox_hardware_device');

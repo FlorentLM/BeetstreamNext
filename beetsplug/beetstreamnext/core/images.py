@@ -564,5 +564,5 @@ def send_radio_art(station_id: int) -> flask.Response | None:
         ).fetchone()
 
     if row and row['image']:
-        return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']))
+        return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']) or 'image/jpeg')
     return None

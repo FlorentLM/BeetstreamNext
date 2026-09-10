@@ -1,11 +1,13 @@
 import flask
+from io import BytesIO
 
 from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.constants import FEEDPARSER, MAX_AVATAR_DIM, MAX_AVATAR_BYTES
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, ImageTooLarge, send_radio_art, send_podcast_art
-from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station
+from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
+from beetsplug.beetstreamnext.core.external import query_radio_browser
 from beetsplug.beetstreamnext.admin.forms import RadioStationForm
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -55,7 +57,8 @@ def route_create_radio() -> flask.Response:
         flask.flash(str(e), 'error')
         return back_to('radios')
 
-    create_station(safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image)
+    favicon_url = (flask.request.form.get('favicon_url') or '').strip() or None
+    create_station(safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image, favicon_url)
     flask.flash(f"Radio station '{form.name.data}' created.", 'success')
     return back_to('radios')
 
@@ -102,6 +105,57 @@ def route_delete_radio(station_id: int) -> flask.Response:
     flask.flash('Radio station deleted.', 'info')
 
     return back_to('radios')
+
+
+@admin_bp.route('/radios/discover', methods=['GET'])
+@admin_required
+def route_discover_radios() -> flask.Response:
+
+    if not flask.current_app.config.get('enable_radio_discovery'):
+        return flask.jsonify({'ok': False, 'message': 'Radio discovery is disabled.', 'stations': []})
+
+    q = (flask.request.args.get('q') or '').strip()
+    if not q:
+        return flask.jsonify({'ok': False, 'message': 'Enter a station name to search.', 'stations': []})
+
+    stations = query_radio_browser(q, limit=15)
+    if not stations:
+        return flask.jsonify({'ok': False, 'message': 'No stations found.', 'stations': []})
+
+    plur = 's' if len(stations) > 1 else ''
+    return flask.jsonify({
+        'ok': True,
+        'message': f'Found {len(stations)} station{plur}.',
+        'stations': [
+            {
+                'name': s['name'],
+                'stream_url': s['stream_url'],
+                'homepage_url': s['homepage_url'],
+                'favicon': s.get('favicon') or '',
+            }
+            for s in stations
+        ],
+    })
+
+
+@admin_bp.route('/radios/favicon-proxy', methods=['GET'])
+@admin_required
+def route_radio_favicon_proxy() -> flask.Response:
+    """
+    Same-origin preview of a radio search result's icon
+    """
+    name = (flask.request.args.get('name') or '').strip()
+    url = (flask.request.args.get('url') or '').strip()
+    homepage = (flask.request.args.get('homepage') or '').strip()
+    if not name:
+        flask.abort(404)
+
+    image = resolve_station_icon(name, url or None, homepage or None)
+    mimetype = sniff_image(image) if image else None
+    if not mimetype:
+        flask.abort(404)
+
+    return flask.send_file(BytesIO(image), mimetype=mimetype)
 
 
 @admin_bp.route('/radios/<int:station_id>/image', methods=['GET'])

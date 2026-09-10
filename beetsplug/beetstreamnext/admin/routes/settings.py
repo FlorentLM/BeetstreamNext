@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection
+from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
@@ -253,6 +254,7 @@ def route_settings() -> flask.Response:
             cache_sizes=cache_sizes,
             shares=shares_list,
             radios=radios,
+            radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
             podcast_channels=podcast_channels,
             podcast_total_size=human_bytes(podcast_total_bytes),
             flagged_songs=flagged_songs(),

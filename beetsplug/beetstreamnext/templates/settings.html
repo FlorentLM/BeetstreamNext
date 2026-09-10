@@ -1110,23 +1110,46 @@
     <div class="modal-content">
         <button class="close-modal" data-action="close-modal" data-target="createRadioModal" aria-label="Close">&times;</button>
         <h2>Add Radio Station</h2>
+        {% if radio_discovery_enabled %}
+        <div class="radio-discovery form-group">
+            <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
+            <div class="setting-input-row">
+                <input type="text" id="radioDiscoveryQuery" placeholder="Station name">
+                <button type="button" class="btn btn-outline" data-action="discover-radios"
+                        data-url="{{ url_for('admin.route_discover_radios') }}"
+                        data-favicon-proxy="{{ url_for('admin.route_radio_favicon_proxy') }}"
+                        data-input="radioDiscoveryQuery"
+                        data-results="radioDiscoveryResults">Search</button>
+            </div>
+            <div class="radio-discovery-results hidden" id="radioDiscoveryResults"></div>
+        </div>
+        {% endif %}
         <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">
             {{ radio_form.csrf_token }}
             <div class="form-group">
                 <label>Name</label>
-                {{ radio_form.name(placeholder="My Favorite Station") }}
+                {{ radio_form.name(id="createRadioName", placeholder="My Favorite Station") }}
             </div>
             <div class="form-group">
                 <label>Stream URL</label>
-                {{ radio_form.streamUrl(placeholder="https://stream.example.com/stream.mp3") }}
+                {{ radio_form.streamUrl(id="createRadioStreamUrl", placeholder="https://stream.example.com/stream.mp3") }}
             </div>
             <div class="form-group">
                 <label>Homepage URL <span class="label-hint">(optional)</span></label>
-                {{ radio_form.homepageUrl(placeholder="https://example.com") }}
+                {{ radio_form.homepageUrl(id="createRadioHomepageUrl", placeholder="https://example.com") }}
             </div>
             <div class="form-group">
                 <label>Icon <span class="label-hint">(optional)</span></label>
-                <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+                <div class="radio-icon-row">
+                    <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
+                            data-target="createRadioImage" aria-label="Choose station icon">
+                        <img id="createRadioIconPreview" class="hidden" alt="">
+                        <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
+                    </button>
+                    <span class="label-hint">Click to upload, or pick a search result above.</span>
+                </div>
+                <input type="file" id="createRadioImage" name="image" accept="image/jpeg,image/png,image/webp" class="hidden">
+                <input type="hidden" id="createRadioFavicon" name="favicon_url">
             </div>
             <button type="submit" class="btn btn-primary btn-full">Add station</button>
         </form>
@@ -1154,12 +1177,17 @@
                 {{ radio_form.homepageUrl(id="editRadioHomepageUrl") }}
             </div>
             <div class="form-group">
-                <div class="avatar-section-header">
-                    <label class="label-inline">Icon <span class="label-hint">(optional)</span></label>
-                    <img id="editRadioImagePreview" class="cover-thumb hidden" alt=""
-                         data-image-url-base="{{ url_for('admin.route_serve_radio_image', station_id=1) }}">
+                <label>Icon <span class="label-hint">(optional)</span></label>
+                <div class="radio-icon-row">
+                    <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
+                            data-target="editRadioImage" aria-label="Choose station icon">
+                        <img id="editRadioImagePreview" class="hidden" alt=""
+                             data-image-url-tmpl="{{ url_for('admin.route_serve_radio_image', station_id=1) | replace('/1/', '/__STATION_ID__/') }}">
+                        <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
+                    </button>
+                    <span class="label-hint">Click to change the icon.</span>
                 </div>
-                <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+                <input type="file" id="editRadioImage" name="image" accept="image/jpeg,image/png,image/webp" class="hidden">
                 <label class="role-item role-item-standalone">
                     <input type="checkbox" name="remove_image" id="editRadioRemoveImage"> Remove current icon
                 </label>

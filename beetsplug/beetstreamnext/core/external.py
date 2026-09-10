@@ -62,6 +62,8 @@ def http_session() -> CachedSession:
             stale_if_error=True     # serve expired cached version if remote server goes down
         )
 
+        _http_session.headers.update({'User-Agent': USER_AGENT})
+
         # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
         # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
         musicbrainz_adapter = RequestThrottle(min_interval=0.04)

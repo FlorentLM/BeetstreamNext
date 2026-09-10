@@ -1,10 +1,13 @@
 import re
+import time
+import threading
 import urllib.parse
 from datetime import timedelta
 from functools import lru_cache
 from typing import Optional, Dict, List, Any
 import requests
 import asyncio
+from requests.adapters import HTTPAdapter
 from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
@@ -24,6 +27,27 @@ def https_variant(url: str) -> str:
     return url
 
 
+class RequestThrottle(HTTPAdapter):
+    """
+    HTTPAdapter enforcing a minimum interval between requests.
+    Cache hits are unaffected, this paces only real network calls.
+    """
+
+    def __init__(self, min_interval: float, *args, **kwargs):
+        self._min_interval = min_interval
+        self._lock = threading.Lock()
+        self._next_ok = 0.0
+        super().__init__(*args, **kwargs)
+
+    def send(self, request, **kwargs):
+        with self._lock:
+            wait = self._next_ok - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            self._next_ok = time.monotonic() + self._min_interval
+        return super().send(request, **kwargs)
+
+
 _http_session = None
 
 def http_session() -> CachedSession:
@@ -37,6 +61,12 @@ def http_session() -> CachedSession:
             allowable_codes=[200],
             stale_if_error=True     # serve expired cached version if remote server goes down
         )
+
+        # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
+        # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
+        musicbrainz_adapter = RequestThrottle(min_interval=0.04)
+        _http_session.mount('https://musicbrainz.org', musicbrainz_adapter)
+        _http_session.mount('http://musicbrainz.org', musicbrainz_adapter)
     return _http_session
 
 

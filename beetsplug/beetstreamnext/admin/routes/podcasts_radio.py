@@ -10,6 +10,7 @@ from beetsplug.beetstreamnext.core.radio import create_station, update_station, 
 from beetsplug.beetstreamnext.core.external import query_radio_browser, query_podcastindex
 from beetsplug.beetstreamnext.admin.forms import RadioStationForm
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.general import human_bytes
 
 
 def _flash_form_errors(form) -> None:
@@ -293,8 +294,10 @@ def route_podcast_status() -> flask.Response:
     with database() as db:
         channel_rows = db.execute(
             """
-            SELECT id, status, error_message
-            FROM podcast_channels
+            SELECT pc.id, pc.status, pc.error_message,
+                   (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
+                    WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
+            FROM podcast_channels pc
             """
         ).fetchall()
         episode_rows = db.execute(
@@ -305,7 +308,14 @@ def route_podcast_status() -> flask.Response:
         ).fetchall()
 
     return flask.jsonify({
-        'channels': {str(r['id']): {'status': r['status'], 'error_message': r['error_message']} for r in channel_rows},
+        'channels': {
+            str(r['id']): {
+                'status': r['status'],
+                'error_message': r['error_message'],
+                'storage_size': human_bytes(r['bytes_on_disk']),
+            }
+            for r in channel_rows
+        },
         'episodes': {
             str(r['id']): {'status': r['status'], 'file_size': r['file_size'], 'error_message': r['error_message']}
             for r in episode_rows

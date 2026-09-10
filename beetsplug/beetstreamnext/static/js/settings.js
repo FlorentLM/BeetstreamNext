@@ -497,6 +497,12 @@
                     badge.dataset.status = info.status;
                     badge.classList.toggle('badge-admin', info.status === 'error');
                 }
+
+                const sizeEl = document.getElementById(`podcast-channel-size-${id}`);
+                if (sizeEl && info.storage_size !== undefined && sizeEl.textContent !== info.storage_size) {
+                    sizeEl.textContent = info.storage_size;
+                }
+
                 if (info.status === 'new' || info.status === 'downloading') busy = true;
             }
 

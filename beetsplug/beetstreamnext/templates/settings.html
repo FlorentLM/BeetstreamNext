@@ -603,7 +603,7 @@
                                   id="podcast-channel-status-{{ ch.id }}" data-status="{{ ch.status }}">{{ ch.status }}</span>
                             <span class="badge">{{ ch.downloaded_count }}/{{ ch.episode_count }} downloaded</span>
                             <span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>
-                            <span class="badge badge-limit">{{ ch.storage_size }}</span>
+                            <span class="badge badge-limit" id="podcast-channel-size-{{ ch.id }}">{{ ch.storage_size }}</span>
                         </div>
                         <div class="actions-cell">
                             <form action="{{ url_for('admin.route_refresh_podcast', channel_id=ch.id) }}"

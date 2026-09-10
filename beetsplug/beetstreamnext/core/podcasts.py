@@ -159,6 +159,52 @@ class PodcastManager:
 
         return purged
 
+    @with_app_context
+    def resume_downloads(self) -> dict[str, int]:
+        """
+        Resumes episodes still wanted but that have not been downloaded,
+        and resets every incompletely downloaded episode not wanted anymore.
+        """
+
+        reset: dict[str, int] = {}
+
+        with database() as db:
+            cur = db.execute(
+                """
+                UPDATE podcast_channels 
+                SET status = 'new' 
+                WHERE status = 'downloading'
+                """
+            )
+
+            if cur.rowcount:
+                reset['stuck channel refresh(es)'] = cur.rowcount
+
+            stuck = db.execute(
+                """
+                SELECT pe.id, pe.audio_url,
+                       EXISTS(SELECT 1 FROM podcast_episode_downloads d WHERE d.episode_id = pe.id) AS wanted
+                FROM podcast_episodes pe
+                WHERE pe.status = 'downloading'
+                """
+            ).fetchall()
+
+            if stuck:
+                db.execute(
+                    """
+                    UPDATE podcast_episodes 
+                    SET status = 'new', error_message = NULL 
+                    WHERE status = 'downloading'
+                    """
+                )
+                reset['stuck episode download(s)'] = len(stuck)
+
+        for row in stuck:
+            if row['wanted'] and row['audio_url']:
+                self.background_download(row['id'])
+
+        return reset
+
     # Channels
 
     @with_app_context

@@ -225,6 +225,36 @@ Show the currently playing song on the public home page.
 
 ---
 
+### `homepage_github_link`
+
+Show the "View on GitHub" link on the public home page.
+
+*type:* `bool`
+
+*default:* `True`
+
+---
+
+### `homepage_docs_link`
+
+Show the "Read the docs" link on the public home page.
+
+*type:* `bool`
+
+*default:* `True`
+
+---
+
+### `homepage_connect_hint`
+
+Show the "Connect your favourite client using this URL" hint and server URL on the public home page.
+
+*type:* `bool`
+
+*default:* `True`
+
+---
+
 ### `music_root`
 
 Root directory your beets library's file paths are relative to.
@@ -289,7 +319,7 @@ Refuse to start on beets version mismatch (see Server Info) instead of just warn
 
 ### `allow_disk_writes`
 
-Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files or copying/moving files). Not required if the loaded beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.
+Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files or copying/moving files). Not required if the loaded Beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.
 
 *type:* `bool`
 

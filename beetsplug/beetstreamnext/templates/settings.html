@@ -137,7 +137,7 @@
                         <p class="setting-row-actions">
                             <button type="submit"
                                     form="clear-{{ key }}-form"
-                                    class="action-link action-link-delete">Reset to default</button>
+                                    class="action-link-reset">Reset to default</button>
                         </p>
                     {% endif %}
                     {% if info.help %}
@@ -227,10 +227,10 @@
 <div class="dashboard-container">
 
     <header class="header">
-        <div class="brand-section">
+        <a href="{{ url_for('public.home') }}" class="brand-section">
             <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" class="logo-small">
             <h1>BeetstreamNext <span class="brand-subtitle">/ Admin</span></h1>
-        </div>
+        </a>
         <div class="header-actions">
             <button type="button" class="icon-btn theme-toggle" data-action="toggle-theme"
                     title="Toggle light / dark theme" aria-label="Toggle light and dark theme" aria-pressed="false">
@@ -1191,5 +1191,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
 <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}

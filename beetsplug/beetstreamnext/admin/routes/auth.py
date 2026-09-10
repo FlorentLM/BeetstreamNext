@@ -95,4 +95,4 @@ def route_login() -> flask.Response:
 @admin_bp.route('/logout', methods=['POST'])
 def route_logout() -> flask.Response:
     flask.session.clear()
-    return flask.redirect(flask.url_for('admin.route_login'))
+    return flask.redirect(flask.url_for('public.home'))

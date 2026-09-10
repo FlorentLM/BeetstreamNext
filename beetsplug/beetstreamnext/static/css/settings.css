@@ -9,7 +9,7 @@ body { padding: 2rem; }
     align-items: center;
     margin-bottom: 2rem;
 }
-.brand-section { display: flex; align-items: center; gap: 1rem; }
+.brand-section { display: flex; align-items: center; gap: 1rem; text-decoration: none; color: inherit; }
 .brand-subtitle { color: var(--text-muted); font-weight: 400; margin-left: 8px; }
 .header-actions { display: flex; gap: 1rem; align-items: center; }
 
@@ -66,6 +66,25 @@ h2 { font-size: 1.1rem; margin-bottom: 1.5rem; font-weight: 600; }
 }
 .action-link:hover { color: var(--text); }
 .action-link-delete:hover { color: #ef4444; }
+
+.action-link-reset {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--overlay-weak);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.action-link-reset:hover {
+    background: var(--overlay-strong);
+    color: var(--text);
+    border-color: var(--primary);
+}
 
 .icon-btn {
     display: inline-flex;
@@ -400,6 +419,23 @@ input:focus, select:focus { border-color: var(--primary); }
     outline: none;
 }
 .setting-row-control input:focus { border-color: var(--primary); }
+
+.setting-row-control input:disabled,
+.setting-row-control select:disabled {
+    background: var(--overlay-weak);
+    color: var(--text-muted);
+    border-style: dashed;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.setting-toggle:has(input:disabled),
+.role-item:has(input:disabled) {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.setting-toggle input:disabled,
+.role-item input:disabled { cursor: not-allowed; }
 
 .setting-row-label {
     display: block;

@@ -39,3 +39,6 @@
     </div>
 </div>
 {% endblock %}
+{% block scripts %}
+<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
+{% endblock %}

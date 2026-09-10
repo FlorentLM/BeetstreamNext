@@ -1,9 +1,11 @@
+import flask
 from flask import render_template
 
 from .. import public_bp
 
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.mappings import Resolve
+from beetsplug.beetstreamnext.core.security import admin_host_allowed
 
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import get_server_info, external_url
@@ -56,5 +58,9 @@ def home() -> str:
         'index.html',
         stats=stats,
         now_playing=now_playing,
-        server_url=server_url
+        server_url=server_url,
+        show_admin_login=admin_host_allowed(flask.request.host),
+        show_github_link=settings_store.get('homepage_github_link'),
+        show_docs_link=settings_store.get('homepage_docs_link'),
+        show_connect_hint=settings_store.get('homepage_connect_hint'),
     )

@@ -162,4 +162,10 @@ pre code {
 .btn-outline:hover { color: var(--text); border-color: var(--text-muted); }
 .btn-full { width: 100%; margin-top: 1rem; }
 
+.top-nav {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+}
+
 .material-icons { font-size: 1.25em }

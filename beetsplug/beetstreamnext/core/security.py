@@ -453,6 +453,23 @@ def strip_host_port(raw_host: str) -> str:
     return raw_host.split(':')[0]
 
 
+def admin_host_allowed(raw_host: str) -> bool:
+    """
+    Whether `raw_host` (a request's raw Host header) is allowed to reach the admin panel,
+    given the `admin_hostname` setting (unset = no restriction). Loopback is always allowed.
+    """
+    from beetsplug.beetstreamnext.settings import settings_store
+
+    admin_host = settings_store.get('admin_hostname')
+    if not admin_host:
+        return True
+    try:
+        request_host = strip_host_port(raw_host).lower()
+    except ValueError:
+        return False
+    return request_host == admin_host or request_host in LOOPBACK_IPS
+
+
 ##
 # Instanciate shared objects
 

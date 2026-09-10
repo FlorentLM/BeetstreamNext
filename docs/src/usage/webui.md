@@ -6,6 +6,8 @@ The Web UI is mostly self-explanatory so this is just a quick tour, plus the han
 
 Your configured `http://<host>:<port>/` (or your `external_hostname`) shows a public homepage.
 
+> **Note:** The "Login" button will only show up on the host allowed by `admin_hostname` if this setting is set.
+
 If `public_now_playing` is enabled, a card displays the currently playing track (**off** by default).
 
 > 🖼️ *Screenshot: public homepage*

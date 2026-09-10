@@ -324,6 +324,27 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Show the currently playing song on the public home page.',
         'requires_restart': False,
     },
+    'homepage_github_link': {
+        'type': 'bool',
+        'default': True,
+        'category': 'server',
+        'description': 'Show the "View on GitHub" link on the public home page.',
+        'requires_restart': False,
+    },
+    'homepage_docs_link': {
+        'type': 'bool',
+        'default': True,
+        'category': 'server',
+        'description': 'Show the "Read the docs" link on the public home page.',
+        'requires_restart': False,
+    },
+    'homepage_connect_hint': {
+        'type': 'bool',
+        'default': True,
+        'category': 'server',
+        'description': 'Show the "Connect your favourite client using this URL" hint and server URL on the public home page.',
+        'requires_restart': False,
+    },
     'music_root': {
         'type': 'str',
         'default': '',
@@ -377,7 +398,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'library',
         'description': "Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files "
-                        "or copying/moving files). Not required if the loaded beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.",
+                        "or copying/moving files). Not required if the loaded Beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.",
         'requires_restart': False,
         'env_var': 'BSN_ALLOW_DISK_WRITES',
     },

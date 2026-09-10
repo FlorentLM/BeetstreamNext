@@ -60,11 +60,11 @@
         </div>
     </div>
 
+    {% if show_connect_hint %}
     <div class="footer-links">
-        {% if show_connect_hint %}
         <p>Connect your favourite client using this URL</p>
         <code class="server-url">{{ server_url }}</code>
-        {% endif %}
+    {% endif %}
 
         {% if show_github_link or show_docs_link %}
         <br>

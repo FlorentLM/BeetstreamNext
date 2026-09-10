@@ -105,6 +105,13 @@
                     data-result="test-result-audiomuse">Test connection</button>
         </p>
         <p class="test-result" id="test-result-audiomuse"></p>
+    {%- elif key == 'podcastindex_api_key' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline" data-action="test-connection"
+                    data-url="{{ url_for('admin.route_test_podcastindex') }}"
+                    data-result="test-result-podcastindex">Test connection</button>
+        </p>
+        <p class="test-result" id="test-result-podcastindex"></p>
     {%- elif key == 'jukebox_hardware_device' -%}
         <p class="setting-row-actions">
             <button type="button" class="btn btn-outline" data-action="discover-devices"
@@ -117,17 +124,30 @@
     {%- endif -%}
 {%- endmacro %}
 
+{% set PAIRED_WITH = {'audiomuse_url': 'audiomuse_api_token', 'podcastindex_api_key': 'podcastindex_api_secret'} %}
+{% set PAIRED_DESCRIPTIONS = {
+    'audiomuse_url': 'URL and API token for your self-hosted <a href="https://github.com/NeptuneHub/AudioMuse-AI" target="_blank" rel="noopener">AudioMuse-AI</a> instance, to enable sonic similarity endpoints.',
+    'podcastindex_api_key': (
+        'API key and secret for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, '
+        'used for podcast channel discovery.'
+    ),
+} %}
+
 {% macro render_settings_form(category, settings, users=None, host_suggestions=None) %}
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% for key, info in settings.items() if info.type != 'list[str]' or key == 'external_playlists_editors' %}
+        {% for key, info in settings.items() if (info.type != 'list[str]' or key == 'external_playlists_editors') and key not in PAIRED_WITH.values() %}
+            {% set pair_key = PAIRED_WITH.get(key) %}
             <div class="setting-row">
                 <div class="setting-row-control">
                     {{ render_setting_field(key, info, users, host_suggestions) }}
+                    {% if pair_key %}
+                        {{ render_setting_field(pair_key, settings[pair_key], users, host_suggestions) }}
+                    {% endif %}
                 </div>
                 <div class="setting-row-meta">
-                    <p class="setting-description">{{ info.description | safe }}</p>
+                    <p class="setting-description">{{ (PAIRED_DESCRIPTIONS[key] if key in PAIRED_DESCRIPTIONS else info.description) | safe }}</p>
                     {% if info.requires_restart %}
                         <p class="setting-restart-note"><i class="material-icons">restart_alt</i> Requires server restart</p>
                     {% endif %}
@@ -535,9 +555,24 @@
                     </form>
                 </div>
                 <p class="card-hint">Total storage used by downloaded episodes: <strong>{{ podcast_total_size }}</strong>.</p>
-                <form method="POST" action="{{ url_for('admin.route_add_podcast') }}" class="ip-add-form">
+
+                {% if podcast_discovery_enabled %}
+                <div class="radio-discovery form-group">
+                    <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
+                    <div class="setting-input-row">
+                        <input type="text" id="podcastDiscoveryQuery" placeholder="Podcast title">
+                        <button type="button" class="btn btn-outline" data-action="discover-podcasts"
+                                data-url="{{ url_for('admin.route_discover_podcasts') }}"
+                                data-input="podcastDiscoveryQuery"
+                                data-results="podcastDiscoveryResults">Search</button>
+                    </div>
+                    <div class="radio-discovery-results hidden" id="podcastDiscoveryResults"></div>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('admin.route_add_podcast') }}" class="ip-add-form" id="addPodcastForm">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="text" name="url" placeholder="https://example.com/feed.xml" required>
+                    <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml" required>
                     <button type="submit" class="btn btn-primary">Subscribe</button>
                 </form>
 

@@ -65,6 +65,7 @@ class SettingsStore:
                   'fetch_album_version', 'save_album_version', 'discogs_ratings', 'ignored_articles',
                   'fetch_radio_images',
                   'enable_radio_discovery',
+                  'enable_podcast_discovery',
                   'replaygain_enabled', 'replaygain_preamp',
                   'replaygain_fallback', 'audio_peak_limit'):
             self._directly_applicable[k] = lambda v, key=k: app.config.update({key: v})

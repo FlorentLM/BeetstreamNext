@@ -28,6 +28,7 @@ FFMPEG_PYTHON: bool = is_installed('ffmpeg-python')
 WIKI_API: bool = is_installed('wikipedia-api')
 RADIO_BROWSER: bool = is_installed('radios')
 FEEDPARSER: bool = is_installed('feedparser')
+PODCASTINDEX: bool = is_installed('python-podcastindex')
 SOCO: bool = is_installed('soco')
 PYCHROMECAST: bool = is_installed('pychromecast')
 

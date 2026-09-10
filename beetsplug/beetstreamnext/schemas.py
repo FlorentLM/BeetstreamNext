@@ -597,6 +597,34 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'validator': _validate_int_range(0, 200),
     },
+    'enable_podcast_discovery': {
+        'type': 'bool',
+        'default': False,
+        'category': 'podcasts',
+        'description': 'Enable Podcast Index API for channel discovery.',
+        'requires_restart': False,
+    },
+    'podcastindex_api_key': {
+        'type': 'str',
+        'default': '',
+        'category': 'podcasts',
+        'description': (
+            'API key for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, '
+            'used for podcast channel discovery.'
+        ),
+        'requires_restart': False,
+        'sensitive': True,
+        'env_var': 'BSN_PODCASTINDEX_API_KEY',
+    },
+    'podcastindex_api_secret': {
+        'type': 'str',
+        'default': '',
+        'category': 'podcasts',
+        'description': 'API secret for the Podcast Index.',
+        'requires_restart': False,
+        'sensitive': True,
+        'env_var': 'BSN_PODCASTINDEX_API_SECRET',
+    },
 
     # Audio
     'replaygain_enabled': {

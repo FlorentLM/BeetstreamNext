@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.constants import FEEDPARSER, MAX_AVATAR_DIM, MAX_A
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, ImageTooLarge, send_radio_art, send_podcast_art
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
-from beetsplug.beetstreamnext.core.external import query_radio_browser
+from beetsplug.beetstreamnext.core.external import query_radio_browser, query_podcastindex
 from beetsplug.beetstreamnext.admin.forms import RadioStationForm
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -194,6 +194,29 @@ def route_add_podcast() -> flask.Response:
         flask.flash('Podcast channel added.', 'success')
 
     return back_to('podcasts')
+
+
+@admin_bp.route('/podcasts/discover', methods=['GET'])
+@admin_required
+def route_discover_podcasts() -> flask.Response:
+
+    if not flask.current_app.config.get('enable_podcast_discovery'):
+        return flask.jsonify({'ok': False, 'message': 'Podcast discovery is disabled.', 'feeds': []})
+
+    q = (flask.request.args.get('q') or '').strip()
+    if not q:
+        return flask.jsonify({'ok': False, 'message': 'Enter a search term.', 'feeds': []})
+
+    feeds = query_podcastindex(q, limit=15)
+    if not feeds:
+        return flask.jsonify({'ok': False, 'message': 'No podcasts found.', 'feeds': []})
+
+    plur = 's' if len(feeds) > 1 else ''
+    return flask.jsonify({
+        'ok': True,
+        'message': f'Found {len(feeds)} podcast{plur}.',
+        'feeds': feeds,
+    })
 
 
 @admin_bp.route('/podcasts/refresh', methods=['POST'])

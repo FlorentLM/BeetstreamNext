@@ -690,6 +690,76 @@
         }
     }
 
+    async function searchPodcasts(button) {
+        const url = button.dataset.url;
+        const input = document.getElementById(button.dataset.input);
+        const results = document.getElementById(button.dataset.results);
+        if (!url || !input || !results) return;
+
+        const q = input.value.trim();
+        if (!q) return;
+
+        button.disabled = true;
+        results.classList.remove('hidden');
+        results.innerHTML = '';
+        const status = document.createElement('p');
+        status.className = 'test-result radio-search-status';
+        status.textContent = 'Searching...';
+        results.appendChild(status);
+
+        try {
+            const resp = await fetch(`${url}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
+            const payload = await resp.json();
+            const feeds = payload.feeds || [];
+
+            results.innerHTML = '';
+
+            if (!feeds.length) {
+                const p = document.createElement('p');
+                p.className = 'test-result test-result-fail';
+                p.textContent = payload.message || 'No podcasts found.';
+                results.appendChild(p);
+                return;
+            }
+
+            feeds.forEach(feed => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'radio-result-item';
+                item.dataset.action = 'use-podcast-result';
+                item.dataset.url = feed.url || '';
+
+                const title = document.createElement('span');
+                title.className = 'radio-result-name';
+                title.textContent = feed.title || '(untitled)';
+                item.appendChild(title);
+
+                const feedUrl = document.createElement('span');
+                feedUrl.className = 'radio-result-url';
+                feedUrl.textContent = feed.url || '';
+                item.appendChild(feedUrl);
+
+                results.appendChild(item);
+            });
+        } catch (err) {
+            results.innerHTML = '';
+            const p = document.createElement('p');
+            p.className = 'test-result test-result-fail';
+            p.textContent = 'Search failed: ' + err.message;
+            results.appendChild(p);
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function usePodcastResult(target) {
+        const urlInput = document.getElementById('podcastFeedUrl');
+        if (urlInput) urlInput.value = target.dataset.url || '';
+
+        const results = document.getElementById('podcastDiscoveryResults');
+        if (results) results.classList.add('hidden');
+    }
+
     async function useRadioResult(target) {
         const nameInput = document.getElementById('createRadioName');
         const streamInput = document.getElementById('createRadioStreamUrl');
@@ -853,6 +923,12 @@
             case 'use-radio-result':
                 useRadioResult(target);
                 break;
+            case 'discover-podcasts':
+                searchPodcasts(target);
+                break;
+            case 'use-podcast-result':
+                usePodcastResult(target);
+                break;
             case 'pick-radio-icon':
                 const iconInput = document.getElementById(target.dataset.target);
                 if (iconInput) iconInput.click();
@@ -901,6 +977,11 @@
             event.preventDefault();
             const button = document.querySelector('[data-action="discover-radios"]');
             if (button) searchRadioStations(button);
+        }
+        if (event.key === 'Enter' && event.target.id === 'podcastDiscoveryQuery') {
+            event.preventDefault();
+            const button = document.querySelector('[data-action="discover-podcasts"]');
+            if (button) searchPodcasts(button);
         }
     });
 

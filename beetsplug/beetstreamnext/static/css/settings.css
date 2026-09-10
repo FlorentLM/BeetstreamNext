@@ -399,6 +399,8 @@ input:focus, select:focus { border-color: var(--primary); }
 
 .test-result.radio-search-status { margin: 0.5rem; opacity: 0.8; }
 
+.card > .radio-discovery { padding: 0 1.5rem; }
+
 .radio-discovery-results {
     max-height: 220px;
     overflow-y: auto;
@@ -528,6 +530,10 @@ input:focus, select:focus { border-color: var(--primary); }
 .setting-input-row { display: flex; gap: 0.75rem; align-items: center; }
 .setting-input-row input { flex: 1; }
 .setting-input-row .action-link { margin-right: 0; }
+
+/* Paired settings (like an API key + secret) stacked in one .setting-row-control */
+.setting-row-control input[type="text"] + .setting-row-label,
+.setting-row-control .setting-input-row + .setting-row-label { margin-top: 0.9rem; }
 
 .setting-toggle {
     display: inline-flex;

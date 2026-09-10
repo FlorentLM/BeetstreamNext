@@ -203,6 +203,11 @@ def run_server(
     app.config.update(playlist_provider=PlaylistProvider())
     app.config.update(podcast_manager=PodcastManager())
 
+    reset = app.config['podcast_manager'].resume_downloads()
+    if reset:
+        details = ', '.join(f'{n} {label}' for label, n in reset.items())
+        bsn_logger.info(f'Resumed podcast episode download: {details}.')
+
     # Handle "requires restart" settings
     cors_origin = settings_store.get('cors_origins')
     supports_creds = settings_store.get('cors_supports_credentials')

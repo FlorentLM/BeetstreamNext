@@ -238,6 +238,12 @@ def run_periodic():
         except Exception as e:
             bsn_logger.error(f'Podcast feed refresh failed: {e}')
 
+        # Recover channel/episode still on 'downloading' (e.g. server shutdown mid-download)
+        try:
+            app.config['podcast_manager'].resume_downloads()
+        except Exception as e:
+            bsn_logger.error(f'Podcast episode download recovery failed: {e}')
+
         # Purge stale refs
         try:
             purged = sweep_stale_references()

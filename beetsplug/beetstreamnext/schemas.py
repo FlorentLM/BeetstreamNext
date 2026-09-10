@@ -588,7 +588,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
     'podcast_auto_download_count': {
         'type': 'int',
-        'default': 10,
+        'default': 3,
         'category': 'podcasts',
         'description': (
             "Number of episodes to download of a channel's most recent episodes when "

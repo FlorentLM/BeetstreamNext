@@ -45,7 +45,7 @@ def endpoint_get_radio_stations() -> flask.Response:
 def endpoint_create_radio_station() -> flask.Response:
 
     if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(40, message='Only admins can manage radio stations.')
+        return subsonic_error(50, message='Only admins can manage radio stations.')
 
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -66,7 +66,7 @@ def endpoint_create_radio_station() -> flask.Response:
 def endpoint_update_radio_station() -> flask.Response:
 
     if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(40)
+        return subsonic_error(50, message='Only admins can manage radio stations.')
 
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -92,7 +92,7 @@ def endpoint_update_radio_station() -> flask.Response:
 def endpoint_delete_radio_station() -> flask.Response:
 
     if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(40)
+        return subsonic_error(50, message='Only admins can manage radio stations.')
 
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

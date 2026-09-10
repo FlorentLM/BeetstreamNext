@@ -64,7 +64,7 @@ def subsonic_error(code: int = 0, message: str = '', resp_fmt: str = 'xml') -> f
     err_payload = {
         'error': {
             'code': code,
-            'message': message if message else subsonic_errors[code],
+            'message': message if message else subsonic_errors.get(code, 'A generic error.'),
             # 'helpUrl': ''
         }
     }

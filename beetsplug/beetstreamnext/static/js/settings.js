@@ -474,6 +474,71 @@
         }
     }
 
+    // Podcast episode dl status polling
+    function formatBytes(bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB';
+        return bytes + ' B';
+    }
+
+    let podcastPollTimer = null;
+
+    async function refreshPodcastStatuses() {
+        try {
+            const resp = await fetch('/admin/podcasts/status', { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            let busy = false;
+
+            for (const [id, info] of Object.entries(data.channels || {})) {
+                const badge = document.getElementById(`podcast-channel-status-${id}`);
+                if (badge && badge.dataset.status !== info.status) {
+                    badge.textContent = info.status;
+                    badge.dataset.status = info.status;
+                    badge.classList.toggle('badge-admin', info.status === 'error');
+                }
+                if (info.status === 'new' || info.status === 'downloading') busy = true;
+            }
+
+            for (const [id, info] of Object.entries(data.episodes || {})) {
+                const badge = document.getElementById(`podcast-episode-status-${id}`);
+                if (badge && badge.dataset.status !== info.status) {
+                    badge.textContent = info.status;
+                    badge.dataset.status = info.status;
+                    badge.classList.toggle('badge-admin', info.status === 'error');
+
+                    const dl = document.getElementById(`podcast-episode-dl-${id}`);
+                    const del = document.getElementById(`podcast-episode-del-${id}`);
+                    if (dl) dl.hidden = info.status === 'completed';
+                    if (del) del.hidden = info.status !== 'completed';
+
+                    const sizeEl = document.getElementById(`podcast-episode-size-${id}`);
+                    if (sizeEl && info.file_size) {
+                        sizeEl.innerHTML = `<span class="badge badge-limit">${formatBytes(info.file_size)}</span>`;
+                    }
+                }
+                if (info.status === 'downloading') busy = true;
+            }
+
+            if (!busy && podcastPollTimer) {
+                clearInterval(podcastPollTimer);
+                podcastPollTimer = null;
+            }
+        } catch (err) {
+            // network hiccup, next iter retries
+        }
+    }
+
+    function startPodcastPollingIfBusy() {
+        if (podcastPollTimer) return;
+        const busySelector = '[id^="podcast-channel-status-"][data-status="new"], '
+            + '[id^="podcast-channel-status-"][data-status="downloading"], '
+            + '[id^="podcast-episode-status-"][data-status="downloading"]';
+        if (document.querySelector(busySelector)) {
+            podcastPollTimer = setInterval(refreshPodcastStatuses, 3000);
+        }
+    }
+
     // Beets config editor
 
     function formatConfigTime(el) {
@@ -1079,6 +1144,8 @@
 
     const healthStatusRefreshBtn = document.querySelector('[data-action="refresh-health-status"]');
     if (healthStatusRefreshBtn) refreshHealthStatus(healthStatusRefreshBtn);
+
+    startPodcastPollingIfBusy();
 
     document.querySelectorAll('[data-action="refresh-log"]').forEach(refreshLogs);
 

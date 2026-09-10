@@ -599,7 +599,8 @@
                             </div>
                         </div>
                         <div class="roles-cell">
-                            <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}">{{ ch.status }}</span>
+                            <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}"
+                                  id="podcast-channel-status-{{ ch.id }}" data-status="{{ ch.status }}">{{ ch.status }}</span>
                             <span class="badge">{{ ch.downloaded_count }}/{{ ch.episode_count }} downloaded</span>
                             <span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>
                             <span class="badge badge-limit">{{ ch.storage_size }}</span>
@@ -647,30 +648,34 @@
                                         </td>
                                         <td>{{ e.duration | duration }}</td>
                                         <td>
-                                            <span class="badge{% if e.status == 'error' %} badge-admin{% endif %}">{{ e.status }}</span>
+                                            <span class="badge{% if e.status == 'error' %} badge-admin{% endif %}"
+                                                  id="podcast-episode-status-{{ e.id }}" data-status="{{ e.status }}">{{ e.status }}</span>
                                         </td>
                                         <td>
+                                            <span id="podcast-episode-size-{{ e.id }}">
                                             {% if e.file_size %}
                                                 <span class="badge badge-limit">{{ e.file_size | filesizeformat }}</span>
                                             {% else %}
                                                 <span class="rate-limit-anon">&mdash;</span>
                                             {% endif %}
+                                            </span>
                                         </td>
                                         <td class="actions-cell">
-                                            {% if e.status != 'completed' %}
-                                            <form action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
+                                            <form id="podcast-episode-dl-{{ e.id }}"
+                                                  {% if e.status == 'completed' %}hidden{% endif %}
+                                                  action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
                                                   method="POST" class="form-inline">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="icon-btn" title="Download" aria-label="Download &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('download') }}</button>
                                             </form>
-                                            {% else %}
-                                            <form action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
+                                            <form id="podcast-episode-del-{{ e.id }}"
+                                                  {% if e.status != 'completed' %}hidden{% endif %}
+                                                  action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
                                                   method="POST" class="form-inline"
                                                   data-confirm="Remove this episode's downloaded file for all subscribers?">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="icon-btn icon-btn-delete" title="Delete file" aria-label="Delete downloaded file for &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('delete') }}</button>
                                             </form>
-                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% endfor %}

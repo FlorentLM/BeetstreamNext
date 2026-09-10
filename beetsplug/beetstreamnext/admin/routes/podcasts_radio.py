@@ -283,3 +283,31 @@ def route_delete_podcast_episode(episode_id: int) -> flask.Response:
     flask.flash('Episode file removed for all subscribers.', 'info')
 
     return back_to('podcasts')
+
+
+@admin_bp.route('/podcasts/status', methods=['GET'])
+@admin_required
+def route_podcast_status() -> flask.Response:
+    """Live channel/episode status, polled by the Podcasts tab so it stays current without a manual page reload."""
+
+    with database() as db:
+        channel_rows = db.execute(
+            """
+            SELECT id, status, error_message
+            FROM podcast_channels
+            """
+        ).fetchall()
+        episode_rows = db.execute(
+            """
+            SELECT id, status, file_size, error_message
+            FROM podcast_episodes
+            """
+        ).fetchall()
+
+    return flask.jsonify({
+        'channels': {str(r['id']): {'status': r['status'], 'error_message': r['error_message']} for r in channel_rows},
+        'episodes': {
+            str(r['id']): {'status': r['status'], 'file_size': r['file_size'], 'error_message': r['error_message']}
+            for r in episode_rows
+        },
+    })

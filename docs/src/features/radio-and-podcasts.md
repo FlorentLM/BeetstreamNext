@@ -20,6 +20,7 @@ BeetstreamNext implements the full Subsonic podcast feature set: subscribing to 
 - **Storage and auto-download**:
   - `podcast_storage_dir` controls where downloaded episode audio is stored. Leave it empty to use the default cache location.
   - `podcast_auto_download_count` controls how many of a channel's most recent episodes are automatically downloaded when a new channel is added. Set it to `0` to disable auto-download and only fetch episodes on request (see **Note** below).
+- **OPML Import/Export**: Supports importing/exporting existing podcast subscription
 
 > **Note:** Many clients simply do not expose any "Download" button for individual episodes. Because of this, BeetstreamNext triggers a download automatically when it receives an episode streaming request: the audio is written to disk _and_ forwarded to the client at the same time.
 

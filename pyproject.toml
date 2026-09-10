@@ -38,10 +38,11 @@ beetstreamnext = "beetsplug.beetstreamnext.standalone_mode:main"
 [project.optional-dependencies]
 wiki = ["wikipedia-api>=0.15.0"]
 podcasts = ["feedparser>=6.0.11"]
-radio = ["radios>=0.3.2"]
+podcast-discovery = ["python-podcastindex>=1.15.0"]
+radio-discovery = ["radios>=0.3.2"]
 sonos = ["soco>=0.30.0"]
 chromecast = ["pychromecast>=14.0.0"]
-all = ["beetstreamnext[wiki,podcasts,radio,sonos,chromecast]"]
+all = ["beetstreamnext[wiki,podcasts,podcast-discovery,radio-discovery,sonos,chromecast]"]
 
 [dependency-groups]
 dev = [

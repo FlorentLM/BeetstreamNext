@@ -514,8 +514,10 @@
                     badge.classList.toggle('badge-admin', info.status === 'error');
 
                     const dl = document.getElementById(`podcast-episode-dl-${id}`);
+                    const cancel = document.getElementById(`podcast-episode-cancel-${id}`);
                     const del = document.getElementById(`podcast-episode-del-${id}`);
-                    if (dl) dl.hidden = info.status === 'completed';
+                    if (dl) dl.hidden = info.status === 'completed' || info.status === 'downloading';
+                    if (cancel) cancel.hidden = info.status !== 'downloading';
                     if (del) del.hidden = info.status !== 'completed';
 
                     const sizeEl = document.getElementById(`podcast-episode-size-${id}`);
@@ -1004,6 +1006,10 @@
                 const iconInput = document.getElementById(target.dataset.target);
                 if (iconInput) iconInput.click();
                 break;
+            case 'pick-file':
+                const fileInput = document.getElementById(target.dataset.target);
+                if (fileInput) fileInput.click();
+                break;
             case 'toggle-theme':
                 toggleTheme();
                 break;
@@ -1062,6 +1068,10 @@
 
         if (event.target.id === 'createRadioImage') {
             previewLocalRadioIcon(event.target, 'createRadioIconPreview', 'createRadioFavicon');
+        }
+
+        if (event.target.id === 'podcastOpmlFile' && event.target.files.length) {
+            event.target.form.submit();
         }
 
         if (event.target.id === 'editRadioImage') {

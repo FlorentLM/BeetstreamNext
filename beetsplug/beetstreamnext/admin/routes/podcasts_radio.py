@@ -3,7 +3,7 @@ from io import BytesIO
 
 from .. import admin_bp, admin_required, back_to
 
-from beetsplug.beetstreamnext.constants import FEEDPARSER, MAX_AVATAR_DIM, MAX_AVATAR_BYTES
+from beetsplug.beetstreamnext.constants import FEEDPARSER, MAX_AVATAR_DIM, MAX_AVATAR_BYTES, MAX_OPML_BYTES
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, ImageTooLarge, send_radio_art, send_podcast_art
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
@@ -197,6 +197,68 @@ def route_add_podcast() -> flask.Response:
     return back_to('podcasts')
 
 
+@admin_bp.route('/podcasts/import-opml', methods=['POST'])
+@admin_required
+def route_import_podcast_opml() -> flask.Response:
+
+    if not FEEDPARSER:
+        flask.flash("Podcast feeds need the 'feedparser' package to be installed on the server.", 'error')
+        return back_to('podcasts')
+
+    file = flask.request.files.get('opml_file')
+    if file is None or not file.filename:
+        flask.flash('Choose an OPML file to import.', 'error')
+        return back_to('podcasts')
+
+    data = file.read(MAX_OPML_BYTES + 1)
+    if len(data) > MAX_OPML_BYTES:
+        flask.flash(f'OPML file too large (max {MAX_OPML_BYTES // 1024} KB).', 'error')
+        return back_to('podcasts')
+
+    podcast_manager = flask.current_app.config['podcast_manager']
+
+    try:
+        result = podcast_manager.import_opml(flask.session.get('username'), data)
+    except ValueError as e:
+        flask.flash(f'Could not import OPML file: {e}', 'error')
+        return back_to('podcasts')
+
+    added, already, failed = result['added'], result['already_subscribed'], result['failed']
+
+    if not added and not already and not failed:
+        flask.flash('No podcast feeds found in that OPML file.', 'error')
+        return back_to('podcasts')
+
+    parts = []
+    if added:
+        parts.append(f'{len(added)} added')
+    if already:
+        parts.append(f'{len(already)} already subscribed')
+    if failed:
+        parts.append(f'{len(failed)} failed')
+
+    flask.flash(f"OPML import: {', '.join(parts)}.", 'success' if added else 'info')
+
+    for url, error in failed:
+        flask.flash(f"Could not subscribe to '{url}': {error}", 'error')
+
+    return back_to('podcasts')
+
+
+@admin_bp.route('/podcasts/export-opml', methods=['GET'])
+@admin_required
+def route_export_podcast_opml() -> flask.Response:
+
+    podcast_manager = flask.current_app.config['podcast_manager']
+    data = podcast_manager.export_opml()
+
+    return flask.Response(
+        data,
+        mimetype='text/x-opml+xml',
+        headers={'Content-Disposition': 'attachment; filename="BeetstreamNext-Podcasts.opml"'},
+    )
+
+
 @admin_bp.route('/podcasts/discover', methods=['GET'])
 @admin_required
 def route_discover_podcasts() -> flask.Response:
@@ -242,6 +304,24 @@ def route_refresh_podcast(channel_id: int) -> flask.Response:
     return back_to('podcasts')
 
 
+@admin_bp.route('/podcasts/<int:channel_id>/download-recents', methods=['POST'])
+@admin_required
+def route_download_recent_podcast_episodes(channel_id: int) -> flask.Response:
+
+    podcast_manager = flask.current_app.config['podcast_manager']
+    count = podcast_manager.download_recent_episodes(channel_id, username=flask.session.get('username'))
+
+    if count:
+        flask.flash(f"Downloading {count} recent episode{'s' if count != 1 else ''}.", 'info')
+    else:
+        flask.flash(
+            "No episodes to download (already downloaded/downloading, or "
+            "'podcast_auto_download_count' is set to 0).", 'info'
+        )
+
+    return back_to('podcasts')
+
+
 @admin_bp.route('/podcasts/<int:channel_id>/delete', methods=['POST'])
 @admin_required
 def route_delete_podcast(channel_id: int) -> flask.Response:
@@ -271,6 +351,19 @@ def route_download_podcast_episode(episode_id: int) -> flask.Response:
         flask.flash('Episode download started.', 'info')
     else:
         flask.flash('This episode has no known audio source.', 'error')
+
+    return back_to('podcasts')
+
+
+@admin_bp.route('/podcasts/episode/<int:episode_id>/cancel-download', methods=['POST'])
+@admin_required
+def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
+
+    podcast_manager = flask.current_app.config['podcast_manager']
+    if podcast_manager.cancel_download(episode_id):
+        flask.flash('Download cancelled.', 'info')
+    else:
+        flask.flash('This episode is not currently downloading.', 'error')
 
     return back_to('podcasts')
 

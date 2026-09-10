@@ -197,6 +197,8 @@
 <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
 {%- elif name == 'moon' -%}
 <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+{%- elif name == 'cancel' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
 {%- elif name == 'chevron-down' -%}
 <svg class="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
 {%- endif -%}
@@ -576,6 +578,13 @@
                     <button type="submit" class="btn btn-primary">Subscribe</button>
                 </form>
 
+                <form method="POST" action="{{ url_for('admin.route_import_podcast_opml') }}"
+                      enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="file" name="opml_file" id="podcastOpmlFile" accept=".opml,.xml,text/xml,text/x-opml" class="hidden">
+                    <button type="button" class="btn btn-outline" data-action="pick-file" data-target="podcastOpmlFile">Import OPML</button>
+                </form>
+
                 {% for ch in podcast_channels %}
                 <div class="channel-row">
                     <div class="channel-row-header">
@@ -610,6 +619,12 @@
                                   method="POST" class="form-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="icon-btn" title="Refresh now" aria-label="Refresh {{ (ch.title or ch.url) | e }}">{{ icon('refresh') }}</button>
+                            </form>
+                            <form action="{{ url_for('admin.route_download_recent_podcast_episodes', channel_id=ch.id) }}"
+                                  method="POST" class="form-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="icon-btn" title="Download recent episodes"
+                                        aria-label="Download recent episodes for {{ (ch.title or ch.url) | e }}">{{ icon('download') }}</button>
                             </form>
                             <form action="{{ url_for('admin.route_delete_podcast', channel_id=ch.id) }}"
                                   method="POST" class="form-inline"
@@ -662,11 +677,18 @@
                                         </td>
                                         <td class="actions-cell">
                                             <form id="podcast-episode-dl-{{ e.id }}"
-                                                  {% if e.status == 'completed' %}hidden{% endif %}
+                                                  {% if e.status in ('completed', 'downloading') %}hidden{% endif %}
                                                   action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
                                                   method="POST" class="form-inline">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="icon-btn" title="Download" aria-label="Download &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('download') }}</button>
+                                            </form>
+                                            <form id="podcast-episode-cancel-{{ e.id }}"
+                                                  {% if e.status != 'downloading' %}hidden{% endif %}
+                                                  action="{{ url_for('admin.route_cancel_podcast_episode_download', episode_id=e.id) }}"
+                                                  method="POST" class="form-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="icon-btn icon-btn-delete" title="Cancel download" aria-label="Cancel download of &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('cancel') }}</button>
                                             </form>
                                             <form id="podcast-episode-del-{{ e.id }}"
                                                   {% if e.status != 'completed' %}hidden{% endif %}
@@ -688,6 +710,11 @@
                 {% else %}
                 <p class="empty-state">No podcast channels yet. Subscribe to a feed above to get started.</p>
                 {% endfor %}
+                {% if podcast_channels %}
+                <div class="card-footer">
+                    <a href="{{ url_for('admin.route_export_podcast_opml') }}" class="btn btn-outline">Export to OPML</a>
+                </div>
+                {% endif %}
             </div>
         {% endif %}
     </section>

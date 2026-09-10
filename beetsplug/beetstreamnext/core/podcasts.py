@@ -2,7 +2,7 @@ import calendar
 import os
 import shutil
 import time
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 import urllib.parse
 from pathlib import Path
 from typing import Optional
@@ -63,6 +63,36 @@ def _fetch_feed_bytes(url: str) -> bytes:
     return bytes(buf)
 
 
+def _parse_opml(data: bytes) -> list[str]:
+    """
+    Extracts feed URLs from an OPML file.
+    """
+
+    import xml.etree.ElementTree as ET
+
+    # OPML has no use for a DOCTYPE/entity, and the stdlib parser doesn't guard
+    # against entity-expansion bombs, so we just nope out of anything that has one
+    lowered = data.lower()
+    if b'<!doctype' in lowered or b'<!entity' in lowered:
+        raise ValueError('OPML file contains disallowed XML declarations.')
+
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError as e:
+        raise ValueError(f'Not a valid OPML/XML file: {e}')
+
+    seen: set = set()
+    urls: list[str] = []
+
+    for outline in root.iter('outline'):
+        url = (outline.get('xmlUrl') or '').strip()
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    return urls
+
+
 def _fetch_feed(url: str) -> tuple:
     """
     Fetches and parses url, trying to upgrade to https if possible.
@@ -81,6 +111,10 @@ def _fetch_feed(url: str) -> tuple:
     return feedparser.parse(_fetch_feed_bytes(url)), url
 
 
+class DownloadCancelled(Exception):
+    """Raised inside a download worker to unwind once a user has cancelled it."""
+
+
 ##
 #
 
@@ -92,6 +126,7 @@ class PodcastManager:
         self._download_lock = Lock()
         self._refreshing_channels: set = set()
         self._downloading_episodes: set = set()
+        self._cancel_events: dict[int, Event] = {}
 
     @staticmethod
     def storage_dir() -> Path:
@@ -352,28 +387,7 @@ class PodcastManager:
                 )
 
                 if download_recents:
-                    auto_count = settings_store.get('podcast_auto_download_count')
-                    if auto_count > 0:
-                        with database() as db:
-                            episode_ids = [
-                                r['id'] for r in db.execute(
-                                    """
-                                    SELECT id FROM podcast_episodes
-                                    WHERE channel_id = ?
-                                    ORDER BY publish_date DESC
-                                    LIMIT ?
-                                    """, (channel_id, auto_count)
-                                ).fetchall()
-                            ]
-                        if episode_ids:
-                            bsn_logger.info(
-                                f'Auto-downloading {len(episode_ids)} most recent episode(s) '
-                                f'for newly-added podcast channel {channel_id}...'
-                            )
-                            for ep_id in episode_ids:
-                                if username:
-                                    self._record_want(username, ep_id)
-                                self.background_download(ep_id)
+                    self.download_recent_episodes(channel_id, username=username)
 
             except Exception as e:
                 bsn_logger.error(f"Failed to refresh podcast channel {channel_id} ('{row['url']}'): {e}")
@@ -420,12 +434,17 @@ class PodcastManager:
         )
         thread.start()
 
-    def create_channel(self, username: str, url: str) -> tuple[Optional[int], Optional[str]]:
+    def create_channel(
+        self, username: str, url: str, download_recents: bool = True
+    ) -> tuple[Optional[int], Optional[str]]:
         """
         Creates the channel row if its URL is new, or just subscribes username to the
         existing shared channel.
 
         url is normalised first and deduped against its http/https variants.
+        download_recents controls whether a brand-new channel auto-downloads its most
+        recent episodes (per the podcast_auto_download_count setting); turn it off for
+        bulk operations (e.g. OPML import) so they don't all download at once.
 
         Returns (channel_id, error_message), channel_id can be None if a new channel's feed
         could not be fetched.
@@ -477,7 +496,7 @@ class PodcastManager:
             )
 
         if is_new:
-            self.refresh(channel_id, download_recents=True, username=username)
+            self.refresh(channel_id, download_recents=download_recents, username=username)
 
             with database() as db:
                 row = db.execute(
@@ -492,6 +511,108 @@ class PodcastManager:
                 return None, row['error_message']
 
         return channel_id, None
+
+    def download_recent_episodes(self, channel_id: int, username: Optional[str] = None) -> int:
+        """
+        Starts downloading a channel's most recent episodes that aren't already downloaded (or downloading).
+        (uses 'podcast_auto_download_count' setting)
+
+        Returns how many downloads were started.
+        """
+
+        auto_count = settings_store.get('podcast_auto_download_count')
+        if auto_count <= 0:
+            return 0
+
+        with database() as db:
+            episode_ids = [
+                r['id'] for r in db.execute(
+                    """
+                    SELECT id FROM podcast_episodes
+                    WHERE channel_id = ? AND status NOT IN ('completed', 'downloading')
+                    ORDER BY publish_date DESC
+                    LIMIT ?
+                    """, (channel_id, auto_count)
+                ).fetchall()
+            ]
+
+        for ep_id in episode_ids:
+            if username:
+                self._record_want(username, ep_id)
+            self.background_download(ep_id)
+
+        if episode_ids:
+            bsn_logger.info(f'Downloading {len(episode_ids)} recent episode(s) for podcast channel {channel_id}.')
+
+        return len(episode_ids)
+
+    def export_opml(self) -> bytes:
+        """
+        Generates an OPML file of all the podcast channels in the library
+        """
+
+        import xml.etree.ElementTree as ET
+
+        with database() as db:
+            rows = db.execute(
+                """
+                SELECT title, url
+                FROM podcast_channels
+                ORDER BY title COLLATE NOCASE
+                """
+            ).fetchall()
+
+        root = ET.Element('opml', version='2.0')
+        head = ET.SubElement(root, 'head')
+        ET.SubElement(head, 'title').text = 'BeetstreamNext Podcasts Subscriptions'
+        body = ET.SubElement(root, 'body')
+
+        for row in rows:
+            ET.SubElement(body, 'outline', {
+                'text': row['title'] or row['url'],
+                'type': 'rss',
+                'xmlUrl': row['url'],
+            })
+
+        ET.indent(root)
+        return ET.tostring(root, encoding='utf-8', xml_declaration=True)
+
+    def import_opml(self, username: str, data: bytes) -> dict:
+        """
+        Subscribes username to every feed found in an OPML document.
+        """
+
+        urls = _parse_opml(data)
+
+        added: list[str] = []
+        already_subscribed: list[str] = []
+        failed: list[tuple[str, str]] = []
+
+        for url in urls:
+            norm = normalize_url(url)
+            alt = https_variant(norm)
+
+            with database() as db:
+                subscribed = db.execute(
+                    """
+                    SELECT 1
+                    FROM podcast_subscriptions ps
+                    JOIN podcast_channels pc ON pc.id = ps.channel_id
+                    WHERE ps.username = ? AND (pc.url = ? OR pc.url = ?)
+                    """, (username, norm, alt)
+                ).fetchone()
+
+            if subscribed:
+                already_subscribed.append(url)
+                continue
+
+            channel_id, error = self.create_channel(username, url, download_recents=False)
+            if channel_id is None:
+                failed.append((url, error or 'unknown error'))
+            else:
+                added.append(url)
+
+        return {'added': added, 'already_subscribed': already_subscribed, 'failed': failed}
 
     def unsubscribe(self, username: str, channel_id: int, force: bool = False) -> None:
         """
@@ -573,6 +694,7 @@ class PodcastManager:
             if episode_id in self._downloading_episodes:
                 return False
             self._downloading_episodes.add(episode_id)
+            self._cancel_events[episode_id] = Event()
 
         with database() as db:
             db.execute(
@@ -590,6 +712,9 @@ class PodcastManager:
         Worker for getting and writing an episode's audio to disk.
         """
         bsn_logger.info(f"Downloading podcast episode {episode_id} from '{audio_url}'...")
+
+        with self._download_lock:
+            cancel_event = self._cancel_events.get(episode_id)
 
         tmp_path = None
         try:
@@ -609,10 +734,30 @@ class PodcastManager:
                     size = 0
                     with open(tmp_path, 'wb') as f:
                         for chunk in resp.iter_content(65536):
+                            if cancel_event is not None and cancel_event.is_set():
+                                raise DownloadCancelled()
                             f.write(chunk)
                             size += len(chunk)
 
                 os.replace(tmp_path, target_path)
+
+            except DownloadCancelled:
+
+                if tmp_path is not None:
+                    Path(tmp_path).unlink(missing_ok=True)
+
+                with database() as db:
+
+                    db.execute(
+                        """
+                        UPDATE podcast_episodes
+                        SET status = 'new', error_message = NULL
+                        WHERE id = ?
+                        """, (episode_id,)
+                    )
+
+                bsn_logger.info(f'Cancelled download of podcast episode {episode_id}.')
+                return
 
             except Exception as e:
                 bsn_logger.warning(f'Failed to download podcast episode {episode_id}: {e}')
@@ -623,8 +768,8 @@ class PodcastManager:
                 with database() as db:
                     db.execute(
                         """
-                        UPDATE podcast_episodes 
-                        SET status = 'error', error_message = ? 
+                        UPDATE podcast_episodes
+                        SET status = 'error', error_message = ?
                         WHERE id = ?
                         """, (str(e), episode_id)
                     )
@@ -645,6 +790,7 @@ class PodcastManager:
         finally:
             with self._download_lock:
                 self._downloading_episodes.discard(episode_id)
+                self._cancel_events.pop(episode_id, None)
 
     @with_app_context
     def download(self, episode_id: int) -> None:
@@ -705,6 +851,22 @@ class PodcastManager:
             daemon=True
         )
         thread.start()
+
+        return True
+
+    def cancel_download(self, episode_id: int) -> bool:
+        """
+        Signals a running background download to stop. The worker notices on its next
+        chunk, discards the partial file, and puts the episode back to 'new'.
+
+        Returns False if episode_id isn't currently downloading.
+        """
+
+        with self._download_lock:
+            cancel_event = self._cancel_events.get(episode_id)
+            if cancel_event is None:
+                return False
+            cancel_event.set()
 
         return True
 

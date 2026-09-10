@@ -121,11 +121,22 @@ class MemLogBuffer(logging.Handler):
         return list(self.buffer)
 
 
+class TracebackFilter(logging.Filter):
+    """
+    Removes full traceback dump from log records.
+    """
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.exc_info = None
+        record.exc_text = None
+        return True
+
+
 ##
 # Setup
 
 logging.getLogger('flask').setLevel(LOG_LEVEL)
 logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
+logging.getLogger('requests_cache.session').addFilter(TracebackFilter())  # only this one gets the Traceback filter
 
 bsn_logger = logging.getLogger('beetstreamnext')
 bsn_logger.propagate = True

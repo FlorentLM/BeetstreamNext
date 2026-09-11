@@ -24,6 +24,22 @@ def _safe_filename(name: Any) -> str:
     return cleaned or 'untitled'
 
 
+def _get_active_share(share_id: str):
+    """Fetch a share row, aborting 404 if it doesn't exist or has expired."""
+    with database() as db:
+        share = db.execute(
+            """
+            SELECT * FROM shares 
+            WHERE id = ?
+            """, (share_id,)
+        ).fetchone()
+
+    if not share or (share['expires'] and share['expires'] < time.time()):
+        flask.abort(404)
+
+    return share
+
+
 def _is_shared(share_id: str, entry_id: str) -> bool:
     """Whether entry_id is shared or is part of an album that is shared."""
 
@@ -131,17 +147,7 @@ def share_view(share_id: str) -> flask.Response:
 @public_bp.route('/share/<share_id>/download/<entry_id>')
 def share_download(share_id: str, entry_id: str) -> flask.Response | None:
 
-    with database() as db:
-        share = db.execute(
-            """
-            SELECT *
-            FROM shares
-            WHERE id = ?
-            """, (share_id,)
-        ).fetchone()
-
-    if not share or (share['expires'] and share['expires'] < time.time()):
-        flask.abort(404)
+    _get_active_share(share_id)
 
     if not _is_shared(share_id, entry_id):
         flask.abort(403)
@@ -162,11 +168,7 @@ def share_download(share_id: str, entry_id: str) -> flask.Response | None:
 @public_bp.route('/share/<share_id>/download-album/<entry_id>')
 def share_download_album(share_id: str, entry_id: str) -> flask.Response:
 
-    with database() as db:
-        share = db.execute("""SELECT * FROM shares WHERE id = ?""", (share_id,)).fetchone()
-
-    if not share or (share['expires'] and share['expires'] < time.time()):
-        flask.abort(404)
+    _get_active_share(share_id)
 
     entry_type, album = Resolve.any(entry_id)
     if entry_type != 'album':
@@ -208,11 +210,7 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
 @public_bp.route('/share/<share_id>/cover/<entry_id>')
 def share_cover(share_id: str, entry_id: str) -> flask.Response:
 
-    with database() as db:
-        share = db.execute("""SELECT * FROM shares WHERE id = ?""", (share_id,)).fetchone()
-
-    if not share or (share['expires'] and share['expires'] < time.time()):
-        flask.abort(404)
+    _get_active_share(share_id)
 
     if not _is_shared(share_id, entry_id):
         flask.abort(403)

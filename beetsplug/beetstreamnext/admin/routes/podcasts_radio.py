@@ -373,6 +373,24 @@ def route_delete_podcast_episode(episode_id: int) -> flask.Response:
     return back_to('podcasts')
 
 
+@admin_bp.route('/podcasts/<int:channel_id>/episodes', methods=['GET'])
+@admin_required
+def route_podcast_episodes(channel_id: int) -> flask.Response:
+    """Lazy fetch of a channel's episodes list."""
+
+    with database() as db:
+        rows = db.execute(
+            """
+            SELECT id, title, publish_date, duration, status, file_size, error_message
+            FROM podcast_episodes
+            WHERE channel_id = ?
+            ORDER BY publish_date DESC
+            """, (channel_id,)
+        ).fetchall()
+
+    return flask.jsonify([dict(r) for r in rows])
+
+
 @admin_bp.route('/podcasts/status', methods=['GET'])
 @admin_required
 def route_podcast_status() -> flask.Response:

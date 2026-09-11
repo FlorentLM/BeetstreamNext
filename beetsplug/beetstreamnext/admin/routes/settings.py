@@ -216,14 +216,6 @@ def route_settings() -> flask.Response:
             """
         ).fetchall()
 
-        episode_rows = db.execute(
-            """
-            SELECT id, channel_id, title, publish_date, duration, status, file_size, error_message
-            FROM podcast_episodes
-            ORDER BY publish_date DESC
-            """
-        ).fetchall()
-
         subscription_rows = db.execute(
             """
             SELECT channel_id, username
@@ -231,10 +223,6 @@ def route_settings() -> flask.Response:
             ORDER BY username COLLATE NOCASE
             """
         ).fetchall()
-
-    episodes_by_channel: dict[int, list] = {}
-    for row in episode_rows:
-        episodes_by_channel.setdefault(row['channel_id'], []).append(dict(row))
 
     subscribers_by_channel: dict[int, list] = {}
     for row in subscription_rows:
@@ -244,7 +232,6 @@ def route_settings() -> flask.Response:
     podcast_total_bytes = 0
     for row in channel_rows:
         ch = dict(row)
-        ch['episodes'] = episodes_by_channel.get(ch['id'], [])
         ch['subscribers'] = subscribers_by_channel.get(ch['id'], [])
         ch['storage_size'] = human_bytes(ch['bytes_on_disk'])
         podcast_total_bytes += ch['bytes_on_disk']

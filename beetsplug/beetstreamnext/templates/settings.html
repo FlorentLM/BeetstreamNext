@@ -635,74 +635,11 @@
                         </div>
                     </div>
 
-                    {% if ch.episodes %}
-                    <details class="podcast-episodes">
-                        <summary>{{ ch.episodes|length }} episode{{ 's' if ch.episodes|length != 1 }}</summary>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Title</th>
-                                        <th>Published</th>
-                                        <th>Duration</th>
-                                        <th>Status</th>
-                                        <th>Size</th>
-                                        <th class="cell-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for e in ch.episodes %}
-                                    <tr>
-                                        <td>{{ e.title or '(untitled)' }}</td>
-                                        <td>
-                                            {% if e.publish_date %}
-                                                <span class="chat-time" data-timestamp="{{ (e.publish_date * 1000) | int }}">Loading...</span>
-                                            {% else %}
-                                                <span class="rate-limit-anon">&mdash;</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ e.duration | duration }}</td>
-                                        <td>
-                                            <span class="badge{% if e.status == 'error' %} badge-admin{% endif %}"
-                                                  id="podcast-episode-status-{{ e.id }}" data-status="{{ e.status }}">{{ e.status }}</span>
-                                        </td>
-                                        <td>
-                                            <span id="podcast-episode-size-{{ e.id }}">
-                                            {% if e.file_size %}
-                                                <span class="badge badge-limit">{{ e.file_size | filesizeformat }}</span>
-                                            {% else %}
-                                                <span class="rate-limit-anon">&mdash;</span>
-                                            {% endif %}
-                                            </span>
-                                        </td>
-                                        <td class="actions-cell">
-                                            <form id="podcast-episode-dl-{{ e.id }}"
-                                                  {% if e.status in ('completed', 'downloading') %}hidden{% endif %}
-                                                  action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
-                                                  method="POST" class="form-inline">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <button type="submit" class="icon-btn" title="Download" aria-label="Download &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('download') }}</button>
-                                            </form>
-                                            <form id="podcast-episode-cancel-{{ e.id }}"
-                                                  {% if e.status != 'downloading' %}hidden{% endif %}
-                                                  action="{{ url_for('admin.route_cancel_podcast_episode_download', episode_id=e.id) }}"
-                                                  method="POST" class="form-inline">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <button type="submit" class="icon-btn icon-btn-delete" title="Cancel download" aria-label="Cancel download of &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('cancel') }}</button>
-                                            </form>
-                                            <form id="podcast-episode-del-{{ e.id }}"
-                                                  {% if e.status != 'completed' %}hidden{% endif %}
-                                                  action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
-                                                  method="POST" class="form-inline"
-                                                  data-confirm="Remove this episode's downloaded file for all subscribers?">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <button type="submit" class="icon-btn icon-btn-delete" title="Delete file" aria-label="Delete downloaded file for &quot;{{ e.title or 'untitled episode' }}&quot;">{{ icon('delete') }}</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    {% if ch.episode_count %}
+                    <details class="podcast-episodes" data-channel-id="{{ ch.id }}">
+                        <summary>{{ ch.episode_count }} episode{{ 's' if ch.episode_count != 1 }}</summary>
+                        <div class="table-container" data-episodes-body>
+                            <p class="empty-state">Loading...</p>
                         </div>
                     </details>
                     {% endif %}

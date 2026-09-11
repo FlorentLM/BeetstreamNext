@@ -9,7 +9,7 @@ from beets.util import bytestring_path
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import genres_formatter
-from beetsplug.beetstreamnext.utils.system import creation_date
+from beetsplug.beetstreamnext.utils.system import creation_date, safe_join
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import fetch_playlist_images
@@ -179,10 +179,7 @@ class Playlist:
                 safe_name = os.path.basename(str(name)).rsplit('.', 1)[0]
                 safe_name = safe_name[:200]
 
-                base_dir = self.path.parent.resolve()
-                new_path = (base_dir / f"{safe_name}.m3u").resolve()
-                if not new_path.is_relative_to(base_dir):
-                    raise ValueError("Invalid rename target.")
+                new_path = safe_join(self.path.parent, f"{safe_name}.m3u", error="Invalid rename target.")
 
                 if new_path.exists():
                     raise FileExistsError(f"A playlist file named {new_path.name} already exists.")
@@ -214,10 +211,7 @@ class Playlist:
                 new_dir.mkdir(parents=True, exist_ok=True)
                 new_owner = requester
 
-            new_dir = new_dir.resolve()
-            new_path = (new_dir / self.path.name).resolve()
-            if not new_path.is_relative_to(new_dir):
-                raise ValueError('Invalid playlist location.')
+            new_path = safe_join(new_dir, self.path.name, error='Invalid playlist location.')
 
             if new_path.exists():
                 raise FileExistsError(f"A playlist file named {new_path.name} already exists at the destination.")
@@ -267,10 +261,7 @@ class Playlist:
         root_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
         base_dir = root_dir / owner
         base_dir.mkdir(parents=True, exist_ok=True)
-        path = (base_dir / f'{safe_name}.m3u').resolve()
-
-        if not path.is_relative_to(base_dir):
-            raise ValueError('Invalid playlist name.')
+        path = safe_join(base_dir, f'{safe_name}.m3u', error='Invalid playlist name.')
 
         if path.is_file():
             err = f'Playlist {path.name} already exists!'
@@ -531,11 +522,12 @@ class PlaylistProvider:
                 owner, file_name = None, rest
 
             safe_file_name = os.path.basename(file_name)
-            base_path = Path(dir_path).resolve()
+            base_path = Path(dir_path)
             if owner:
                 base_path = base_path / owner
-            filepath = (base_path / safe_file_name).resolve()
-            if not filepath.is_relative_to(base_path):
+            try:
+                filepath = safe_join(base_path, safe_file_name)
+            except ValueError:
                 return None
 
             if filepath.is_file() and filepath.suffix.lower() in ('.m3u', '.m3u8'):

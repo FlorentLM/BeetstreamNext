@@ -152,6 +152,18 @@ def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -
     return _remap_mount(path_obj, root_directory)
 
 
+def safe_join(base_dir: Path, *parts: str, error: str = 'Path escapes base directory.') -> Path:
+    """
+    Resolve base_dir joined with parts, raising ValueError if
+    the result tries to escape base_dir
+    """
+    base_dir = base_dir.resolve()
+    target = base_dir.joinpath(*parts).resolve()
+    if not target.is_relative_to(base_dir):
+        raise ValueError(error)
+    return target
+
+
 def path_hash(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:
     """Short hash of a file's path relative to root_directory."""
     if not path:

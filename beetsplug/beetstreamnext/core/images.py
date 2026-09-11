@@ -12,7 +12,7 @@ import flask
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import external_url
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
-from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path
+from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path, safe_join
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
@@ -483,8 +483,9 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     if not artist_name:
         return None
 
-    local_folder = (app.config['root_directory'] / artist_name).resolve()
-    if not local_folder.is_relative_to(app.config['root_directory']):
+    try:
+        local_folder = safe_join(app.config['root_directory'], artist_name)
+    except ValueError:
         return None
 
     local_image_path = local_folder / f'{artist_name}.jpg'

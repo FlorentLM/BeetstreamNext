@@ -15,6 +15,7 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch, normalize_url, https_variant
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.security import is_public_url
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.system import purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
@@ -40,6 +41,9 @@ def _get_audio_url(entry) -> tuple[str, int]:
 
 
 def _fetch_feed_bytes(url: str) -> bytes:
+
+    if not is_public_url(url):
+        raise ValueError(f'Refusing to fetch non-public feed URL: {url}')
 
     # Feeds change quite frequently so no caching
     with http_session().cache_disabled():

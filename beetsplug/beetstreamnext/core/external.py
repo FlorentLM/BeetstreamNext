@@ -15,6 +15,7 @@ from beetsplug.beetstreamnext.constants import (
     WIKI_API, RADIO_BROWSER, PODCASTINDEX, MAX_REMOTE_IMAGE_BYTES, USER_AGENT, _SCHEME_RE, _DUPLICATE_SCHEME_RE
 )
 from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.security import is_public_url
 from beetsplug.beetstreamnext.settings import settings_store
 
 
@@ -123,6 +124,11 @@ _DEEZER_PLACEHOLDER_HASHES = frozenset({
 
 def capped_image_fetch(url: str, *, max_bytes: int = MAX_REMOTE_IMAGE_BYTES, **kwargs) -> bytes:
     """GET image bytes, refusing bodies over max_bytes. Returns b'' on failure."""
+
+    if not is_public_url(url):
+        bsn_logger.warning(f'Refusing to fetch non-public URL: {url}')
+        return b''
+
     kwargs.setdefault('timeout', 8)
     try:
         resp = http_session().get(url, stream=True, **kwargs)
@@ -478,6 +484,10 @@ def fetch_favicon(homepage_url: str) -> bytes:
     """
     domain = urllib.parse.urlparse(homepage_url).netloc
     if not domain:
+        return b''
+
+    if not is_public_url(homepage_url):
+        bsn_logger.warning(f'Refusing to fetch favicon from non-public URL: {homepage_url}')
         return b''
 
     best_url, best_size = None, 0

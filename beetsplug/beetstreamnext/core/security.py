@@ -1,8 +1,11 @@
 import re
+import socket
 import threading
 import time
 import ipaddress
+import urllib.parse
 from collections import defaultdict
+from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from beetsplug.beetstreamnext.utils.text import split_list
@@ -468,6 +471,50 @@ def admin_host_allowed(raw_host: str) -> bool:
     except ValueError:
         return False
     return request_host == admin_host or request_host in LOOPBACK_IPS
+
+
+##
+# SSRF guard
+
+@lru_cache(maxsize=512)
+def _hostname_is_public(hostname: str, _cache_ttl_hash=None) -> bool:
+    """`_cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, UnicodeError):
+        return False
+
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if (
+            addr.is_private or addr.is_loopback or addr.is_link_local
+            or addr.is_reserved or addr.is_multicast or addr.is_unspecified
+        ):
+            return False
+
+    return True
+
+
+def is_public_url(url: str) -> bool:
+    """
+    Check if url is http(s) and every address its host resolves to is a public one
+    (that is, not loopback/link-local/private/reserved/multicast/unspecified)
+
+    Used to block SSRF before fetching a user-supplied URL.
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        hostname = parsed.hostname
+    except ValueError:
+        return False
+
+    if parsed.scheme not in ('http', 'https') or not hostname:
+        return False
+
+    return _hostname_is_public(hostname, _cache_ttl_hash=round(time.time() / 300))
 
 
 ##

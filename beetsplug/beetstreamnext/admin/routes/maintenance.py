@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches, swe
 from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats
 from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
 from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, read_config, write_config
+from beetsplug.beetstreamnext.core.startup import restart_server
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import SERVER_NAME, BEETS_IMPORT_LOG_PATH
 
@@ -164,3 +165,13 @@ def route_health_scan_status() -> flask.Response:
 @admin_required
 def route_logs() -> flask.Response:
     return flask.jsonify({'lines': mem_log.recents})
+
+
+@admin_bp.route('/maintenance/restart', methods=['POST'])
+@admin_required
+def route_restart_server() -> flask.Response:
+    bsn_logger.warning(f'Server restart triggered by admin ({flask.session.get("username")}).')
+    flask.flash('Restarting server... this page will reconnect automatically in a few seconds.', 'info')
+    resp = back_to('maintenance')
+    restart_server()
+    return resp

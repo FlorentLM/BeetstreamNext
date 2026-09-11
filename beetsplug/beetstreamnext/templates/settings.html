@@ -945,6 +945,13 @@
                 </ul>
             </details>
             {% endif %}
+            <div class="button-row">
+                <form method="POST" action="{{ url_for('admin.route_restart_server') }}"
+                      data-confirm="Restart the server now?">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Restart server</button>
+                </form>
+            </div>
         </div>
 
         <div class="card">

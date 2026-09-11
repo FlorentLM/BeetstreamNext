@@ -1,5 +1,8 @@
 import logging
+import os
 import socket
+import sys
+import threading
 from pathlib import Path
 from typing import Iterable, List, Optional
 from flask_cors import CORS
@@ -44,6 +47,18 @@ def prestartup_config(
 
     ensure_secret(bsn_db_path)
     app.config.update(SECRET_KEY=rotate_session_key(CACHE_LOCATION))
+
+
+def restart_server(delay: float = 1.5) -> None:
+    """
+    Re-exec the current process in place.
+    Delayed so HTTP response confirming the restart can reach the client first.
+    """
+    def _do_restart() -> None:
+        bsn_logger.info('Restarting server...')
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    threading.Timer(delay, _do_restart).start()
 
 
 def _bindable(host: str, port: int) -> bool:

@@ -77,6 +77,13 @@ def _bindable(host: str, port: int) -> bool:
             return False
 
 
+def _write_runtime_port(port: int) -> None:
+    try:
+        (CACHE_LOCATION / 'runtime_port').write_text(str(port))
+    except OSError:
+        bsn_logger.warning('Could not record runtime port to cache dir.')
+
+
 def run_server(
         lib,
         host: List[str],
@@ -256,6 +263,8 @@ def run_server(
         bsn_logger.info('CORS is disabled. Web-based OpenSubsonic clients will be blocked by browsers.')
 
     apply_logs_redaction()
+    _write_runtime_port(port)
+
     if debug:
         if len(host) > 1:
             bsn_logger.warning(

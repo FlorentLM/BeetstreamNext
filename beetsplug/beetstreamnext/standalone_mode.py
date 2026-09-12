@@ -21,7 +21,7 @@ from beetsplug.beetstreamnext.core.commands import (
 from beetsplug.beetstreamnext.core.database import initialise_db
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import api_bool
-from beetsplug.beetstreamnext.utils.system import get_env
+from beetsplug.beetstreamnext.utils.system import get_env, is_docker
 
 
 _USER_ARG_COMMANDS = {'update-user', 'delete-user', 'passwd'}
@@ -120,9 +120,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument('--music-root', metavar='PATH',
                         help='Music root directory (where songs paths are relative to)')   # env: MUSIC_ROOT
     parser.add_argument('--bsn-db', metavar='PATH',
-                        help="Path to BeetstreamNext's own db (default: alongside library.db)")     # env: BSN_DB_PATH
+                        help="Path to BeetstreamNext's own db (default: alongside library.db, or /config in Docker)")     # env: BSN_DB_PATH
     parser.add_argument('--beets-config', metavar='PATH',
-                        help='Optional beets confuse config file, for path formats/plugins only')   # env: BSN_BEETS_CONFIG
+                        help='Optional beets config file, for path formats/plugins only (default: $BEETSDIR/config.yaml, if set and present)')   # env: BSN_BEETS_CONFIG
     parser.add_argument('--host', metavar='HOST[,HOST...]',
                         help='Host(s) to listen on, comma-separated')   # env: BSN_HOST
     parser.add_argument('--port', type=int,
@@ -155,6 +155,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     # Loaded first (if passed) so its 'library' / 'directory' keys can be used as a last resort fallback
     # (BSN's own flags/env/yaml still take priority)
     beets_config_path = _cascade_value(args.beets_config, get_env('BSN_BEETS_CONFIG'), yaml_cfg.get('beets_config'))
+
+    if not beets_config_path:
+        # Fallback to wherever `beet` itself would look (respects BEETSDIR, same as beets does)
+        beetsdir = get_env('BEETSDIR')
+        if beetsdir and (Path(beetsdir) / 'config.yaml').is_file():
+            beets_config_path = Path(beetsdir) / 'config.yaml'
 
     if beets_config_path:
         beets.config.set_file(str(beets_config_path))
@@ -197,7 +203,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     music_root_val = _cascade_value(args.music_root, get_env('MUSIC_ROOT'), yaml_cfg.get('music_root'), _beets_cfg('directory'))
 
     bsn_db = _cascade_value(args.bsn_db, get_env('BSN_DB_PATH'), yaml_cfg.get('bsn_db'))
-    bsn_db_path = Path(bsn_db) if bsn_db else library_db.parent / 'beetstreamnext.db'
+    if bsn_db:
+        bsn_db_path = Path(bsn_db)
+    elif is_docker():
+        bsn_db_path = DEFAULT_CONFIG_PATH.parent / 'beetstreamnext.db'
+    else:
+        bsn_db_path = library_db.parent / 'beetstreamnext.db'
 
     ip_whitelist = _yaml_get('ip_whitelist') or []
     ip_blacklist = _yaml_get('ip_blacklist') or []

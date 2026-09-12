@@ -47,18 +47,21 @@ def cache_location() -> Path:
     return final_path
 
 
-def config_location() -> Path:
-    """Default dir for beetstreamnext.yaml"""
+def is_docker() -> bool:
+    """Check for whether we're running inside a Docker container."""
 
-    # if running in a docker container: '/config'
     if Path('/.dockerenv').exists():
-        return Path('/config')
+        return True
     try:
-        docker = 'docker' in Path('/proc/1/cgroup').read_text()
+        return 'docker' in Path('/proc/1/cgroup').read_text()
     except OSError:
-        docker = False
+        return False
 
-    if docker:
+
+def config_location() -> Path:
+    """Default dir for beetstreamnext.yaml (and, in Docker, BSN's own db/secrets)"""
+
+    if is_docker():
         return Path('/config')
 
     # Otherwise: OS default

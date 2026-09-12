@@ -151,6 +151,71 @@ docker run -d --name beetstreamnext \
 
 > **Note:** Don't mount your library/music paths at `/config` or `/cache`, or the startup `chown` will recursively re-own them. If you want to control the folders' ownership yourself, you can run the container as a specific user directly (use `docker run --user UID:GID` (in which case also make sure `/config` and `/cache` are already owned by that user), and the entrypoint will notice and won't try to switch users itself.
 
+#### docker-compose
+
+There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (BeetstreamNext only, built locally from the Dockerfile). Edit the two host paths in it, then:
+
+```bash
+docker compose up -d
+```
+
+#### Example stack: BeetstreamNext + Betanin
+
+A small stack pairing BeetstreamNext with [Betanin](https://github.com/sentriz/betanin), a web UI that drives `beet import`. Betanin owns the beets config and `library.db`, BeetstreamNext only ever reads them. The two containers need to share:
+
+- The beets home directory (`config.yaml` + `library.db`): needs read-write for Betanin, can be read-only for BeetstreamNext
+- The music directory: read-only for both, since neither needs to write into it
+
+> **Note:** Concurrent SQLite access to `library.db` is only reliable _on a real shared filesystem or bind-mount_ (same host, sharing a named volume). If Betanin and BeetstreamNext ever end up on different hosts, don't mount `library.db` itself over NFS/SMB from both sides, SQLite's file locking isn't reliable over most network filesystem protocols.
+
+This assumes it's saved as `docker-compose.yml` at the root of a BeetstreamNext checkout (`build: .` needs the `Dockerfile` there).
+
+```yaml
+services:
+  betanin:
+    image: sentriz/betanin
+    container_name: betanin
+    restart: unless-stopped
+    ports:
+      - "9393:9393"
+    environment:
+      UID: "1000"
+      GID: "1000"
+    volumes:
+      - betanin-data:/b/.local/share/betanin
+      - betanin-config:/b/.config/betanin
+      - beets-home:/b/.config/beets   # shared with BeetstreamNext
+      - /path/to/music:/music
+      - /path/to/downloads:/downloads
+
+  beetstreamnext:
+    build: .
+    # image: ghcr.io/florentlm/beetstreamnext:latest  # once a published image exists, prefer this over `build:`
+    container_name: beetstreamnext
+    restart: unless-stopped
+    depends_on:
+      - betanin
+    ports:
+      - "8080:8080"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      BEETS_LIBRARY_DB: /beets/library.db
+      MUSIC_ROOT: /music
+    volumes:
+      - beetstreamnext-config:/config
+      - beets-home:/beets:ro          # same volume as Betanin's /b/.config/beets (read-only here)
+      - /path/to/music:/music:ro      # same host path as Betanin's /music (read-only here)
+
+volumes:
+  betanin-data:
+  betanin-config:
+  beets-home:
+  beetstreamnext-config:
+```
+
+Edit the two `/path/to/...` host paths, then `docker compose up -d`. Open Betanin at `:9393` to configure/run imports, then BeetstreamNext at `:8080`.
+
 Other standalone subcommands work by overriding the container's command. For example, an [unattended first run](#unattended-first-run):
 
 ```bash

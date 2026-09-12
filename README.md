@@ -40,7 +40,7 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 
 ## Documentation
 
-**[Read the full docs](https://florentlm.github.io/BeetstreamNext/)** for installation (as a **Beets plugin**, or in **standalone** mode), configuration reference, all features in detail, API coverage, reverse-proxy/CORS setup, and tested clients.
+**[Read the full docs](https://florentlm.github.io/BeetstreamNext/)** for installation, configuration reference, all features in detail, API coverage, reverse-proxy/CORS setup, and tested clients.
 
 ## Quick start
 

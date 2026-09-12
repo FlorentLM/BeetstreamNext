@@ -66,8 +66,8 @@ def _before_request() -> flask.Response | None:
                 return subsonic_error(40, message='Setup required: no users exist yet.', resp_fmt=resp_fmt)
             return flask.redirect('/admin/setup')
 
-    # Allow public homepage, public share routes, and token-based stream/tokenised-image URLs
-    if flask.request.path == '/' or flask.request.path.startswith(('/share/', '/now-playing/', '/tokenised-stream/', '/tokenised-image/')):
+    # Allow public homepage, healthcheck, public share routes, and token-based stream/tokenised-image URLs
+    if flask.request.path in ('/', '/healthz') or flask.request.path.startswith(('/share/', '/now-playing/', '/tokenised-stream/', '/tokenised-image/')):
         # Anonymous guest context
         flask.g.username = ''
         flask.g.user_data = {}

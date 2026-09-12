@@ -51,19 +51,19 @@ beetstreamnext [command] [username] [options]
 <br>
 <br>
 
-| Flags                   | Env var            | Effect                                                                                       |
-|-------------------------|--------------------|----------------------------------------------------------------------------------------------|
-| `--config PATH`         | —                  | YAML config file (default location is OS-dependent, see [here](../installation.md))          |
-| `--library-db PATH`     | `BEETS_LIBRARY_DB` | Path to the Beets `library.db`                                                               |
-| `--music-root PATH`     | `MUSIC_ROOT`       | Music root directory (where song paths are relative to)                                      |
-| `--bsn-db PATH`         | `BSN_DB_PATH`      | Path to BeetstreamNext's own database (default: alongside `library.db`)                      |
-| `--beets-config PATH`   | `BSN_BEETS_CONFIG` | Optional Beets config file, for path formats/plugins only                                    |
-| `--host HOST[,HOST...]` | `BSN_HOST`         | Host(s) to listen on                                                                         |
-| `--port PORT`           | `BSN_PORT`         | Port to listen on                                                                            |
-| `--threads N`           | `BSN_THREADS`      | Waitress worker threads                                                                      |
-| `--debug`               | —                  | Run in Flask debug mode                                                                      |
-| `--force-trust-host`    | —                  | Force debug mode even when not bound to localhost (_NOT_ recommended)                        |
-| `--noinput`             | —                  | With `create-user`: non-interactive, see [Unattended bootstrap](#unattended-bootstrap) below |
+| Flags                   | Env var            | Effect                                                                                                           |
+|-------------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
+| `--config PATH`         | —                  | BeetstreamNext YAML config file (default location is OS-dependent, see [here](../installation.md))               |
+| `--library-db PATH`     | `BEETS_LIBRARY_DB` | Path to the Beets `library.db`                                                                                   |
+| `--music-root PATH`     | `MUSIC_ROOT`       | Music root directory (where song paths are relative to)                                                          |
+| `--bsn-db PATH`         | `BSN_DB_PATH`      | Path to BeetstreamNext's own database (default: alongside `library.db`, or `/config` in Docker)                  |
+| `--beets-config PATH`   | `BSN_BEETS_CONFIG` | Optional Beets config file, for path formats/plugins only (default: `$BEETSDIR/config.yaml`, if set and present) |
+| `--host HOST[,HOST...]` | `BSN_HOST`         | Host(s) to listen on                                                                                             |
+| `--port PORT`           | `BSN_PORT`         | Port to listen on                                                                                                |
+| `--threads N`           | `BSN_THREADS`      | Waitress worker threads                                                                                          |
+| `--debug`               | —                  | Run in Flask debug mode                                                                                          |
+| `--force-trust-host`    | —                  | Force debug mode even when not bound to localhost (_NOT_ recommended)                                            |
+| `--noinput`             | —                  | With `create-user`: non-interactive, see [Unattended bootstrap](#unattended-bootstrap) below                     |
 
 See the [configuration reference](../configuration.md) for the full settings precedence rules, or [Installation](../installation.md#standalone-mode) for more on `library-db`/`music-root` specifically.
 

@@ -114,7 +114,66 @@ Other standalone subcommands: `create-user`, `update-user USERNAME`, `delete-use
 
 ### Docker
 
-Coming soon. The plan is an official image wrapping standalone mode, for setups like a Beets library owned by another container (e.g. Betanin) mounting the same volume.
+There is a `Dockerfile` available at the repository root. There's no published image yet, so you need build it yourself:
+
+```bash
+docker build -t beetstreamnext .
+```
+
+Build-time options (`--build-arg`):
+
+- `EXTRAS` (default `all`): which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
+- `BEETS_VERSION`: install this exact version of `beets` instead of whatever `pyproject.toml` would otherwise pick.
+- `WITH_MPV` (default `false`): also install `mpv`. Only needed for the `server_hardware` jukebox backend, which isn't fully set up for Docker yet (see below), so leave this off unless you're experimenting.
+- `WITH_DEBUG_TOOLS` (default `false`): also install `curl`, `wget`, `ping`, `dig`/`nslookup`, `nc`, and `ip`/`ss`, for poking at networking issues from inside the container (e.g. `docker exec -it beetstreamnext curl ...`). Off by default to keep the image lean; rebuild with `--build-arg WITH_DEBUG_TOOLS=true` when you actually need them.
+- `PYTHON_VERSION` (default `3.13`): Python version to build against.
+
+Run it like this:
+
+```bash
+docker run -d --name beetstreamnext \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e PUID=1000 -e PGID=1000 \
+  -v /path/to/config:/config \
+  -v /path/to/library.db:/data/library.db:ro \
+  -v /path/to/music:/music:ro \
+  -e BEETS_LIBRARY_DB=/data/library.db \
+  -e MUSIC_ROOT=/music \
+  beetstreamnext
+```
+
+- `/config` is where `beetstreamnext.yaml`, the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key)), and BeetstreamNext's own database (`beetstreamnext.db`) all get created.
+- `/cache` is scratch space. It's not necessary to mount, but you can (if you want the cache to survive restarts).
+- `PUID`/`PGID` (default `1000`/`1000`) should match the user that owns your library/music files on the host.
+
+> **Note:** BeetstreamNext never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to that `PUID`/`PGID` before dropping to it for the rest of the process's life.
+
+> **Note:** Don't mount your library/music paths at `/config` or `/cache`, or the startup `chown` will recursively re-own them. If you want to control the folders' ownership yourself, you can run the container as a specific user directly (use `docker run --user UID:GID` (in which case also make sure `/config` and `/cache` are already owned by that user), and the entrypoint will notice and won't try to switch users itself.
+
+Other standalone subcommands work by overriding the container's command. For example, an [unattended first run](#unattended-first-run):
+
+```bash
+docker run --rm \
+  -e BSN_ADMIN_USER=admin -e BSN_ADMIN_PASSWORD=hunter2 \
+  -e BEETS_LIBRARY_DB=/data/library.db \
+  -v /path/to/config:/config \
+  -v /path/to/library.db:/data/library.db:ro \
+  beetstreamnext create-user --noinput
+```
+
+> **Note:** `-v /path/to/config:/config` must point at the _same host path_ as the main `run` container above (the encryption key and the user this creates both get stored under `/config`, so the two runs need to share it to see the same user/key).
+
+#### Who runs `beet`?
+
+BeetstreamNext only reads the library. Something still has to run `beet import` or any other thing you want to do with Beets. Two ways to do that:
+
+- **Use this container:** It already has `beets` installed, so you can use that directly. The image sets `BEETSDIR=/config/beets`, so `beet` (ran inside the container) reads/writes `/config/beets/config.yaml`.
+  - BeetstreamNext itself picks up that same file automatically too (as a fallback `--beets-config`/`BSN_BEETS_CONFIG`), so as long as your beets `config.yaml` lives there, both tools agree on the library/music paths with no extra flags. Just create/edit `config.yaml` at `/path/to/config/beets/config.yaml` on the host (same volume as the one mounted at `/config` above).
+  - I recommend adding `alias beet="docker exec -it --user beetstream beetstreamnext beet"` to your host's `.bashrc` / `.zshrc` for convenience. The `--user beetstream` is important here, since `docker exec` runs as root by default and you don't want `beet` writing root-owned files into your library/music paths.
+  - If you'd rather keep an existing beets config file _elsewhere_ instead, you can point `--beets-config`/`BSN_BEETS_CONFIG` (and, if you also invoke `beet` in the container, `docker exec`'s `BEETSDIR` or `beet --config`) at it explicitly, which overrides the `/config/beets` default.
+
+- **Use a separate beets install:** Point BeetstreamNext at a `library.db` managed elsewhere (your own machine, or in another container like [Betanin](https://github.com/sentriz/betanin)) by mounting the same files into both.
 
 ## 3. Encryption key
 

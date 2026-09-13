@@ -73,7 +73,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
             '',
             f'USER API KEY: {api_key}',
             '',
-            '  ▶  You can enter this key in your Subsonic client instead of a password.',
+            '  ▶  You can use this in your Subsonic client instead of a password.',
             "  ▶  It won't be shown again. Store it safely.",
             '',
         ])

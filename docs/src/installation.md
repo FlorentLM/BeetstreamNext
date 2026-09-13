@@ -189,8 +189,11 @@ services:
       - /path/to/downloads:/downloads
 
   beetstreamnext:
-    build: .
     # image: ghcr.io/florentlm/beetstreamnext:latest  # once a published image exists, prefer this over `build:`
+    build: 
+      context: /home/florent/BeetstreamNext
+      args:
+        BEETS_VERSION: 2.8.0    # Betanin currently uses beets 2.8.0 so it's safer to use the same one
     container_name: beetstreamnext
     restart: unless-stopped
     depends_on:

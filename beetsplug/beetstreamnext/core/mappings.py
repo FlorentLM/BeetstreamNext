@@ -1234,7 +1234,8 @@ class Serialise:
             subsonic_song['isrc'] = split_beets_multi(isrc_raw)
 
         work = data.get('work') or ''
-        if work:
+
+        if work and work.strip().casefold() != song_title.strip().casefold():
             work_obj = {'name': work}
             mb_workid = data.get('mb_workid')
             if mb_workid:

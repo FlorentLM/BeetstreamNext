@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Dict
 
+from importlib.metadata import version, PackageNotFoundError
+
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location
 
 
@@ -18,7 +20,11 @@ SERVER_NAME: str = 'BeetstreamNext'
 
 REPO_URL: str = f'https://github.com/FlorentLM/BeetstreamNext'
 SUBSONIC_API_VER: str = '1.16.1'
-SERVER_VERSION: str = '1.9.9'
+
+try:
+    SERVER_VERSION: str = version('beetstreamnext')
+except PackageNotFoundError:
+    SERVER_VERSION: str = '0.0.0+unknown'
 
 USER_AGENT: str = f'{SERVER_NAME}/{SERVER_VERSION} ( {REPO_URL} )'
 

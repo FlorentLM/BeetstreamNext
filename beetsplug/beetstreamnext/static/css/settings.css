@@ -185,8 +185,8 @@ tr:hover td { background: var(--overlay-hover); }
 }
 .badge-admin {
     background: rgba(149, 64, 57, 0.2);
-    color: #fca5a5;
-    border-color: rgba(149, 64, 57, 0.5);
+    color: #e76464;
+    border-color: #e76464;
 }
 .badge-you {
     background: rgba(56, 189, 248, 0.1);
@@ -508,14 +508,16 @@ input:focus, select:focus { border-color: var(--primary); }
 .role-item input:disabled { cursor: not-allowed; }
 
 .setting-row-label {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
     font-family: ui-monospace, monospace;
     font-size: 0.85rem;
     margin-bottom: 0.35rem;
     color: var(--text);
 }
 .setting-meta-badge {
-    margin-left: 0.5rem;
     font-family: 'Inter', sans-serif;
     font-size: 0.65rem;
     padding: 0.15rem 0.5rem;
@@ -529,8 +531,8 @@ input:focus, select:focus { border-color: var(--primary); }
 }
 .setting-meta-badge-danger {
     background: rgba(149, 64, 57, 0.2);
-    color: #fca5a5;
-    border-color: rgba(149, 64, 57, 0.5);
+    color: #e76464;
+    border-color: #e76464;
 }
 .setting-input-row { display: flex; gap: 0.75rem; align-items: center; }
 .setting-input-row input { flex: 1; }
@@ -552,6 +554,12 @@ input:focus, select:focus { border-color: var(--primary); }
 }
 .setting-toggle input { accent-color: var(--primary); cursor: pointer; }
 .setting-toggle-key { color: var(--text); }
+.setting-toggle-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
 
 .setting-row-meta { color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; }
 .setting-description { margin: 0; }

@@ -2,14 +2,13 @@ from __future__ import annotations
 import hmac
 import os
 import flask
-from werkzeug.datastructures import MultiDict
 
 from .. import admin_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.users_crud import create_user, load_all_users, load_user_roles, authenticate
+from beetsplug.beetstreamnext.core.users_crud import create_user, load_all_users, load_user_roles, webui_login
 from beetsplug.beetstreamnext.admin.forms import LoginForm, OnboardingForm, flash_form_errors
 
 
@@ -69,12 +68,7 @@ def route_login() -> flask.Response:
 
         # ip_filter / rate_limiter run in before_request, but still record/reset failures here.
 
-        # Build auth dict (simulating a Subsonic API request)
-        auth_params = MultiDict(
-            {'u': attempted_user,
-             'p': form.password.data}
-        )
-        ok, _, username = authenticate(auth_params)
+        ok, username = webui_login(attempted_user, form.password.data)
         if ok and load_user_roles(username).get('adminRole', False):
             # Success. Clear failures for this IP and establish session
             rate_limiter.reset(client_ip, attempted_user)

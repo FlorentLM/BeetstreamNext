@@ -360,6 +360,14 @@ def _check_password(
     return False, 40, None
 
 
+def webui_login(username: str, password: str) -> Tuple[bool, Optional[str]]:
+    """
+    Password check for the WebUI's login form.
+    """
+    success, _, matched_username = _check_password(username, clearpass=password)
+    return success, matched_username
+
+
 def authenticate(flask_req_values: 'CombinedMultiDict'):
     r = flask_req_values
     api_key = r.get('apiKey', default='', type=str)

@@ -229,6 +229,8 @@ docker run --rm \
 
 > **Note:** `-v /path/to/config:/config` must point at the _same host path_ as the main `run` container above (the encryption key and the user this creates both get stored under `/config`, so the two runs need to share it to see the same user/key).
 
+> **Note:** When using Docker, you probably want to use Docker secrets. You can add the `BSN_NO_KEY_FILE=1` to that command to prevent it from writing the `.env` file (see [unattended first run](#unattended-first-run)).
+
 #### Who runs `beet`?
 
 BeetstreamNext only reads the library. Something still has to run `beet import` or any other thing you want to do with Beets. Two ways to do that:
@@ -274,6 +276,8 @@ You can setup the first admin account in a completely unattended way.
 Use `--create-user --noinput` (for **plugin mode**) or `create-user --noinput` (for **standalone mode**)
 
 This reads the `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` env vars, creates that one admin account, prints its API-key, and exits (it doesn't start the server).
+
+You can also add `BSN_NO_KEY_FILE=1` to prevent it from writing tne `.env` file containing the server key (`BEETSTREAMNEXT_KEY`). It will only print it for you to copy into your secrets manager.
 
 ```bash
 BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=hunter2 beetstreamnext create-user --noinput --library-db /path/to/library.db

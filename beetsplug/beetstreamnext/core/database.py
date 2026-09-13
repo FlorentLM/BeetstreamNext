@@ -21,6 +21,7 @@ from beetsplug.beetstreamnext.constants import ALPHANUM_CHARS, SESSION_KEY_ROTAT
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
+from beetsplug.beetstreamnext.utils.system import get_env
 
 
 ##
@@ -67,6 +68,8 @@ def ensure_secret(db_path: str | Path) -> None:
     Resolves BEETSTREAMNEXT_KEY. Called once at startup, before initialise_db().
     """
 
+    from beetsplug.beetstreamnext.utils.general import api_bool
+
     db_path = Path(db_path)
     env_path = db_path.parent / '.env'
 
@@ -99,34 +102,52 @@ def ensure_secret(db_path: str | Path) -> None:
             existing_lines = env_path.read_text().splitlines() if env_path.exists() else []
             already_set = {line.split('=', 1)[0] for line in existing_lines if '=' in line}
 
-            new_lines = list(existing_lines)
-
-            # Generate and record key
-            if 'BEETSTREAMNEXT_KEY' not in already_set:
-                enc_key = Fernet.generate_key().decode()
-                new_lines.append(f'BEETSTREAMNEXT_KEY={enc_key}')
-                os.environ['BEETSTREAMNEXT_KEY'] = enc_key
-            else:
+            if 'BEETSTREAMNEXT_KEY' in already_set:
                 enc_key = os.environ['BEETSTREAMNEXT_KEY']   # was loaded by load_dotenv above
 
-            _write_secret_file(env_path, '\n'.join(new_lines) + '\n')
+            elif api_bool(get_env('BSN_NO_KEY_FILE')):
+                enc_key = Fernet.generate_key().decode()
+                os.environ['BEETSTREAMNEXT_KEY'] = enc_key
 
-            print_box([
-                '',
-                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
-                '',
-                'An encryption key has been generated for your database:',
-                '',
-                f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
-                f'{enc_key}{TermColors.ENDC}',
-                '',
-                'It has been saved to:',
-                f'{env_path}',
-                '',
-                "  ▶  It won't be shown again. Store it safely.",
-                '  ▶  If you lose it, stored passwords will be unrecoverable.',
-                '',
-            ], color=TermColors.WARNING)
+                print_box([
+                    '',
+                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
+                    '',
+                    'An encryption key has been generated for your database:',
+                    '',
+                    f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
+                    f'{enc_key}{TermColors.ENDC}',
+                    '',
+                    f'{TermColors.BOLD}BSN_NO_KEY_FILE{TermColors.ENDC} is set: key was NOT written to disk.',
+                    '',
+                    "  ▶  Store it in your secrets manager. It won't be shown again.",
+                    '  ▶  If you lose it, stored passwords will be unrecoverable.',
+                    '',
+                ], color=TermColors.WARNING)
+
+            else:
+                enc_key = Fernet.generate_key().decode()
+                new_lines = existing_lines + [f'BEETSTREAMNEXT_KEY={enc_key}']
+                os.environ['BEETSTREAMNEXT_KEY'] = enc_key
+
+                _write_secret_file(env_path, '\n'.join(new_lines) + '\n')
+
+                print_box([
+                    '',
+                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
+                    '',
+                    'An encryption key has been generated for your database:',
+                    '',
+                    f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
+                    f'{enc_key}{TermColors.ENDC}',
+                    '',
+                    'It has been saved to:',
+                    f'{env_path}',
+                    '',
+                    "  ▶  Make sure this file has the correct permissions.",
+                    '  ▶  If you lose it, stored passwords will be unrecoverable.',
+                    '',
+                ], color=TermColors.WARNING)
 
     else:
         # Not first run, key must be present

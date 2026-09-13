@@ -46,7 +46,7 @@ def start_import() -> Tuple[bool, str, bool]:
     Trigger an incremental, unattended `beet import` on the library's root directory, as a
     background subprocess.
 
-    Refuses to start if beets' timid mode is on. Setting 'allow_beets_disk_writes' must be on to allow
+    Refuses to start if beets' timid mode is on. Setting 'allow_disk_writes' must be on to allow
     any beets configuration that touches the disk (file modification, copy, or write).
 
     Returns (ok, message, already_running)
@@ -57,9 +57,9 @@ def start_import() -> Tuple[bool, str, bool]:
         if _process is not None and _process.poll() is None:
             return False, 'An import is already running.', True
 
-        if not beets_import_is_safe() and not settings_store.get('allow_beets_disk_writes'):
+        if not beets_import_is_safe() and not settings_store.get('allow_disk_writes'):
             return False, ("Refusing to import: the active beets config would write tags or copy/move files. "
-                            "Enable 'allow_beets_disk_writes' to allow this."), False
+                            "Enable 'allow_disk_writes' to allow this."), False
 
         if beets.config['import']['timid'].get(bool):
             return False, "Can't run incremental import: beets' timid mode is enabled.", False

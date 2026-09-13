@@ -21,6 +21,7 @@ from beetsplug.beetstreamnext.core.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.security import ip_filter
 from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.utils.system import is_docker
 from beetsplug.beetstreamnext.utils.text import split_list
 
 
@@ -174,19 +175,32 @@ def run_server(
 
     if settings_store.get('reverse_proxy'):
         if any(h not in LOOPBACK_IPS for h in host):
-            print_box([
-                '',
-                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                '',
-                'reverse_proxy is enabled and the server is bound to',
-                f"{', '.join(host)}:{port} (not loopback).",
-                '',
-                'Make sure this address is *not* reachable without going through the proxy.',
-                '',
-                'Bind to 127.0.0.1 (or a unix socket), unless a firewall',
-                'guarantees only the proxy can reach this port.',
-                '',
-            ], color=TermColors.WARNING)
+            if is_docker():
+                print_box([
+                    '',
+                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
+                    '',
+                    'reverse_proxy is enabled and the server is bound to',
+                    f"{', '.join(host)}:{port} (not loopback).",
+                    '',
+                    "Normal for a container, as long as this port isn't published",
+                    'to the host. If it is, lock it down like a public bind.',
+                    '',
+                ], color=TermColors.WARNING)
+            else:
+                print_box([
+                    '',
+                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
+                    '',
+                    'reverse_proxy is enabled and the server is bound to',
+                    f"{', '.join(host)}:{port} (not loopback).",
+                    '',
+                    'Make sure this address is *not* reachable without going through the proxy.',
+                    '',
+                    'Bind to 127.0.0.1 (or a unix socket), unless a firewall',
+                    'guarantees only the proxy can reach this port.',
+                    '',
+                ], color=TermColors.WARNING)
 
         # Trusting 'proxy_hops' number of forwarded entries
         hops = max(1, settings_store.get('proxy_hops'))

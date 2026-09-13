@@ -1,6 +1,7 @@
 from __future__ import annotations
 import argparse
 import sys
+import textwrap
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -35,16 +36,32 @@ def _cascade_value(*values: Any, default: Any = None) -> Any:
     return default
 
 
+def _wrap_bullet(label: str, items: List[str], width: int = 68) -> List[str]:
+    """
+    Wrap a comma-separated item list under a ' ▶ ' bullet to fit print_box's width.
+    Continuation lines are indent-only.
+    """
+    wrapped = textwrap.wrap(
+        ', '.join(items),
+        width=width,
+        initial_indent=f'  ▶  {label}',
+        subsequent_indent='     ',
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    return wrapped or [f'  ▶  {label}']
+
+
 def _drift_lines(drift: dict[str, dict]) -> List[str]:
     lines = []
     for table, info in drift.items():
         if 'unknown_migrations' in info:
-            lines.append(f"  ▶  {table}: unrecognized migration(s) — {', '.join(info['unknown_migrations'])}")
+            lines.extend(_wrap_bullet(f'{table}: unrecognized migration(s) — ', info['unknown_migrations']))
         else:
             if info['unknown_columns']:
-                lines.append(f"  ▶  {table}: unrecognized column(s) — {', '.join(info['unknown_columns'])}")
+                lines.extend(_wrap_bullet(f'{table}: unrecognized column(s) — ', info['unknown_columns']))
             if info['missing_columns']:
-                lines.append(f"  ▶  {table}: missing expected column(s) — {', '.join(info['missing_columns'])}")
+                lines.extend(_wrap_bullet(f'{table}: missing expected column(s) — ', info['missing_columns']))
     return lines
 
 

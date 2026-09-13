@@ -25,7 +25,7 @@ def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) ->
     for line in lines:
         true_len = len(TermColors.ansi_escape.sub('', line))
         w = width + (len(line) - true_len)
-        to_print = f'{line:<{w}}' if line.startswith('  ▶') else line.center(w, ' ')
+        to_print = f'{line:<{w}}' if line.startswith('  ') else line.center(w, ' ')
         print(f'{col}║{TermColors.ENDC}{to_print}{col}║{TermColors.ENDC}')
     print(f'{col}╚{border}╝{TermColors.ENDC}\n')
     sys.stdout.flush()  # stdout is fully-buffered when not a TTY (docker logs, etc) without this

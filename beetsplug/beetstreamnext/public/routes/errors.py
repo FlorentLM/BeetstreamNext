@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Any, Tuple
 
 from flask import render_template

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import threading
 from typing import Any, Dict, Optional, Callable

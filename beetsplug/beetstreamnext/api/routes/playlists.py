@@ -1,3 +1,4 @@
+from __future__ import annotations
 import flask
 
 from .. import api_bp

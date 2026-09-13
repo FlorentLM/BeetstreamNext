@@ -1,3 +1,4 @@
+from __future__ import annotations
 import hmac
 import os
 import flask

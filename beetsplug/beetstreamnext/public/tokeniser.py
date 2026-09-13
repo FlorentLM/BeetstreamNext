@@ -1,3 +1,4 @@
+from __future__ import annotations
 import secrets
 import threading
 from typing import Dict, Optional

@@ -1,6 +1,7 @@
 """
 BeetstreamNext is a Beets.io plugin that exposes OpenSubsonic API endpoints.
 """
+from __future__ import annotations
 
 from .application import app, csrf
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import threading
 from sqlite3 import Connection

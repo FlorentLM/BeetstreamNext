@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 # This file is part of beets.
 # Copyright 2016, Adrian Sampson.
 #

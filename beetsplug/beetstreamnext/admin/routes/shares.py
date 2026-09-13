@@ -1,3 +1,4 @@
+from __future__ import annotations
 import flask
 
 from .. import admin_bp, admin_required, back_to

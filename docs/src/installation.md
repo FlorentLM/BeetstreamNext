@@ -193,7 +193,7 @@ services:
     build: 
       context: /home/florent/BeetstreamNext
       args:
-        BEETS_VERSION: 2.8.0    # Betanin currently uses beets 2.8.0 so it's safer to use the same one
+        BEETS_VERSION: 2.11.0    # Betanin currently uses beets 2.11.0 so it's safer to use the same one
     container_name: beetstreamnext
     restart: unless-stopped
     depends_on:
@@ -216,6 +216,8 @@ volumes:
   beets-home:
   beetstreamnext-config:
 ```
+
+> **Note:**: You can run `docker exec betanin beet version` (or whatever your betanin container is called) to see which version of beets it is using.
 
 Edit the two `/path/to/...` host paths, then `docker compose up -d`. Open Betanin at `:9393` to configure/run imports, then BeetstreamNext at `:8080`.
 

@@ -85,7 +85,6 @@ def ensure_secret(db_path: str | Path) -> None:
 
     if is_first_run:
         if externally_provided:
-            enc_key = os.environ['BEETSTREAMNEXT_KEY']
             print_box([
                 '',
                 f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
@@ -103,7 +102,7 @@ def ensure_secret(db_path: str | Path) -> None:
             already_set = {line.split('=', 1)[0] for line in existing_lines if '=' in line}
 
             if 'BEETSTREAMNEXT_KEY' in already_set:
-                enc_key = os.environ['BEETSTREAMNEXT_KEY']   # was loaded by load_dotenv above
+                pass   # already resolved into os.environ by load_dotenv, nothing to do
 
             elif api_bool(get_env('BSN_NO_KEY_FILE')):
                 enc_key = Fernet.generate_key().decode()

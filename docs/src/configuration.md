@@ -23,6 +23,8 @@ List-based settings (like for example `ip_whitelist`/`ip_blacklist`) are a bit m
 
 Settings marked <span style="color:#fab915">**requires restart**</span> only take effect after the server is restarted. Settings marked <span style="color:#6b5c58">**standalone only**</span> are not used when running as a Beets plugin.
 
+> **Note:** BeetstreamNext checks at startup whether the music folder and the beets library database are writable on disk. If either isn't (for example when they're bind-mounted `:ro`, as in the [Betanin example stack](./installation.md#example-stack-beetstreamnext--betanin)), the WebUI will show a red "read-only" pill next to any setting that would need to write there.
+
 ## Server & network
 
 ### `admin_hostname`

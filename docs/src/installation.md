@@ -221,6 +221,8 @@ volumes:
 
 Edit the two `/path/to/...` host paths, then `docker compose up -d`. Open Betanin at `:9393` to configure/run imports, then BeetstreamNext at `:8080`.
 
+> **Note:** Because the music folder and library are mounted `:ro` for BeetstreamNext here, the admin panel will show a red "read-only" pill next to any setting that would try to write to them (see [Configuration reference](./configuration.md)).
+
 Other standalone subcommands work by overriding the container's command. For example, an [unattended first run](#unattended-first-run):
 
 ```bash

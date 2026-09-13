@@ -55,7 +55,8 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     HOME=/home/beetstream \
     XDG_CACHE_HOME=/cache \
     BSN_DB_PATH=/config/beetstreamnext.db \
-    BEETSDIR=/config/beets
+    BEETSDIR=/config/beets \
+    BSN_IN_DOCKER=1
 
 RUN mkdir -p /config /cache && chown -R beetstream:beetstream /config /cache
 VOLUME ["/config", "/cache"]

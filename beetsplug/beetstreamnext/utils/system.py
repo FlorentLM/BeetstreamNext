@@ -49,12 +49,20 @@ def cache_location() -> Path:
 
 
 def is_docker() -> bool:
-    """Check for whether we're running inside a Docker container."""
+    """Check for whether we're running inside a container (Docker, Podman, containerd, ...)."""
 
-    if Path('/.dockerenv').exists():
+    if get_env('BSN_IN_DOCKER'):
         return True
+
+    if Path('/.dockerenv').exists() or Path('/run/.containerenv').exists():
+        return True
+
+    if get_env('container'):  # set by podman, systemd-nspawn, etc.
+        return True
+
     try:
-        return 'docker' in Path('/proc/1/cgroup').read_text()
+        cgroup = Path('/proc/1/cgroup').read_text()
+        return any(tag in cgroup for tag in ('docker', 'containerd', 'kubepods', 'lxc'))
     except OSError:
         return False
 

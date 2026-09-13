@@ -527,6 +527,11 @@ input:focus, select:focus { border-color: var(--primary); }
     letter-spacing: 0.05em;
     vertical-align: middle;
 }
+.setting-meta-badge-danger {
+    background: rgba(149, 64, 57, 0.2);
+    color: #fca5a5;
+    border-color: rgba(149, 64, 57, 0.5);
+}
 .setting-input-row { display: flex; gap: 0.75rem; align-items: center; }
 .setting-input-row input { flex: 1; }
 .setting-input-row .action-link { margin-right: 0; }

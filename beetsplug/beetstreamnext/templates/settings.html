@@ -6,7 +6,14 @@
 
 {# Macros #}
 
-{% macro render_setting_field(key, info, users=None, host_suggestions=None) -%}
+{% macro render_setting_pill(key, setting_pills) -%}
+    {%- set pill = (setting_pills or {}).get(key) -%}
+    {%- if pill -%}
+        <span class="setting-meta-badge{{ ' setting-meta-badge-danger' if pill[1] == 'danger' else '' }}">{{ pill[0] }}</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro render_setting_field(key, info, users=None, host_suggestions=None, setting_pills=None) -%}
     {%- set dis = 'disabled' if info.locked else '' -%}
     {%- if key == 'ratings_writeback_user' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
@@ -65,6 +72,7 @@
         <label class="setting-toggle">
             <input type="checkbox" name="{{ key }}" {% if info.value %}checked{% endif %} {{ dis }}>
             <span class="setting-toggle-key">{{ key }}</span>
+            {{ render_setting_pill(key, setting_pills) }}
         </label>
     {%- elif info.type == 'int' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
@@ -90,26 +98,29 @@
     {%- endif -%}
 {%- endmacro %}
 
-{% macro render_field_actions(key) -%}
+{% macro render_field_actions(key, settings) -%}
     {%- if key == 'lastfm_api_key' -%}
         <p class="setting-row-actions">
             <button type="button" class="btn btn-outline" data-action="test-connection"
                     data-url="{{ url_for('admin.route_test_lastfm') }}"
-                    data-result="test-result-lastfm">Test connection</button>
+                    data-result="test-result-lastfm"
+                    {{ 'disabled' if not settings['lastfm_api_key'].is_set else '' }}>Test connection</button>
         </p>
         <p class="test-result" id="test-result-lastfm"></p>
     {%- elif key == 'audiomuse_url' -%}
         <p class="setting-row-actions">
             <button type="button" class="btn btn-outline" data-action="test-connection"
                     data-url="{{ url_for('admin.route_test_audiomuse') }}"
-                    data-result="test-result-audiomuse">Test connection</button>
+                    data-result="test-result-audiomuse"
+                    {{ 'disabled' if not settings['audiomuse_url'].value else '' }}>Test connection</button>
         </p>
         <p class="test-result" id="test-result-audiomuse"></p>
     {%- elif key == 'podcastindex_api_key' -%}
         <p class="setting-row-actions">
             <button type="button" class="btn btn-outline" data-action="test-connection"
                     data-url="{{ url_for('admin.route_test_podcastindex') }}"
-                    data-result="test-result-podcastindex">Test connection</button>
+                    data-result="test-result-podcastindex"
+                    {{ 'disabled' if not (settings['podcastindex_api_key'].is_set and settings['podcastindex_api_secret'].is_set) else '' }}>Test connection</button>
         </p>
         <p class="test-result" id="test-result-podcastindex"></p>
     {%- elif key == 'jukebox_hardware_device' -%}
@@ -133,7 +144,7 @@
     ),
 } %}
 
-{% macro render_settings_form(category, settings, users=None, host_suggestions=None) %}
+{% macro render_settings_form(category, settings, users=None, host_suggestions=None, setting_pills=None) %}
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -141,9 +152,9 @@
             {% set pair_key = PAIRED_WITH.get(key) %}
             <div class="setting-row">
                 <div class="setting-row-control">
-                    {{ render_setting_field(key, info, users, host_suggestions) }}
+                    {{ render_setting_field(key, info, users, host_suggestions, setting_pills) }}
                     {% if pair_key %}
-                        {{ render_setting_field(pair_key, settings[pair_key], users, host_suggestions) }}
+                        {{ render_setting_field(pair_key, settings[pair_key], users, host_suggestions, setting_pills) }}
                     {% endif %}
                 </div>
                 <div class="setting-row-meta">
@@ -163,7 +174,7 @@
                     {% if info.help %}
                         <pre class="setting-help"><code>{{ info.help | safe }}</code></pre>
                     {% endif %}
-                    {{ render_field_actions(key) }}
+                    {{ render_field_actions(key, settings) }}
                 </div>
             </div>
         {% endfor %}
@@ -535,7 +546,7 @@
     <section class="tab-content" id="tab-{{ cat }}" data-tab-content="{{ cat }}" role="tabpanel">
         <div class="card">
             <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
-            {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions) }}
+            {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions, setting_pills) }}
         </div>
 
         {% if cat == 'security' %}

@@ -21,6 +21,15 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 _VERSION_RE = re.compile(r'\d+(?:\.\d+){1,3}')
 
 
+def is_writable(path: bytes | str | Path) -> bool:
+    """True if path exists and the process can write to it."""
+    if not path:
+        return False
+    if isinstance(path, bytes):
+        path = os.fsdecode(path)
+    return os.access(path, os.W_OK)
+
+
 def get_env(var_name: str) -> Optional[str]:
     """Load a env var value, treating unset or empty-string as None."""
     val = os.environ.get(var_name)

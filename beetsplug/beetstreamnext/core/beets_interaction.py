@@ -17,14 +17,14 @@ from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
-
+from beetsplug.beetstreamnext.utils.system import is_writable
 
 _lock = threading.Lock()
 _process: Optional[subprocess.Popen] = None
 _started_at: Optional[float] = None
 
 
-def _diskwrite_safe() -> bool:
+def beets_import_is_safe() -> bool:
     """
     Returns True if the resolved beets config has no disk-affecting side effects
     (no file modification, moving or copying)
@@ -46,7 +46,7 @@ def start_import() -> Tuple[bool, str, bool]:
     Trigger an incremental, unattended `beet import` on the library's root directory, as a
     background subprocess.
 
-    Refuses to start if beets' timid mode is on. Setting 'allow_disk_writes' must be on to allow
+    Refuses to start if beets' timid mode is on. Setting 'allow_beets_disk_writes' must be on to allow
     any beets configuration that touches the disk (file modification, copy, or write).
 
     Returns (ok, message, already_running)
@@ -57,9 +57,9 @@ def start_import() -> Tuple[bool, str, bool]:
         if _process is not None and _process.poll() is None:
             return False, 'An import is already running.', True
 
-        if not _diskwrite_safe() and not settings_store.get('allow_disk_writes'):
+        if not beets_import_is_safe() and not settings_store.get('allow_beets_disk_writes'):
             return False, ("Refusing to import: the active beets config would write tags or copy/move files. "
-                            "Enable 'allow_disk_writes' to allow this."), False
+                            "Enable 'allow_beets_disk_writes' to allow this."), False
 
         if beets.config['import']['timid'].get(bool):
             return False, "Can't run incremental import: beets' timid mode is enabled.", False
@@ -140,11 +140,6 @@ def config_path() -> Path:
     return Path(configured) if configured else Path(beets.config.user_config_path())
 
 
-def is_config_ro(path: Path) -> bool:
-    target = path if path.exists() else path.parent
-    return not os.access(target, os.W_OK)
-
-
 def read_config() -> dict:
     path = config_path()
     try:
@@ -155,7 +150,7 @@ def read_config() -> dict:
     return {
         'path': str(path),
         'content': content,
-        'read_only': is_config_ro(path),
+        'read_only': not is_writable(path),
         'loaded_at': time.time(),
     }
 
@@ -163,7 +158,7 @@ def read_config() -> dict:
 def write_config(content: str) -> Tuple[bool, str]:
     path = config_path()
 
-    if is_config_ro(path):
+    if not is_writable(path):
         return False, 'Config file is read-only.'
 
     try:

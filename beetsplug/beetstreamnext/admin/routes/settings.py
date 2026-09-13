@@ -13,6 +13,7 @@ from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
+from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER, PODCASTINDEX
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
@@ -144,6 +145,14 @@ def route_settings() -> flask.Response:
     settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
     host_suggestions = flask.current_app.config.get('HOST_LIST', [])
 
+    # Small contextual pills next to a setting
+    setting_pills: dict[str, tuple[str, str]] = {}
+
+    music_root = flask.current_app.config.get('root_directory')
+    if music_root and not is_writable(music_root):
+        setting_pills['save_artists_images'] = ('music folder is read-only', 'danger')
+        setting_pills['save_album_art'] = ('music folder is read-only', 'danger')
+
     cache_bytes = cache_breakdown(
         flask.current_app.config['THUMBNAIL_CACHE_PATH'],
         flask.current_app.config['HTTP_CACHE_PATH']
@@ -265,6 +274,7 @@ def route_settings() -> flask.Response:
             new_api_key=new_api_key,
             settings_categories=SETTINGS_CATEGORIES,
             settings_by_category=settings_by_category,
+            setting_pills=setting_pills,
             host_suggestions=host_suggestions,
             log_lines=mem_log.recents,
         )

@@ -6,14 +6,12 @@ Security reports are welcome and appreciated.
 
 ## Supported Versions
 
-Only the current pre-release version is supported
+Only the current release version is supported
 
 | Version | Supported          |
-|---------| ------------------ |
-| 1.9.9   | :white_check_mark: |
-| 1.8.5   | :white_check_mark: |
-| 1.8.0   | :white_check_mark: |
-| < 1.8.0 | :x:                |
+|---------|--------------------|
+| 2.0.0   | :white_check_mark: |
+| < 2.0.0 | :x:                |
 
 ## Reporting a Vulnerability
 

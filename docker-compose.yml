@@ -1,8 +1,6 @@
 # Standalone BeetstreamNext only, pointed at a library.db + music root managed elsewhere
 # (your own machine, or another container - see docs for a small multi-container stack example)
 #
-# There's no published image yet (see docs/src/installation.md#docker), so this builds locally
-#
 # Usage:
 #   1. Edit the two host paths below (library.db and your music root)
 #      1b. Optional, run once (see https://florentlm.github.io/BeetstreamNext/installation.html#unattended-first-run):
@@ -12,8 +10,7 @@
 
 services:
   beetstreamnext:
-    build: .
-    # image: ghcr.io/florentlm/beetstreamnext:latest  # once a published image exists, prefer this over `build:`
+    image: ghcr.io/florentlm/beetstreamnext:latest
     container_name: beetstreamnext
     restart: unless-stopped
     ports:

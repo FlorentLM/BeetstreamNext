@@ -80,7 +80,7 @@ def _clean_xml_key(key: str) -> str:
     return safe
 
 
-def dict_to_xml(tag: str, data) -> ET.Element[str]:
+def dict_to_xml(tag: str, data) -> ET.Element:
     """
     Converts a json-like dict to an XML tree.
     Simple values are mapped as attributes unless the attribute name already exists

@@ -149,9 +149,25 @@ def route_settings() -> flask.Response:
     setting_pills: dict[str, tuple[str, str]] = {}
 
     music_root = flask.current_app.config.get('root_directory')
-    if music_root and not is_writable(music_root):
-        setting_pills['save_artists_images'] = ('music folder is read-only', 'danger')
-        setting_pills['save_album_art'] = ('music folder is read-only', 'danger')
+    music_ro = bool(music_root) and not is_writable(music_root)
+
+    library_db_path = flask.current_app.config.get('BEETS_DB_PATH')
+    library_ro = bool(library_db_path) and not is_writable(library_db_path)
+
+    if music_ro:
+        for key in ('save_artists_images', 'save_album_art', 'follow_playlist_embedded_urls'):
+            setting_pills[key] = ('read-only music folder', 'danger')
+
+    if library_ro:
+        for key in ('save_lyrics', 'save_album_version', 'ratings_writeback_user'):
+            setting_pills[key] = ('read-only beets library', 'danger')
+
+    if music_ro and library_ro:
+        setting_pills['allow_disk_writes'] = ('read-only music folder & library', 'danger')
+    elif music_ro:
+        setting_pills['allow_disk_writes'] = ('read-only music folder', 'danger')
+    elif library_ro:
+        setting_pills['allow_disk_writes'] = ('read-only beets library', 'danger')
 
     cache_bytes = cache_breakdown(
         flask.current_app.config['THUMBNAIL_CACHE_PATH'],

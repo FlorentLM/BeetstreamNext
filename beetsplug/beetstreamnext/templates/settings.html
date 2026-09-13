@@ -16,7 +16,10 @@
 {% macro render_setting_field(key, info, users=None, host_suggestions=None, setting_pills=None) -%}
     {%- set dis = 'disabled' if info.locked else '' -%}
     {%- if key == 'ratings_writeback_user' -%}
-        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <label class="setting-row-label" for="set-{{ key }}">
+            {{ key }}
+            {{ render_setting_pill(key, setting_pills) }}
+        </label>
         <select id="set-{{ key }}" name="{{ key }}" {{ dis }}>
             <option value="" {% if not info.value %}selected{% endif %}>Disabled</option>
             {% for u in (users or []) %}

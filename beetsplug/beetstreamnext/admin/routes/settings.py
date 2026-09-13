@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes,
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.health import flagged_songs
-from beetsplug.beetstreamnext.core.beets_interaction import read_config
+from beetsplug.beetstreamnext.core.beets_interaction import read_config, beets_import_is_safe
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.database import database
@@ -46,6 +46,8 @@ def route_update_settings(category: str) -> flask.Response:
             continue   # Handled by dedicated endpoints
         if settings_store.locked(key):
             continue   # set explicitly (via CLI/env/config) so not editable here
+        if key == 'allow_disk_writes' and beets_import_is_safe():
+            continue   # beets config already never writes/copies/moves files, so this is a no-op
 
         if spec['type'] == 'bool':
             value: Any = key in submitted
@@ -162,7 +164,13 @@ def route_settings() -> flask.Response:
         for key in ('save_lyrics', 'save_album_version', 'ratings_writeback_user'):
             setting_pills[key] = ('beets library is read-only', 'danger')
 
-    if music_ro and library_ro:
+    if beets_import_is_safe():
+        setting_pills['allow_disk_writes'] = ('move/copy/write are all off', 'info')
+        settings_by_category['library']['allow_disk_writes']['locked'] = True
+        settings_by_category['library']['allow_disk_writes']['lock_reason'] = (
+            "This setting has no effect, Beets already avoids modifying files."
+        )
+    elif music_ro and library_ro:
         setting_pills['allow_disk_writes'] = ('music folder & library are read-only', 'danger')
     elif music_ro:
         setting_pills['allow_disk_writes'] = ('music folder is read-only', 'danger')

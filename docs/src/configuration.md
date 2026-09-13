@@ -321,7 +321,7 @@ Refuse to start on beets version mismatch (see Server Info) instead of just warn
 
 ### `allow_disk_writes`
 
-Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files or copying/moving files). Not required if the loaded Beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.
+Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files or copying/moving files). Not needed when the loaded Beets config already has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.
 
 *type:* `bool`
 
@@ -425,7 +425,7 @@ Fetch missing song lyrics using Beets' Lyrics plugin.
 
 ### `save_lyrics`
 
-Save fetched lyrics to the beets library database.
+Save fetched lyrics to the beets library database (this never writes tags into the music files, only to the Beets database).
 
 *type:* `bool`
 
@@ -445,7 +445,7 @@ Fetch album version info ("Deluxe Edition", "Japanese Expanded Edition", etc.) f
 
 ### `save_album_version`
 
-Save fetched album version info to the beets database.
+Save fetched album version info to the beets database (this never writes tags into the music files, only to the Beets database).
 
 *type:* `bool`
 
@@ -475,7 +475,7 @@ Space-separated articles (across any language) to ignore when sorting artists al
 
 ### `ratings_writeback_user`
 
-Commit this user's Likes and Ratings into the Beets library so they survive outside BeetstreamNext. Beets has no concept of per-user data, so only one user's changes can be committed this way.<br>Leave unset to disable.
+Commit this user's Likes and Ratings into the Beets library so they survive outside BeetstreamNext. Beets has no concept of per-user data, so only one user's changes can be committed this way (this never writes tags into the music files, only to the Beets database).<br>Leave unset to disable.
 
 *type:* `str`
 

@@ -399,7 +399,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': False,
         'category': 'library',
         'description': "Required to allow <code>beet import</code> scans to modify content on disk (writing tags in the files "
-                        "or copying/moving files). Not required if the loaded Beets config has <code>write</code>/<code>copy</code>/<code>move</code> all disabled.",
+                        "or copying/moving files). Not needed when the loaded Beets config already has "
+                        "<code>write</code>/<code>copy</code>/<code>move</code> all disabled.",
         'requires_restart': False,
         'env_var': 'BSN_ALLOW_DISK_WRITES',
     },
@@ -472,7 +473,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'bool',
         'default': False,
         'category': 'library',
-        'description': 'Save fetched lyrics to the beets library database.',
+        'description': 'Save fetched lyrics to the beets library database (this never writes tags into the music files, only to the Beets database).',
         'requires_restart': False,
     },
     'fetch_album_version': {
@@ -486,7 +487,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'bool',
         'default': False,
         'category': 'library',
-        'description': 'Save fetched album version info to the beets database.',
+        'description': 'Save fetched album version info to the beets database (this never writes tags into the music files, only to the Beets database).',
         'requires_restart': False,
     },
     'discogs_ratings': {
@@ -526,7 +527,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': (
             "Commit this user's Likes and Ratings into the Beets library so they survive outside "
             f"{SERVER_NAME}. Beets has no concept of per-user data, so only one user's changes can "
-            "be committed this way."
+            "be committed this way (this never writes tags into the music files, only to the Beets database)."
             "<br>"
             "Leave unset to disable."
         ),

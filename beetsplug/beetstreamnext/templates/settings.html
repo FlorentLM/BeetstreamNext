@@ -168,7 +168,7 @@
                         <p class="setting-restart-note"><i class="material-icons">restart_alt</i> Requires server restart</p>
                     {% endif %}
                     {% if info.locked %}
-                        <p class="setting-locked-note"><i class="material-icons">lock</i> Explicitly set via a CLI flag, env var, or config file.</p>
+                        <p class="setting-locked-note"><i class="material-icons">lock</i> {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file.' }}</p>
                     {% elif info.overridden and not info.sensitive %}
                         <p class="setting-row-actions">
                             <button type="submit"

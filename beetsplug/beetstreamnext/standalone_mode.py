@@ -1,7 +1,6 @@
 from __future__ import annotations
 import argparse
 import sys
-import textwrap
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -10,7 +9,7 @@ import confuse
 import yaml
 from beets.library import Library
 
-from beetsplug.beetstreamnext.console import print_box, TermColors
+from beetsplug.beetstreamnext.console import print_box, drift_lines, TermColors
 from beetsplug.beetstreamnext.constants import DEFAULT_CONFIG_PATH, DEFAULT_DB_TIMEOUT
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.health import detect_beets_drift
@@ -36,35 +35,6 @@ def _cascade_value(*values: Any, default: Any = None) -> Any:
     return default
 
 
-def _wrap_bullet(label: str, items: List[str], width: int = 68) -> List[str]:
-    """
-    Wrap a comma-separated item list under a ' ▶ ' bullet to fit print_box's width.
-    Continuation lines are indent-only.
-    """
-    wrapped = textwrap.wrap(
-        ', '.join(items),
-        width=width,
-        initial_indent=f'  ▶  {label}',
-        subsequent_indent='     ',
-        break_long_words=False,
-        break_on_hyphens=False,
-    )
-    return wrapped or [f'  ▶  {label}']
-
-
-def _drift_lines(drift: dict[str, dict]) -> List[str]:
-    lines = []
-    for table, info in drift.items():
-        if 'unknown_migrations' in info:
-            lines.extend(_wrap_bullet(f'{table}: unrecognized migration(s) — ', info['unknown_migrations']))
-        else:
-            if info['unknown_columns']:
-                lines.extend(_wrap_bullet(f'{table}: unrecognized column(s) — ', info['unknown_columns']))
-            if info['missing_columns']:
-                lines.extend(_wrap_bullet(f'{table}: missing expected column(s) — ', info['missing_columns']))
-    return lines
-
-
 def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
     """False = abort startup (drift detected and 'strict_beets_version_check' is enabled)."""
 
@@ -87,7 +57,7 @@ def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
             '',
             "This library.db shows signs of having been modified by a different beets version:",
             '',
-            *_drift_lines(drift),
+            *drift_lines(drift),
             '',
             "Disable 'strict_beets_version_check' to start anyway (with a warning) instead.",
             '',
@@ -101,7 +71,7 @@ def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
         "This library.db shows signs of having been ",
         "modified by a different beets version:",
         '',
-        *_drift_lines(drift),
+        *drift_lines(drift),
         '',
         "This is probably fine.",
         '',

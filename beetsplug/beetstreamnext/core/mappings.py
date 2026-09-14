@@ -1095,7 +1095,7 @@ class Serialise:
         nb_discs = data.get('disctotal', 1)
         if nb_discs > 1:
             subsonic_album["discTitles"] = [
-                {'disc': d, 'title': ' - '.join(filter(None, [data.get('album', None), f'Disc {d + 1}']))}
+                {'disc': d + 1, 'title': ' - '.join(filter(None, [data.get('album', None), f'Disc {d + 1}']))}
                 for d in range(nb_discs)
             ]
 

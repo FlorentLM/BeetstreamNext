@@ -9,64 +9,6 @@ from typing import Any, Optional, Sequence, List
 from beetsplug.beetstreamnext.constants import MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
 
 
-GENRE_MAP = {
-    "rnb": "R&B",
-    "r'n'b": "R&B",
-    "r & b": "R&B",
-    "r and b": "R&B",
-    "rhythm and blues": "R&B",
-    "rhythm & blues": "R&B",
-    "pbr&b": "Alternative R&B",
-    "pbrnb": "Alternative R&B",
-    "pb r&b": "Alternative R&B",
-    "pb rnb": "Alternative R&B",
-    "pb-r&b": "Alternative R&B",
-    "dnb": "Drum and Bass",
-    "d&b": "Drum and Bass",
-    "drum & bass": "Drum and Bass",
-    "drum 'n' bass": "Drum and Bass",
-    "drum n bass": "Drum and Bass",
-    "hip hop": "Hip Hop",
-    "hip-hop": "Hip Hop",
-    "hiphop": "Hip Hop",
-    "lofi": "Lo-Fi",
-    "lo fi": "Lo-Fi",
-    "lo-fi": "Lo-Fi",
-    "synthpop": "Synthpop",
-    "synth-pop": "Synthpop",
-    "synth pop": "Synthpop",
-    "kpop": "K-Pop",
-    "k-pop": "K-Pop",
-    "jpop": "J-Pop",
-    "j-pop": "J-Pop",
-    "post rock": "Post-Rock",
-    "post-rock": "Post-Rock",
-    "post punk": "Post-Punk",
-    "post-punk": "Post-Punk",
-}
-
-TOKEN_REPLACEMENTS = {
-    r"\bProg\b": "Progressive",
-    r"\bAlt\b": "Alternative",
-    r"\bUk\b": "UK",
-    r"\bUs\b": "US",
-    r"\bEdm\b": "EDM",
-    r"\bIdm\b": "IDM",
-    r"\bOst\b": "OST",
-    r"\bRock\s*&\s*Roll\b": "Rock and Roll",
-    r"\bRock\s*['’]?[Nn]['’]?\s*Roll\b": "Rock and Roll",
-    r"\bRock\s*&\b": "Rock and",
-}
-
-TOKEN_REGEX = re.compile(
-    "|".join(f"(?P<t{i}>{pattern})" for i, pattern in enumerate(TOKEN_REPLACEMENTS.keys())),
-    flags=re.IGNORECASE
-)
-_TOKEN_MAP = {f"t{i}": repl for i, repl in enumerate(TOKEN_REPLACEMENTS.values())}
-
-PUNCT_TRANS = str.maketrans({'.': ' ', '/': ';', '\\': ';'})
-
-
 ##
 # Text utilities
 

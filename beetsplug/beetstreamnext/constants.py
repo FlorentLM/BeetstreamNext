@@ -82,6 +82,71 @@ ALPHANUM_CHARS: re.Pattern = re.compile(r'^[a-zA-Z0-9_]+$')
 
 MBID_VALIDATOR = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
 
+GENRE_MAP = {
+    "rnb": "R&B",
+    "r'n'b": "R&B",
+    "r & b": "R&B",
+    "r and b": "R&B",
+    "rhythm and blues": "R&B",
+    "rhythm & blues": "R&B",
+    "pbr&b": "Alternative R&B",
+    "pbrnb": "Alternative R&B",
+    "pb r&b": "Alternative R&B",
+    "pb rnb": "Alternative R&B",
+    "pb-r&b": "Alternative R&B",
+    "dnb": "Drum and Bass",
+    "d&b": "Drum and Bass",
+    "drum & bass": "Drum and Bass",
+    "drum 'n' bass": "Drum and Bass",
+    "drum n bass": "Drum and Bass",
+    "hip hop": "Hip Hop",
+    "hip-hop": "Hip Hop",
+    "hiphop": "Hip Hop",
+    "lofi": "Lo-Fi",
+    "lo fi": "Lo-Fi",
+    "lo-fi": "Lo-Fi",
+    "synthpop": "Synthpop",
+    "synth-pop": "Synthpop",
+    "synth pop": "Synthpop",
+    "kpop": "K-Pop",
+    "k pop": "K-Pop",
+    "k-pop": "K-Pop",
+    "jpop": "J-Pop",
+    "j pop": "J-Pop",
+    "j-pop": "J-Pop",
+    "post rock": "Post-Rock",
+    "post-rock": "Post-Rock",
+    "post punk": "Post-Punk",
+    "post-punk": "Post-Punk",
+}
+
+GENRE_RE_TOKENS = {
+    r"\bProg\b": "Progressive",
+    r"\bAlt\b": "Alternative",
+    r"\bUk\b": "UK",
+    r"\bUs\b": "US",
+    r"\bEdm\b": "EDM",
+    r"\bIdm\b": "IDM",
+    r"\bOst\b": "OST",
+    r"\bRock\s*&\s*Roll\b": "Rock and Roll",
+    r"\bRock\s*['’]?[Nn]['’]?\s*Roll\b": "Rock and Roll",
+    r"\bRock\s*&\b": "Rock and",
+}
+
+GENRES_REGEX = re.compile(
+    "|".join(f"(?P<t{i}>{pattern})" for i, pattern in enumerate(GENRE_RE_TOKENS.keys())),
+    flags=re.IGNORECASE
+)
+
+GENRE_TOKEN_MAP = {f"t{i}": repl for i, repl in enumerate(GENRE_RE_TOKENS.values())}
+
+DOT_TRANS = str.maketrans({'.': ' '})
+
+COLLAPSE_SPACES = re.compile(r'\s+')
+
+DECADE_APOSTROPHE = re.compile(r"(\d)'([A-Za-z])\b")
+
+
 ## Security
 
 LOOPBACK_IPS: frozenset[str] = frozenset({'127.0.0.1', 'localhost', '::1'})

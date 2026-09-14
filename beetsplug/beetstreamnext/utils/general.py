@@ -11,10 +11,12 @@ import re
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, customstrip, standard_ascii, safe_str, PUNCT_TRANS, \
-    GENRE_MAP, TOKEN_REGEX, _TOKEN_MAP
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, customstrip, standard_ascii, safe_str
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, SERVER_VERSION
+from beetsplug.beetstreamnext.constants import (
+    GENRE_MAP, GENRES_REGEX, GENRE_TOKEN_MAP, COLLAPSE_SPACES, DOT_TRANS, DECADE_APOSTROPHE,
+    START_TIME, GENRES_DELIM, SERVER_VERSION
+)
 
 
 ##
@@ -129,9 +131,7 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     if not genres:
         return ()
 
-    normalized_genres = genres.translate(PUNCT_TRANS)
-    raw_list = split_beets_multi(normalized_genres)
-
+    raw_list = split_beets_multi(genres)
     split_tags = (
         sub_tag
         for raw in raw_list
@@ -139,8 +139,7 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     )
 
     def _token_sub(match: re.Match) -> str:
-        group_name = match.lastgroup
-        return _TOKEN_MAP[group_name]
+        return GENRE_TOKEN_MAP[match.lastgroup]
 
     cleaned = {}
 
@@ -149,6 +148,9 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
         if not tag:
             continue
 
+        if '.' in tag:
+            tag = COLLAPSE_SPACES.sub(' ', tag.translate(DOT_TRANS)).strip()
+
         tag_lower = tag.lower()
 
         if tag_lower in GENRE_MAP:
@@ -156,8 +158,9 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
             continue
 
         tag_titled = tag.title()
+        tag_titled = DECADE_APOSTROPHE.sub(lambda m: f"{m.group(1)}'{m.group(2).lower()}", tag_titled)
 
-        processed_tag = TOKEN_REGEX.sub(_token_sub, tag_titled).strip()
+        processed_tag = GENRES_REGEX.sub(_token_sub, tag_titled).strip()
 
         if processed_tag:
             cleaned[processed_tag] = None

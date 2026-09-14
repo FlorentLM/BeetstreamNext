@@ -167,10 +167,15 @@ def _image_from_folder(album_dir: str | Path) -> Path | None:
         return None
 
     album_dir = Path(album_dir)
-    if not album_dir.exists() or not album_dir.is_dir():
+    try:
+        if not album_dir.exists() or not album_dir.is_dir():
+            return None
+
+        images = [f for f in album_dir.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS]
+    except OSError as e:
+        bsn_logger.warning(f"Could not scan folder for art at {album_dir}: {e}")
         return None
 
-    images = [f for f in album_dir.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS]
     if not images:
         return None
 

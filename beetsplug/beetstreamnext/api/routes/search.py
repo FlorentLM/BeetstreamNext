@@ -5,7 +5,7 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists, get_song_counts
-from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str
+from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.mappings import Serialise
 
@@ -156,7 +156,7 @@ def endpoint_search() -> flask.Response:
         with flask.g.lib.transaction() as tx:
             rows = tx.query(
                 f"""
-                SELECT albumartist, COUNT(*), mb_albumartistid 
+                SELECT albumartist, COUNT(*), mb_albumartistid, albumartist_sort, MAX(albumartists)
                 FROM albums {where}
                 GROUP BY albumartist
                 ORDER BY albumartist COLLATE NOCASE
@@ -167,9 +167,12 @@ def endpoint_search() -> flask.Response:
 
         artists = []
         for row in artist_rows:
-            name, count, mbid = row
+            name, count, mbid, sort_name, albumartists_raw = row
             artists.append(name)
-            artist_prefetch[name] = {'album_count': count, 'mbid': mbid}
+            is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
+            artist_prefetch[name] = {
+                'album_count': count, 'mbid': mbid, 'sort_name': sort_name, 'is_joint': is_joint
+            }
 
     song_counts = get_song_counts(albums)
 

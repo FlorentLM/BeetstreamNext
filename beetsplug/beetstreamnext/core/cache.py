@@ -4,7 +4,7 @@ import flask
 
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.db import chunked_query
-from beetsplug.beetstreamnext.utils.text import validate_mbid
+from beetsplug.beetstreamnext.utils.text import validate_mbid, split_beets_multi
 
 _MISSING = object()   # sentinel for "not found" vs. "not yet queried"
 
@@ -210,6 +210,10 @@ def preload_artists(artists_data):
     sub_ids = []
     if isinstance(artists_data, dict):
         for name, data in artists_data.items():
+            if data.get('is_joint'):
+                sub_ids.append(IDs.encode_artist(name, joint_credit=True))
+                continue
+
             mbid = validate_mbid(data.get('mbid'))
             sub_ids.append(IDs.encode_artist(mbid or name, is_mbid=bool(mbid)))
 
@@ -221,7 +225,12 @@ def preload_artists(artists_data):
             elif isinstance(item, dict) or hasattr(item, 'keys'):
                 name = item.get('albumartist') or item.get('artist') or ''
                 mbid = validate_mbid(item.get('mb_albumartistid')) or validate_mbid(item.get('mb_artistid'))
-                sub_ids.append(IDs.encode_artist(mbid or name, is_mbid=bool(mbid)))
+                multi = item.get('albumartists') or item.get('artists') or ''
+
+                if len(split_beets_multi(multi or name)) > 1:
+                    sub_ids.append(IDs.encode_artist(name, joint_credit=True))
+                else:
+                    sub_ids.append(IDs.encode_artist(mbid or name, is_mbid=bool(mbid)))
 
     if sub_ids:
         batch_likes(sub_ids)

@@ -224,6 +224,24 @@ def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
     return artists_array, album_artists_array, contributors_array, display_composer
 
 
+def _exact_albums_by(artist_name: str) -> List[LibModel]:
+    """
+    Albums whose albumartist exactly matches
+    (beets' field:value query is a substring match)
+    """
+
+    with flask.g.lib.transaction() as tx:
+        rows = tx.query(
+            """
+            SELECT id 
+            FROM albums 
+            WHERE albumartist = ?
+            """, (artist_name,)
+        )
+
+    return [a for a in (flask.g.lib.get_album(row[0]) for row in rows) if a]
+
+
 ##
 # Data types hierarchy
 
@@ -252,6 +270,7 @@ class IDs:
 
     _ART_MBID_PREF = 'ar-m-'    # ar-m-<base64url(mbid)>  preferred if mbid is known
     _ART_NAME_PREF = 'ar-n-'    # ar-n-<base64url(name)>  fallback
+    _ART_HASH_PREF = 'ar-h-'    # ar-h-<hash of the full joint-credit text>, for multi-artist entries
     _SNG_ID_PREF = 'sg-'        # legacy: sg-<raw beets row id> (decode-only)
     _SNG_MBID_PREF = 'sg-m-'    # sg-m-<base64url(mb_releasetrackid or mb_trackid)>
     _SNG_HASH_PREF = 'sg-h-'    # sg-h-<hash of path relative to root_directory>
@@ -282,7 +301,7 @@ class IDs:
     def decode_type(cls, subsonic_id: str) -> str | None:
         """Returns the type of object this ID represents."""
         sid = str(subsonic_id)
-        if sid.startswith((cls._ART_MBID_PREF, cls._ART_NAME_PREF)): return 'artist'
+        if sid.startswith((cls._ART_MBID_PREF, cls._ART_NAME_PREF, cls._ART_HASH_PREF)): return 'artist'
         if sid.startswith(cls._ALB_ID_PREF): return 'album'
         if sid.startswith(cls._SNG_ID_PREF): return 'song'
         if sid.startswith(cls._PLY_ID_PREF): return 'playlist'
@@ -340,24 +359,27 @@ class IDs:
         return None, None
 
     @classmethod
-    def decode_artist(cls, subsonic_id: str) -> Tuple[str, bool]:
-        """Decode an artist ID back to (name or mbid, is_mbid)."""
+    def decode_artist(cls, subsonic_id: str) -> Tuple[str, str]:
+        """Decode an artist ID back to (value, kind), kind in {'mbid', 'name', 'hash'}."""
 
         sid = str(subsonic_id)
 
+        if sid.startswith(cls._ART_HASH_PREF):
+            return sid[len(cls._ART_HASH_PREF):], 'hash'
+
         if sid.startswith(cls._ART_MBID_PREF):
-            payload, is_mbid = sid[len(cls._ART_MBID_PREF):], True
+            payload, kind = sid[len(cls._ART_MBID_PREF):], 'mbid'
         elif sid.startswith(cls._ART_NAME_PREF):
-            payload, is_mbid = sid[len(cls._ART_NAME_PREF):], False
+            payload, kind = sid[len(cls._ART_NAME_PREF):], 'name'
         else:
-            return '', False
+            return '', ''
 
         padding = (4 - len(payload) % 4) % 4
         try:
             value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
-            return value, is_mbid
+            return value, kind
         except (binascii.Error, UnicodeDecodeError):
-            return '', False
+            return '', ''
 
     @classmethod
     def decode_playlist(cls, subsonic_id: str) -> str | None:
@@ -368,14 +390,25 @@ class IDs:
         return sid[len(cls._PLY_ID_PREF):]
 
     @classmethod
-    def encode_artist(cls, name_or_mbid: Any, is_mbid: bool = True) -> str:
+    def encode_artist(cls, name_or_mbid: Any, is_mbid: bool = True, *, joint_credit: bool = False) -> str:
         """
-        Mint an artist ID from either a mbid or a plain name.
+        Mint an artist ID from a mbid or a plain name.
+
+            joint_credit: hash the full credit text to avoid colliding with the first artists's solo MBid
         """
+
+        if joint_credit:
+            digest = hashlib.sha1(str(name_or_mbid).encode('utf-8')).hexdigest()[:16]
+            return f"{cls._ART_HASH_PREF}{digest}"
 
         encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
         prefix = cls._ART_MBID_PREF if is_mbid else cls._ART_NAME_PREF
         return f"{prefix}{encoded}"
+
+    @staticmethod
+    def is_joint_credit(multi_value: Optional[str], single_name: str = '') -> bool:
+        """Whether a beets *artists (multi-value) field represents more than one credited artist."""
+        return len(split_beets_multi(multi_value or single_name)) > 1
 
     @classmethod
     def encode_album(cls,
@@ -507,22 +540,24 @@ class Resolve:
             return name, mbid
 
         if entry_type == 'artist':
-            value, is_mbid = IDs.decode_artist(req_id)
+            value, kind = IDs.decode_artist(req_id)
         else:
-            value, is_mbid = req_id, False
+            value, kind = req_id, 'name'
 
-        if is_mbid:
+        if kind == 'mbid':
             with flask.g.lib.transaction() as tx:
-                # Check albums first
+                # Prefer solo credit row for this MBID over a joint one
                 rows = tx.query(
                     """
-                    SELECT albumartist
+                    SELECT albumartist, albumartists
                     FROM albums
                     WHERE mb_albumartistid = ?
-                    LIMIT 1
                     """, (value,)
                 )
-                if not rows:  # fallback to items table
+                solo_rows = [r for r in rows if not IDs.is_joint_credit(r[1], r[0])]
+                pick = solo_rows[0] if solo_rows else (rows[0] if rows else None)
+
+                if not pick:  # fallback to items table
                     rows = tx.query(
                         """
                         SELECT artist
@@ -531,12 +566,31 @@ class Resolve:
                         LIMIT 1
                         """, (value,)
                     )
+                    pick = rows[0] if rows else None
 
-            artist_name = rows[0][0] if rows else ''
+            artist_name = pick[0] if pick else ''
             if not artist_name:
                 return None
 
             return artist_name, value  # value is the mbid
+
+        elif kind == 'hash':
+            with flask.g.lib.transaction() as tx:
+                candidates = tx.query(
+                    """
+                    SELECT albumartist
+                    FROM albums
+                    WHERE albumartist IS NOT NULL
+                    GROUP BY albumartist
+                    """
+                )
+
+            for row in candidates:
+                name = row[0] or ''
+                if name and hashlib.sha1(name.encode('utf-8')).hexdigest()[:16] == value:
+                    return name, ''
+
+            return None
 
         else:
             artist_name = value
@@ -907,8 +961,12 @@ class Serialise:
 
         main_ar_name = data.get('albumartist') or data.get('artist') or ''
         main_ar_mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
+        main_ar_multi = data.get('albumartists') or data.get('artists') or ''
 
-        artist_id = IDs.encode_artist(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
+        if IDs.is_joint_credit(main_ar_multi, main_ar_name):
+            artist_id = IDs.encode_artist(main_ar_name, joint_credit=True)
+        else:
+            artist_id = IDs.encode_artist(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
 
         artists, album_artists, contributors, display_composer = _get_artists(data)
 
@@ -960,25 +1018,28 @@ class Serialise:
         sort_name = artist_name
         album_count = 0
         albums = None
+        is_joint = False
 
         if prefetched and artist_name in prefetched:
             pf = prefetched[artist_name]
             mbid = pf.get('mbid') or ''
             sort_name = pf.get('sort_name') or artist_name
             album_count = pf.get('album_count', 0)
+            is_joint = pf.get('is_joint', False)
 
         elif with_albums:
-            albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+            albums = _exact_albums_by(artist_name)
             if albums:
                 mbid = albums[0].get('mb_albumartistid', '') or ''
                 sort_name = albums[0].get('albumartist_sort', '') or artist_name
+                is_joint = IDs.is_joint_credit(albums[0].get('albumartists'), artist_name)
             album_count = len(albums) if albums else 0
 
         else:
             with flask.g.lib.transaction() as tx:
                 rows = tx.query(
                     """
-                    SELECT COUNT(*), mb_albumartistid, albumartist_sort
+                    SELECT COUNT(*), mb_albumartistid, albumartist_sort, albumartists
                     FROM albums
                     WHERE albumartist = ?
                     GROUP BY albumartist
@@ -988,13 +1049,17 @@ class Serialise:
             if rows:
                 row = rows[0]
                 album_count, mbid, sort_name = row[0], row[1] or '', row[2] or artist_name
+                is_joint = IDs.is_joint_credit(row[3], artist_name)
 
         meta = _get_artist_metadata(artist_name)
         mbid = validate_mbid(mbid) or meta['mbid']  # meta['mbid'] is already validated by _artist_metadata()
         sort_name = sort_name if sort_name != artist_name else meta['sort_name']
         roles = meta['roles']
 
-        subsonic_artist_id = IDs.encode_artist(mbid or artist_name, is_mbid=bool(mbid))
+        if is_joint:
+            subsonic_artist_id = IDs.encode_artist(artist_name, joint_credit=True)
+        else:
+            subsonic_artist_id = IDs.encode_artist(mbid or artist_name, is_mbid=bool(mbid))
 
         subsonic_artist = {
             'id': subsonic_artist_id,
@@ -1013,7 +1078,7 @@ class Serialise:
         if with_albums:
 
             if albums is None:  # already fetched above if not prefetched
-                albums = list(flask.g.lib.albums(f'albumartist:{artist_name}'))
+                albums = _exact_albums_by(artist_name)
 
             preload_albums(albums)
             song_counts = get_song_counts(albums)

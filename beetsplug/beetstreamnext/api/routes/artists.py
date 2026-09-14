@@ -8,7 +8,7 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
 from beetsplug.beetstreamnext.core.cache import preload_artists
@@ -68,7 +68,7 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
     with flask.g.lib.transaction() as tx:
         rows = tx.query(
             """
-            SELECT albumartist, COUNT(*) as album_count, mb_albumartistid, albumartist_sort
+            SELECT albumartist, COUNT(*) as album_count, mb_albumartistid, albumartist_sort, MAX(albumartists)
             FROM albums
             WHERE albumartist IS NOT NULL
             GROUP BY albumartist
@@ -78,9 +78,12 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
     artist_prefetch = {}
     artists = []
     for row in rows:
-        name, count, mbid, sort_name = row
+        name, count, mbid, sort_name, albumartists_raw = row
         artists.append(name)
-        artist_prefetch[name] = {'album_count': count, 'mbid': mbid, 'sort_name': sort_name}
+        is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
+        artist_prefetch[name] = {
+            'album_count': count, 'mbid': mbid, 'sort_name': sort_name, 'is_joint': is_joint
+        }
 
     ignored_articles = app.config.get('ignored_articles', SETTINGS_SCHEMA['ignored_articles']['default'])
     articles = ignored_articles.split()
@@ -88,7 +91,8 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
     alphanum_dict = defaultdict(list)
     for artist in artists:
         if artist:
-            char = remove_accents(strip_article(artist, articles)[0]).upper()
+            sort_basis = artist_prefetch.get(artist, {}).get('sort_name') or artist
+            char = remove_accents(strip_article(sort_basis, articles)[0]).upper()
             group_key = char if char.isalpha() else '#'
             alphanum_dict[group_key].append(artist)
 
@@ -175,8 +179,27 @@ def endpoint_artist_info() -> flask.Response:
 
     tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
 
-    # image id is the artist id, but input may have been song or album
-    image_id = IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+    # Image id is the artist id (but input may have been song or album)
+    if IDs.decode_type(artist_id) == 'artist':
+        image_id = artist_id
+
+    else:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartists 
+                FROM albums 
+                WHERE albumartist = ? 
+                LIMIT 1
+                """, (artist_name,)
+            )
+
+        is_joint = bool(rows and IDs.is_joint_credit(rows[0][0], artist_name))
+
+        image_id = (
+            IDs.encode_artist(artist_name, joint_credit=True) if is_joint
+            else IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+        )
 
     payload = {
         tag: {

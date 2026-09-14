@@ -127,10 +127,16 @@ def endpoint_get_starred() -> flask.Response:
     mbids_to_resolve = []
     beets_artist_names = []
     for row in artist_rows:
-        value, is_mbid = IDs.decode_artist(row[0])
-        if value and is_mbid:
+        value, kind = IDs.decode_artist(row[0])
+        if not value:
+            continue
+        if kind == 'mbid':
             mbids_to_resolve.append(value)
-        elif value:
+        elif kind == 'hash':
+            resolved = Resolve.artist(row[0])
+            if resolved:
+                beets_artist_names.append(resolved[0])
+        else:
             beets_artist_names.append(value)
 
     if mbids_to_resolve:
@@ -138,27 +144,32 @@ def endpoint_get_starred() -> flask.Response:
             placeholders = ','.join(['?'] * len(mbids_to_resolve))
             rows = tx.query(
                 f"""
-                SELECT albumartist 
-                FROM albums 
-                WHERE mb_albumartistid IN ({placeholders}) 
+                SELECT albumartist, albumartists
+                FROM albums
+                WHERE mb_albumartistid IN ({placeholders})
                 GROUP BY albumartist
                 """, mbids_to_resolve
             )
-        beets_artist_names.extend(row[0] for row in rows if row[0])
+        # Prefer solo credit for each MBID
+        solo_names = [r[0] for r in rows if r[0] and not IDs.is_joint_credit(r[1], r[0])]
+        beets_artist_names.extend(solo_names or (r[0] for r in rows if r[0]))
 
     prefetched = {}
     if beets_artist_names:
         with flask.g.lib.transaction() as tx:
             placeholders = ','.join(['?'] * len(beets_artist_names))
             sql = f"""
-                   SELECT albumartist, COUNT(*), mb_albumartistid
-                   FROM albums 
-                   WHERE albumartist IN ({placeholders}) 
+                   SELECT albumartist, COUNT(*), mb_albumartistid, albumartist_sort, albumartists
+                   FROM albums
+                   WHERE albumartist IN ({placeholders})
                    GROUP BY albumartist
                    """
             rows = chunked_query(db_obj=tx, query_template=sql, chunked_values=beets_artist_names)
             for r in rows:
-                prefetched[r[0]] = {'album_count': r[1], 'mbid': r[2]}
+                prefetched[r[0]] = {
+                    'album_count': r[1], 'mbid': r[2], 'sort_name': r[3],
+                    'is_joint': IDs.is_joint_credit(r[4], r[0])
+                }
 
     preload_artists(prefetched)
 

@@ -464,25 +464,12 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:
-    from beetsplug.beetstreamnext.core.mappings import IDs
+    from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
 
     artist = customstrip(artist)
     if IDs.decode_type(artist) == 'artist':
-        value, is_mbid = IDs.decode_artist(artist)
-
-        if is_mbid:
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    """
-                    SELECT albumartist 
-                    FROM albums 
-                    WHERE mb_albumartistid = ? 
-                    LIMIT 1
-                    """, (value,)
-                )
-            artist_name = rows[0][0] if rows else value
-        else:
-            artist_name = value
+        resolved = Resolve.artist(artist)
+        artist_name = resolved[0] if resolved else ''
     else:
         artist_name = artist
 

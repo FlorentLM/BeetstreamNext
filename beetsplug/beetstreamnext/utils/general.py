@@ -7,10 +7,12 @@ from functools import lru_cache
 from datetime import datetime, timezone
 import beets
 import flask
+import re
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
-from beetsplug.beetstreamnext.utils.text import remove_accents, split_beets_multi, customstrip, standard_ascii, safe_str
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, customstrip, standard_ascii, safe_str, PUNCT_TRANS, \
+    GENRE_MAP, TOKEN_REGEX, _TOKEN_MAP
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import START_TIME, GENRES_DELIM, SERVER_VERSION
 
@@ -120,35 +122,47 @@ def timestamp_to_iso(timestamp) -> str:
         return ''
 
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=4096)
 def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     """Additional cleaning for common genres formatting issues."""
+
     if not genres:
         return ()
 
-    raw_list = split_beets_multi(genres)
-    separated = GENRES_DELIM.split(';'.join(raw_list))
+    normalized_genres = genres.translate(PUNCT_TRANS)
+    raw_list = split_beets_multi(normalized_genres)
 
-    cleaned = []
-    for g in separated:
-        tag = standard_ascii(g).title()
+    split_tags = (
+        sub_tag
+        for raw in raw_list
+        for sub_tag in GENRES_DELIM.split(raw)
+    )
 
-        tag = (tag.replace('Post ', 'Post-')
-               .replace('Prog ', 'Progressive ')
-               .replace('Rnb', 'R&B')
-               .replace("R'N'B", 'R&B')
-               .replace("R 'N' B", 'R&B')
-               .replace('Rock & ', 'Rock and ')
-               .replace("Rock'N'", 'Rock and')
-               .replace("Rock 'N'", 'Rock and')
-               .replace('.', ' '))
+    def _token_sub(match: re.Match) -> str:
+        group_name = match.lastgroup
+        return _TOKEN_MAP[group_name]
 
-        final_tag = customstrip(tag, punctuation=True)
-        final_tag = remove_accents(final_tag)
-        if final_tag and final_tag not in cleaned:
-            cleaned.append(final_tag)
+    cleaned = {}
 
-    return tuple(cleaned)
+    for g in split_tags:
+        tag = customstrip(standard_ascii(g), punctuation=True).strip()
+        if not tag:
+            continue
+
+        tag_lower = tag.lower()
+
+        if tag_lower in GENRE_MAP:
+            cleaned[GENRE_MAP[tag_lower]] = None
+            continue
+
+        tag_titled = tag.title()
+
+        processed_tag = TOKEN_REGEX.sub(_token_sub, tag_titled).strip()
+
+        if processed_tag:
+            cleaned[processed_tag] = None
+
+    return tuple(cleaned.keys())
 
 
 def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optional[str]) -> flask.Response | None:

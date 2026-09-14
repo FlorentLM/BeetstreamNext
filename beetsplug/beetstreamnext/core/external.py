@@ -227,7 +227,7 @@ def query_musicbrainz(mbid: str, data_type: str) -> dict:
     params = {'fmt': 'json'}
 
     if types_mb[data_type] == 'artist':
-        params['inc'] = 'annotation'
+        params['inc'] = 'url-rels'
 
     try:
         response = http_session().get(endpoint, headers=headers, params=params, timeout=8)
@@ -237,6 +237,35 @@ def query_musicbrainz(mbid: str, data_type: str) -> dict:
 
     except requests.exceptions.RequestException:
         return {}
+
+
+def query_wikidata_title(mbid: str) -> str | None:
+    """
+    Resolve an artist's exact (english) Wikipedia article title via MusicBrainz's Wikidata
+    """
+    if not mbid:
+        return None
+
+    relations = query_musicbrainz(mbid, data_type='artist').get('relations', [])
+    wikidata_url = next(
+        (r.get('url', {}).get('resource', '') for r in relations if r.get('type') == 'wikidata'), ''
+    )
+    qid = wikidata_url.rstrip('/').rsplit('/', 1)[-1]
+    if not qid:
+        return None
+
+    try:
+        response = http_session().get(
+            f'https://www.wikidata.org/wiki/Special:EntityData/{qid}.json',
+            headers={'User-Agent': USER_AGENT}, timeout=8
+        )
+        if not response.ok:
+            return None
+        entity = response.json().get('entities', {}).get(qid, {})
+        return entity.get('sitelinks', {}).get('enwiki', {}).get('title') or None
+
+    except requests.exceptions.RequestException:
+        return None
 
 
 def query_discogs(release_id: Any) -> dict:

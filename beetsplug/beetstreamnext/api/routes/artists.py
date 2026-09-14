@@ -10,7 +10,7 @@ from .. import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import api_bool
-from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia
+from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia, query_wikidata_title
 from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import tokenised_image_url
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
@@ -166,11 +166,19 @@ def endpoint_artist_info() -> flask.Response:
 
         lastfm_bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
 
+        bio_lower = lastfm_bio.lower()
+        if lastfm_bio and (
+            'is an incorrect tag for' in bio_lower
+            or 'more than one artist with this name' in bio_lower
+        ):
+            lastfm_bio = ''
+
         if lastfm_bio:
             short_bio = trim_text(lastfm_bio, char_limit=300)
 
     if not short_bio and app.config.get('fetch_artists_biographies'):
-        wiki_bio = query_wikipedia(artist_name, _cache_ttl_hash=round(time.time() / 3600))
+        wiki_title = (query_wikidata_title(artist_mbid) if artist_mbid else None) or artist_name
+        wiki_bio = query_wikipedia(wiki_title, _cache_ttl_hash=round(time.time() / 3600))
         if wiki_bio:
             short_bio = trim_text(wiki_bio, char_limit=300)
 

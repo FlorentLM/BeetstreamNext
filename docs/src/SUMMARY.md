@@ -16,7 +16,7 @@
 
 # Installation
 
-- [Installation](./installation.md)
+- [Getting started](./installation.md)
 
 # Usage
 

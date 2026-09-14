@@ -16,7 +16,11 @@ Both existing modes share the same [feature set](./features/index.md) and [setti
 
 - Both binaries can instead be pointed to explicitly via the `ffmpeg_path`/`mpv_path` settings if they aren't on your `PATH`.
 
+> **Note:** These requirements are for running from source (needed either way for **Plugin mode**, or for **Standalone mode** if not using Docker). If you run **Standalone mode** via the [Docker image](#docker) instead, Python, `beets`, and `ffmpeg` are already bundled with it.
+
 ## 1. Clone and install
+
+Only needed for **Plugin mode**, or for **Standalone mode** run from source. Skip this entirely if you're running **Standalone mode** via [Docker](#docker) — the published image needs no local install at all.
 
 ```bash
 git clone https://github.com/FlorentLM/BeetstreamNext.git
@@ -77,6 +81,8 @@ Every other setting follows the (roughly similar) order defined in [Configuratio
 
 > **Note:** Since `--library-db`/`BEETS_LIBRARY_DB`/`library_db` (in the YAML) is required on every run just to locate BeetstreamNext's own database, there's no scenario where it isn't explicitly set, so it is currently never editable in the WebUI (I might revise this).
 
+You can run standalone mode directly from the source install above, or run it via the [prebuilt Docker image](#docker) instead.
+
 At minimum, point it at your `library.db` and music root:
 
 ```bash
@@ -112,7 +118,7 @@ Other standalone subcommands: `create-user`, `update-user USERNAME`, `delete-use
 
 > **Note:** If a Beets config file passed via `--beets-config` contains its own `beetstreamnext:` section, it is _ignored_ in standalone mode. Put those settings in a dedicated BeetstreamNext `--config` YAML file, or `BSN_*` environment variables, or set them via the Admin WebUI instead.
 
-### Docker
+#### Docker
 
 A prebuilt image is published to GHCR on every release: `ghcr.io/florentlm/beetstreamnext:latest` (or a specific version, e.g. `:2.0.0`).
 
@@ -153,7 +159,7 @@ Then run it the same way as the `docker run` command above, substituting `beetst
 
 > **Note:** Don't mount your library/music paths at `/config` or `/cache`, or the startup `chown` will recursively re-own them. If you want to control the folders' ownership yourself, you can run the container as a specific user directly (use `docker run --user UID:GID` (in which case also make sure `/config` and `/cache` are already owned by that user), and the entrypoint will notice and won't try to switch users itself.
 
-#### docker-compose
+##### docker-compose
 
 There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (BeetstreamNext only, pulling the published image by default). Edit the two host paths in it, then:
 
@@ -163,7 +169,7 @@ docker compose up -d
 
 To build locally instead — e.g. to pin `BEETS_VERSION` — comment out the `image:` line and uncomment `build: .`.
 
-#### Example stack: BeetstreamNext + Betanin
+##### Example stack: BeetstreamNext + Betanin
 
 A small stack pairing BeetstreamNext with [Betanin](https://github.com/sentriz/betanin), a web UI that drives `beet import`. Betanin owns the beets config and `library.db`, BeetstreamNext only ever reads them. The two containers need to share:
 
@@ -242,7 +248,7 @@ docker run --rm \
 
 > **Note:** When using Docker, you probably want to use Docker secrets. You can add the `BSN_NO_KEY_FILE=1` to that command to prevent it from writing the `.env` file (see [unattended first run](#unattended-first-run)).
 
-#### Who runs `beet`?
+##### Who runs `beet`?
 
 BeetstreamNext only reads the library. Something still has to run `beet import` or any other thing you want to do with Beets. Two ways to do that:
 

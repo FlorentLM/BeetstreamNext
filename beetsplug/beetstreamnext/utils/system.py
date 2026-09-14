@@ -91,6 +91,15 @@ def config_location() -> Path:
     return config_dir / 'beetstreamnext'
 
 
+def data_location() -> Path:
+    """
+    Default location for long-lived data (podcast downloads, saved artist images, ...)
+    """
+    final_path = config_location() / 'data'
+    final_path.mkdir(parents=True, exist_ok=True)
+    return final_path
+
+
 def creation_date(filepath: bytes | str | Path) -> float:
     """Get a file's creation date."""
 

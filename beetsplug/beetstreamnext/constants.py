@@ -7,7 +7,7 @@ from typing import Dict
 
 from importlib.metadata import version, PackageNotFoundError
 
-from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location
+from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location, data_location
 
 
 
@@ -40,7 +40,8 @@ SOCO: bool = is_installed('soco')
 PYCHROMECAST: bool = is_installed('pychromecast')
 
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
-CACHE_LOCATION: Path = cache_location()
+CACHE_LOCATION: Path = cache_location()    # safe to lose (regenerable/disposable)
+DATA_LOCATION: Path = data_location()      # should persist across restarts
 
 DEFAULT_CONFIG_PATH: Path = config_location() / 'beetstreamnext.yaml'     # standalone mode only
 

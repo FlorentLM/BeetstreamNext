@@ -10,7 +10,7 @@ from typing import Optional
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    CACHE_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
+    DATA_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch, normalize_url, https_variant
@@ -136,7 +136,7 @@ class PodcastManager:
     @staticmethod
     def storage_dir() -> Path:
         configured = settings_store.get('podcast_storage_dir')
-        base = Path(configured) if configured else (CACHE_LOCATION / 'podcasts')
+        base = Path(configured) if configured else (DATA_LOCATION / 'podcasts')
         base.mkdir(parents=True, exist_ok=True)
         return base
 

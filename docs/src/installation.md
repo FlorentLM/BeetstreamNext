@@ -151,8 +151,8 @@ Build-time options (`--build-arg`):
 
 Then run it the same way as the `docker run` command above, substituting `beetstreamnext` for the image name.
 
-- `/config` is where `beetstreamnext.yaml`, the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key)), and BeetstreamNext's own database (`beetstreamnext.db`) all get created.
-- `/cache` is scratch space. It's not necessary to mount, but you can (if you want the cache to survive restarts).
+- `/config` is where `beetstreamnext.yaml`, the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key)), BeetstreamNext's own database (`beetstreamnext.db`), and a `data/` subfolder (downloaded podcast episodes, saved artist images) are stored.
+- `/cache` is scratch space (thumbnails, HTTP cache, transcode tempfiles, HLS sessions, zip downloads). It's not necessary to mount, but you can (if you want the cache to survive restarts too).
 - `PUID`/`PGID` (default `1000`/`1000`) should match the user that owns your library/music files on the host.
 
 > **Note:** BeetstreamNext never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to that `PUID`/`PGID` before dropping to it for the rest of the process's life.

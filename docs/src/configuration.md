@@ -539,7 +539,7 @@ URL to your AudioMuse-AI instance (e.g. <code>http://localhost:8000</code>) to e
 
 ### `podcast_storage_dir`
 
-Directory to store downloaded podcast episode audio. Leave empty to use the default cache location.
+Directory to store downloaded podcast episode audio. Leave empty to use the default data location.
 
 *type:* `str`
 

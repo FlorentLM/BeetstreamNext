@@ -3,7 +3,7 @@ import shutil
 from typing import TypedDict, Any, Callable, Dict, List, Tuple
 
 from beetsplug.beetstreamnext.constants import (
-    SERVER_NAME, CACHE_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
+    SERVER_NAME, DATA_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
     RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW, DEFAULT_HOST, DEFAULT_PORT
 )
 from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts, parse_host
@@ -131,7 +131,7 @@ def _effective_music_root() -> str:
 
 
 def _effective_podcast_dir() -> str:
-    return str(CACHE_LOCATION / 'podcasts')
+    return str(DATA_LOCATION / 'podcasts')
 
 
 def _effective_ffmpeg_path() -> str:
@@ -583,7 +583,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'podcasts',
         'description': (
-            "Directory to store downloaded podcast episode audio. Leave empty to use the default cache location."
+            "Directory to store downloaded podcast episode audio. Leave empty to use the default data location."
         ),
         'requires_restart': False,
         'on_empty': _effective_podcast_dir,

@@ -13,7 +13,7 @@ import flask
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import external_url
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
-from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path, safe_join
+from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
@@ -484,42 +484,38 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     if not artist_name:
         return None
 
-    try:
-        local_folder = safe_join(app.config['root_directory'], artist_name)
-    except ValueError:
-        return None
 
-    local_image_path = local_folder / f'{artist_name}.jpg'
 
-    if local_folder.is_dir():
-        # Try to fetch+save from Deezer if enabled and not already cached
-        if app.config['fetch_artists_images'] and not local_image_path.is_file():
-            dz_data = query_deezer(artist=artist_name)
+    cache_key = hashlib.md5(artist_name.encode('utf-8')).hexdigest()
+    local_image_path = app.config['ARTIST_IMAGE_DATA_PATH'] / f'{cache_key}.jpg'
 
-            if dz_data and dz_data.get('type', '') == 'artist':
-                img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
-                k = next(filter(dz_data.get, img_keys), None)
-                artist_image_url = str(dz_data[k]) if k else None
+    # Try to fetch+save from Deezer if enabled and not already cached
+    if app.config['fetch_artists_images'] and not local_image_path.is_file():
+        dz_data = query_deezer(artist=artist_name)
 
-                if artist_image_url:
-                    try:
-                        content = capped_image_fetch(artist_image_url, timeout=5)
-                        name_is_safe = artist_name not in ('.', '..') and not set(artist_name) & set('/\\')
-                        if content and app.config['save_artists_images'] and name_is_safe:
-                            img = _safe_open_image(content)
-                            img.save(local_image_path)
-                    except Exception as e:
-                        bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
+        if dz_data and dz_data.get('type', '') == 'artist':
+            img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
+            k = next(filter(dz_data.get, img_keys), None)
+            artist_image_url = str(dz_data[k]) if k else None
 
-        # Serve local if it exists now
-        if os.path.isfile(local_image_path):
-            if size or os.path.getsize(local_image_path) > RAW_ART_MAX_BYTES:
-                resized = _cached_resize(local_image_path, size or ALLOWED_THUMBNAIL_SIZES[-1])
-                return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+            if artist_image_url:
+                try:
+                    content = capped_image_fetch(artist_image_url, timeout=5)
+                    if content and app.config['save_artists_images']:
+                        img = _safe_open_image(content)
+                        img.save(local_image_path)
+                except Exception as e:
+                    bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
 
-            return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
+    # Serve local if it exists now
+    if os.path.isfile(local_image_path):
+        if size or os.path.getsize(local_image_path) > RAW_ART_MAX_BYTES:
+            resized = _cached_resize(local_image_path, size or ALLOWED_THUMBNAIL_SIZES[-1])
+            return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
-    # No local folder/file: proxy from Deezer (without saving) if local save is off
+        return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
+
+    # No local file: proxy from Deezer (without saving) if local save is off
     if app.config['fetch_artists_images']:
         dz_data = query_deezer(artist=artist_name)
 

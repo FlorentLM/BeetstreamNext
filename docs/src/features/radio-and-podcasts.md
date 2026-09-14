@@ -18,7 +18,7 @@ BeetstreamNext implements the full Subsonic podcast feature set: subscribing to 
 - **Subscriptions are per-user**: Each user with the `podcastRole` (disabled by default) manages their own subscriptions.
 - **Channel discovery (external)**: Set `enable_podcast_discovery` and configure `podcastindex_api_key`/`podcastindex_api_secret` (a free account at [podcastindex.org](https://podcastindex.org/)) to search for podcasts from the admin panel.
 - **Storage and auto-download**:
-  - `podcast_storage_dir` controls where downloaded episode audio is stored. Leave it empty to use the default cache location.
+  - `podcast_storage_dir` controls where downloaded episode audio is stored. Leave it empty to use the default (persistent) data location.
   - `podcast_auto_download_count` controls how many of a channel's most recent episodes are automatically downloaded when a new channel is added. Set it to `0` to disable auto-download and only fetch episodes on request (see **Note** below).
 - **OPML Import/Export**: Supports importing/exporting existing podcast subscription
 

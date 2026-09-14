@@ -114,21 +114,7 @@ Other standalone subcommands: `create-user`, `update-user USERNAME`, `delete-use
 
 ### Docker
 
-There is a `Dockerfile` available at the repository root. There's no published image yet, so you need build it yourself:
-
-```bash
-docker build -t beetstreamnext .
-```
-
-Build-time options (`--build-arg`):
-
-- `EXTRAS` (default `all`): which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
-- `BEETS_VERSION`: install this exact version of `beets` instead of whatever `pyproject.toml` would otherwise pick.
-- `WITH_MPV` (default `false`): also install `mpv`. Only needed for the `server_hardware` jukebox backend, which isn't fully set up for Docker yet (see below), so leave this off unless you're experimenting.
-- `WITH_DEBUG_TOOLS` (default `false`): also install `curl`, `wget`, `ping`, `dig`/`nslookup`, `nc`, and `ip`/`ss`, for poking at networking issues from inside the container (e.g. `docker exec -it beetstreamnext curl ...`). Off by default to keep the image lean; rebuild with `--build-arg WITH_DEBUG_TOOLS=true` when you actually need them.
-- `PYTHON_VERSION` (default `3.13`): Python version to build against.
-
-Run it like this:
+A prebuilt image is published to GHCR on every release: `ghcr.io/florentlm/beetstreamnext:latest` (or a specific version, e.g. `:2.0.0`).
 
 ```bash
 docker run -d --name beetstreamnext \
@@ -140,8 +126,24 @@ docker run -d --name beetstreamnext \
   -v /path/to/music:/music:ro \
   -e BEETS_LIBRARY_DB=/data/library.db \
   -e MUSIC_ROOT=/music \
-  beetstreamnext
+  ghcr.io/florentlm/beetstreamnext:latest
 ```
+
+If you need something the published image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific `beets` version pinned to match another tool, `mpv` for jukebox mode, or debug tools), you should build it yourself instead using the `Dockerfile` at the repository root:
+
+```bash
+docker build -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
+```
+
+Build-time options (`--build-arg`):
+
+- `EXTRAS` (default `all`): which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
+- `BEETS_VERSION`: install this exact version of `beets` instead of whatever `pyproject.toml` would otherwise pick.
+- `WITH_MPV` (default `false`): also install `mpv`. Only needed for the `server_hardware` jukebox backend, which isn't fully set up for Docker yet (see below), so leave this off unless you're experimenting.
+- `WITH_DEBUG_TOOLS` (default `false`): also install `curl`, `wget`, `ping`, `dig`/`nslookup`, `nc`, and `ip`/`ss`, for poking at networking issues from inside the container (e.g. `docker exec -it beetstreamnext curl ...`). Off by default to keep the image lean.
+- `PYTHON_VERSION` (default `3.13`): Python version to build against.
+
+Then run it the same way as the `docker run` command above, substituting `beetstreamnext` for the image name.
 
 - `/config` is where `beetstreamnext.yaml`, the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key)), and BeetstreamNext's own database (`beetstreamnext.db`) all get created.
 - `/cache` is scratch space. It's not necessary to mount, but you can (if you want the cache to survive restarts).
@@ -153,11 +155,13 @@ docker run -d --name beetstreamnext \
 
 #### docker-compose
 
-There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (BeetstreamNext only, built locally from the Dockerfile). Edit the two host paths in it, then:
+There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (BeetstreamNext only, pulling the published image by default). Edit the two host paths in it, then:
 
 ```bash
 docker compose up -d
 ```
+
+To build locally instead — e.g. to pin `BEETS_VERSION` — comment out the `image:` line and uncomment `build: .`.
 
 #### Example stack: BeetstreamNext + Betanin
 
@@ -189,11 +193,11 @@ services:
       - /path/to/downloads:/downloads
 
   beetstreamnext:
-    # image: ghcr.io/florentlm/beetstreamnext:latest  # once a published image exists, prefer this over `build:`
-    build: 
-      context: /home/florent/BeetstreamNext
+    # You need to build the image locally if you want to pin BEETS_VERSION to match Betanin (see note below)
+    build:
+      context: .
       args:
-        BEETS_VERSION: 2.11.0    # Betanin currently uses beets 2.11.0 so it's safer to use the same one
+        BEETS_VERSION: 2.11.0    # Betanin currently uses beets 2.11.0
     container_name: beetstreamnext
     restart: unless-stopped
     depends_on:

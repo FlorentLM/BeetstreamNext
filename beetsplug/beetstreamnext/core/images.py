@@ -12,7 +12,7 @@ import flask
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import external_url
-from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid
+from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid, split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES
 from beetsplug.beetstreamnext.core.logging import bsn_logger
@@ -463,6 +463,15 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
     return out
 
 
+def _first_deezer_artist(names: list[str]) -> dict:
+    """Try each candidate name in turn, returning the first Deezer artist match found."""
+    for name in names:
+        dz_data = query_deezer(artist=name)
+        if dz_data and dz_data.get('type', '') == 'artist':
+            return dz_data
+    return {}
+
+
 def send_artist_image(artist, size=None) -> flask.Response | None:
     from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
 
@@ -476,16 +485,27 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     if not artist_name:
         return None
 
-
-
     cache_key = hashlib.md5(artist_name.encode('utf-8')).hexdigest()
     local_image_path = app.config['ARTIST_IMAGE_DATA_PATH'] / f'{cache_key}.jpg'
 
+    # Find possible artist for getting an image from
+    with flask.g.lib.transaction() as tx:
+        rows = tx.query(
+            """
+            SELECT albumartists 
+            FROM albums 
+            WHERE albumartist = ? LIMIT 1
+            """, (artist_name,)
+        )
+
+    members = split_beets_multi(rows[0][0]) if rows and rows[0][0] else []
+    candidates = [artist_name] + [m for m in members if m and m != artist_name]
+
     # Try to fetch+save from Deezer if enabled and not already cached
     if app.config['fetch_artists_images'] and not local_image_path.is_file():
-        dz_data = query_deezer(artist=artist_name)
+        dz_data = _first_deezer_artist(candidates)
 
-        if dz_data and dz_data.get('type', '') == 'artist':
+        if dz_data:
             img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
             k = next(filter(dz_data.get, img_keys), None)
             artist_image_url = str(dz_data[k]) if k else None
@@ -509,9 +529,9 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
 
     # No local file: proxy from Deezer (without saving) if local save is off
     if app.config['fetch_artists_images']:
-        dz_data = query_deezer(artist=artist_name)
+        dz_data = _first_deezer_artist(candidates)
 
-        if dz_data and dz_data.get('type', '') == 'artist':
+        if dz_data:
             deezer_avail_sizes = [56, 120, 250, 500, 1000]
             target_size = next((s for s in sorted(deezer_avail_sizes) if size and s >= size), 1000)
             artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')

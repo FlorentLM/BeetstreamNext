@@ -295,6 +295,8 @@ Optional, mount point used by another container that accesses the beets library 
 
 *default:* *(empty)*
 
+*env:* `BSN_LIBRARY_REMOTE_PATH`
+
 ---
 
 ### `playlist_dir`

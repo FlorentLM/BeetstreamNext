@@ -233,6 +233,38 @@ Edit the two `/path/to/...` host paths, then `docker compose up -d`. Open Betani
 
 > **Note:** Because the music folder and library are mounted `:ro` for BeetstreamNext here, the admin panel will show a red "read-only" pill next to any setting that would try to write to them (see [Configuration reference](./configuration.md)).
 
+##### Mapping paths when the library owner mounts music elsewhere
+
+Beets stores each track's path in `library.db` as a relative path to the `directory` value in its YAML config file, exactly as seen by whatever process ran `beet import`/`beet update`. In the example above, `beet` is in the `betanin` container, but it could just as well be a different machine entirely. The compose file example above avoids any issue by mounting the one music directory (on the host) at an identical path in both containers (`/music`).
+
+If you can't (or don't want to) do that, use `music_root` with `library_remote_path`:
+
+- `music_root`: where BeetstreamNext itself mounts the music volume
+- `library_remote_path`: where the container/machine that owns the library mounted that *same* volume when it wrote `library.db`
+
+BeetstreamNext will then substitute one prefix for the other on every path it reads out of the library, so for instance a `/downloads/music/Artist/Album/01.flac` path in `library.db` would resolve to `/music/Artist/Album/01.flac` in BeetstreamNext's container.
+
+Example:
+
+```yaml
+services:
+  betanin:
+    volumes:
+      - /some/path/to/your/music:/downloads/music   # Betanin's convention
+      # ...
+
+  beetstreamnext:
+    environment:
+      MUSIC_ROOT: /music
+      BSN_LIBRARY_REMOTE_PATH: /downloads/music
+      # ...
+    volumes:
+      - /some/path/to/your/music:/music:ro   # Same host path, different mount point
+      # ...
+```
+
+> **Note:** Obviously this only matters in **standalone mode**. In plugin mode, BeetstreamNext runs _inside_ beets' own process so it shares its `directory` setting directly, and the paths already agree.
+
 ##### Adding an Nginx sidecar for offloading file serving
 
 To offload file serving with an an Nginx sidecar, remove `ports: - "8080:8080"` from the `beetstreamnext` service (Nginx is the one that publishes to the host), then add:

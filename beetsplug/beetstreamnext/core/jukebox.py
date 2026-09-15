@@ -656,7 +656,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
         super().__init__()
         self._device: Optional['Chromecast'] = None
         self._browser: Optional['CastBrowser'] = None
-        self._device_uuid: Optional[str] = None
+        self._device_target: Optional[str] = None
         self._current_index: int = -1
 
     def _disconnect_device(self) -> None:
@@ -686,31 +686,49 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
 
         from beetsplug.beetstreamnext.settings import settings_store
 
-        uuid_str = settings_store.get('jukebox_hardware_device')
-        if not uuid_str:
+        target = settings_store.get('jukebox_hardware_device')
+        if not target:
             raise JukeboxUnavailableException('No Chromecast selected. Pick one in the admin panel.')
 
-        if self._is_ready() and self._device_uuid == uuid_str:
+        if self._is_ready() and self._device_target == target:
             return
 
         import pychromecast
+        import zeroconf
         from uuid import UUID
-
-        try:
-            target_uuid = UUID(uuid_str)
-        except ValueError as e:
-            raise JukeboxUnavailableException(f'Invalid Chromecast UUID: {uuid_str!r}') from e
 
         self._disconnect_device()
 
         try:
-            devices, browser = pychromecast.get_listed_chromecasts(uuids=[target_uuid], discovery_timeout=10)
+            target_uuid = UUID(target)
+        except ValueError:
+            target_uuid = None
+
+        try:
+            if target_uuid is not None:
+                devices, browser = pychromecast.get_listed_chromecasts(uuids=[target_uuid], discovery_timeout=10)
+            else:
+                # Not a UUID -> treat it as an IP/hostname and connect directly (bypassing mDNS)
+                found = threading.Event()
+                matched = {}
+
+                def add_callback(uuid, _service):
+                    info = browser.devices.get(uuid)
+                    if info is not None and info.host == target:
+                        matched['info'] = info
+                        found.set()
+
+                zconf = zeroconf.Zeroconf()
+                browser = pychromecast.CastBrowser(pychromecast.SimpleCastListener(add_callback), zconf, known_hosts=[target])
+                browser.start_discovery()
+                found.wait(timeout=10)
+                devices = [pychromecast.get_chromecast_from_cast_info(matched['info'], zconf)] if 'info' in matched else []
         except Exception as e:
             raise JukeboxUnavailableException(f'Chromecast discovery failed: {e}') from e
 
         if not devices:
             browser.stop_discovery()
-            raise JukeboxUnavailableException(f'Chromecast {uuid_str} not found on the network.')
+            raise JukeboxUnavailableException(f'Chromecast {target} not found on the network.')
 
         device = devices[0]
         try:
@@ -721,7 +739,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
 
         self._device = device
         self._browser = browser
-        self._device_uuid = uuid_str
+        self._device_target = target
         self._current_index = -1
 
     def _live_status(self) -> dict:
@@ -857,7 +875,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
                 pass
 
         self._disconnect_device()
-        self._device_uuid = None
+        self._device_target = None
         self._current_index = -1
 
         stream_tokeniser.clear()

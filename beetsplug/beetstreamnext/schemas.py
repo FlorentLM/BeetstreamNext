@@ -1,6 +1,8 @@
 from __future__ import annotations
+import ipaddress
 import shutil
 from typing import TypedDict, Any, Callable, Dict, List, Tuple
+from uuid import UUID
 
 from beetsplug.beetstreamnext.constants import (
     SERVER_NAME, DATA_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
@@ -105,6 +107,34 @@ def _validate_external_hostname(x: Any) -> str:
     if not parsed.host:
         return ''
     return f'{parsed.host}:{parsed.port}' if parsed.port else parsed.host
+
+
+def _validate_jukebox_device(x: Any) -> str:
+    """
+    'jukebox_hardware_device' can be a Sonos IP, or a Chromecast UUID/IP/hostname
+    (or a an mpv audio-device string but that's not checked here)
+    """
+    s = str(x or '').strip()
+    if not s:
+        return s
+
+    from beetsplug.beetstreamnext.settings import settings_store
+    backend = settings_store.get('jukebox_backend')
+
+    if backend == 'sonos':
+        try:
+            ipaddress.ip_address(s)
+        except ValueError:
+            raise ValueError("Must be the Sonos speaker's IP address.")
+    elif backend == 'chromecast':
+        try:
+            UUID(s)
+        except ValueError:
+            parsed = parse_host(s)
+            if not parsed.host or parsed.scheme or parsed.port:
+                raise ValueError("Must be the Chromecast's UUID, IP address, or hostname.")
+
+    return s
 
 
 def _validate_host_list(hosts: List[str]) -> List[str]:
@@ -714,9 +744,11 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "<br>"
             "For <code>sonos</code>, the speaker's IP address."
             "<br>"
-            "For <code>chromecast</code>, the device's UUID. "
+            "For <code>chromecast</code>, either the device's UUID (found via mDNS/Zeroconf discovery), or its "
+            "IP address/hostname to connect to it directly."
         ),
         'requires_restart': False,
+        'validator': _validate_jukebox_device,
     },
     'mpv_path': {
         'type': 'str',

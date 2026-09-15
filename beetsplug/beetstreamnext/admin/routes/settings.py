@@ -157,7 +157,7 @@ def route_settings() -> flask.Response:
     library_ro = bool(library_db_path) and not is_writable(library_db_path)
 
     if music_ro:
-        for key in ('save_artists_images', 'save_album_art', 'follow_playlist_embedded_urls'):
+        for key in ('save_album_art', 'follow_playlist_embedded_urls'):
             setting_pills[key] = ('music folder is read-only', 'danger')
 
     if library_ro:

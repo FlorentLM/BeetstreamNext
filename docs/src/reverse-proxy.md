@@ -67,6 +67,54 @@ beetstreamnext:
 
 `sendfile_internal_prefix` isn't used with `x-sendfile` (it's Nginx-specific).
 
+## Full working example: Nginx sidecar for a Docker deployment
+
+Putting everything together, a minimal `nginx.conf` that reverse-proxies a `beetstreamnext` container on the same Docker network _and offloads direct file serving_ via `X-Accel-Redirect`:
+
+```nginx
+worker_processes 1;
+pid /tmp/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log off;
+
+    server {
+        listen 8080;
+
+        location /_bsn_internal/ {
+            internal;
+            alias /music/;
+        }
+
+        location / {
+            proxy_pass http://beetstreamnext:8888;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
+```
+
+Here `8888` can be whatever port (`BSN_PORT`/`port` setting) BeetstreamNext is listening on internally, only Nginx's port needs to be published to the host. `/music` must be the same music folder mounted into both the `nginx` and `beetstreamnext` containers, with the same relative layout under each mount point (the absolute host path doesn't need to match).
+
+The matching BeetstreamNext settings:
+
+```yaml
+beetstreamnext:
+    reverse_proxy: true
+    proxy_hops: 2   # The number of proxies actually in front of BeetstreamNext. 1 if the Nginx container is the only one, more if it's itself behind Traefik/Cloudflare/etc
+    sendfile_method: x-accel-redirect
+    sendfile_internal_prefix: /_bsn_internal
+```
+
 ## Web clients and CORS
 
 By default, CORS is disabled. Native mobile/desktop apps usually ignore CORS entirely, so you probably don't need to change anything for those.

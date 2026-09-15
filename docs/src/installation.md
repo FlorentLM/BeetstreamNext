@@ -233,6 +233,28 @@ Edit the two `/path/to/...` host paths, then `docker compose up -d`. Open Betani
 
 > **Note:** Because the music folder and library are mounted `:ro` for BeetstreamNext here, the admin panel will show a red "read-only" pill next to any setting that would try to write to them (see [Configuration reference](./configuration.md)).
 
+##### Adding an Nginx sidecar for offloading file serving
+
+To offload file serving with an an Nginx sidecar, remove `ports: - "8080:8080"` from the `beetstreamnext` service (Nginx is the one that publishes to the host), then add:
+
+```yaml
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    depends_on:
+      - beetstreamnext
+    ports:
+      - "8080:8080"
+    volumes:
+      - /path/to/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /path/to/music:/music:ro   # Same host path as beetstreamnext's /music above
+```
+
+BeetstreamNext also needs `reverse_proxy: true` set (and `sendfile_method: x-accel-redirect`).
+
+And see the [Full working example: Nginx sidecar for a Docker deployment](./reverse-proxy.md#full-working-example-nginx-sidecar-for-a-docker-deployment) for the matching `nginx.conf`.
+
 Other standalone subcommands work by overriding the container's command. For example, an [unattended first run](#unattended-first-run):
 
 ```bash

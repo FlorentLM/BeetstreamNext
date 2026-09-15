@@ -181,6 +181,8 @@ Offload direct (non-transcoded) file serving to the reverse proxy instead of str
 
 *default:* `off`, *choices:* `off`, `x-accel-redirect`, `x-sendfile`
 
+*env:* `BSN_SENDFILE_METHOD`
+
 ---
 
 ### `sendfile_internal_prefix`
@@ -190,6 +192,8 @@ Internal URI prefix your Nginx config maps, via an internal-only <code>location<
 *type:* `str`
 
 *default:* `/_bsn_internal`
+
+*env:* `BSN_SENDFILE_INTERNAL_PREFIX`
 
 ---
 

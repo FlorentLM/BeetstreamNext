@@ -1299,13 +1299,24 @@ class Serialise:
             subsonic_song['isrc'] = split_beets_multi(isrc_raw)
 
         work = data.get('work') or ''
+        work_stripped = work.strip()
+        if work_stripped in ('-', '–', '—'):
+            work_stripped = ''
 
-        if work and work.strip().casefold() != song_title.strip().casefold():
-            work_obj = {'name': work}
-            mb_workid = data.get('mb_workid')
-            if mb_workid:
-                work_obj['musicBrainzId'] = mb_workid
-            subsonic_song['works'] = [work_obj]
+        if work_stripped:
+            title_stripped = song_title.strip()
+            title_base = title_stripped
+            if title_base.endswith(')'):
+                paren_start = title_base.rfind('(')
+                if paren_start != -1:
+                    title_base = title_base[:paren_start].strip()
+
+            if work_stripped.casefold() not in (title_stripped.casefold(), title_base.casefold()):
+                work_obj = {'name': work_stripped}
+                mb_workid = data.get('mb_workid')
+                if mb_workid:
+                    work_obj['musicBrainzId'] = mb_workid
+                subsonic_song['works'] = [work_obj]
 
         tg = data.get('rg_track_gain')
         ag = data.get('rg_album_gain')

@@ -10,7 +10,7 @@ Only the current release version is supported
 
 | Version | Supported          |
 |---------|--------------------|
-| 2.0.0   | :white_check_mark: |
+| latest  | :white_check_mark: |
 | < 2.0.0 | :x:                |
 
 ## Reporting a Vulnerability

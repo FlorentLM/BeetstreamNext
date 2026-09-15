@@ -28,10 +28,11 @@ The admin panel also allows to scan for what devices are available and lets you 
 
 ## Running in Docker
 
-Both network device-discovery mechanisms (SSDP/UPnP for Sonos, mDNS/Zeroconf for Chromecast) rely on LAN multicast, which does not cross Docker's default `bridge` network. If you're containerizing BeetstreamNext:
+Both network device-discovery mechanisms (SSDP/UPnP for Sonos, mDNS/Zeroconf for Chromecast) rely on LAN multicast, which does not cross Docker's default `bridge` network. If you're containerizing BeetstreamNext, you have a few options:
 
-- Use `network_mode: host` if you want the "Discover devices" scan to work.
-- Otherwise, set `jukebox_hardware_device` directly in the Web UI or in `config.yaml`.
+- **`network_mode: host`**: the container shares the host's network namespace, so multicast just works and "Discover devices" behaves exactly as it would bare-metal. This is the simplest option, but it's Linux-only in practice (Docker Desktop on macOS/Windows runs containers inside a VM, so host networking doesn't give the container real access to your LAN's multicast traffic).
+- **A `macvlan`/`ipvlan` network**: gives the container its own IP directly on the LAN, so it sits on the same layer as your Sonos/Chromecast devices and multicast works. This however needs a physical (usually wired) interface, as most Wi-Fi drivers/APs won't allow the extra MAC addresses macvlan relies on. Also you'd need an extra macvlan shim interface on the host (to still reach BeetstreamNext's web UI locally). Bit of a hassle, but should be possible.
+- **Just don't use discovery**: You can still set `jukebox_hardware_device` directly in the Web UI or in `config.yaml` (the speaker's IP for Sonos, the Chromecast's UUID/IP/hostname).
 
 The `server_hardware` backend additionally needs a real audio output device passed into the container (e.g. `/dev/snd` + ALSA, or a bind-mounted PulseAudio/PipeWire socket).
 

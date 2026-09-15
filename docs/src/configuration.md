@@ -41,7 +41,7 @@ If set, the admin panel will only be accessible when visited via this hostname (
 
 ### `external_hostname`
 
-Your external, public hostname (e.g. <code>music.example.com</code>).
+Public hostname used for public share links (e.g. <code>shares.example.com</code>), which may differ from the hostname you use for the REST API/admin panel. Leave unset to have share links use whatever hostname was used to create them.
 
 *type:* `str`
 

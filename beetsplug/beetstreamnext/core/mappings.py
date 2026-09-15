@@ -1143,7 +1143,7 @@ class Serialise:
         if version:
             subsonic_album['version'] = version.title()
             if app.config.get('save_album_version'):
-                write_beets_field('album', data['id'], 'version', version, allow_flex=True)
+                write_beets_field('album', data['id'], 'version', version.title(), allow_flex=True)
 
         # Add labels if possible
         label = data.get('label', '')

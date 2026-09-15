@@ -157,7 +157,7 @@ Then run it the same way as the `docker run` command above, substituting `beetst
 
 > **Note:** BeetstreamNext never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to that `PUID`/`PGID` before dropping to it for the rest of the process's life.
 
-> **Note:** Don't mount your library/music paths at `/config` or `/cache`, or the startup `chown` will recursively re-own them. If you want to control the folders' ownership yourself, you can run the container as a specific user directly (use `docker run --user UID:GID` (in which case also make sure `/config` and `/cache` are already owned by that user), and the entrypoint will notice and won't try to switch users itself.
+> **Note:** Don't mount your library/music paths at `/config` or `/cache`, or the startup `chown` will recursively re-own them. If you want to control the folders' ownership yourself, you can run the container as a specific user directly (use `docker run --user UID:GID`, in which case also make sure `/config` is already owned by that user), and the entrypoint will notice and won't try to switch users itself.
 
 ##### docker-compose
 

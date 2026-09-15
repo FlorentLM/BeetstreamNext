@@ -42,8 +42,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 1000 beetstream && \
-    useradd --uid 1000 --gid beetstream --home-dir /home/beetstream \
-        --create-home --shell /usr/sbin/nologin beetstream
+    useradd --uid 1000 --gid beetstream --no-create-home \
+        --shell /usr/sbin/nologin beetstream
 
 WORKDIR /app
 COPY --from=builder --chown=beetstream:beetstream /app/.venv /app/.venv
@@ -52,13 +52,13 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
-    HOME=/home/beetstream \
+    HOME=/cache \
     XDG_CACHE_HOME=/cache \
     BSN_DB_PATH=/config/beetstreamnext.db \
     BEETSDIR=/config/beets \
     BSN_IN_DOCKER=1
 
-RUN mkdir -p /config /cache && chown -R beetstream:beetstream /config /cache
+RUN mkdir -p /config /cache && chown -R beetstream:beetstream /config /cache && chmod 1777 /cache
 VOLUME ["/config", "/cache"]
 
 EXPOSE 8080

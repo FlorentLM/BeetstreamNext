@@ -31,7 +31,7 @@ RUN if [ -n "$BEETS_VERSION" ]; then \
 
 FROM python:${PYTHON_VERSION}-slim AS runtime
 
-ARG WITH_MPV=false
+ARG WITH_MPV=true
 ARG WITH_DEBUG_TOOLS=false
 RUN apt-get update && apt-get install --no-install-recommends -y \
         ffmpeg \

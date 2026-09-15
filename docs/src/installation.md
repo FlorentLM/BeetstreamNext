@@ -135,7 +135,7 @@ docker run -d --name beetstreamnext \
   ghcr.io/florentlm/beetstreamnext:latest
 ```
 
-If you need something the published image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific `beets` version pinned to match another tool, `mpv` for jukebox mode, or debug tools), you should build it yourself instead using the `Dockerfile` at the repository root:
+If you need something the published image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific `beets` version pinned to match another tool, a smaller image without `mpv`, or debug tools), you should build it yourself instead using the `Dockerfile` at the repository root:
 
 ```bash
 docker build -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
@@ -145,7 +145,7 @@ Build-time options (`--build-arg`):
 
 - `EXTRAS` (default `all`): which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
 - `BEETS_VERSION`: install this exact version of `beets` instead of whatever `pyproject.toml` would otherwise pick.
-- `WITH_MPV` (default `false`): also install `mpv`. Only needed for the `server_hardware` jukebox backend, which isn't fully set up for Docker yet (see below), so leave this off unless you're experimenting.
+- `WITH_MPV` (default `true`): install `mpv`, needed for the `server_hardware` jukebox backend (see [Jukebox mode](./features/jukebox.md#running-in-docker) for the audio passthrough you still need to set up separately). You can set to `false` if you don't use that backend and want a smaller image.
 - `WITH_DEBUG_TOOLS` (default `false`): also install `curl`, `wget`, `ping`, `dig`/`nslookup`, `nc`, and `ip`/`ss`, for poking at networking issues from inside the container (e.g. `docker exec -it beetstreamnext curl ...`). Off by default to keep the image lean.
 - `PYTHON_VERSION` (default `3.13`): Python version to build against.
 

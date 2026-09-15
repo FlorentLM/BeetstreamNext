@@ -34,9 +34,29 @@ Both network device-discovery mechanisms (SSDP/UPnP for Sonos, mDNS/Zeroconf for
 - **A `macvlan`/`ipvlan` network**: gives the container its own IP directly on the LAN, so it sits on the same layer as your Sonos/Chromecast devices and multicast works. This however needs a physical (usually wired) interface, as most Wi-Fi drivers/APs won't allow the extra MAC addresses macvlan relies on. Also you'd need an extra macvlan shim interface on the host (to still reach BeetstreamNext's web UI locally). Bit of a hassle, but should be possible.
 - **Just don't use discovery**: You can still set `jukebox_hardware_device` directly in the Web UI or in `config.yaml` (the speaker's IP for Sonos, the Chromecast's UUID/IP/hostname).
 
-The `server_hardware` backend additionally needs a real audio output device passed into the container (e.g. `/dev/snd` + ALSA, or a bind-mounted PulseAudio/PipeWire socket).
+The `server_hardware` backend needs a real audio output device passed into the container:
 
-> **Note:** Jukebox mode has been tested on bare-metal installs for all three backends, but Docker networking/audio passthrough is still being worked out.
+- **ALSA** (`jukebox_hardware_device` like `alsa/hw:0,0`): pass the host's sound card in, and give the container access to it:
+
+  ```yaml
+  # ... in your docker-compose.yaml
+      devices:
+        - /dev/snd:/dev/snd
+      group_add:
+        - "29"   # The host's 'audio' group gid, you can double-check yours with `getent group audio`
+  # ...
+  ```
+
+- **PulseAudio/PipeWire** (`jukebox_hardware_device` like `pulse`): bind-mount the host user's runtime socket, and point mpv at it:
+
+  ```yaml
+  # ... in your docker-compose.yaml
+      volumes:
+        - /run/user/1000/pulse:/run/pulse:ro   # Replace 1000 by the uid of the user who owns that socket on the host
+      environment:
+        PULSE_SERVER: unix:/run/pulse/native
+  # ...
+  ```
 
 ## Other planned backends
 

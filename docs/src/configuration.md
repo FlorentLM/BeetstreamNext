@@ -671,7 +671,7 @@ Defines where jukebox mode will play audio from.<br><code>server_hardware</code>
 
 ### `jukebox_hardware_device`
 
-Which hardware jukebox mode plays audio on.<br>For <code>server_hardware</code>, this is the audio output device as mpv's <code>--audio-device</code> expects (e.g. <code>alsa/hw:0,0</code> or <code>coreaudio/BuiltInSpeakerDevice</code>), or empty to use the system default.<br>For <code>sonos</code>, the speaker's IP address.<br>For <code>chromecast</code>, the device's UUID.
+Which hardware jukebox mode plays audio on.<br>For <code>server_hardware</code>, this is the audio output device as mpv's <code>--audio-device</code> expects (e.g. <code>alsa/hw:0,0</code> or <code>coreaudio/BuiltInSpeakerDevice</code>), or empty to use the system default.<br>For <code>sonos</code>, the speaker's IP address.<br>For <code>chromecast</code>, either the device's UUID (found via mDNS/Zeroconf discovery), or its IP address/hostname to connect to it directly.
 
 *type:* `str`
 

@@ -22,7 +22,7 @@ You can set which device will play the audio with `jukebox_hardware_device`, whi
 
 - for **`server_hardware`**: an mpv `--audio-device` value (e.g. `alsa/hw:0,0` on Linux, `coreaudio/BuiltInSpeakerDevice` on macOS, etc), or empty for the system default
 - for **`sonos`**: the speaker's IP address
-- for **`chromecast`**: the device's UUID
+- for **`chromecast`**: the device's UUID, or its IP address/hostname to connect to it directly.
 
 The admin panel also allows to scan for what devices are available and lets you pick one.
 

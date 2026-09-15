@@ -270,6 +270,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "Only takes effect when <code>reverse_proxy</code> is enabled and the proxy is configured to honor the header."
         ),
         'requires_restart': False,
+        'env_var': 'BSN_SENDFILE_METHOD',
         'choices': ('off', 'x-accel-redirect', 'x-sendfile'),
         'validator': _validate_choice('off', 'x-accel-redirect', 'x-sendfile'),
         'help': (
@@ -290,6 +291,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "Only used when <code>sendfile_method</code> is <code>x-accel-redirect</code>."
         ),
         'requires_restart': False,
+        'env_var': 'BSN_SENDFILE_INTERNAL_PREFIX',
         'help': (
             "# Example Nginx configuration:\n"
             "\n"

@@ -1141,7 +1141,7 @@ class Serialise:
             version = mb_data.get('disambiguation')
 
         if version:
-            subsonic_album['version'] = version
+            subsonic_album['version'] = version.title()
             if app.config.get('save_album_version'):
                 write_beets_field('album', data['id'], 'version', version, allow_flex=True)
 

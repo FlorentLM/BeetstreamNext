@@ -163,7 +163,9 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': 'Your external, public hostname (e.g. <code>music.example.com</code>).',
+        'description': 'Public hostname used for public share links (e.g. <code>shares.example.com</code>), '
+                       'which may differ from the hostname you use for the REST API/admin panel. '
+                       'Leave unset to have share links use whatever hostname was used to create them.',
         'requires_restart': False,
         'env_var': 'BSN_EXTERNAL_HOSTNAME',
         'validator': _validate_external_hostname,

@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR, SOCO, PYCHROMEC
 from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.system import find_mpv, get_mimetype, AUDIO_MIMETYPES
 from beetsplug.beetstreamnext.utils.text import parse_duration, format_duration
-from beetsplug.beetstreamnext.utils.general import external_url
+from beetsplug.beetstreamnext.utils.general import request_url
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
 if TYPE_CHECKING and PYCHROMECAST:
@@ -147,7 +147,7 @@ class JukeboxBackend:
         filename = (Path(path).name if not is_url else '') or 'stream.mp3'
         path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
 
-        return external_url(path_part)
+        return request_url(path_part)
 
     def _content_type(self, path: str) -> str:
         """Best-effort mimetype sniffing (defaults to audio/mpeg)."""

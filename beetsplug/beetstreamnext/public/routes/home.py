@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.core.mappings import Resolve
 from beetsplug.beetstreamnext.core.security import admin_host_allowed
 
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.utils.general import get_server_info, external_url
+from beetsplug.beetstreamnext.utils.general import get_server_info, request_url
 
 
 @public_bp.route('/')
@@ -53,7 +53,7 @@ def home() -> str:
                     'username': row['username']
                 }
 
-    server_url = external_url('/')
+    server_url = request_url('/')
 
     return render_template(
         'index.html',

@@ -22,16 +22,22 @@ from beetsplug.beetstreamnext.constants import (
 ##
 # General helpers
 
+def request_url(path_part: str) -> str:
+    """Build an absolute URL for 'path_part', mirroring the current request's own scheme+host."""
+    from beetsplug.beetstreamnext.settings import settings_store
+
+    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+    return f'{scheme}://{flask.request.host}{path_part}'
+
+
 def external_url(path_part: str) -> str:
-    """
-    Build an absolute URL for 'path_part' with external hostname taking precedence.
-    """
+    """Build an absolute URL for 'path_part' on the configured public share hostname."""
     from beetsplug.beetstreamnext.settings import settings_store
     from beetsplug.beetstreamnext.core.security import parse_host
 
     external_host = settings_store.get('external_hostname')
     if not external_host:
-        return flask.request.host_url.rstrip('/') + path_part
+        return request_url(path_part)
 
     reverse_proxy = settings_store.get('reverse_proxy')
     scheme = 'https' if (flask.request.is_secure or reverse_proxy) else 'http'

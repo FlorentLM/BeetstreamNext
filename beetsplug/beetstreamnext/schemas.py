@@ -409,6 +409,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'standalone_only': True,
+        'env_var': 'BSN_LIBRARY_REMOTE_PATH',
     },
     'playlist_dir': {
         'type': 'str',

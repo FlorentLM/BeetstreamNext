@@ -986,7 +986,7 @@ class Serialise:
             'contributors': contributors,
             'displayComposer': display_composer,
             'album': data.get('album') or '',
-            'year': data.get('year') or 0,
+            'year': data.get('original_year') or data.get('year') or 0,
             'genre': main_genre,
             'genres': genres_list,
             'created': timestamp_to_iso(data.get('added')),

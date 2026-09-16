@@ -2,6 +2,8 @@
 
 BeetstreamNext should be compatible with virtually _any_ Subsonic/OpenSubsonic/Navidrome client.
 
+Navidrome maintains a nice list of existing clients [here](https://www.navidrome.org/apps/).
+
 It has been specifically tested and confirmed working with:
 
 ## Android
@@ -28,4 +30,4 @@ It has been specifically tested and confirmed working with:
 - [Feishin](https://github.com/jeffvli/feishin)
 - [Aonsoku](https://github.com/victoralvesf/aonsoku)
 
-> **Note:** Not seeing your client here doesn't mean it won't work, this is just what I have manually verified. If you confirm another client works well, consider opening a [PR or an Issue](https://github.com/FlorentLM/BeetstreamNext/) to let me know :)
+> **Note:** Not seeing a client here doesn't mean it won't work, this is just what I have manually verified. If you confirm another client works well, consider opening a [PR or an Issue](https://github.com/FlorentLM/BeetstreamNext/) to let me know :)

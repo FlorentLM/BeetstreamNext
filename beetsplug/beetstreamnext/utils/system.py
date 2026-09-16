@@ -45,6 +45,11 @@ def is_installed(package_name: str) -> bool:
 
 
 def cache_location() -> Path:
+    if is_docker():
+        cache_dir = Path(get_env('XDG_CACHE_HOME') or '/cache')
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
     if platform.system() == 'Windows':
         cache_dir = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
     elif platform.system() == 'Darwin':

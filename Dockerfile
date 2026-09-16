@@ -54,8 +54,8 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     HOME=/cache \
     XDG_CACHE_HOME=/cache \
-    TMPDIR=/cache/beetstreamnext/tmp \
-    SQLITE_TMPDIR=/cache/beetstreamnext/tmp \
+    TMPDIR=/cache/tmp \
+    SQLITE_TMPDIR=/cache/tmp \
     BSN_DB_PATH=/config/beetstreamnext.db \
     BEETSDIR=/config/beets \
     BSN_IN_DOCKER=1
@@ -68,7 +68,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "\
 import os, pathlib, urllib.request; \
-p = pathlib.Path(os.environ.get('XDG_CACHE_HOME', '/cache')) / 'beetstreamnext' / 'runtime_port'; \
+p = pathlib.Path(os.environ.get('XDG_CACHE_HOME', '/cache')) / 'runtime_port'; \
 port = p.read_text().strip() if p.is_file() else '8080'; \
 urllib.request.urlopen(f'http://127.0.0.1:{port}/healthz', timeout=3)" \
     || exit 1

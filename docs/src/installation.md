@@ -329,14 +329,14 @@ tmpfs:
 
 > **Note:** a `tmpfs` mount lives in RAM and is counted against the container's memory limit (`deploy.resources.limits.memory`), and can't be reclaimed under memory pressure. If you have a big library, a full scan can make SQLite write sizeable temp files into `/cache`, and if that goes over the container's total memory limit, the write fails with what looks like a SQLite disk I/O error. Either give the tmpfs an explicit size (`/cache:mode=1777,size=256m`) and raise the container's memory limit, or mount `/cache` as a normal volume instead.
 
-Since `/cache` is split into `/cache/beetstreamnext/data` and `/cache/beetstreamnext/tmp`, you can also mount just the `tmp` half as `tmpfs` and leave `data` as a normal volume, so the cache survives restarts but the write-heavy half still gets RAM speed:
+Since `/cache` is split into `/cache/data` and `/cache/tmp`, you can also mount just the `tmp` half as `tmpfs` and leave `data` as a normal volume, so the cache survives restarts but the write-heavy half still gets RAM speed:
 
 ```yaml
 volumes:
-  - /path/to/cache/data:/cache/beetstreamnext/data
+  - /path/to/cache/data:/cache/data
 read_only: true
 tmpfs:
-  - /cache/beetstreamnext/tmp:mode=1777,size=256m
+  - /cache/tmp:mode=1777,size=256m
 ```
 
 - **`cap_drop: [ALL]`**

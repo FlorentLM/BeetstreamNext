@@ -152,7 +152,7 @@ Build-time options (`--build-arg`):
 Then run it the same way as the `docker run` command above, substituting `beetstreamnext` for the image name.
 
 - `/config` is where `beetstreamnext.yaml`, the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key)), BeetstreamNext's own database (`beetstreamnext.db`), and a `data/` subfolder (downloaded podcast episodes, saved artist images) are stored.
-- `/cache` is scratch space (thumbnails, HTTP cache, transcode tempfiles, HLS sessions, zip downloads). It's not necessary to mount, but you can (if you want the cache to survive restarts too).
+- `/cache` is scratch space, split into two subfolders: `data` (thumbnails, HTTP cache, session key), worth keeping across restarts, and `tmp` (transcode tempfiles, HLS sessions, zip downloads, SQLite/Python tempfiles), fine to discard. Neither is necessary to mount, but you can (if you want the cache to survive restarts too), and you can mount them separately if you want different backing storage for each (see [hardening the container](#advanced-hardening-the-container) below).
 - `PUID`/`PGID` (default `1000`/`1000`) should match the user that owns your library/music files on the host.
 
 > **Note:** BeetstreamNext never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to that `PUID`/`PGID` before dropping to it for the rest of the process's life.
@@ -312,6 +312,80 @@ BeetstreamNext only reads the library. Something still has to run `beet import` 
   - If you'd rather keep an existing beets config file _elsewhere_ instead, you can point `--beets-config`/`BSN_BEETS_CONFIG` (and, if you also invoke `beet` in the container, `docker exec`'s `BEETSDIR` or `beet --config`) at it explicitly, which overrides the `/config/beets` default.
 
 - **Use a separate beets install:** Point BeetstreamNext at a `library.db` managed elsewhere (your own machine, or in another container like [Betanin](https://github.com/sentriz/betanin)) by mounting the same files into both.
+
+##### Advanced: hardening the container
+
+There are some compose/`docker run` hardening options people like to enable. Some details worth knowing about before:
+
+**`read_only: true`**
+
+Makes the whole container filesystem read-only except explicitly mounted volumes. `/config` is already a normal writable volume mount. `/cache` is generally not, but it's also where Python and SQLite write temp files, so if you turn on `read_only`, you need to give it a `tmpfs` mount:
+
+```yaml
+read_only: true
+tmpfs:
+  - /cache:mode=1777
+```
+
+> **Note:** a `tmpfs` mount lives in RAM and is counted against the container's memory limit (`deploy.resources.limits.memory`), and can't be reclaimed under memory pressure. If you have a big library, a full scan can make SQLite write sizeable temp files into `/cache`, and if that goes over the container's total memory limit, the write fails with what looks like a SQLite disk I/O error. Either give the tmpfs an explicit size (`/cache:mode=1777,size=256m`) and raise the container's memory limit, or mount `/cache` as a normal volume instead.
+
+Since `/cache` is split into `/cache/beetstreamnext/data` and `/cache/beetstreamnext/tmp`, you can also mount just the `tmp` half as `tmpfs` and leave `data` as a normal volume, so the cache survives restarts but the write-heavy half still gets RAM speed:
+
+```yaml
+volumes:
+  - /path/to/cache/data:/cache/beetstreamnext/data
+read_only: true
+tmpfs:
+  - /cache/beetstreamnext/tmp:mode=1777,size=256m
+```
+
+**`cap_drop: [ALL]`**
+
+The container needs none of the default capabilities so you can drop them all.
+
+```yaml
+cap_drop:
+  - ALL
+```
+
+The entrypoint with the default user needs some of them briefly though, so you need to add:
+
+```yaml
+cap_add:
+  - CHOWN         # To chown /config and /cache to PUID:PGID
+  - SETUID        # To switch from root to PUID
+  - SETGID        # To switch from root to PGID
+  - DAC_OVERRIDE  # Needed for the above two to work on files that are not already owned by PUID/PGID
+```
+
+...unless you use a custom user (see below).
+
+**`user: PUID:GID`**
+
+If you're using a custom user, the entrypoint doesn't need any special capabilities so you can just do:
+
+```yaml
+user: "1000:1000"
+cap_drop:
+  - ALL
+```
+
+> **Note:** The `/config` and `/cache` mounts need to already be owned by that same UID/GID on the host *before* the container starts.
+
+---
+
+These combine nicely, and gets you a pretty locked-down container:
+
+```yaml
+read_only: true
+tmpfs:
+  - /cache:mode=1777
+user: "1000:1000"
+cap_drop:
+  - ALL
+security_opt:
+  - no-new-privileges:true
+```
 
 ## 3. Encryption key
 

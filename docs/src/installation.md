@@ -317,7 +317,7 @@ BeetstreamNext only reads the library. Something still has to run `beet import` 
 
 There are some compose/`docker run` hardening options people like to enable. Some details worth knowing about before:
 
-**`read_only: true`**
+- **`read_only: true`**
 
 Makes the whole container filesystem read-only except explicitly mounted volumes. `/config` is already a normal writable volume mount. `/cache` is generally not, but it's also where Python and SQLite write temp files, so if you turn on `read_only`, you need to give it a `tmpfs` mount:
 
@@ -339,7 +339,7 @@ tmpfs:
   - /cache/beetstreamnext/tmp:mode=1777,size=256m
 ```
 
-**`cap_drop: [ALL]`**
+- **`cap_drop: [ALL]`**
 
 The container needs none of the default capabilities so you can drop them all.
 
@@ -360,7 +360,7 @@ cap_add:
 
 ...unless you use a custom user (see below).
 
-**`user: PUID:GID`**
+- **`user: PUID:GID`**
 
 If you're using a custom user, the entrypoint doesn't need any special capabilities so you can just do:
 
@@ -372,19 +372,31 @@ cap_drop:
 
 > **Note:** The `/config` and `/cache` mounts need to already be owned by that same UID/GID on the host *before* the container starts.
 
----
+- **`security_opt: [no-new-privileges:true]`**
 
-These combine nicely, and gets you a pretty locked-down container:
+Stops any process in the container from gaining privileges beyond what it started with. It doesn't interact with anything else BeetstreamNext does, so there's no reason not to set it regardless of which other options above you use.
 
 ```yaml
-read_only: true
-tmpfs:
-  - /cache:mode=1777
-user: "1000:1000"
-cap_drop:
-  - ALL
 security_opt:
   - no-new-privileges:true
+```
+
+- **`deploy.resources.limits`**
+
+**memory:** Caps the _container's total memory_. If you're using `read_only` + `tmpfs` above: a `tmpfs` mount counts against this limit and can't be reclaimed under memory pressure, so size it comfortably above your `tmpfs` size plus BeetstreamNext's normal usage, or a large library scan can fail with what looks like a SQLite disk I/O error.
+
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 512m   # or even 1014 if your library is large
+      pids: 100
+```
+
+**pids**: Caps the number of processes/threads the container can create, as defense against a fork bomb or some runaway process spawning from a bug or a compromised dependency.
+
+```yaml
+pids_limit: 100
 ```
 
 ## 3. Encryption key

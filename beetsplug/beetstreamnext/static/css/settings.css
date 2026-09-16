@@ -200,6 +200,20 @@ tr:hover td { background: var(--overlay-hover); }
     border-color: rgba(34, 197, 94, 0.3);
 }
 
+.podcast-progress {
+    display: block;
+    width: 100%;
+    height: 5px;
+    margin-top: 0.35rem;
+    border: none;
+    border-radius: 99px;
+    accent-color: var(--primary);
+    background: var(--overlay-weak);
+}
+.podcast-progress::-webkit-progress-bar { background: var(--overlay-weak); border-radius: 99px; }
+.podcast-progress::-webkit-progress-value { background: var(--primary); border-radius: 99px; }
+.podcast-progress::-moz-progress-bar { background: var(--primary); border-radius: 99px; }
+
 .session-user { color: var(--text-muted); font-size: 0.85rem; }
 .session-user strong { color: var(--text); font-weight: 600; }
 .email-cell { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem; }

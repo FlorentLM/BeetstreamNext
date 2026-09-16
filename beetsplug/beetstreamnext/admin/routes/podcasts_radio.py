@@ -397,6 +397,8 @@ def route_podcast_episodes(channel_id: int) -> flask.Response:
 def route_podcast_status() -> flask.Response:
     """Live channel/episode status, polled by the Podcasts tab so it stays current without a manual page reload."""
 
+    podcast_manager = flask.current_app.config['podcast_manager']
+
     with database() as db:
         channel_rows = db.execute(
             """
@@ -423,7 +425,12 @@ def route_podcast_status() -> flask.Response:
             for r in channel_rows
         },
         'episodes': {
-            str(r['id']): {'status': r['status'], 'file_size': r['file_size'], 'error_message': r['error_message']}
+            str(r['id']): {
+                'status': r['status'],
+                'file_size': r['file_size'],
+                'error_message': r['error_message'],
+                'bytes_downloaded': podcast_manager.download_progress(r['id']) if r['status'] == 'downloading' else None,
+            }
             for r in episode_rows
         },
     })

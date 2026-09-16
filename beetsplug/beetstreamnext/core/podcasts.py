@@ -132,6 +132,7 @@ class PodcastManager:
         self._refreshing_channels: set = set()
         self._downloading_episodes: set = set()
         self._cancel_events: dict[int, Event] = {}
+        self._download_progress: dict[int, int] = {}
 
     @staticmethod
     def storage_dir() -> Path:
@@ -143,6 +144,11 @@ class PodcastManager:
     def is_downloading(self, episode_id: Optional[int] = None) -> bool:
         with self._download_lock:
             return bool(self._downloading_episodes) if episode_id is None else episode_id in self._downloading_episodes
+
+    def download_progress(self, episode_id: int) -> Optional[int]:
+        """Bytes written for download progressbar, or None if not downloading."""
+        with self._download_lock:
+            return self._download_progress.get(episode_id)
 
     @with_app_context
     def remove_leftovers(self) -> dict[str, int]:
@@ -700,6 +706,7 @@ class PodcastManager:
                 return False
             self._downloading_episodes.add(episode_id)
             self._cancel_events[episode_id] = Event()
+            self._download_progress[episode_id] = 0
 
         with database() as db:
             db.execute(
@@ -743,6 +750,8 @@ class PodcastManager:
                                 raise DownloadCancelled()
                             f.write(chunk)
                             size += len(chunk)
+                            with self._download_lock:
+                                self._download_progress[episode_id] = size
 
                 os.replace(tmp_path, target_path)
 
@@ -796,6 +805,7 @@ class PodcastManager:
             with self._download_lock:
                 self._downloading_episodes.discard(episode_id)
                 self._cancel_events.pop(episode_id, None)
+                self._download_progress.pop(episode_id, None)
 
     @with_app_context
     def download(self, episode_id: int) -> None:

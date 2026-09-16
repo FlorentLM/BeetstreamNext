@@ -482,6 +482,14 @@
     }
 
     let podcastPollTimer = null;
+    let podcastPollInterval = null;
+
+    function podcastSetPollInterval(ms) {
+        if (podcastPollInterval === ms) return;
+        if (podcastPollTimer) clearInterval(podcastPollTimer);
+        podcastPollInterval = ms;
+        podcastPollTimer = setInterval(refreshPodcastStatuses, ms);
+    }
 
     async function refreshPodcastStatuses() {
         try {
@@ -489,6 +497,7 @@
             if (!resp.ok) return;
             const data = await resp.json();
             let busy = false;
+            let activelyDownloading = false;
 
             for (const [id, info] of Object.entries(data.channels || {})) {
                 const badge = document.getElementById(`podcast-channel-status-${id}`);
@@ -525,12 +534,33 @@
                         sizeEl.innerHTML = `<span class="badge badge-limit">${formatBytes(info.file_size)}</span>`;
                     }
                 }
-                if (info.status === 'downloading') busy = true;
+
+                const progressEl = document.getElementById(`podcast-episode-progress-${id}`);
+                if (progressEl) {
+                    progressEl.hidden = info.status !== 'downloading';
+                    if (info.status === 'downloading') {
+                        if (info.file_size) {
+                            progressEl.max = info.file_size;
+                            progressEl.value = info.bytes_downloaded || 0;
+                        } else {
+                            progressEl.removeAttribute('max');
+                            progressEl.removeAttribute('value');
+                        }
+                    }
+                }
+
+                if (info.status === 'downloading') {
+                    busy = true;
+                    activelyDownloading = true;
+                }
             }
 
             if (!busy && podcastPollTimer) {
                 clearInterval(podcastPollTimer);
                 podcastPollTimer = null;
+                podcastPollInterval = null;
+            } else if (busy) {
+                podcastSetPollInterval(activelyDownloading ? 1000 : 3000);
             }
         } catch (err) {
             // network hiccup, next iter retries
@@ -542,9 +572,9 @@
         const busySelector = '[id^="podcast-channel-status-"][data-status="new"], '
             + '[id^="podcast-channel-status-"][data-status="downloading"], '
             + '[id^="podcast-episode-status-"][data-status="downloading"]';
-        if (document.querySelector(busySelector)) {
-            podcastPollTimer = setInterval(refreshPodcastStatuses, 3000);
-        }
+        if (!document.querySelector(busySelector)) return;
+        const activelyDownloading = document.querySelector('[id^="podcast-episode-status-"][data-status="downloading"]');
+        podcastSetPollInterval(activelyDownloading ? 1000 : 3000);
     }
 
     // Lazy fetch of episodes lists
@@ -576,6 +606,8 @@
         const dlHidden = (e.status === 'completed' || e.status === 'downloading') ? 'hidden' : '';
         const cancelHidden = e.status !== 'downloading' ? 'hidden' : '';
         const delHidden = e.status !== 'completed' ? 'hidden' : '';
+        const progressHidden = e.status !== 'downloading' ? 'hidden' : '';
+        const progressAttrs = e.file_size ? `max="${e.file_size}" value="0"` : '';
 
         return `
             <tr>
@@ -584,7 +616,10 @@
                 <td>${escapeHtml(formatDuration(e.duration))}</td>
                 <td><span class="badge${e.status === 'error' ? ' badge-admin' : ''}"
                           id="podcast-episode-status-${e.id}" data-status="${e.status}">${escapeHtml(e.status)}</span></td>
-                <td><span id="podcast-episode-size-${e.id}">${sizeHtml}</span></td>
+                <td>
+                    <span id="podcast-episode-size-${e.id}">${sizeHtml}</span>
+                    <progress class="podcast-progress" id="podcast-episode-progress-${e.id}" ${progressHidden} ${progressAttrs}></progress>
+                </td>
                 <td class="actions-cell">
                     <form id="podcast-episode-dl-${e.id}" ${dlHidden}
                           action="/admin/podcasts/episode/${e.id}/download" method="POST" class="form-inline">

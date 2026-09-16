@@ -162,7 +162,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
     """
     global _scanning
 
-    counts = {'checked': 0, 'flagged': 0, 'skipped': 0}
+    counts = {'checked': 0, 'flagged': 0, 'skipped': 0, 'pruned': 0}
 
     if not find_ffmpeg():
         bsn_logger.warning('Health scan skipped: ffmpeg not found.')
@@ -184,15 +184,16 @@ def scan_library(full: bool = False) -> dict[str, int]:
             ).fetchall()
 
             existing: dict[str, dict[str, tuple[float, int]]] = {}
-            if not full:
-                for row in db.execute(
-                    """
-                    SELECT song_id, kind, mtime, ok
-                    FROM song_checks
-                    WHERE kind IN (?, ?)
-                    """, (DECODE_ERRORS_CHECK, MISSING_FILE_CHECK)
-                ).fetchall():
-                    existing.setdefault(row['song_id'], {})[row['kind']] = (row['mtime'], row['ok'])
+            for row in db.execute(
+                """
+                SELECT song_id, kind, mtime, ok
+                FROM song_checks
+                WHERE kind IN (?, ?)
+                """, (DECODE_ERRORS_CHECK, MISSING_FILE_CHECK)
+            ).fetchall():
+                existing.setdefault(row['song_id'], {})[row['kind']] = (row['mtime'], row['ok'])
+
+            seen_song_ids: set[str] = set()
 
             for beets_id, mb_trackid, mb_releasetrackid, raw_path, samplerate in item_rows:
                 path = os.fsdecode(raw_path or b'')
@@ -205,9 +206,10 @@ def scan_library(full: bool = False) -> dict[str, int]:
                     'mb_releasetrackid': mb_releasetrackid,
                     'path': path
                 })
+                seen_song_ids.add(song_id)
 
                 path_obj = resolve_path(path, root_directory)
-                prev_missing = existing.get(song_id, {}).get(MISSING_FILE_CHECK)
+                prev_missing = None if full else existing.get(song_id, {}).get(MISSING_FILE_CHECK)
 
                 try:
                     mtime = os.path.getmtime(path_obj)
@@ -246,7 +248,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
                     db.commit()
                     bsn_logger.info(f"Health check: '{path_obj}' reappeared, cleared missing-file flag.")
 
-                prev = existing.get(song_id, {}).get(DECODE_ERRORS_CHECK)
+                prev = None if full else existing.get(song_id, {}).get(DECODE_ERRORS_CHECK)
                 if prev is not None and prev[0] == mtime:
                     counts['skipped'] += 1
                     continue
@@ -267,6 +269,18 @@ def scan_library(full: bool = False) -> dict[str, int]:
                     """, (song_id, DECODE_ERRORS_CHECK, mtime, int(ok), detail)
                 )
                 db.commit()
+
+            stale_ids = existing.keys() - seen_song_ids
+            if stale_ids:
+                placeholders = ','.join('?' * len(stale_ids))
+                db.execute(
+                    f"""
+                    DELETE FROM song_checks
+                    WHERE song_id IN ({placeholders}) AND kind IN (?, ?)
+                    """, (*stale_ids, DECODE_ERRORS_CHECK, MISSING_FILE_CHECK)
+                )
+                db.commit()
+                counts['pruned'] = len(stale_ids)
     finally:
         _scanning = False
         _scan_lock.release()
@@ -373,7 +387,8 @@ def start_scan(full: bool = False) -> tuple[bool, str]:
         counts = scan_library(full=full)
         bsn_logger.info(
             f"Health scan complete: {counts['checked']} checked, "
-            f"{counts['flagged']} flagged, {counts['skipped']} unchanged (skipped)."
+            f"{counts['flagged']} flagged, {counts['skipped']} unchanged (skipped), "
+            f"{counts['pruned']} stale entries pruned."
         )
 
     threading.Thread(target=_run, daemon=True).start()

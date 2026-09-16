@@ -257,10 +257,11 @@ def run_periodic():
         # Incremental audio health scan
         try:
             counts = scan_library(full=False)
-            if counts['flagged'] or counts['checked']:
+            if counts['flagged'] or counts['checked'] or counts['pruned']:
                 bsn_logger.info(
                     f"{SERVER_NAME} health scan: {counts['checked']} checked, "
-                    f"{counts['flagged']} flagged, {counts['skipped']} unchanged (skipped)."
+                    f"{counts['flagged']} flagged, {counts['skipped']} unchanged (skipped), "
+                    f"{counts['pruned']} stale entries pruned."
                 )
         except Exception as e:
             bsn_logger.error(f'{SERVER_NAME} health scan failed: {e}')

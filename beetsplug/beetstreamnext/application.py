@@ -5,7 +5,7 @@ import flask
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 
-from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_LOCATION, DATA_LOCATION
+from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL
 from beetsplug.beetstreamnext.core.database import close_database
 from beetsplug.beetstreamnext.utils.text import format_duration
@@ -30,8 +30,8 @@ app.config.update(
     WTF_CSRF_CHECK_DEFAULT=True,
     PROJECT_ROOT=PROJECT_ROOT,
     IMAGES_PATH=PROJECT_ROOT / 'static' / 'images',
-    HTTP_CACHE_PATH=CACHE_LOCATION / 'httpcache.sqlite',
-    THUMBNAIL_CACHE_PATH=CACHE_LOCATION / 'thumbnails',
+    HTTP_CACHE_PATH=CACHE_DATA_DIR / 'httpcache.sqlite',
+    THUMBNAIL_CACHE_PATH=CACHE_DATA_DIR / 'thumbnails',
     ARTIST_IMAGE_DATA_PATH=DATA_LOCATION / 'artist_images',
     TRUSTED_HOSTS='',
     STANDALONE_MODE=False,

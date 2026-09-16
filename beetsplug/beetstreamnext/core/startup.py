@@ -12,7 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import TermColors, print_box
-from beetsplug.beetstreamnext.constants import CACHE_LOCATION, LOOPBACK_IPS
+from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS
 from beetsplug.beetstreamnext.core.commands import check_onboarding
 from beetsplug.beetstreamnext.core.database import ensure_secret, rotate_session_key
 from beetsplug.beetstreamnext.core.health import startup_path_check
@@ -48,7 +48,7 @@ def prestartup_config(
     ip_filter.blacklist = list(ip_blacklist)
 
     ensure_secret(bsn_db_path)
-    app.config.update(SECRET_KEY=rotate_session_key(CACHE_LOCATION))
+    app.config.update(SECRET_KEY=rotate_session_key(CACHE_DATA_DIR))
 
 
 def restart_server(delay: float = 1.5) -> None:

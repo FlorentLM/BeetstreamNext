@@ -45,16 +45,22 @@ DATA_LOCATION: Path = data_location()      # should persist across restarts
 
 DEFAULT_CONFIG_PATH: Path = config_location() / 'beetstreamnext.yaml'     # standalone mode only
 
-HLS_CACHE_DIR: Path = CACHE_LOCATION / 'hls'
+CACHE_DATA_DIR: Path = CACHE_LOCATION / 'data'
+CACHE_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+CACHE_TMP_DIR: Path = CACHE_LOCATION / 'tmp'
+CACHE_TMP_DIR.mkdir(parents=True, exist_ok=True)
+
+HLS_CACHE_DIR: Path = CACHE_TMP_DIR / 'hls'
 HLS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-ZIP_CACHE_DIR: Path = CACHE_LOCATION / 'zips'
+ZIP_CACHE_DIR: Path = CACHE_TMP_DIR / 'zips'
 ZIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-TRANSCODE_TMP_DIR: Path = CACHE_LOCATION / 'transcode_tmp'
+TRANSCODE_TMP_DIR: Path = CACHE_TMP_DIR / 'transcode_tmp'
 TRANSCODE_TMP_DIR.mkdir(parents=True, exist_ok=True)
 
-JUKEBOX_SOCK_DIR: Path = CACHE_LOCATION / 'jukebox'
+JUKEBOX_SOCK_DIR: Path = CACHE_TMP_DIR / 'jukebox'
 JUKEBOX_SOCK_DIR.mkdir(parents=True, exist_ok=True)
 
 BEETS_IMPORT_LOG_PATH: Path = CACHE_LOCATION / 'last_import.log'

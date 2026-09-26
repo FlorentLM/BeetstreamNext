@@ -57,7 +57,10 @@ def endpoint_create_radio_station() -> flask.Response:
     if not name or not stream_url:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    create_station(name, stream_url, homepage_url)
+    station_id, error = create_station(name, stream_url, homepage_url)
+    if station_id is None:
+        return subsonic_error(0, message=error, resp_fmt=resp_fmt)
+
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
@@ -83,7 +86,10 @@ def endpoint_update_radio_station() -> flask.Response:
     if station is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    update_station(station['id'], name, stream_url, homepage_url)
+    error = update_station(station['id'], name, stream_url, homepage_url)
+    if error:
+        return subsonic_error(0, message=error, resp_fmt=resp_fmt)
+
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 

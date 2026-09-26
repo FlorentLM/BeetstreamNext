@@ -54,8 +54,15 @@ def route_create_radio() -> flask.Response:
         return back_to('radios')
 
     favicon_url = (flask.request.form.get('favicon_url') or '').strip() or None
-    create_station(safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image, favicon_url)
-    flask.flash(f"Radio station '{form.name.data}' created.", 'success')
+    station_id, error = create_station(
+        safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image, favicon_url
+    )
+
+    if station_id is None:
+        flask.flash(f'Could not create radio station: {error}', 'error')
+    else:
+        flask.flash(f"Radio station '{form.name.data}' created.", 'success')
+
     return back_to('radios')
 
 
@@ -88,8 +95,12 @@ def route_update_radio(station_id: int) -> flask.Response:
 
         image = row['image'] if row else None
 
-    update_station(station_id, safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image)
-    flask.flash(f"Radio station '{form.name.data}' updated.", 'success')
+    error = update_station(station_id, safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image)
+
+    if error:
+        flask.flash(f'Could not update radio station: {error}', 'error')
+    else:
+        flask.flash(f"Radio station '{form.name.data}' updated.", 'success')
 
     return back_to('radios')
 

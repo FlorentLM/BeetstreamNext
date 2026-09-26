@@ -4,7 +4,9 @@ from typing import Optional
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.external import query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url
+from beetsplug.beetstreamnext.core.external import (
+    query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url, https_variant
+)
 from beetsplug.beetstreamnext.core.images import sniff_image
 
 
@@ -41,22 +43,40 @@ def create_station(
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None,
         favicon_url: Optional[str] = None,
-    ) -> None:
+    ) -> tuple[Optional[int], Optional[str]]:
+    """
+    Returns (station_id, error_message).
+    station_id is None if the stream URL is already registered
+    """
 
     stream_url = normalize_url(stream_url, probe_https=True)
     if homepage_url:
         homepage_url = normalize_url(homepage_url)
 
+    with database() as db:
+        existing = db.execute(
+            """
+            SELECT name
+            FROM internet_radio_stations
+            WHERE stream_url = ? OR stream_url = ?
+            """, (stream_url, https_variant(stream_url))
+        ).fetchone()
+
+    if existing:
+        return None, f"A station with this stream URL already exists ('{existing['name']}')."
+
     if not image and app.config.get('fetch_radio_images'):
         image = resolve_station_icon(name, favicon_url, homepage_url) or None
 
     with database() as db:
-        db.execute(
+        cur = db.execute(
             """
-            INSERT INTO internet_radio_stations (name, stream_url, homepage_url, image, image_mtime) 
+            INSERT INTO internet_radio_stations (name, stream_url, homepage_url, image, image_mtime)
             VALUES (?, ?, ?, ?, ?)
             """, (name, stream_url, homepage_url, image, time.time() if image else None)
         )
+
+    return cur.lastrowid, None
 
 
 def update_station(
@@ -65,20 +85,34 @@ def update_station(
         stream_url: str,
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None
-    ) -> None:
+    ) -> Optional[str]:
+    """Updates a station. Returns an error if the new stream URL collides with another station."""
 
     stream_url = normalize_url(stream_url, probe_https=True)
     if homepage_url:
         homepage_url = normalize_url(homepage_url)
 
     with database() as db:
+        existing = db.execute(
+            """
+            SELECT name
+            FROM internet_radio_stations
+            WHERE id != ? AND (stream_url = ? OR stream_url = ?)
+            """, (station_id, stream_url, https_variant(stream_url))
+        ).fetchone()
+
+        if existing:
+            return f"A station with this stream URL already exists ('{existing['name']}')."
+
         db.execute(
             """
-            UPDATE internet_radio_stations 
-            SET name=?, stream_url=?, homepage_url=?, image=?, image_mtime=? 
+            UPDATE internet_radio_stations
+            SET name=?, stream_url=?, homepage_url=?, image=?, image_mtime=?
             WHERE id=?
             """, (name, stream_url, homepage_url, image, time.time() if image else None, station_id)
         )
+
+    return None
 
 
 def delete_station(station_id: int) -> None:

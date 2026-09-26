@@ -71,13 +71,10 @@ def endpoint_get_cover_art() -> flask.Response:
             if thumb_path.is_file():
                 return flask.send_file(thumb_path, mimetype='image/jpeg')
 
-            cover_io = image_from_song(song_path)
-            if cover_io is not None:
-                image_bytes = cover_io.getvalue()
-
+            image_bytes = image_from_song(song_path)
+            if image_bytes is not None:
                 if size:
-                    cover_io = resize_image(image_bytes, size)
-                    image_bytes = cover_io.getvalue()
+                    image_bytes = resize_image(image_bytes, size).getvalue()
 
                 # Save for next time
                 try:

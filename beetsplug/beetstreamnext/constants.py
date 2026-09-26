@@ -2,6 +2,7 @@ from __future__ import annotations
 import time
 import os
 import re
+import mediafile
 from pathlib import Path
 from typing import Dict
 
@@ -152,6 +153,7 @@ COLLAPSE_SPACES = re.compile(r'\s+')
 
 DECADE_APOSTROPHE = re.compile(r"(\d)'([A-Za-z])\b")
 
+AUDIO_EXTENSIONS = frozenset(f'.{ext}' for ext in mediafile.TYPES)
 
 ## Security
 

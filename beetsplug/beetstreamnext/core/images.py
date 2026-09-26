@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import request_url
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid, split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path
-from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES
+from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
 from beetsplug.beetstreamnext.core.database import database
@@ -230,7 +230,18 @@ def fetch_playlist_images(item, url: str) -> None:
         bsn_logger.warning(f"Failed to save captured playlist art for album {album_id}: {e}")
 
 
-def image_from_song(path: str | Path) -> BytesIO | None:
+def image_from_song(path: str | Path) -> bytes | None:
+    """
+    Extracts an embedded picture from an audio file.
+    If `path` is a directory, only the first audio file found is tried.
+    """
+    path = Path(os.fsdecode(path))
+
+    if path.is_dir():
+        candidates = sorted(f for f in path.iterdir() if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS)
+        if not candidates:
+            return None
+        path = candidates[0]
 
     ffmpeg_bin = find_ffmpeg()
 
@@ -266,7 +277,7 @@ def image_from_song(path: str | Path) -> BytesIO | None:
     else:
         img_bytes = b''
 
-    return BytesIO(img_bytes) if img_bytes else None
+    return img_bytes or None
 
 
 ##
@@ -325,6 +336,12 @@ def _album_art_bytes(album_id, size: int) -> bytes | None:
         if image_bytes:
             _persist_album_art(image_bytes, album, album_dir)
             return resize_image(image_bytes, size).getvalue()
+
+    if album_dir:
+        embedded_bytes = image_from_song(album_dir)
+        if embedded_bytes:
+            _persist_album_art(embedded_bytes, album, album_dir)
+            return resize_image(embedded_bytes, size).getvalue()
 
     return None
 
@@ -387,6 +404,13 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
         if image_bytes:
             _persist_album_art(image_bytes, album, album_dir)
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+
+    # Last resort: extract an embedded picture from one of the album's own tracks
+    if album_dir:
+        embedded_bytes = image_from_song(album_dir)
+        if embedded_bytes:
+            _persist_album_art(embedded_bytes, album, album_dir)
+            return flask.send_file(BytesIO(embedded_bytes), mimetype='image/jpeg')
 
     return None # TODO - send a placeholder instead of 404ing
 

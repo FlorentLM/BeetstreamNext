@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import '_macros.html' as macros %}
 {% block title %} - Admin Dashboard{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
@@ -198,28 +199,6 @@
     {% endfor %}
 {% endmacro %}
 
-{% macro icon(name) -%}
-{%- if name == 'edit' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-{%- elif name == 'delete' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-{%- elif name == 'download' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-{%- elif name == 'refresh' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-{%- elif name == 'copy' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-{%- elif name == 'sun' -%}
-<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-{%- elif name == 'moon' -%}
-<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
-{%- elif name == 'cancel' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
-{%- elif name == 'chevron-down' -%}
-<svg class="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-{%- endif -%}
-{%- endmacro %}
-
 {% macro render_ip_list(list_type, title, hint, placeholder, ips, pinned=[]) %}
     <div class="card">
         <div class="table-header"><h2>{{ title }}</h2></div>
@@ -272,7 +251,7 @@
         <div class="header-actions">
             <button type="button" class="icon-btn theme-toggle" data-action="toggle-theme"
                     title="Toggle light / dark theme" aria-label="Toggle light and dark theme" aria-pressed="false">
-                {{ icon('sun') }}{{ icon('moon') }}
+                {{ macros.icon('sun') }}{{ macros.icon('moon') }}
             </button>
             <span class="session-user">Signed in as <strong>{{ current_username }}</strong></span>
             <form action="{{ url_for('admin.route_logout') }}" method="POST" class="form-inline">
@@ -375,7 +354,7 @@
                                 <button class="icon-btn"
                                         data-action="edit-user"
                                         data-user="{{ u | tojson | forceescape }}"
-                                        title="Edit" aria-label="Edit {{ u.username }}">{{ icon('edit') }}</button>
+                                        title="Edit" aria-label="Edit {{ u.username }}">{{ macros.icon('edit') }}</button>
 
                                 <form action="{{ url_for('admin.route_regenerate_api_key', username=u.username) }}"
                                       method="POST"
@@ -391,7 +370,7 @@
                                       class="form-inline"
                                       data-confirm="Delete user {{ u.username | e }}? This also removes their stars, ratings, bookmarks and play history.">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ u.username }}">{{ icon('delete') }}</button>
+                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ u.username }}">{{ macros.icon('delete') }}</button>
                                 </form>
                                 {% endif %}
                             </td>
@@ -448,14 +427,14 @@
                                         data-action="edit-chat"
                                         data-id="{{ m.id }}"
                                         data-text="{{ m.message | e }}"
-                                        title="Edit" aria-label="Edit message from {{ m.username }}">{{ icon('edit') }}</button>
+                                        title="Edit" aria-label="Edit message from {{ m.username }}">{{ macros.icon('edit') }}</button>
 
                                 <form action="{{ url_for('admin.route_delete_chat_message', msg_id=m.id) }}"
                                       method="POST"
                                       class="form-inline"
                                       data-confirm="Delete this message? This action is permanent.">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete message from {{ m.username }}">{{ icon('delete') }}</button>
+                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete message from {{ m.username }}">{{ macros.icon('delete') }}</button>
                                 </form>
                             </td>
                         </tr>
@@ -531,7 +510,7 @@
                                       class="form-inline"
                                       data-confirm="Delete share '{{ s.id }}'? Users with this URL will immediately lose access to downloads.">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}">{{ icon('delete') }}</button>
+                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}">{{ macros.icon('delete') }}</button>
                                 </form>
                             </td>
                         </tr>
@@ -634,28 +613,30 @@
                             <form action="{{ url_for('admin.route_refresh_podcast', channel_id=ch.id) }}"
                                   method="POST" class="form-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="icon-btn" title="Refresh now" aria-label="Refresh {{ (ch.title or ch.url) | e }}">{{ icon('refresh') }}</button>
+                                <button type="submit" class="icon-btn" title="Refresh now" aria-label="Refresh {{ (ch.title or ch.url) | e }}">{{ macros.icon('refresh') }}</button>
                             </form>
                             <form action="{{ url_for('admin.route_download_recent_podcast_episodes', channel_id=ch.id) }}"
                                   method="POST" class="form-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="icon-btn" title="Download recent episodes"
-                                        aria-label="Download recent episodes for {{ (ch.title or ch.url) | e }}">{{ icon('download') }}</button>
+                                        aria-label="Download recent episodes for {{ (ch.title or ch.url) | e }}">{{ macros.icon('download') }}</button>
                             </form>
                             <form action="{{ url_for('admin.route_delete_podcast', channel_id=ch.id) }}"
                                   method="POST" class="form-inline"
                                   data-confirm="Delete podcast channel '{{ (ch.title or ch.url) | e }}'? This removes it and its downloaded episodes for all subscribers.">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete channel {{ (ch.title or ch.url) | e }}">{{ icon('delete') }}</button>
+                                <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete channel {{ (ch.title or ch.url) | e }}">{{ macros.icon('delete') }}</button>
                             </form>
                         </div>
                     </div>
 
                     {% if ch.episode_count %}
-                    <details class="podcast-episodes" data-channel-id="{{ ch.id }}">
+                    <details class="podcast-episodes" data-channel-id="{{ ch.id }}"
+                             hx-get="{{ url_for('admin.route_podcast_episodes', channel_id=ch.id) }}"
+                             hx-trigger="toggle once" hx-target="find .table-container" hx-swap="innerHTML">
                         <summary>{{ ch.episode_count }} episode{{ 's' if ch.episode_count != 1 }}</summary>
-                        <div class="table-container" data-episodes-body>
-                            <p class="empty-state">Loading...</p>
+                        <div class="table-container">
+                            <p class="empty-state">Loading&hellip;</p>
                         </div>
                     </details>
                     {% endif %}
@@ -702,13 +683,13 @@
                         <button class="icon-btn"
                                 data-action="edit-radio"
                                 data-station="{{ s | tojson | forceescape }}"
-                                title="Edit" aria-label="Edit {{ s.name }}">{{ icon('edit') }}</button>
+                                title="Edit" aria-label="Edit {{ s.name }}">{{ macros.icon('edit') }}</button>
                         <form action="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
                               method="POST"
                               class="form-inline"
                               data-confirm="Delete radio station '{{ s.name | e }}'?">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ s.name }}">{{ icon('delete') }}</button>
+                            <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ s.name }}">{{ macros.icon('delete') }}</button>
                         </form>
                     </div>
                 </div>
@@ -774,10 +755,10 @@
             <div class="table-header">
                 <h2>Last Import Log</h2>
                 <div class="table-header-actions">
-                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="beetsImportLogText">{{ icon('copy') }} <span class="btn-label">Copy</span></button>
+                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="beetsImportLogText">{{ macros.icon('copy') }} <span class="btn-label">Copy</span></button>
                     <button type="button" class="btn btn-outline" data-action="refresh-log"
                             data-url="{{ url_for('admin.route_beets_import_log') }}" data-target="beetsImportLogText">
-                        {{ icon('refresh') }} <span class="btn-label">Refresh</span>
+                        {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
                     </button>
                 </div>
             </div>
@@ -874,7 +855,7 @@
                         <tbody>
                             {% for s in flagged_songs %}
                             <tr class="expand-row" data-action="toggle-row-detail">
-                                <td class="expand-cell">{{ icon('chevron-down') }}</td>
+                                <td class="expand-cell">{{ macros.icon('chevron-down') }}</td>
                                 <td>{{ s.title or '(untitled)' }}</td>
                                 <td>{{ s.artist or '—' }}</td>
                                 <td>{{ s.album or '—' }}</td>
@@ -978,10 +959,10 @@
                         <input type="checkbox" data-action="toggle-log-autorefresh" data-refresh-target="refresh-log-btn">
                         Auto-refresh
                     </label>
-                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="serverLogText">{{ icon('copy') }} <span class="btn-label">Copy</span></button>
+                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="serverLogText">{{ macros.icon('copy') }} <span class="btn-label">Copy</span></button>
                     <button type="button" class="btn btn-outline" id="refresh-log-btn" data-action="refresh-log"
                             data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText">
-                        {{ icon('refresh') }} <span class="btn-label">Refresh</span>
+                        {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
                     </button>
                 </div>
             </div>
@@ -1246,6 +1227,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
 <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
 <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}

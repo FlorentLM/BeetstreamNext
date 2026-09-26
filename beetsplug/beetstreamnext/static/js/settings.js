@@ -577,109 +577,21 @@
         podcastSetPollInterval(activelyDownloading ? 1000 : 3000);
     }
 
-    // Lazy fetch of episodes lists
+    // Episodes lists are lazy-loaded htmx
+    document.body.addEventListener('htmx:afterSwap', event => {
+        if (!event.detail.target.closest('.podcast-episodes')) return;
+        formatChatTimes(event.detail.target);
+        startPodcastPollingIfBusy();
+    });
 
-    function formatDuration(seconds) {
-        const total = Math.max(0, Math.floor(Number(seconds) || 0));
-        const hours = Math.floor(total / 3600);
-        const minutes = Math.floor((total % 3600) / 60);
-        const secs = total % 60;
-        const pad = n => String(n).padStart(2, '0');
-        return hours ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
-    }
-
-    const PODCAST_EPISODE_ICONS = {
-        download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
-        cancel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>',
-        delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
-    };
-
-    function podcastEpisodeRowHtml(e, csrfToken) {
-        const title = escapeHtml(e.title || '(untitled)');
-        const dateHtml = e.publish_date
-            ? `<span class="chat-time">${escapeHtml(new Date(e.publish_date * 1000).toLocaleString())}</span>`
-            : '<span class="rate-limit-anon">&mdash;</span>';
-        const sizeHtml = e.file_size
-            ? `<span class="badge badge-limit">${formatBytes(e.file_size)}</span>`
-            : '<span class="rate-limit-anon">&mdash;</span>';
-        const csrfInput = `<input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">`;
-        const dlHidden = (e.status === 'completed' || e.status === 'downloading') ? 'hidden' : '';
-        const cancelHidden = e.status !== 'downloading' ? 'hidden' : '';
-        const delHidden = e.status !== 'completed' ? 'hidden' : '';
-        const progressHidden = e.status !== 'downloading' ? 'hidden' : '';
-        const progressAttrs = e.file_size ? `max="${e.file_size}" value="0"` : '';
-
-        return `
-            <tr>
-                <td>${title}</td>
-                <td>${dateHtml}</td>
-                <td>${escapeHtml(formatDuration(e.duration))}</td>
-                <td><span class="badge${e.status === 'error' ? ' badge-admin' : ''}"
-                          id="podcast-episode-status-${e.id}" data-status="${e.status}">${escapeHtml(e.status)}</span></td>
-                <td>
-                    <span id="podcast-episode-size-${e.id}">${sizeHtml}</span>
-                    <progress class="podcast-progress" id="podcast-episode-progress-${e.id}" ${progressHidden} ${progressAttrs}></progress>
-                </td>
-                <td class="actions-cell">
-                    <form id="podcast-episode-dl-${e.id}" ${dlHidden}
-                          action="/admin/podcasts/episode/${e.id}/download" method="POST" class="form-inline">
-                        ${csrfInput}
-                        <button type="submit" class="icon-btn" title="Download" aria-label="Download &quot;${title}&quot;">${PODCAST_EPISODE_ICONS.download}</button>
-                    </form>
-                    <form id="podcast-episode-cancel-${e.id}" ${cancelHidden}
-                          action="/admin/podcasts/episode/${e.id}/cancel-download" method="POST" class="form-inline">
-                        ${csrfInput}
-                        <button type="submit" class="icon-btn icon-btn-delete" title="Cancel download" aria-label="Cancel download of &quot;${title}&quot;">${PODCAST_EPISODE_ICONS.cancel}</button>
-                    </form>
-                    <form id="podcast-episode-del-${e.id}" ${delHidden}
-                          action="/admin/podcasts/episode/${e.id}/delete" method="POST" class="form-inline"
-                          data-confirm="Remove this episode's downloaded file for all subscribers?">
-                        ${csrfInput}
-                        <button type="submit" class="icon-btn icon-btn-delete" title="Delete file" aria-label="Delete downloaded file for &quot;${title}&quot;">${PODCAST_EPISODE_ICONS.delete}</button>
-                    </form>
-                </td>
-            </tr>`;
-    }
-
-    async function loadPodcastEpisodes(details) {
-        if (details.dataset.loaded) return;
-        const channelId = details.dataset.channelId;
-        const body = details.querySelector('[data-episodes-body]');
-        if (!channelId || !body) return;
-
-        const csrfField = document.querySelector('#importOpmlForm input[name="csrf_token"]');
-        const csrfToken = csrfField ? csrfField.value : '';
-
-        try {
-            const resp = await fetch(`/admin/podcasts/${channelId}/episodes`, { credentials: 'same-origin' });
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const episodes = await resp.json();
-            details.dataset.loaded = 'true';
-
-            if (!episodes.length) {
-                body.innerHTML = '<p class="empty-state">No episodes yet.</p>';
-                return;
+    // Format HLS/chat/podcast epoch timestamps to human readable format
+    function formatChatTimes(root = document) {
+        root.querySelectorAll('.chat-time').forEach(el => {
+            const ms = parseInt(el.dataset.timestamp);
+            if (!isNaN(ms)) {
+                el.textContent = new Date(ms).toLocaleString();
             }
-
-            body.innerHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Published</th>
-                            <th>Duration</th>
-                            <th>Status</th>
-                            <th>Size</th>
-                            <th class="cell-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>${episodes.map(e => podcastEpisodeRowHtml(e, csrfToken)).join('')}</tbody>
-                </table>`;
-
-            startPodcastPollingIfBusy();
-        } catch (err) {
-            body.innerHTML = `<p class="empty-state">Failed to load episodes: ${escapeHtml(err.message)}</p>`;
-        }
+        });
     }
 
     // Beets config editor
@@ -1298,21 +1210,10 @@
 
     startPodcastPollingIfBusy();
 
-    document.querySelectorAll('details.podcast-episodes').forEach(details => {
-        details.addEventListener('toggle', () => {
-            if (details.open) loadPodcastEpisodes(details);
-        });
-    });
-
     document.querySelectorAll('[data-action="refresh-log"]').forEach(refreshLogs);
 
-    // Format HLS/chat epoch timestamps to human readable format
-    document.querySelectorAll('.chat-time').forEach(el => {
-        const ms = parseInt(el.dataset.timestamp);
-        if (!isNaN(ms)) {
-            el.textContent = new Date(ms).toLocaleString();
-        }
-    });
+
+    formatChatTimes();
 
     document.querySelectorAll('.config-time').forEach(formatConfigTime);
 

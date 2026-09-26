@@ -254,7 +254,12 @@ class PodcastManager:
     # Channels
 
     @with_app_context
-    def _worker_refresh_channel(self, channel_id: int, download_recents: bool = False, username: Optional[str] = None) -> None:
+    def _worker_refresh_channel(self,
+        channel_id: int,
+        download_recents: bool = False,
+        username: Optional[str] = None,
+        prefetched: Optional[tuple] = None,
+    ) -> None:
         """Worker for refreshing a single channel."""
 
         if not FEEDPARSER:
@@ -291,7 +296,7 @@ class PodcastManager:
                 )
 
             try:
-                feed, resolved_url = _fetch_feed(row['url'])
+                feed, resolved_url = prefetched if prefetched is not None else _fetch_feed(row['url'])
 
                 if resolved_url != row['url']:
                     try:
@@ -449,17 +454,13 @@ class PodcastManager:
         self, username: str, url: str, download_recents: bool = True
     ) -> tuple[Optional[int], Optional[str]]:
         """
-        Creates the channel row if its URL is new, or just subscribes username to the
-        existing shared channel.
+        Subscribes username to a podcast channel, deduped first by URL then by feed title.
 
-        url is normalised first and deduped against its http/https variants.
-        download_recents controls whether a brand-new channel auto-downloads its most
-        recent episodes (per the podcast_auto_download_count setting); turn it off for
-        bulk operations (e.g. OPML import) so they don't all download at once.
-
-        Returns (channel_id, error_message), channel_id can be None if a new channel's feed
-        could not be fetched.
+        Returns (channel_id, error_message).
         """
+
+        if not FEEDPARSER:
+            return None, "Podcast feeds need the 'feedparser' package to be installed on the server."
 
         url = normalize_url(url)
         alt_url = https_variant(url)
@@ -473,8 +474,38 @@ class PodcastManager:
                 """, (url, alt_url)
             ).fetchone()
 
-            if existing:
-                channel_id = existing['id']
+        if existing:
+            channel_id = existing['id']
+            with database() as db:
+                db.execute(
+                    """
+                    INSERT INTO podcast_subscriptions (username, channel_id)
+                    VALUES (?, ?)
+                    ON CONFLICT (username, channel_id) DO NOTHING
+                    """, (username, channel_id)
+                )
+            return channel_id, None
+
+        # Fetch to check title before creating a channel row
+        try:
+            feed, resolved_url = _fetch_feed(url)
+        except Exception as e:
+            return None, str(e)
+
+        title = (feed.get('feed', {}).get('title') or resolved_url).strip()
+
+        with database() as db:
+            by_title = db.execute(
+                """
+                SELECT id
+                FROM podcast_channels
+                WHERE title = ? COLLATE NOCASE
+                """, (title,)
+            ).fetchone()
+
+            if by_title:
+                channel_id = by_title['id']
+                bsn_logger.info(f"Podcast feed '{resolved_url}' matches existing channel {channel_id} by title.")
                 is_new = False
             else:
                 cur = db.execute(
@@ -482,7 +513,7 @@ class PodcastManager:
                     INSERT INTO podcast_channels (url, title, status)
                     VALUES (?, ?, 'new')
                     ON CONFLICT (url) DO NOTHING
-                    """, (url, url)
+                    """, (resolved_url, title)
                 )
                 if cur.rowcount > 0:
                     channel_id = cur.lastrowid
@@ -494,7 +525,7 @@ class PodcastManager:
                         SELECT id 
                         FROM podcast_channels 
                         WHERE url = ?
-                        """, (url,)
+                        """, (resolved_url,)
                     ).fetchone()['id']
                     is_new = False
 
@@ -507,7 +538,10 @@ class PodcastManager:
             )
 
         if is_new:
-            self.refresh(channel_id, download_recents=download_recents, username=username)
+            self._worker_refresh_channel(
+                channel_id, download_recents=download_recents, username=username,
+                prefetched=(feed, resolved_url)
+            )
 
             with database() as db:
                 row = db.execute(

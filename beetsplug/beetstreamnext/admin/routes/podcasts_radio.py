@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, Imag
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser, query_podcastindex
 from beetsplug.beetstreamnext.admin.forms import RadioStationForm, flash_form_errors
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, format_duration
 from beetsplug.beetstreamnext.utils.general import human_bytes
 
 
@@ -388,7 +388,7 @@ def route_delete_podcast_episode(episode_id: int) -> flask.Response:
 @admin_bp.route('/podcasts/<int:channel_id>/episodes', methods=['GET'])
 @admin_required
 def route_podcast_episodes(channel_id: int) -> flask.Response:
-    """Lazy fetch of a channel's episodes list."""
+    """Episodes table for a channel, lazy-loaded."""
 
     with database() as db:
         rows = db.execute(
@@ -400,7 +400,16 @@ def route_podcast_episodes(channel_id: int) -> flask.Response:
             """, (channel_id,)
         ).fetchall()
 
-    return flask.jsonify([dict(r) for r in rows])
+    episodes = [
+        {
+            **dict(r),
+            'duration_display': format_duration(r['duration']),
+            'size_display': human_bytes(r['file_size']) if r['file_size'] else None,
+        }
+        for r in rows
+    ]
+
+    return flask.render_template('partials/podcast_episodes.html', episodes=episodes)
 
 
 @admin_bp.route('/podcasts/status', methods=['GET'])

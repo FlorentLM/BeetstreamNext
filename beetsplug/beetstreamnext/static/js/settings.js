@@ -306,28 +306,6 @@
         }[c]));
     }
 
-    function renderRateLimitState(container, payload) {
-        if (!payload.entries || payload.entries.length === 0) {
-            container.innerHTML = `<p class="empty-state">No active rate-limit failures.
-                Blocking at ${payload.max_failures} failures within ${payload.block_window_sec}s.</p>`;
-            return;
-        }
-        const rows = payload.entries.map(e => `
-            <tr class="${e.blocked ? 'rate-limit-blocked' : ''}">
-                <td><code>${escapeHtml(e.ip)}</code></td>
-                <td>${e.username ? escapeHtml(e.username) : '<span class="rate-limit-anon">—</span>'}</td>
-                <td>${e.failures} / ${payload.max_failures}</td>
-                <td>${e.oldest_failure_age_sec}s ago</td>
-                <td>${e.blocked ? '<span class="badge badge-admin">BLOCKED</span>' : '<span class="badge">warning</span>'}</td>
-            </tr>
-        `).join('');
-        container.innerHTML = `
-            <table class="rate-limit-table">
-                <thead><tr><th>IP</th><th>Username</th><th>Failures</th><th>Oldest</th><th>Status</th></tr></thead>
-                <tbody>${rows}</tbody>
-            </table>`;
-    }
-
     // Convert ANSI color/style escape codes to HTML
     const ANSI_COLOR_CLASS = {
         30: 'ansi-fg-black', 31: 'ansi-fg-red', 32: 'ansi-fg-green', 33: 'ansi-fg-yellow',
@@ -415,21 +393,6 @@
             const button = document.getElementById(checkbox.dataset.refreshTarget);
             if (!button) return;
             logAutoRefreshTimer = setInterval(() => refreshLogs(button), 5000);
-        }
-    }
-
-    async function refreshRateLimits(button) {
-        const url = button.dataset.url;
-        const container = document.getElementById('rate-limit-state');
-        if (!container || !url) return;
-        container.innerHTML = '<p class="empty-state">Loading...</p>';
-        try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const payload = await resp.json();
-            renderRateLimitState(container, payload);
-        } catch (err) {
-            container.innerHTML = `<p class="empty-state">Failed to load: ${escapeHtml(err.message)}</p>`;
         }
     }
 
@@ -1010,9 +973,6 @@
             case 'copy-log':
                 copyLogs(target);
                 break;
-            case 'refresh-rate-limits':
-                refreshRateLimits(target);
-                break;
             case 'refresh-scan-status':
                 refreshScanStatus(target);
                 break;
@@ -1198,9 +1158,6 @@
 
     applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
     initTabsFromHash();
-
-    const rateLimitsRefreshBtn = document.querySelector('[data-action="refresh-rate-limits"]');
-    if (rateLimitsRefreshBtn) refreshRateLimits(rateLimitsRefreshBtn);
 
     const scanStatusRefreshBtn = document.querySelector('[data-action="refresh-scan-status"]');
     if (scanStatusRefreshBtn) refreshScanStatus(scanStatusRefreshBtn);

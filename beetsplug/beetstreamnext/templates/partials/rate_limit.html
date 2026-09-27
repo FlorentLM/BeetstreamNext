@@ -1,0 +1,21 @@
+{% if not report.entries %}
+<p class="empty-state">No active rate-limit failures.
+    Blocking at {{ report.max_failures }} failures within {{ report.block_window_sec }}s.</p>
+{% else %}
+<table class="rate-limit-table">
+    <thead>
+        <tr><th>IP</th><th>Username</th><th>Failures</th><th>Oldest</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+        {% for e in report.entries %}
+        <tr class="{{ 'rate-limit-blocked' if e.blocked }}">
+            <td><code>{{ e.ip }}</code></td>
+            <td>{% if e.username %}{{ e.username }}{% else %}<span class="rate-limit-anon">&mdash;</span>{% endif %}</td>
+            <td>{{ e.failures }} / {{ report.max_failures }}</td>
+            <td>{{ e.oldest_failure_age_sec }}s ago</td>
+            <td>{% if e.blocked %}<span class="badge badge-admin">BLOCKED</span>{% else %}<span class="badge">warning</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

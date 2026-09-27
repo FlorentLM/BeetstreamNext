@@ -795,8 +795,9 @@
         <div class="card">
             <div class="table-header">
                 <h2>Rate Limits</h2>
-                <button class="btn btn-outline" data-action="refresh-rate-limits"
-                        data-url="{{ url_for('admin.route_rate_limits') }}">Refresh</button>
+                <button class="btn btn-outline"
+                        hx-get="{{ url_for('admin.route_rate_limits') }}"
+                        hx-trigger="click, load" hx-target="#rate-limit-state" hx-swap="innerHTML">Refresh</button>
             </div>
             <div id="rate-limit-state" class="rate-limit-state">
                 <p class="empty-state">Loading...</p>

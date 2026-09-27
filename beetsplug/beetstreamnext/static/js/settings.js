@@ -576,27 +576,6 @@
         }
     }
 
-    async function testConnection(button) {
-        const url = button.dataset.url;
-        const result = document.getElementById(button.dataset.result);
-        if (!url || !result) return;
-
-        button.disabled = true;
-        result.className = 'test-result';
-        result.textContent = 'Testing...';
-        try {
-            const resp = await fetch(url, {credentials: 'same-origin'});
-            const payload = await resp.json();
-            result.className = 'test-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
-            result.textContent = payload.message || (payload.ok ? 'OK' : 'Failed');
-        } catch (err) {
-            result.className = 'test-result test-result-fail';
-            result.textContent = 'Failed to test connection: ' + err.message;
-        } finally {
-            button.disabled = false;
-        }
-    }
-
     // only fill the field when it's empty and discovery found exactly one device
     document.body.addEventListener('htmx:afterSwap', event => {
         if (event.detail.target.id !== 'jukebox-devices-list') return;
@@ -739,9 +718,6 @@
                 break;
             case 'save-beets-config':
                 saveBeetsConfig(target);
-                break;
-            case 'test-connection':
-                testConnection(target);
                 break;
             case 'use-radio-result':
                 useRadioResult(target);

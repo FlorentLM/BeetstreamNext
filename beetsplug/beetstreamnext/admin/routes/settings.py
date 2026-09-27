@@ -117,25 +117,29 @@ def route_clear_setting(category: str, key: str) -> flask.Response:
 ##
 # Library integrations: test connection
 
+def test_result(result_id: str, ok: bool, message: str) -> flask.Response:
+    return flask.render_template('partials/test_result.html', result_id=result_id, ok=ok, message=message)
+
+
 @admin_bp.route('/settings/test/lastfm', methods=['GET'])
 @admin_required
 def route_test_lastfm() -> flask.Response:
     ok, message = test_lastfm_connection()
-    return flask.jsonify({'ok': ok, 'message': message})
+    return test_result('test-result-lastfm', ok, message)
 
 
 @admin_bp.route('/settings/test/audiomuse', methods=['GET'])
 @admin_required
 def route_test_audiomuse() -> flask.Response:
     ok, message = test_audiomuse_connection()
-    return flask.jsonify({'ok': ok, 'message': message})
+    return test_result('test-result-audiomuse', ok, message)
 
 
 @admin_bp.route('/settings/test/podcastindex', methods=['GET'])
 @admin_required
 def route_test_podcastindex() -> flask.Response:
     ok, message = test_podcastindex_connection()
-    return flask.jsonify({'ok': ok, 'message': message})
+    return test_result('test-result-podcastindex', ok, message)
 
 
 @admin_bp.route('/')

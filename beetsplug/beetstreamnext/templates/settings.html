@@ -118,30 +118,42 @@
 {% macro render_field_actions(key, settings) -%}
     {%- if key == 'lastfm_api_key' -%}
         <p class="setting-row-actions">
-            <button type="button" class="btn btn-outline" data-action="test-connection"
-                    data-url="{{ url_for('admin.route_test_lastfm') }}"
-                    data-result="test-result-lastfm"
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_test_lastfm') }}"
+                    hx-target="#test-result-lastfm"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#test-indicator-lastfm"
                     {{ 'disabled' if not settings['lastfm_api_key'].is_set else '' }}>Test connection
             </button>
+            <span id="test-indicator-lastfm" class="htmx-indicator test-result">Testing&hellip;</span>
         </p>
         <p class="test-result" id="test-result-lastfm"></p>
     {%- elif key == 'audiomuse_url' -%}
         <p class="setting-row-actions">
-            <button type="button" class="btn btn-outline" data-action="test-connection"
-                    data-url="{{ url_for('admin.route_test_audiomuse') }}"
-                    data-result="test-result-audiomuse"
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_test_audiomuse') }}"
+                    hx-target="#test-result-audiomuse"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#test-indicator-audiomuse"
                     {{ 'disabled' if not settings['audiomuse_url'].value else '' }}>Test connection
             </button>
+            <span id="test-indicator-audiomuse" class="htmx-indicator test-result">Testing&hellip;</span>
         </p>
         <p class="test-result" id="test-result-audiomuse"></p>
     {%- elif key == 'podcastindex_api_key' -%}
         <p class="setting-row-actions">
-            <button type="button" class="btn btn-outline" data-action="test-connection"
-                    data-url="{{ url_for('admin.route_test_podcastindex') }}"
-                    data-result="test-result-podcastindex"
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_test_podcastindex') }}"
+                    hx-target="#test-result-podcastindex"
+                    hx-swap="outerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#test-indicator-podcastindex"
                     {{ 'disabled' if not (settings['podcastindex_api_key'].is_set and settings['podcastindex_api_secret'].is_set) else '' }}>
                 Test connection
             </button>
+            <span id="test-indicator-podcastindex" class="htmx-indicator test-result">Testing&hellip;</span>
         </p>
         <p class="test-result" id="test-result-podcastindex"></p>
     {%- elif key == 'jukebox_hardware_device' -%}

@@ -1,0 +1,42 @@
+{% set ok = ok | default(none) %}
+{% set message = message | default(none) %}
+
+<p class="card-hint" id="beetsConfigMeta" hx-swap-oob="true">
+    <span class="config-label">Loaded config file:</span>
+    <code>{{ beets_config.path }}</code>
+    <span class="badge badge-admin" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
+</p>
+
+<div class="card-section" id="beetsConfigEditorWrap">
+    <textarea id="beetsConfigEditor" name="content" class="code-editor" spellcheck="false" autocomplete="off"
+              autocapitalize="off" wrap="off"
+              {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+</div>
+
+<div class="config-editor-footer" id="beetsConfigFooter" hx-swap-oob="true">
+
+    <p class="card-hint config-editor-loaded">
+        Last read at
+        <strong class="config-time" data-timestamp="{{ (beets_config.loaded_at * 1000) | int }}">&mdash;</strong>
+        <span class="test-result config-editor-result
+                {% if ok is not none %}{{ ' test-result-ok' if ok else ' test-result-fail' }}{% endif %}">{{ message or '' }}</span>
+    </p>
+
+    <div class="button-row config-editor-actions">
+        <button type="button" class="btn btn-outline"
+                hx-get="{{ url_for('admin.route_read_beets_config') }}"
+                hx-target="#beetsConfigEditorWrap"
+                hx-swap="outerHTML"
+                hx-disabled-elt="this">Reload
+        </button>
+        <button type="button" class="btn btn-primary"
+                hx-post="{{ url_for('admin.route_save_beets_config') }}"
+                hx-include="#beetsConfigEditor"
+                hx-target="#beetsConfigEditorWrap"
+                hx-swap="outerHTML"
+                hx-disabled-elt="this"
+                {% if beets_config.read_only %}disabled{% endif %}>Save
+        </button>
+    </div>
+
+</div>

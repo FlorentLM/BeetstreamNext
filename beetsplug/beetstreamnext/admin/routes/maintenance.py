@@ -73,15 +73,17 @@ def route_beets_import_log() -> flask.Response:
 @admin_bp.route('/beets/config', methods=['GET'])
 @admin_required
 def route_read_beets_config() -> flask.Response:
-    return flask.jsonify(read_config())
+    return flask.render_template('partials/beets_config.html', beets_config=read_config())
 
 
 @admin_bp.route('/beets/config', methods=['POST'])
 @admin_required
 def route_save_beets_config() -> flask.Response:
-    content = (flask.request.get_json(silent=True) or {}).get('content', '')
+    content = flask.request.form.get('content', '')
     ok, message = write_config(content)
-    return flask.jsonify({'ok': ok, 'message': message, **read_config()})
+    return flask.render_template(
+        'partials/beets_config.html', beets_config=read_config(), ok=ok, message=message
+    )
 
 
 @admin_bp.route('/maintenance/clear-cache', methods=['POST'])

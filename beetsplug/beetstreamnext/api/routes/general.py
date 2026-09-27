@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.users_crud import load_username
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing
+from beetsplug.beetstreamnext.core.beets_interaction import is_importing
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 
@@ -255,24 +255,13 @@ def endpoint_start_scan() -> flask.Response:
     if not flask.g.user_data.get('adminRole'):
         return subsonic_error(40, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
 
-    ok, message, already_running = start_import()
-    if not ok and not already_running:
-        return subsonic_error(0, message=message, resp_fmt=resp_fmt)
 
-    try:
-        with flask.g.lib.transaction() as tx:
-            items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
-    except Exception as e:
-        bsn_logger.warning(f'Could not read item count while a scan is running: {e}')
-        items_count = 0
-
-    payload = {
-        'scanStatus': {
-            "scanning": True,
-            "count": items_count
-        }
-    }
-    return subsonic_response(payload, resp_fmt=resp_fmt)
+    # TODO: Reenable this properly
+    return subsonic_error(
+        0,
+        message="Library scan via Subsonic clients is currently disabled.",
+        resp_fmt=resp_fmt,
+    )
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/

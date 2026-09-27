@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import List
 from itertools import groupby
 import flask
@@ -9,7 +10,7 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
 from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats
 from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, is_importing, read_config, write_config
+from beetsplug.beetstreamnext.core.beets_interaction import read_config, write_config
 from beetsplug.beetstreamnext.core.startup import restart_server
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import SERVER_NAME, BEETS_IMPORT_LOG_PATH
@@ -34,28 +35,6 @@ def drop_python_tracebacks(log_lines: List[str]) -> List[str]:
         else:
             result.append('')
     return result
-
-
-@admin_bp.route('/beets/scan', methods=['POST'])
-@admin_required
-def route_beets_scan() -> flask.Response:
-    ok, message, already_running = start_import()
-    flask.flash(message, 'info' if already_running else ('success' if ok else 'error'))
-    return back_to('beets')
-
-
-@admin_bp.route('/beets/scan-status', methods=['GET'])
-@admin_required
-def route_beets_scan_status() -> flask.Response:
-    lib = flask.current_app.config['lib']
-    try:
-        with lib.transaction() as tx:
-            items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
-    except Exception as e:
-        bsn_logger.warning(f'Could not read item count while checking scan status: {e}')
-        items_count = None
-
-    return flask.render_template('partials/beets_scan_status.html', scanning=is_importing(), count=items_count)
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])

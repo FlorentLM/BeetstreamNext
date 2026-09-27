@@ -813,48 +813,6 @@
                 {% include 'partials/beets_config.html' %}
             </div>
 
-            <div class="card">
-                <div class="table-header">
-                    <h2>Library Scan</h2>
-                    <button class="btn btn-outline"
-                            hx-get="{{ url_for('admin.route_beets_scan_status') }}"
-                            hx-trigger="click, load"
-                            hx-target="#beets-scan-status"
-                            hx-swap="innerHTML">Refresh
-                    </button>
-                </div>
-                <p class="card-hint">
-                    Runs an incremental, unattended <code>beet import</code> over the library's root directory to pick
-                    up newly-added files. Refuses to start if beets' <code>timid</code> import mode is enabled.
-                </p>
-                <dl class="kv-grid" id="beets-scan-status">
-                    <dt>Status</dt>
-                    <dd>Loading...</dd>
-                    <dt>Tracks in library</dt>
-                    <dd>&mdash;</dd>
-                </dl>
-                <form method="POST" action="{{ url_for('admin.route_beets_scan') }}" class="card-body-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-primary">Start scan</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <div class="table-header">
-                    <h2>Last Import Log</h2>
-                    <div class="table-header-actions">
-                        <button type="button" class="btn btn-outline" data-action="copy-log"
-                                data-target="beetsImportLogText">{{ macros.icon('copy') }} <span
-                                class="btn-label">Copy</span></button>
-                        <button type="button" class="btn btn-outline" data-action="refresh-log"
-                                data-url="{{ url_for('admin.route_beets_import_log') }}"
-                                data-target="beetsImportLogText">
-                            {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
-                        </button>
-                    </div>
-                </div>
-                <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
-            </div>
         </section>
 
         {# Maintenance tab #}

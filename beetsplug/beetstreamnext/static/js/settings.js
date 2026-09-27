@@ -12,7 +12,9 @@
             confirmResolve: null,
             promptResolve: null,
 
-            show(id) { this.current = id; },
+            show(id) {
+                this.current = id;
+            },
 
             hide(id) {
                 if (id && this.current !== id) return;
@@ -51,7 +53,10 @@
                     this.show('promptModal');
                     setTimeout(() => {
                         const input = document.getElementById('promptInput');
-                        if (input) { input.focus(); input.select(); }
+                        if (input) {
+                            input.focus();
+                            input.select();
+                        }
                     }, 50);
                 });
             },
@@ -94,14 +99,30 @@
 
         // Routing modal state via getters bcause the CSP build doesn't resolve the nested $store
         Alpine.data('modalPanel', (id) => ({
-            get isOpen() { return Alpine.store('modal').current === id; },
-            get message() { return Alpine.store('modal').message; },
-            get promptValue() { return Alpine.store('modal').promptValue; },
-            set promptValue(v) { Alpine.store('modal').promptValue = v; },
-            open() { Alpine.store('modal').show(id); },
-            close() { Alpine.store('modal').hide(id); },
-            confirmProceed() { Alpine.store('modal').confirmProceed(); },
-            promptProceed() { Alpine.store('modal').promptProceed(); }
+            get isOpen() {
+                return Alpine.store('modal').current === id;
+            },
+            get message() {
+                return Alpine.store('modal').message;
+            },
+            get promptValue() {
+                return Alpine.store('modal').promptValue;
+            },
+            set promptValue(v) {
+                Alpine.store('modal').promptValue = v;
+            },
+            open() {
+                Alpine.store('modal').show(id);
+            },
+            close() {
+                Alpine.store('modal').hide(id);
+            },
+            confirmProceed() {
+                Alpine.store('modal').confirmProceed();
+            },
+            promptProceed() {
+                Alpine.store('modal').promptProceed();
+            }
         }));
 
         Alpine.data('checkboxGroup', () => ({
@@ -132,7 +153,8 @@
         const next = current === 'light' ? 'dark' : 'light';
         try {
             document.cookie = 'bsn-theme=' + next + '; Path=/; Max-Age=31536000; SameSite=Lax';
-        } catch (e) {}
+        } catch (e) {
+        }
         applyTheme(next);
     }
 
@@ -246,11 +268,15 @@
 
         const done = () => {
             button.textContent = 'Copied';
-            setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+            setTimeout(() => {
+                button.textContent = 'Copy';
+            }, 2000);
         };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(key).then(done).catch(() => { if (copySel(key)) done(); });
+            navigator.clipboard.writeText(key).then(done).catch(() => {
+                if (copySel(key)) done();
+            });
         } else {
             // No Clipboard API over plain HTTP, fallback to execCommand
             if (copySel(key)) done();
@@ -267,11 +293,15 @@
             if (!label) return;
             const orig = label.textContent;
             label.textContent = 'Copied';
-            setTimeout(() => { label.textContent = orig; }, 2000);
+            setTimeout(() => {
+                label.textContent = orig;
+            }, 2000);
         };
 
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(() => { if (copySel(text)) done(); });
+            navigator.clipboard.writeText(text).then(done).catch(() => {
+                if (copySel(text)) done();
+            });
         } else {
             if (copySel(text)) done();
         }
@@ -318,7 +348,10 @@
         let colorClass = null, bold = false, dim = false, italic = false, underline = false;
 
         function closeSpan() {
-            if (openSpan) { html += '</span>'; openSpan = false; }
+            if (openSpan) {
+                html += '</span>';
+                openSpan = false;
+            }
         }
 
         function openSpanIfStyled() {
@@ -342,13 +375,17 @@
                 const codes = m[1] ? m[1].split(';').map(Number) : [0];
                 closeSpan();
                 for (const code of codes) {
-                    if (code === 0) { colorClass = null; bold = dim = italic = underline = false; }
-                    else if (code === 1) bold = true;
+                    if (code === 0) {
+                        colorClass = null;
+                        bold = dim = italic = underline = false;
+                    } else if (code === 1) bold = true;
                     else if (code === 2) dim = true;
                     else if (code === 3) italic = true;
                     else if (code === 4) underline = true;
-                    else if (code === 22) { bold = false; dim = false; }
-                    else if (code === 23) italic = false;
+                    else if (code === 22) {
+                        bold = false;
+                        dim = false;
+                    } else if (code === 23) italic = false;
                     else if (code === 24) underline = false;
                     else if (code === 39) colorClass = null;
                     else if (ANSI_COLOR_CLASS[code]) colorClass = ANSI_COLOR_CLASS[code];
@@ -367,7 +404,7 @@
         const target = document.getElementById(button.dataset.target);
         if (!target || !url) return;
         try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
+            const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const payload = await resp.json();
             const lines = payload.lines || [];
@@ -399,7 +436,7 @@
         const countEl = document.getElementById('beets-scan-count-value');
         if (!url || !statusEl) return;
         try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
+            const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const payload = await resp.json();
             statusEl.textContent = payload.scanning ? 'Scanning…' : 'Idle';
@@ -423,7 +460,7 @@
         const countEl = document.getElementById('health-scan-count-value');
         if (!url || !statusEl) return;
         try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
+            const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const payload = await resp.json();
             statusEl.textContent = payload.scanning ? 'Scanning…' : 'Idle';
@@ -453,7 +490,7 @@
 
     async function refreshPodcastStatuses() {
         try {
-            const resp = await fetch('/admin/podcasts/status', { credentials: 'same-origin' });
+            const resp = await fetch('/admin/podcasts/status', {credentials: 'same-origin'});
             if (!resp.ok) return;
             const data = await resp.json();
             let busy = false;
@@ -589,10 +626,13 @@
 
         button.disabled = true;
         try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
+            const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             applyBeetsConfigState(await resp.json());
-            if (result) { result.className = 'test-result config-editor-result'; result.textContent = ''; }
+            if (result) {
+                result.className = 'test-result config-editor-result';
+                result.textContent = '';
+            }
         } catch (err) {
             if (result) {
                 result.className = 'test-result config-editor-result test-result-fail';
@@ -619,7 +659,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfInput ? csrfInput.value : ''
                 },
-                body: JSON.stringify({ content: editor.value })
+                body: JSON.stringify({content: editor.value})
             });
             const payload = await resp.json();
             applyBeetsConfigState(payload);
@@ -645,7 +685,7 @@
         result.className = 'test-result';
         result.textContent = 'Testing...';
         try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
+            const resp = await fetch(url, {credentials: 'same-origin'});
             const payload = await resp.json();
             result.className = 'test-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
             result.textContent = payload.message || (payload.ok ? 'OK' : 'Failed');
@@ -712,12 +752,12 @@
         if (!proxyBase || !name) return;
 
         // Fetch the resolved icon here so it can be reused in create_station()
-        const params = new URLSearchParams({ name });
+        const params = new URLSearchParams({name});
         if (favicon) params.set('url', favicon);
         if (homepage) params.set('homepage', homepage);
 
         try {
-            const resp = await fetch(`${proxyBase}?${params.toString()}`, { credentials: 'same-origin' });
+            const resp = await fetch(`${proxyBase}?${params.toString()}`, {credentials: 'same-origin'});
             if (!resp.ok) return;
             const blob = await resp.blob();
 
@@ -727,7 +767,7 @@
             preview.classList.remove('hidden');
 
             if (imageInput && typeof DataTransfer !== 'undefined') {
-                const file = new File([blob], 'icon', { type: blob.type || 'application/octet-stream' });
+                const file = new File([blob], 'icon', {type: blob.type || 'application/octet-stream'});
                 const dt = new DataTransfer();
                 dt.items.add(file);
                 imageInput.files = dt.files;
@@ -886,7 +926,10 @@
             if (datalist) datalist.innerHTML = '';
 
             const result = document.getElementById('test-result-jukebox_hardware_device');
-            if (result) { result.className = 'test-result'; result.textContent = ''; }
+            if (result) {
+                result.className = 'test-result';
+                result.textContent = '';
+            }
         }
     });
 

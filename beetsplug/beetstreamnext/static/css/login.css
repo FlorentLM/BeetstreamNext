@@ -65,7 +65,11 @@ input[type="password"] {
     font-size: 0.95rem;
     transition: border-color 0.2s;
 }
-input:focus { outline: none; border-color: var(--primary); }
+
+input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
 
 .btn-submit {
     width: 100%;
@@ -81,4 +85,7 @@ input:focus { outline: none; border-color: var(--primary); }
     font-family: inherit;
     transition: background 0.2s;
 }
-.btn-submit:hover { background: var(--primary-hover); }
+
+.btn-submit:hover {
+    background: var(--primary-hover);
+}

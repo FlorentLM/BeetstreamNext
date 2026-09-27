@@ -5,9 +5,14 @@ body {
     text-align: center;
 }
 
-.container { max-width: 600px; padding: 2rem; }
+.container {
+    max-width: 600px;
+    padding: 2rem;
+}
 
-.logo-container { margin-bottom: 2rem; }
+.logo-container {
+    margin-bottom: 2rem;
+}
 
 h1 {
     font-weight: 800;
@@ -97,16 +102,31 @@ h1 {
     font-size: 0.9rem;
     transition: all 0.2s ease;
 }
+
 .github-link:hover {
     background: var(--overlay-strong);
     color: var(--text);
     border-color: var(--primary);
     opacity: 1;
 }
-.github-link svg { fill: currentColor; width: 20px; height: 20px; }
+
+.github-link svg {
+    fill: currentColor;
+    width: 20px;
+    height: 20px;
+}
 
 @keyframes pulse {
-    0%   { transform: scale(0.95); box-shadow: 0 0 0  0 rgba(74, 222, 128, 0.7); }
-    70%  { transform: scale(1);    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0  0 rgba(74, 222, 128, 0); }
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+    }
 }

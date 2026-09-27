@@ -330,11 +330,6 @@
         }
     }
 
-    function toggleRowDetail(row) {
-        const detailRow = row.nextElementSibling;
-        if (!detailRow || !detailRow.classList.contains('row-detail')) return;
-        detailRow.hidden = !detailRow.hidden;
-        row.classList.toggle('expanded', !detailRow.hidden);
     }
 
     // Podcast episode dl status polling
@@ -600,9 +595,6 @@
                 break;
             case 'copy-log':
                 copyLogs(target);
-                break;
-            case 'toggle-row-detail':
-                toggleRowDetail(target);
                 break;
             case 'refresh-log':
                 refreshLogs(target);

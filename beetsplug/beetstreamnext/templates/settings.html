@@ -914,9 +914,9 @@
                                     <th>Checked</th>
                                 </tr>
                                 </thead>
-                                <tbody>
                                 {% for s in flagged_songs %}
-                                    <tr class="expand-row" data-action="toggle-row-detail">
+                                    <tbody x-data="{ open: false }">
+                                    <tr class="expand-row" :class="{ expanded: open }" @click="open = !open">
                                         <td class="expand-cell">{{ macros.icon('chevron-down') }}</td>
                                         <td>{{ s.title or '(untitled)' }}</td>
                                         <td>{{ s.artist or '—' }}</td>
@@ -925,11 +925,11 @@
                                         <td><span class="chat-time" data-timestamp="{{ (s.checked_at * 1000) | int }}">Loading...</span>
                                         </td>
                                     </tr>
-                                    <tr class="row-detail" hidden>
+                                    <tr class="row-detail" hidden :hidden="!open">
                                         <td colspan="6">{{ s.detail or 'No further detail available.' }}</td>
                                     </tr>
+                                    </tbody>
                                 {% endfor %}
-                                </tbody>
                             </table>
                         </div>
                     </details>

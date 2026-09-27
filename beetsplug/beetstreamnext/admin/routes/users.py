@@ -6,8 +6,9 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key
+from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, collect_form_data, flash_form_errors
+from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 
 
 @admin_bp.route('/users/create', methods=['POST'])
@@ -46,6 +47,25 @@ def route_create_user() -> flask.Response:
         flash_form_errors(form)
 
     return flask.redirect(flask.url_for('admin.route_settings'))
+
+
+@admin_bp.route('/users/edit/<username>', methods=['GET'])
+@admin_required
+def route_edit_user(username) -> flask.Response:
+    """Pre-filled edit form for user edit, lazy-loaded."""
+
+    user = get_userdata(username, fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
+    if not user:
+        flask.abort(404)
+
+    user['hasAvatar'] = bool(user.get('avatarLastChanged'))
+
+    return flask.render_template(
+        'partials/edit_user_form.html',
+        user=user,
+        edit_form=EditUserForm(formdata=None, data=user),
+        role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],
+    )
 
 
 @admin_bp.route('/users/update/<username>', methods=['POST'])

@@ -1,0 +1,72 @@
+<p class="modal-username">{{ user.username }}</p>
+
+<form method="POST" action="{{ url_for('admin.route_update_user', username=user.username) }}">
+    {{ edit_form.csrf_token }}
+
+    <div class="form-group">
+        <label>Password</label>
+        {{ edit_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
+    </div>
+
+    <div class="form-group">
+        <label>Email <span class="label-hint">(optional)</span></label>
+        {{ edit_form.email(placeholder="user@example.com", autocomplete="off") }}
+    </div>
+
+    <div class="form-group" x-data="checkboxGroup">
+        <div class="roles-header">
+            <label class="label-inline">Roles &amp; Permissions</label>
+            <div class="roles-actions">
+                <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all
+                </button>
+                <span class="roles-sep">|</span>
+                <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
+            </div>
+        </div>
+        <div class="roles-grid">
+            {% for name, label in role_fields %}
+                <label class="role-item">{{ edit_form[name]() }} {{ label }}</label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="form-group form-row">
+        <div>
+            <label>Bitrate limit</label>
+            {{ edit_form.maxBitRate() }}
+        </div>
+        <label class="role-item role-item-standalone">{{ edit_form.scrobblingEnabled() }} Scrobbling</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-full">Save changes</button>
+</form>
+
+{# Avatar: separate form because upload is multipart #}
+
+<hr class="modal-separator">
+
+<div class="form-group">
+    <div class="avatar-section-header">
+        <label class="label-inline">Avatar</label>
+        {% if user.hasAvatar %}
+            <img class="user-avatar" alt=""
+                 src="{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}">
+        {% endif %}
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="avatar-upload-form"
+          action="{{ url_for('admin.route_upload_avatar', username=user.username) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required>
+        <button type="submit" class="btn btn-outline">Upload</button>
+    </form>
+
+    {% if user.hasAvatar %}
+        <form method="POST" class="form-inline"
+              data-confirm="Remove avatar?"
+              action="{{ url_for('admin.route_delete_avatar', username=user.username) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="action-link action-link-delete">Remove avatar</button>
+        </form>
+    {% endif %}
+</div>

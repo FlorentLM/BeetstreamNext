@@ -403,8 +403,9 @@
                                 </td>
                                 <td class="actions-cell">
                                     <button class="icon-btn"
-                                            data-action="edit-user"
-                                            data-user="{{ u | tojson | forceescape }}"
+                                            hx-get="{{ url_for('admin.route_edit_user', username=u.username) }}"
+                                            hx-target="#editModalBody"
+                                            hx-swap="innerHTML"
                                             title="Edit"
                                             aria-label="Edit {{ u.username }}">{{ macros.icon('edit') }}</button>
 
@@ -771,8 +772,9 @@
                             </div>
                             <div class="actions-cell">
                                 <button class="icon-btn"
-                                        data-action="edit-radio"
-                                        data-station="{{ s | tojson | forceescape }}"
+                                        hx-get="{{ url_for('admin.route_edit_radio', station_id=s.id) }}"
+                                        hx-target="#editRadioModalBody"
+                                        hx-swap="innerHTML"
                                         title="Edit" aria-label="Edit {{ s.name }}">{{ macros.icon('edit') }}</button>
                                 <form action="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
                                       method="POST"
@@ -1189,65 +1191,7 @@
         <div class="modal-content">
             <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
             <h2>Edit User</h2>
-            <form method="POST" id="editForm"
-                  data-update-url="{{ url_for('admin.route_update_user', username='__USERNAME__') }}">
-                {{ edit_form.csrf_token }}
-                <p class="modal-username" id="editModalUsername"></p>
-                <div class="form-group">
-                    <label>Password</label>
-                    {{ edit_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
-                </div>
-                <div class="form-group">
-                    <label>Email <span class="label-hint">(optional)</span></label>
-                    {{ edit_form.email(placeholder="user@example.com", autocomplete="off") }}
-                </div>
-                <div class="form-group" x-data="checkboxGroup">
-                    <div class="roles-header">
-                        <label class="label-inline">Roles &amp; Permissions</label>
-                        <div class="roles-actions">
-                            <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all
-                            </button>
-                            <span class="roles-sep">|</span>
-                            <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
-                        </div>
-                    </div>
-                    <div class="roles-grid">
-                        {% for name, label in role_fields %}
-                            <label class="role-item">{{ edit_form[name]() }} {{ label }}</label>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="form-group form-row">
-                    <div>
-                        <label>Bitrate limit</label>
-                        {{ edit_form.maxBitRate() }}
-                    </div>
-                    <label class="role-item role-item-standalone">{{ edit_form.scrobblingEnabled() }} Scrobbling</label>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Save changes</button>
-            </form>
-
-            {# Avatar: separate forms because upload is multipart #}
-            <hr class="modal-separator">
-            <div class="form-group">
-                <div class="avatar-section-header">
-                    <label class="label-inline">Avatar</label>
-                    <img id="editAvatarPreview" class="user-avatar hidden" alt=""
-                         data-avatar-url="{{ url_for('admin.route_serve_avatar', username='__USERNAME__') }}">
-                </div>
-                <form method="POST" id="avatarUploadForm" enctype="multipart/form-data" class="avatar-upload-form"
-                      data-update-url="{{ url_for('admin.route_upload_avatar', username='__USERNAME__') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required>
-                    <button type="submit" class="btn btn-outline">Upload</button>
-                </form>
-                <form method="POST" id="avatarDeleteForm" class="form-inline hidden"
-                      data-confirm="Remove avatar?"
-                      data-update-url="{{ url_for('admin.route_delete_avatar', username='__USERNAME__') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="action-link action-link-delete">Remove avatar</button>
-                </form>
-            </div>
+            <div id="editModalBody"></div>
         </div>
     </div>
 
@@ -1316,40 +1260,7 @@
         <div class="modal-content">
             <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
             <h2>Edit Radio Station</h2>
-            <form id="editRadioForm" method="POST" enctype="multipart/form-data"
-                  data-update-url-base="{{ url_for('admin.route_update_radio', station_id=1) }}">
-                {{ radio_form.csrf_token }}
-                <div class="form-group">
-                    <label>Name</label>
-                    {{ radio_form.name(id="editRadioName") }}
-                </div>
-                <div class="form-group">
-                    <label>Stream URL</label>
-                    {{ radio_form.streamUrl(id="editRadioStreamUrl") }}
-                </div>
-                <div class="form-group">
-                    <label>Homepage URL <span class="label-hint">(optional)</span></label>
-                    {{ radio_form.homepageUrl(id="editRadioHomepageUrl") }}
-                </div>
-                <div class="form-group">
-                    <label>Icon <span class="label-hint">(optional)</span></label>
-                    <div class="radio-icon-row">
-                        <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
-                                data-target="editRadioImage" aria-label="Choose station icon">
-                            <img id="editRadioImagePreview" class="hidden" alt=""
-                                 data-image-url-tmpl="{{ url_for('admin.route_serve_radio_image', station_id=1) | replace('/1/', '/__STATION_ID__/') }}">
-                            <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
-                        </button>
-                        <span class="label-hint">Click to change the icon.</span>
-                    </div>
-                    <input type="file" id="editRadioImage" name="image" accept="image/jpeg,image/png,image/webp"
-                           class="hidden">
-                    <label class="role-item role-item-standalone">
-                        <input type="checkbox" name="remove_image" id="editRadioRemoveImage"> Remove current icon
-                    </label>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Save changes</button>
-            </form>
+            <div id="editRadioModalBody"></div>
         </div>
     </div>
 

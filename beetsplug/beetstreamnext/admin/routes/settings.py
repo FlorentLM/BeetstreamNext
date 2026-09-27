@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_
 from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER, PODCASTINDEX
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, RadioStationForm
+from beetsplug.beetstreamnext.admin.forms import UserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
 
 
@@ -290,7 +290,6 @@ def route_settings() -> flask.Response:
             beets_schema_drift=flask.current_app.config.get('BEETS_SCHEMA_DRIFT', {}),
             beets_config=read_config(),
             create_form=UserForm(formdata=None),
-            edit_form=EditUserForm(formdata=None),
             radio_form=RadioStationForm(formdata=None),
             role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],
             server_info=get_server_info(extended=True),

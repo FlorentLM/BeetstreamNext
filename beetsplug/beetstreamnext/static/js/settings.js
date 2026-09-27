@@ -158,106 +158,6 @@
         applyTheme(next);
     }
 
-    // Edit modal
-
-    function applyTemplateUrl(el, attr, username) {
-        const tmpl = el.getAttribute('data-update-url') || el.getAttribute('data-avatar-url') || '';
-        el[attr] = tmpl.replace('__USERNAME__', encodeURIComponent(username));
-    }
-
-    function openEditModal(button) {
-        let userData;
-        try {
-            userData = JSON.parse(button.getAttribute('data-user'));
-        } catch (err) {
-            console.error('Invalid user payload on edit button', err);
-            return;
-        }
-
-        const form = document.getElementById('editForm');
-        if (!form) return;
-
-        applyTemplateUrl(form, 'action', userData.username);
-
-        const avatarUpload = document.getElementById('avatarUploadForm');
-        const avatarDelete = document.getElementById('avatarDeleteForm');
-        if (avatarUpload) applyTemplateUrl(avatarUpload, 'action', userData.username);
-        if (avatarDelete) {
-            applyTemplateUrl(avatarDelete, 'action', userData.username);
-            avatarDelete.classList.toggle('hidden', !userData.hasAvatar);
-        }
-
-        // Avatar preview (src only set when one exists)
-        const preview = document.getElementById('editAvatarPreview');
-        if (preview) {
-            if (userData.hasAvatar) {
-                const tmpl = preview.getAttribute('data-avatar-url') || '';
-                preview.src = tmpl.replace('__USERNAME__', encodeURIComponent(userData.username))
-                    + '?v=' + Math.trunc(userData.avatarLastChanged || 0);
-                preview.classList.remove('hidden');
-            } else {
-                preview.removeAttribute('src');
-                preview.classList.add('hidden');
-            }
-        }
-
-        const nameEl = document.getElementById('editModalUsername');
-        if (nameEl) nameEl.textContent = userData.username;
-
-        const pwField = form.querySelector('[name="password"]');
-        if (pwField) pwField.value = '';
-
-        const emailField = form.querySelector('[name="email"]');
-        if (emailField) emailField.value = userData.email || '';
-
-        // Sync every checkbox in the form
-        form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            if (cb.name in userData) cb.checked = !!userData[cb.name];
-        });
-
-        const bitrate = form.querySelector('[name="maxBitRate"]');
-        if (bitrate) bitrate.value = userData.maxBitRate || 0;
-
-        Alpine.store('modal').show('editModal');
-    }
-
-    // Radio station edit modal
-
-    function openEditRadioModal(button) {
-        let station;
-        try {
-            station = JSON.parse(button.getAttribute('data-station'));
-        } catch (err) {
-            console.error('Invalid radio station payload on edit button', err);
-            return;
-        }
-
-        const form = document.getElementById('editRadioForm');
-        if (!form) return;
-
-        const base = form.getAttribute('data-update-url-base') || '';
-        form.action = base.slice(0, -1) + station.id;
-
-        form.querySelector('#editRadioName').value = station.name || '';
-        form.querySelector('#editRadioStreamUrl').value = station.stream_url || '';
-        form.querySelector('#editRadioHomepageUrl').value = station.homepage_url || '';
-        form.querySelector('#editRadioRemoveImage').checked = false;
-        form.querySelector('#editRadioImage').value = '';
-
-        const preview = document.getElementById('editRadioImagePreview');
-        if (preview) {
-            if (station.has_image) {
-                const imgTmpl = preview.getAttribute('data-image-url-tmpl') || '';
-                preview.src = imgTmpl.replace('__STATION_ID__', station.id);
-                preview.classList.remove('hidden');
-            } else {
-                preview.removeAttribute('src');
-                preview.classList.add('hidden');
-            }
-        }
-
-        Alpine.store('modal').show('editRadioModal');
-    }
 
     // One-time API key copy
 
@@ -707,6 +607,12 @@
         }
     });
 
+    // Edit user/radio forms, lazy-loaded
+    document.body.addEventListener('htmx:afterSwap', event => {
+        if (event.detail.target.id === 'editModalBody') Alpine.store('modal').show('editModal');
+        if (event.detail.target.id === 'editRadioModalBody') Alpine.store('modal').show('editRadioModal');
+    });
+
     function usePodcastResult(target) {
         const urlInput = document.getElementById('podcastFeedUrl');
         if (urlInput) urlInput.value = target.dataset.url || '';
@@ -810,12 +716,6 @@
         if (!target) return;
 
         switch (target.dataset.action) {
-            case 'edit-user':
-                openEditModal(target);
-                break;
-            case 'edit-radio':
-                openEditRadioModal(target);
-                break;
             case 'copy-api-key':
                 copyApiKey(target);
                 break;

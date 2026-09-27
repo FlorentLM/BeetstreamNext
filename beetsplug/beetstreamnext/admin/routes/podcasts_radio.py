@@ -105,6 +105,36 @@ def route_update_radio(station_id: int) -> flask.Response:
     return back_to('radios')
 
 
+@admin_bp.route('/radios/<int:station_id>/edit', methods=['GET'])
+@admin_required
+def route_edit_radio(station_id: int) -> flask.Response:
+    """Pre-filled edit form for radio station edit, lazy-loaded."""
+
+    with database() as db:
+        row = db.execute(
+            """
+            SELECT id, name, stream_url, homepage_url, (image IS NOT NULL) AS has_image
+            FROM internet_radio_stations
+            WHERE id = ?
+            """, (station_id,)
+        ).fetchone()
+
+    if not row:
+        flask.abort(404)
+
+    station = dict(row)
+
+    return flask.render_template(
+        'partials/edit_radio_form.html',
+        station=station,
+        radio_form=RadioStationForm(formdata=None, data={
+            'name': station['name'],
+            'streamUrl': station['stream_url'],
+            'homepageUrl': station['homepage_url'],
+        }),
+    )
+
+
 @admin_bp.route('/radios/delete/<int:station_id>', methods=['POST'])
 @admin_required
 def route_delete_radio(station_id: int) -> flask.Response:

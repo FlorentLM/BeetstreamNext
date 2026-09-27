@@ -648,7 +648,7 @@
                                 </div>
                                 <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">
                                     Searching&hellip;</p>
-                                <div class="radio-discovery-results" id="podcastDiscoveryResults"></div>
+                                <div class="suggestion-list" id="podcastDiscoveryResults"></div>
                             </div>
                         {% endif %}
 
@@ -1208,7 +1208,7 @@
                         </button>
                     </div>
                     <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
-                    <div class="radio-discovery-results" id="radioDiscoveryResults"></div>
+                    <div class="suggestion-list" id="radioDiscoveryResults"></div>
                 </div>
             {% endif %}
             <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">

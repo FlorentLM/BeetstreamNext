@@ -2,11 +2,11 @@
     <p class="empty-state">{{ message }}</p>
 {% else %}
     {% for s in stations %}
-        <button type="button" class="radio-result-item" data-action="use-radio-result"
+        <button type="button" class="suggestion-item" data-action="use-radio-result"
                 data-name="{{ s.name }}" data-stream-url="{{ s.stream_url }}"
                 data-homepage-url="{{ s.homepage_url }}" data-favicon="{{ s.favicon }}">
-            <span class="radio-result-name">{{ s.name or '(unnamed)' }}</span>
-            <span class="radio-result-url">{{ s.stream_url }}</span>
+            <span class="suggestion-name">{{ s.name or '(unnamed)' }}</span>
+            <span class="suggestion-url">{{ s.stream_url }}</span>
         </button>
     {% endfor %}
 {% endif %}

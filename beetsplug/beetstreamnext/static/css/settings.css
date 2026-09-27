@@ -674,7 +674,7 @@ input:focus, select:focus {
     padding: 0 1.5rem;
 }
 
-.radio-discovery-results {
+.suggestion-list {
     max-height: 220px;
     overflow-y: auto;
     margin-top: 0.6rem;
@@ -683,11 +683,11 @@ input:focus, select:focus {
     background: var(--input-bg);
 }
 
-.radio-discovery-results:empty {
+.suggestion-list:empty {
     display: none;
 }
 
-.radio-result-item {
+.suggestion-item {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -701,20 +701,20 @@ input:focus, select:focus {
     font-family: inherit;
 }
 
-.radio-result-item:last-child {
+.suggestion-item:last-child {
     border-bottom: none;
 }
 
-.radio-result-item:hover {
+.suggestion-item:hover {
     background: var(--overlay-weak);
 }
 
-.radio-result-name {
+.suggestion-name {
     font-size: 0.85rem;
     font-weight: 600;
 }
 
-.radio-result-url {
+.suggestion-url {
     font-size: 0.75rem;
     color: var(--text-muted);
     word-break: break-all;

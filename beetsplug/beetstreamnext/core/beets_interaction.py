@@ -180,4 +180,4 @@ def write_config(content: str) -> Tuple[bool, str]:
         bsn_logger.error(f"Failed to write beets config '{path}': {e}")
         return False, f'Failed to write file: {e}'
 
-    return True, 'Saved. Restart required for changes to take effect.'
+    return True, 'Saved.'

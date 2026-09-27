@@ -1,7 +1,8 @@
 {% import '_macros.html' as macros %}
+
 {% if episodes %}
-<table>
-    <thead>
+    <table>
+        <thead>
         <tr>
             <th>Title</th>
             <th>Published</th>
@@ -10,60 +11,61 @@
             <th>Size</th>
             <th class="cell-right">Actions</th>
         </tr>
-    </thead>
-    <tbody>
+        </thead>
+        <tbody>
         {% for e in episodes %}
-        <tr>
-            <td>{{ e.title or '(untitled)' }}</td>
-            <td>
-                {% if e.publish_date %}
-                <span class="chat-time" data-timestamp="{{ (e.publish_date * 1000) | int }}">Loading&hellip;</span>
-                {% else %}
-                <span class="rate-limit-anon">&mdash;</span>
-                {% endif %}
-            </td>
-            <td>{{ e.duration_display }}</td>
-            <td>
+            <tr>
+                <td>{{ e.title or '(untitled)' }}</td>
+                <td>
+                    {% if e.publish_date %}
+                        <span class="chat-time"
+                              data-timestamp="{{ (e.publish_date * 1000) | int }}">Loading&hellip;</span>
+                    {% else %}
+                        <span class="rate-limit-anon">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td>{{ e.duration_display }}</td>
+                <td>
                 <span class="badge{{ ' badge-admin' if e.status == 'error' else '' }}"
                       id="podcast-episode-status-{{ e.id }}" data-status="{{ e.status }}">{{ e.status }}</span>
-            </td>
-            <td>
+                </td>
+                <td>
                 <span id="podcast-episode-size-{{ e.id }}">
                     {% if e.size_display %}<span class="badge badge-limit">{{ e.size_display }}</span>
                     {% else %}<span class="rate-limit-anon">&mdash;</span>{% endif %}
                 </span>
-                <progress class="podcast-progress" id="podcast-episode-progress-{{ e.id }}"
-                          {{ '' if e.status == 'downloading' else 'hidden' }}
-                          {%- if e.file_size %} max="{{ e.file_size }}" value="0"{% endif %}></progress>
-            </td>
-            <td class="actions-cell">
-                <form id="podcast-episode-dl-{{ e.id }}" method="POST" class="form-inline"
-                      action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
-                      {{ 'hidden' if e.status in ('completed', 'downloading') else '' }}>
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="icon-btn" title="Download"
-                            aria-label="Download &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('download') }}</button>
-                </form>
-                <form id="podcast-episode-cancel-{{ e.id }}" method="POST" class="form-inline"
-                      action="{{ url_for('admin.route_cancel_podcast_episode_download', episode_id=e.id) }}"
-                      {{ '' if e.status == 'downloading' else 'hidden' }}>
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="icon-btn icon-btn-delete" title="Cancel download"
-                            aria-label="Cancel download of &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('cancel') }}</button>
-                </form>
-                <form id="podcast-episode-del-{{ e.id }}" method="POST" class="form-inline"
-                      action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
-                      data-confirm="Remove this episode's downloaded file for all subscribers?"
-                      {{ '' if e.status == 'completed' else 'hidden' }}>
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete file"
-                            aria-label="Delete downloaded file for &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('delete') }}</button>
-                </form>
-            </td>
-        </tr>
+                    <progress class="podcast-progress" id="podcast-episode-progress-{{ e.id }}"
+                            {{ '' if e.status == 'downloading' else 'hidden' }}
+                            {%- if e.file_size %} max="{{ e.file_size }}" value="0"{% endif %}></progress>
+                </td>
+                <td class="actions-cell">
+                    <form id="podcast-episode-dl-{{ e.id }}" method="POST" class="form-inline"
+                          action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
+                            {{ 'hidden' if e.status in ('completed', 'downloading') else '' }}>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="icon-btn" title="Download"
+                                aria-label="Download &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('download') }}</button>
+                    </form>
+                    <form id="podcast-episode-cancel-{{ e.id }}" method="POST" class="form-inline"
+                          action="{{ url_for('admin.route_cancel_podcast_episode_download', episode_id=e.id) }}"
+                            {{ '' if e.status == 'downloading' else 'hidden' }}>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="icon-btn icon-btn-delete" title="Cancel download"
+                                aria-label="Cancel download of &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('cancel') }}</button>
+                    </form>
+                    <form id="podcast-episode-del-{{ e.id }}" method="POST" class="form-inline"
+                          action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
+                          data-confirm="Remove this episode's downloaded file for all subscribers?"
+                            {{ '' if e.status == 'completed' else 'hidden' }}>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="icon-btn icon-btn-delete" title="Delete file"
+                                aria-label="Delete downloaded file for &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('delete') }}</button>
+                    </form>
+                </td>
+            </tr>
         {% endfor %}
-    </tbody>
-</table>
+        </tbody>
+    </table>
 {% else %}
-<p class="empty-state">No episodes yet.</p>
+    <p class="empty-state">No episodes yet.</p>
 {% endif %}

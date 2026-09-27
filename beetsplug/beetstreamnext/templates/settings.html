@@ -1,12 +1,16 @@
 {% extends "base.html" %}
+
 {% import '_macros.html' as macros %}
+
 {% block title %} - Admin Dashboard{% endblock %}
+
 {% block styles %}
-{# settings.css defines .htmx-indicator/.htmx-request rules, so prevent htmx from injecting its <style> tag (it gets blokcked by CSP anyways) #}
-<meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
-{# TODO: Use htmx 4 once everything is working with with 2.x #}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+    {# settings.css defines .htmx-indicator/.htmx-request rules, so prevent htmx from injecting its <style> tag (it gets blokcked by CSP anyways) #}
+    <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+    {# TODO: Use htmx 4 once everything is working with with 2.x #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 {% endblock %}
+
 
 {# Macros #}
 
@@ -27,7 +31,8 @@
         <select id="set-{{ key }}" name="{{ key }}" {{ dis }}>
             <option value="" {% if not info.value %}selected{% endif %}>Disabled</option>
             {% for u in (users or []) %}
-                <option value="{{ u.username }}" {% if info.value == u.username %}selected{% endif %}>{{ u.username }}</option>
+                <option value="{{ u.username }}"
+                        {% if info.value == u.username %}selected{% endif %}>{{ u.username }}</option>
             {% endfor %}
         </select>
     {%- elif key == 'external_playlists_editors' -%}
@@ -42,14 +47,16 @@
             </div>
             <div class="roles-grid">
                 <label class="role-item">
-                    <input type="checkbox" name="{{ key }}" value="*" {% if '*' in info.value %}checked{% endif %} {{ dis }}>
+                    <input type="checkbox" name="{{ key }}" value="*"
+                           {% if '*' in info.value %}checked{% endif %} {{ dis }}>
                     Everyone
                 </label>
                 {% for u in (users or []) %}
-                <label class="role-item">
-                    <input type="checkbox" name="{{ key }}" value="{{ u.username }}" {% if u.username in info.value %}checked{% endif %} {{ dis }}>
-                    {{ u.username }}
-                </label>
+                    <label class="role-item">
+                        <input type="checkbox" name="{{ key }}" value="{{ u.username }}"
+                               {% if u.username in info.value %}checked{% endif %} {{ dis }}>
+                        {{ u.username }}
+                    </label>
                 {% endfor %}
             </div>
         </div>
@@ -97,7 +104,8 @@
             {% if info.overridden and not info.locked %}
                 <button type="submit"
                         form="clear-{{ key }}-form"
-                        class="action-link action-link-delete">Clear</button>
+                        class="action-link action-link-delete">Clear
+                </button>
             {% endif %}
         </div>
     {%- elif info.type == 'str' -%}
@@ -113,7 +121,8 @@
             <button type="button" class="btn btn-outline" data-action="test-connection"
                     data-url="{{ url_for('admin.route_test_lastfm') }}"
                     data-result="test-result-lastfm"
-                    {{ 'disabled' if not settings['lastfm_api_key'].is_set else '' }}>Test connection</button>
+                    {{ 'disabled' if not settings['lastfm_api_key'].is_set else '' }}>Test connection
+            </button>
         </p>
         <p class="test-result" id="test-result-lastfm"></p>
     {%- elif key == 'audiomuse_url' -%}
@@ -121,7 +130,8 @@
             <button type="button" class="btn btn-outline" data-action="test-connection"
                     data-url="{{ url_for('admin.route_test_audiomuse') }}"
                     data-result="test-result-audiomuse"
-                    {{ 'disabled' if not settings['audiomuse_url'].value else '' }}>Test connection</button>
+                    {{ 'disabled' if not settings['audiomuse_url'].value else '' }}>Test connection
+            </button>
         </p>
         <p class="test-result" id="test-result-audiomuse"></p>
     {%- elif key == 'podcastindex_api_key' -%}
@@ -129,7 +139,9 @@
             <button type="button" class="btn btn-outline" data-action="test-connection"
                     data-url="{{ url_for('admin.route_test_podcastindex') }}"
                     data-result="test-result-podcastindex"
-                    {{ 'disabled' if not (settings['podcastindex_api_key'].is_set and settings['podcastindex_api_secret'].is_set) else '' }}>Test connection</button>
+                    {{ 'disabled' if not (settings['podcastindex_api_key'].is_set and settings['podcastindex_api_secret'].is_set) else '' }}>
+                Test connection
+            </button>
         </p>
         <p class="test-result" id="test-result-podcastindex"></p>
     {%- elif key == 'jukebox_hardware_device' -%}
@@ -140,7 +152,8 @@
                     hx-target="#jukebox-devices-list"
                     hx-swap="innerHTML"
                     hx-disabled-elt="this"
-                    hx-indicator="#jukebox-discovery-spinner">Discover devices</button>
+                    hx-indicator="#jukebox-discovery-spinner">Discover devices
+            </button>
             <span id="jukebox-discovery-spinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</span>
         </p>
         <p class="test-result" id="test-result-{{ key }}"></p>
@@ -172,15 +185,19 @@
                 <div class="setting-row-meta">
                     <p class="setting-description">{{ (PAIRED_DESCRIPTIONS[key] if key in PAIRED_DESCRIPTIONS else info.description) | safe }}</p>
                     {% if info.requires_restart %}
-                        <p class="setting-restart-note"><i class="material-icons">restart_alt</i> Requires server restart</p>
+                        <p class="setting-restart-note"><i class="material-icons">restart_alt</i> Requires server
+                            restart</p>
                     {% endif %}
                     {% if info.locked %}
-                        <p class="setting-locked-note"><i class="material-icons">lock</i> {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file.' }}</p>
+                        <p class="setting-locked-note"><i
+                                class="material-icons">lock</i> {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file.' }}
+                        </p>
                     {% elif info.overridden and not info.sensitive %}
                         <p class="setting-row-actions">
                             <button type="submit"
                                     form="clear-{{ key }}-form"
-                                    class="action-link-reset">Reset to default</button>
+                                    class="action-link-reset">Reset to default
+                            </button>
                         </p>
                     {% endif %}
                     {% if info.help %}
@@ -210,7 +227,8 @@
         <div class="table-header"><h2>{{ title }}</h2></div>
         <p class="card-hint">{{ hint }}</p>
         {% if pinned %}
-            <p class="setting-locked-note"><i class="material-icons">lock</i> {{ pinned|length }} pinned via a CLI flag, env var, or config file.</p>
+            <p class="setting-locked-note"><i class="material-icons">lock</i> {{ pinned|length }} pinned via a CLI flag,
+                env var, or config file.</p>
         {% endif %}
         <form method="POST"
               action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
@@ -224,265 +242,293 @@
         </form>
         <ul class="ip-list">
             {% for ip in ips %}
-            <li>
-                <code>{{ ip }}</code>
-                {% if ip in pinned %}
-                    <span class="setting-meta-badge" title="Explicitly set via a CLI flag, env var, or config file">pinned</span>
-                {% else %}
-                <form method="POST"
-                      action="{{ url_for('admin.route_ip_remove', list_type=list_type) }}"
-                      class="form-inline"
-                      data-confirm="Remove {{ ip }} from {{ list_type }}?">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="ip" value="{{ ip }}">
-                    <button type="submit" class="action-link action-link-delete">Remove</button>
-                </form>
-                {% endif %}
-            </li>
+                <li>
+                    <code>{{ ip }}</code>
+                    {% if ip in pinned %}
+                        <span class="setting-meta-badge" title="Explicitly set via a CLI flag, env var, or config file">pinned</span>
+                    {% else %}
+                        <form method="POST"
+                              action="{{ url_for('admin.route_ip_remove', list_type=list_type) }}"
+                              class="form-inline"
+                              data-confirm="Remove {{ ip }} from {{ list_type }}?">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="ip" value="{{ ip }}">
+                            <button type="submit" class="action-link action-link-delete">Remove</button>
+                        </form>
+                    {% endif %}
+                </li>
             {% else %}
-            <li class="empty-state">{{ title }} is empty.</li>
+                <li class="empty-state">{{ title }} is empty.</li>
             {% endfor %}
         </ul>
     </div>
 {% endmacro %}
 
 {% block body %}
-<div class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()">
+    <div class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()">
 
-    <header class="header">
-        <a href="{{ url_for('public.home') }}" class="brand-section">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" class="logo-small">
-            <h1>BeetstreamNext <span class="brand-subtitle">/ Admin</span></h1>
-        </a>
-        <div class="header-actions">
-            <button type="button" class="icon-btn theme-toggle" data-action="toggle-theme"
-                    title="Toggle light / dark theme" aria-label="Toggle light and dark theme" aria-pressed="false">
-                {{ macros.icon('sun') }}{{ macros.icon('moon') }}
-            </button>
-            <span class="session-user">Signed in as <strong>{{ current_username }}</strong></span>
-            <form action="{{ url_for('admin.route_logout') }}" method="POST" class="form-inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Log out</button>
-            </form>
-        </div>
-    </header>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, msg in messages %}
-            <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ msg }}</div>
-        {% endfor %}
-    {% endwith %}
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <span class="stat-value">{{ users|length }}</span>
-            <span class="stat-label">Total Users</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-value">{{ server_info.stats.artists }}</span>
-            <span class="stat-label">Library Artists</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-value">{{ server_info.stats.albums }}</span>
-            <span class="stat-label">Library Albums</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-value">{{ server_info.stats.songs }}</span>
-            <span class="stat-label">Library Songs</span>
-        </div>
-    </div>
-
-    <nav class="tabs" role="tablist">
-        <button class="tab" role="tab" data-tab="users" :class="{ active: active === 'users' }"
-                :aria-selected="active === 'users' ? 'true' : 'false'" @click="set('users')" aria-controls="tab-users">Users</button>
-        {% for cat in settings_categories if cat != 'podcasts' %}
-        <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
-                :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')" aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
-        {% endfor %}
-        {% if 'podcasts' in settings_categories %}
-        <button class="tab" role="tab" data-tab="podcasts" :class="{ active: active === 'podcasts' }"
-                :aria-selected="active === 'podcasts' ? 'true' : 'false'" @click="set('podcasts')" aria-controls="tab-podcasts">Podcasts</button>
-        {% endif %}
-        <button class="tab" role="tab" data-tab="radios" :class="{ active: active === 'radios' }"
-                :aria-selected="active === 'radios' ? 'true' : 'false'" @click="set('radios')" aria-controls="tab-radios">Radios</button>
-        <button class="tab" role="tab" data-tab="shares" :class="{ active: active === 'shares' }"
-                :aria-selected="active === 'shares' ? 'true' : 'false'" @click="set('shares')" aria-controls="tab-shares">Shares</button>
-        <button class="tab" role="tab" data-tab="chat" :class="{ active: active === 'chat' }"
-                :aria-selected="active === 'chat' ? 'true' : 'false'" @click="set('chat')" aria-controls="tab-chat">Chat</button>
-        <button class="tab" role="tab" data-tab="beets" :class="{ active: active === 'beets' }"
-                :aria-selected="active === 'beets' ? 'true' : 'false'" @click="set('beets')" aria-controls="tab-beets">Beets</button>
-        <button class="tab" role="tab" data-tab="maintenance" :class="{ active: active === 'maintenance' }"
-                :aria-selected="active === 'maintenance' ? 'true' : 'false'" @click="set('maintenance')" aria-controls="tab-maintenance">Maintenance</button>
-    </nav>
-
-    {# Users tab #}
-    <section class="tab-content" id="tab-users" :class="{ active: active === 'users' }" role="tabpanel">
-        <div class="card">
-            <div class="table-header">
-                <h2>User Directory</h2>
-                <button class="btn btn-primary" x-data="modalPanel('createModal')" @click="open()">
-                    + Add New User
+        <header class="header">
+            <a href="{{ url_for('public.home') }}" class="brand-section">
+                <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" class="logo-small">
+                <h1>BeetstreamNext <span class="brand-subtitle">/ Admin</span></h1>
+            </a>
+            <div class="header-actions">
+                <button type="button" class="icon-btn theme-toggle" data-action="toggle-theme"
+                        title="Toggle light / dark theme" aria-label="Toggle light and dark theme" aria-pressed="false">
+                    {{ macros.icon('sun') }}{{ macros.icon('moon') }}
                 </button>
+                <span class="session-user">Signed in as <strong>{{ current_username }}</strong></span>
+                <form action="{{ url_for('admin.route_logout') }}" method="POST" class="form-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Log out</button>
+                </form>
             </div>
+        </header>
 
-            <div class="table-container">
-                <table>
-                    <thead>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, msg in messages %}
+                <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-value">{{ users|length }}</span>
+                <span class="stat-label">Total Users</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ server_info.stats.artists }}</span>
+                <span class="stat-label">Library Artists</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ server_info.stats.albums }}</span>
+                <span class="stat-label">Library Albums</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ server_info.stats.songs }}</span>
+                <span class="stat-label">Library Songs</span>
+            </div>
+        </div>
+
+        <nav class="tabs" role="tablist">
+            <button class="tab" role="tab" data-tab="users" :class="{ active: active === 'users' }"
+                    :aria-selected="active === 'users' ? 'true' : 'false'" @click="set('users')"
+                    aria-controls="tab-users">Users
+            </button>
+            {% for cat in settings_categories if cat != 'podcasts' %}
+                <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
+                        :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')"
+                        aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
+            {% endfor %}
+            {% if 'podcasts' in settings_categories %}
+                <button class="tab" role="tab" data-tab="podcasts" :class="{ active: active === 'podcasts' }"
+                        :aria-selected="active === 'podcasts' ? 'true' : 'false'" @click="set('podcasts')"
+                        aria-controls="tab-podcasts">Podcasts
+                </button>
+            {% endif %}
+            <button class="tab" role="tab" data-tab="radios" :class="{ active: active === 'radios' }"
+                    :aria-selected="active === 'radios' ? 'true' : 'false'" @click="set('radios')"
+                    aria-controls="tab-radios">Radios
+            </button>
+            <button class="tab" role="tab" data-tab="shares" :class="{ active: active === 'shares' }"
+                    :aria-selected="active === 'shares' ? 'true' : 'false'" @click="set('shares')"
+                    aria-controls="tab-shares">Shares
+            </button>
+            <button class="tab" role="tab" data-tab="chat" :class="{ active: active === 'chat' }"
+                    :aria-selected="active === 'chat' ? 'true' : 'false'" @click="set('chat')" aria-controls="tab-chat">
+                Chat
+            </button>
+            <button class="tab" role="tab" data-tab="beets" :class="{ active: active === 'beets' }"
+                    :aria-selected="active === 'beets' ? 'true' : 'false'" @click="set('beets')"
+                    aria-controls="tab-beets">Beets
+            </button>
+            <button class="tab" role="tab" data-tab="maintenance" :class="{ active: active === 'maintenance' }"
+                    :aria-selected="active === 'maintenance' ? 'true' : 'false'" @click="set('maintenance')"
+                    aria-controls="tab-maintenance">Maintenance
+            </button>
+        </nav>
+
+        {# Users tab #}
+        <section class="tab-content" id="tab-users" :class="{ active: active === 'users' }" role="tabpanel">
+            <div class="card">
+                <div class="table-header">
+                    <h2>User Directory</h2>
+                    <button class="btn btn-primary" x-data="modalPanel('createModal')" @click="open()">
+                        + Add New User
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
                         <tr>
                             <th>User</th>
                             <th>Active Roles</th>
                             <th class="cell-right">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody>
+                        </thead>
+                        <tbody>
                         {% for u in users %}
-                        <tr>
-                            <td>
-                                <div class="avatar-cell">
-                                    {% if u.hasAvatar %}
-                                        <img class="user-avatar"
-                                             src="{{ url_for('admin.route_serve_avatar', username=u.username) }}?v={{ (u.avatarLastChanged or 0)|int }}"
-                                             alt="">
-                                    {% else %}
-                                        <span class="user-avatar user-avatar-placeholder">{{ u.username[0]|upper }}</span>
-                                    {% endif %}
-                                    <div>
-                                        <div class="username-name">
-                                            {{ u.username }}
-                                            {% if u.username == current_username %}<span class="badge badge-you">You</span>{% endif %}
+                            <tr>
+                                <td>
+                                    <div class="avatar-cell">
+                                        {% if u.hasAvatar %}
+                                            <img class="user-avatar"
+                                                 src="{{ url_for('admin.route_serve_avatar', username=u.username) }}?v={{ (u.avatarLastChanged or 0)|int }}"
+                                                 alt="">
+                                        {% else %}
+                                            <span class="user-avatar user-avatar-placeholder">{{ u.username[0]|upper }}</span>
+                                        {% endif %}
+                                        <div>
+                                            <div class="username-name">
+                                                {{ u.username }}
+                                                {% if u.username == current_username %}
+                                                    <span class="badge badge-you">You</span>{% endif %}
+                                            </div>
+                                            {% if u.email %}
+                                                <div class="email-cell">{{ u.email }}</div>{% endif %}
                                         </div>
-                                        {% if u.email %}<div class="email-cell">{{ u.email }}</div>{% endif %}
                                     </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="roles-cell">
-                                    {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
-                                    {% for name, label in role_fields %}
-                                        {% if name != 'adminRole' and u[name] %}<span class="badge">{{ label }}</span>{% endif %}
-                                    {% endfor %}
-                                    {% if u.maxBitRate %}<span class="badge badge-limit">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
-                                </div>
-                            </td>
-                            <td class="actions-cell">
-                                <button class="icon-btn"
-                                        data-action="edit-user"
-                                        data-user="{{ u | tojson | forceescape }}"
-                                        title="Edit" aria-label="Edit {{ u.username }}">{{ macros.icon('edit') }}</button>
+                                </td>
+                                <td>
+                                    <div class="roles-cell">
+                                        {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
+                                        {% for name, label in role_fields %}
+                                            {% if name != 'adminRole' and u[name] %}
+                                                <span class="badge">{{ label }}</span>{% endif %}
+                                        {% endfor %}
+                                        {% if u.maxBitRate %}
+                                            <span class="badge badge-limit">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
+                                    </div>
+                                </td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn"
+                                            data-action="edit-user"
+                                            data-user="{{ u | tojson | forceescape }}"
+                                            title="Edit"
+                                            aria-label="Edit {{ u.username }}">{{ macros.icon('edit') }}</button>
 
-                                <form action="{{ url_for('admin.route_regenerate_api_key', username=u.username) }}"
-                                      method="POST"
-                                      class="form-inline"
-                                      data-confirm="Generate a new API key for {{ u.username | e }}? The current key will stop working immediately.">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="action-link">Update API key</button>
-                                </form>
+                                    <form action="{{ url_for('admin.route_regenerate_api_key', username=u.username) }}"
+                                          method="POST"
+                                          class="form-inline"
+                                          data-confirm="Generate a new API key for {{ u.username | e }}? The current key will stop working immediately.">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-link">Update API key</button>
+                                    </form>
 
-                                {% if u.username != current_username %}
-                                <form action="{{ url_for('admin.route_delete_user', username=u.username) }}"
-                                      method="POST"
-                                      class="form-inline"
-                                      data-confirm="Delete user {{ u.username | e }}? This also removes their stars, ratings, bookmarks and play history.">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ u.username }}">{{ macros.icon('delete') }}</button>
-                                </form>
-                                {% endif %}
-                            </td>
-                        </tr>
+                                    {% if u.username != current_username %}
+                                        <form action="{{ url_for('admin.route_delete_user', username=u.username) }}"
+                                              method="POST"
+                                              class="form-inline"
+                                              data-confirm="Delete user {{ u.username | e }}? This also removes their stars, ratings, bookmarks and play history.">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
+                                                    aria-label="Delete {{ u.username }}">{{ macros.icon('delete') }}</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
                         {% else %}
-                        <tr>
-                            <td colspan="3" class="empty-state">No users yet. Add the first one to get started.</td>
-                        </tr>
+                            <tr>
+                                <td colspan="3" class="empty-state">No users yet. Add the first one to get started.</td>
+                            </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    {# Chat moderation tab #}
-    <section class="tab-content" id="tab-chat" :class="{ active: active === 'chat' }" role="tabpanel">
-        <div class="card">
-            <div class="table-header">
-                <h2>Post Announcement</h2>
+        {# Chat moderation tab #}
+        <section class="tab-content" id="tab-chat" :class="{ active: active === 'chat' }" role="tabpanel">
+            <div class="card">
+                <div class="table-header">
+                    <h2>Post Announcement</h2>
+                </div>
+                <p class="card-hint">Posted to chat as &ldquo;Server&rdquo;, visible to every connected client.</p>
+                <form method="POST" action="{{ url_for('admin.route_add_announcement') }}" class="announce-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="message" placeholder="e.g. Server restarting for maintenance at 22:00 UTC"
+                           maxlength="1000" required>
+                    <button type="submit" class="btn btn-primary">Post</button>
+                </form>
             </div>
-            <p class="card-hint">Posted to chat as &ldquo;Server&rdquo;, visible to every connected client.</p>
-            <form method="POST" action="{{ url_for('admin.route_add_announcement') }}" class="announce-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="message" placeholder="e.g. Server restarting for maintenance at 22:00 UTC" maxlength="1000" required>
-                <button type="submit" class="btn btn-primary">Post</button>
-            </form>
-        </div>
 
-        <div class="card">
-            <div class="table-header">
-                <h2>Chat moderation</h2>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
+            <div class="card">
+                <div class="table-header">
+                    <h2>Chat moderation</h2>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
                         <tr>
                             <th>User</th>
                             <th>Time</th>
                             <th>Message</th>
                             <th class="cell-right">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody>
+                        </thead>
+                        <tbody>
                         {% for m in chat_messages %}
-                        <tr>
-                            <td class="username-cell"><strong>{{ m.username }}</strong></td>
-                            <td>
-                                <span class="chat-time" data-timestamp="{{ m.time | int }}">Loading...</span>
-                            </td>
-                            <td><span id="msg-text-{{ m.id }}">{{ m.message }}</span></td>
-                            <td class="actions-cell">
-                                <button class="icon-btn"
-                                        data-action="edit-chat"
-                                        data-id="{{ m.id }}"
-                                        data-text="{{ m.message | e }}"
-                                        title="Edit" aria-label="Edit message from {{ m.username }}">{{ macros.icon('edit') }}</button>
+                            <tr>
+                                <td class="username-cell"><strong>{{ m.username }}</strong></td>
+                                <td>
+                                    <span class="chat-time" data-timestamp="{{ m.time | int }}">Loading...</span>
+                                </td>
+                                <td><span id="msg-text-{{ m.id }}">{{ m.message }}</span></td>
+                                <td class="actions-cell">
+                                    <button class="icon-btn"
+                                            data-action="edit-chat"
+                                            data-id="{{ m.id }}"
+                                            data-text="{{ m.message | e }}"
+                                            title="Edit"
+                                            aria-label="Edit message from {{ m.username }}">{{ macros.icon('edit') }}</button>
 
-                                <form action="{{ url_for('admin.route_delete_chat_message', msg_id=m.id) }}"
-                                      method="POST"
-                                      class="form-inline"
-                                      data-confirm="Delete this message? This action is permanent.">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete message from {{ m.username }}">{{ macros.icon('delete') }}</button>
-                                </form>
-                            </td>
-                        </tr>
+                                    <form action="{{ url_for('admin.route_delete_chat_message', msg_id=m.id) }}"
+                                          method="POST"
+                                          class="form-inline"
+                                          data-confirm="Delete this message? This action is permanent.">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
+                                                aria-label="Delete message from {{ m.username }}">{{ macros.icon('delete') }}</button>
+                                    </form>
+                                </td>
+                            </tr>
                         {% else %}
-                        <tr>
-                            <td colspan="4" class="empty-state">No chat messages found.</td>
-                        </tr>
+                            <tr>
+                                <td colspan="4" class="empty-state">No chat messages found.</td>
+                            </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% if chat_pages > 1 %}
-            <div class="table-footer pagination">
-                {% if chat_page > 1 %}
-                <a class="btn btn-outline" href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page - 1 }}#chat">&laquo; Prev</a>
+                        </tbody>
+                    </table>
+                </div>
+                {% if chat_pages > 1 %}
+                    <div class="table-footer pagination">
+                        {% if chat_page > 1 %}
+                            <a class="btn btn-outline"
+                               href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page - 1 }}#chat">&laquo;
+                                Prev</a>
+                        {% endif %}
+                        <span class="pagination-status">Page {{ chat_page }} of {{ chat_pages }}</span>
+                        {% if chat_page < chat_pages %}
+                            <a class="btn btn-outline"
+                               href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page + 1 }}#chat">Next
+                                &raquo;</a>
+                        {% endif %}
+                    </div>
                 {% endif %}
-                <span class="pagination-status">Page {{ chat_page }} of {{ chat_pages }}</span>
-                {% if chat_page < chat_pages %}
-                <a class="btn btn-outline" href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page + 1 }}#chat">Next &raquo;</a>
-                {% endif %}
             </div>
-            {% endif %}
-        </div>
-    </section>
+        </section>
 
-    {# Shares tab #}
-    <section class="tab-content" id="tab-shares" :class="{ active: active === 'shares' }" role="tabpanel">
-        <div class="card">
-            <div class="table-header">
-                <h2>Shares Directory</h2>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
+        {# Shares tab #}
+        <section class="tab-content" id="tab-shares" :class="{ active: active === 'shares' }" role="tabpanel">
+            <div class="card">
+                <div class="table-header">
+                    <h2>Shares Directory</h2>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
                         <tr>
                             <th>ID / Link</th>
                             <th>Creator</th>
@@ -492,772 +538,847 @@
                             <th>Expires</th>
                             <th class="cell-right">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {% for s in shares %}
-                        <tr>
-                            <td>
-                                <a href="{{ s.url }}" target="_blank" rel="noopener" class="username-name">
-                                    <code>{{ s.id }}</code>
-                                </a>
-                            </td>
-                            <td><strong>{{ s.username }}</strong></td>
-                            <td>
-                                {% if s.description %}
-                                    <span class="email-cell">{{ s.description }}</span>
-                                {% else %}
-                                    <span class="rate-limit-anon">—</span>
-                                {% endif %}
-                            </td>
-                            <td><span class="badge">{{ s.entry_count }} {{ 'item' if s.entry_count == 1 else 'items' }}</span></td>
-                            <td><span class="badge badge-limit">{{ s.visit_count }} visits</span></td>
-                            <td>
-                                {% if s.expires %}
-                                    <span class="chat-time" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
-                                {% else %}
-                                    <span class="badge badge-success">Never</span>
-                                {% endif %}
-                            </td>
-                            <td class="actions-cell">
-                                <form action="{{ url_for('admin.route_delete_share', share_id=s.id) }}"
-                                      method="POST"
-                                      class="form-inline"
-                                      data-confirm="Delete share '{{ s.id }}'? Users with this URL will immediately lose access to downloads.">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}">{{ macros.icon('delete') }}</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="7" class="empty-state">No shares created yet.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-    {# Settings tabs #}
-    {% for cat in settings_categories %}
-    <section class="tab-content" id="tab-{{ cat }}" :class="{ active: active === '{{ cat }}' }" role="tabpanel">
-        <div class="card">
-            <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
-            {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions, setting_pills) }}
-        </div>
-
-        {% if cat == 'security' %}
-            {{ render_ip_list('whitelist', 'IP Whitelist',
-                              'If non-empty, only listed IPs can reach the server. Loopback IPs always pass.',
-                              'e.g. 192.168.1.42', settings_by_category.security['ip_whitelist'].value,
-                              settings_by_category.security['ip_whitelist'].pinned) }}
-            {{ render_ip_list('blacklist', 'IP Blacklist',
-                              'Listed IPs are denied access regardless of whitelist.',
-                              'e.g. 203.0.113.5', settings_by_category.security['ip_blacklist'].value,
-                              settings_by_category.security['ip_blacklist'].pinned) }}
-        {% elif cat == 'podcasts' %}
-            <div class="card">
-                <div class="table-header">
-                    <h2>Podcast Channels</h2>
-                    <form method="POST" action="{{ url_for('admin.route_refresh_all_podcasts') }}" class="form-inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline">Refresh all</button>
-                    </form>
-                </div>
-                <p class="card-hint">Total storage used by downloaded episodes: <strong>{{ podcast_total_size }}</strong>.</p>
-
-                {% if podcast_discovery_enabled %}
-                <div class="radio-discovery form-group">
-                    <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
-                    <div class="setting-input-row">
-                        <input type="text" id="podcastDiscoveryQuery" name="q" placeholder="Podcast title">
-                        <button type="button" class="btn btn-outline"
-                                hx-get="{{ url_for('admin.route_discover_podcasts') }}"
-                                hx-include="#podcastDiscoveryQuery"
-                                hx-target="#podcastDiscoveryResults"
-                                hx-swap="innerHTML"
-                                hx-trigger="click"
-                                hx-disabled-elt="this"
-                                hx-indicator="#podcastDiscoverySpinner">Search</button>
-                    </div>
-                    <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
-                    <div class="radio-discovery-results" id="podcastDiscoveryResults"></div>
-                </div>
-                {% endif %}
-
-                <form method="POST" action="{{ url_for('admin.route_add_podcast') }}" class="ip-add-form" id="addPodcastForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml" required>
-                    <button type="submit" class="btn btn-primary">Subscribe</button>
-                </form>
-
-                <form method="POST" action="{{ url_for('admin.route_import_podcast_opml') }}"
-                      enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="file" name="opml_file" id="podcastOpmlFile" accept=".opml,.xml,text/xml,text/x-opml" class="hidden">
-                    <button type="button" class="btn btn-outline" data-action="pick-file" data-target="podcastOpmlFile">Import OPML</button>
-                </form>
-
-                {% for ch in podcast_channels %}
-                <div class="channel-row">
-                    <div class="channel-row-header">
-                        {% if ch.has_image %}
-                            <img class="cover-thumb" src="{{ url_for('admin.route_serve_podcast_image', channel_id=ch.id) }}" alt="">
-                        {% else %}
-                            <span class="cover-thumb cover-thumb-placeholder">{{ (ch.title or ch.url)[0]|upper }}</span>
-                        {% endif %}
-                        <div class="channel-row-info">
-                            <div class="username-name">{{ ch.title or ch.url }}</div>
-                            <div class="email-cell">{{ ch.url }}</div>
-                            {% if ch.status == 'error' and ch.error_message %}
-                                <div class="email-cell text-error">{{ ch.error_message }}</div>
-                            {% endif %}
-                            <div class="email-cell">
-                                {% if ch.subscribers %}
-                                    Subscribers: {{ ch.subscribers|join(', ') }}
-                                {% else %}
-                                    No subscribers
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="roles-cell">
-                            <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}"
-                                  id="podcast-channel-status-{{ ch.id }}" data-status="{{ ch.status }}">{{ ch.status }}</span>
-                            <span class="badge">{{ ch.downloaded_count }}/{{ ch.episode_count }} downloaded</span>
-                            <span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>
-                            <span class="badge badge-limit" id="podcast-channel-size-{{ ch.id }}">{{ ch.storage_size }}</span>
-                        </div>
-                        <div class="actions-cell">
-                            <form action="{{ url_for('admin.route_refresh_podcast', channel_id=ch.id) }}"
-                                  method="POST" class="form-inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="icon-btn" title="Refresh now" aria-label="Refresh {{ (ch.title or ch.url) | e }}">{{ macros.icon('refresh') }}</button>
-                            </form>
-                            <form action="{{ url_for('admin.route_download_recent_podcast_episodes', channel_id=ch.id) }}"
-                                  method="POST" class="form-inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="icon-btn" title="Download recent episodes"
-                                        aria-label="Download recent episodes for {{ (ch.title or ch.url) | e }}">{{ macros.icon('download') }}</button>
-                            </form>
-                            <form action="{{ url_for('admin.route_delete_podcast', channel_id=ch.id) }}"
-                                  method="POST" class="form-inline"
-                                  data-confirm="Delete podcast channel '{{ (ch.title or ch.url) | e }}'? This removes it and its downloaded episodes for all subscribers.">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete channel {{ (ch.title or ch.url) | e }}">{{ macros.icon('delete') }}</button>
-                            </form>
-                        </div>
-                    </div>
-
-                    {% if ch.episode_count %}
-                    <details class="podcast-episodes" data-channel-id="{{ ch.id }}"
-                             hx-get="{{ url_for('admin.route_podcast_episodes', channel_id=ch.id) }}"
-                             hx-trigger="toggle once" hx-target="find .table-container" hx-swap="innerHTML">
-                        <summary>{{ ch.episode_count }} episode{{ 's' if ch.episode_count != 1 }}</summary>
-                        <div class="table-container">
-                            <p class="empty-state">Loading&hellip;</p>
-                        </div>
-                    </details>
-                    {% endif %}
-                </div>
-                {% else %}
-                <p class="empty-state">No podcast channels yet. Subscribe to a feed above to get started.</p>
-                {% endfor %}
-                {% if podcast_channels %}
-                <div class="card-footer">
-                    <a href="{{ url_for('admin.route_export_podcast_opml') }}" class="btn btn-outline">Export to OPML</a>
-                </div>
-                {% endif %}
-            </div>
-        {% endif %}
-    </section>
-    {% endfor %}
-
-    {# Radios tab #}
-    <section class="tab-content" id="tab-radios" :class="{ active: active === 'radios' }" role="tabpanel">
-        <div class="card">
-            <div class="table-header">
-                <h2>Internet Radio Stations</h2>
-                <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
-                    + Add Station
-                </button>
-            </div>
-
-            {% for s in radios %}
-            <div class="channel-row">
-                <div class="channel-row-header">
-                    {% if s.has_image %}
-                        <img class="cover-thumb" src="{{ url_for('admin.route_serve_radio_image', station_id=s.id) }}" alt="">
-                    {% else %}
-                        <span class="cover-thumb cover-thumb-placeholder">{{ s.name[0]|upper }}</span>
-                    {% endif %}
-                    <div class="channel-row-info">
-                        <div class="username-name">{{ s.name }}</div>
-                        <div class="email-cell"><code>{{ s.stream_url }}</code></div>
-                        {% if s.homepage_url %}
-                            <div class="email-cell"><a href="{{ s.homepage_url }}" target="_blank" rel="noopener">{{ s.homepage_url }}</a></div>
-                        {% endif %}
-                    </div>
-                    <div class="actions-cell">
-                        <button class="icon-btn"
-                                data-action="edit-radio"
-                                data-station="{{ s | tojson | forceescape }}"
-                                title="Edit" aria-label="Edit {{ s.name }}">{{ macros.icon('edit') }}</button>
-                        <form action="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
-                              method="POST"
-                              class="form-inline"
-                              data-confirm="Delete radio station '{{ s.name | e }}'?">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ s.name }}">{{ macros.icon('delete') }}</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <p class="empty-state">No radio stations yet. Add the first one to get started.</p>
-            {% endfor %}
-        </div>
-    </section>
-
-    {# Beets interaction tab #}
-    <section class="tab-content" id="tab-beets" :class="{ active: active === 'beets' }" role="tabpanel">
-
-        <div class="card">
-            <div class="table-header"><h2>Beets Configuration</h2></div>
-            <p class="card-hint">
-                <span class="config-label">Loaded config file:</span>
-                <code id="beetsConfigPath">{{ beets_config.path }}</code>
-                <span class="badge badge-admin" id="beetsConfigReadOnlyBadge" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
-            </p>
-            <div class="card-section">
-                <textarea id="beetsConfigEditor" class="code-editor" spellcheck="false" autocomplete="off"
-                          autocapitalize="off" wrap="off"
-                          {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
-            </div>
-            <div class="config-editor-footer">
-                <p class="card-hint config-editor-loaded">
-                    Last read at
-                    <strong class="config-time" id="beetsConfigLoadedAt" data-timestamp="{{ (beets_config.loaded_at * 1000) | int }}">&mdash;</strong>
-                    <span class="test-result config-editor-result" id="beetsConfigResult"></span>
-                </p>
-                <div class="button-row config-editor-actions">
-                    <button type="button" class="btn btn-outline" data-action="reload-beets-config"
-                            data-url="{{ url_for('admin.route_read_beets_config') }}">Reload</button>
-                    <button type="button" class="btn btn-primary" id="beetsConfigSaveBtn"
-                            data-action="save-beets-config" data-url="{{ url_for('admin.route_save_beets_config') }}"
-                            {% if beets_config.read_only %}disabled{% endif %}>Save</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="table-header">
-                <h2>Library Scan</h2>
-                <button class="btn btn-outline" data-action="refresh-scan-status"
-                        data-url="{{ url_for('admin.route_beets_scan_status') }}">Refresh</button>
-            </div>
-            <p class="card-hint">
-                Runs an incremental, unattended <code>beet import</code> over the library's root directory to pick
-                up newly-added files. Refuses to start if beets' <code>timid</code> import mode is enabled.
-            </p>
-            <dl class="kv-grid">
-                <dt>Status</dt><dd id="beets-scan-status-value">Loading...</dd>
-                <dt>Tracks in library</dt><dd id="beets-scan-count-value">&mdash;</dd>
-            </dl>
-            <form method="POST" action="{{ url_for('admin.route_beets_scan') }}" class="card-body-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-primary">Start scan</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <div class="table-header">
-                <h2>Last Import Log</h2>
-                <div class="table-header-actions">
-                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="beetsImportLogText">{{ macros.icon('copy') }} <span class="btn-label">Copy</span></button>
-                    <button type="button" class="btn btn-outline" data-action="refresh-log"
-                            data-url="{{ url_for('admin.route_beets_import_log') }}" data-target="beetsImportLogText">
-                        {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
-                    </button>
-                </div>
-            </div>
-            <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
-        </div>
-    </section>
-
-    {# Maintenance tab #}
-    <section class="tab-content" id="tab-maintenance" :class="{ active: active === 'maintenance' }" role="tabpanel">
-
-        <div class="card">
-            <div class="table-header"><h2>Offline files & Caches</h2></div>
-            <p class="card-hint">Disk usage: <strong>{{ cache_size }}</strong> total</p>
-            <dl class="kv-grid">
-                {% for label, size in cache_sizes.items() %}
-                <dt>{{ label }}</dt><dd>{{ size }}</dd>
-                {% endfor %}
-            </dl>
-            <div class="button-row">
-                <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
-                      data-confirm="Clear all cached HTTP requests and thumbnails?">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline">Clear thumbnails &amp; HTTP cache</button>
-                </form>
-
-                <form method="POST" action="{{ url_for('admin.route_cleanup_offlines') }}"
-                        data-confirm="Clear old offline files?">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline">Cleanup leftover files</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="table-header">
-                <h2>Rate Limits</h2>
-                <button class="btn btn-outline"
-                        hx-get="{{ url_for('admin.route_rate_limits') }}"
-                        hx-trigger="click, load" hx-target="#rate-limit-state" hx-swap="innerHTML">Refresh</button>
-            </div>
-            <div id="rate-limit-state" class="rate-limit-state">
-                <p class="empty-state">Loading...</p>
-            </div>
-            <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
-                  data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
-                  class="rate-limit-clear">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Clear rate-limit failures</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <div class="table-header"><h2>Database Cleanup</h2></div>
-            <p class="card-hint">
-                Removes stale entries in the database (bookmarks, likes, ratings, play stats, queue entries and shares that
-                point at a song or podcast episode that no longer exists). Also runs periodically in the background.
-            </p>
-            <form method="POST" action="{{ url_for('admin.route_database_cleanup') }}" class="card-body-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Run cleanup</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <div class="table-header">
-                <h2>Audio Health Scan</h2>
-                <button class="btn btn-outline" data-action="refresh-health-status"
-                        data-url="{{ url_for('admin.route_health_scan_status') }}">Refresh</button>
-            </div>
-            <p class="card-hint">
-                Look for bitstream corruption (bad bits that make some clients hang instead of playing,
-                even though the file isn't completely broken). Flagged songs are then transparently transcoded
-                on stream instead of direct-played. Runs incrementally in the background.
-            </p>
-            <dl class="kv-grid">
-                <dt>Status</dt><dd id="health-scan-status-value">Loading...</dd>
-                <dt>Songs checked</dt><dd id="health-scan-total-value">&mdash;</dd>
-                <dt>Flagged songs</dt><dd id="health-scan-count-value">&mdash;</dd>
-            </dl>
-            {% if flagged_songs %}
-            <details class="podcast-episodes card-section">
-                <summary>{{ flagged_songs|length }} flagged song{{ 's' if flagged_songs|length != 1 }}</summary>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>Title</th>
-                                <th>Artist</th>
-                                <th>Album</th>
-                                <th>Issue</th>
-                                <th>Checked</th>
-                            </tr>
                         </thead>
                         <tbody>
-                            {% for s in flagged_songs %}
-                            <tr class="expand-row" data-action="toggle-row-detail">
-                                <td class="expand-cell">{{ macros.icon('chevron-down') }}</td>
-                                <td>{{ s.title or '(untitled)' }}</td>
-                                <td>{{ s.artist or '—' }}</td>
-                                <td>{{ s.album or '—' }}</td>
-                                <td><span class="badge badge-admin">{{ s.label }}</span></td>
-                                <td><span class="chat-time" data-timestamp="{{ (s.checked_at * 1000) | int }}">Loading...</span></td>
+                        {% for s in shares %}
+                            <tr>
+                                <td>
+                                    <a href="{{ s.url }}" target="_blank" rel="noopener" class="username-name">
+                                        <code>{{ s.id }}</code>
+                                    </a>
+                                </td>
+                                <td><strong>{{ s.username }}</strong></td>
+                                <td>
+                                    {% if s.description %}
+                                        <span class="email-cell">{{ s.description }}</span>
+                                    {% else %}
+                                        <span class="rate-limit-anon">—</span>
+                                    {% endif %}
+                                </td>
+                                <td><span
+                                        class="badge">{{ s.entry_count }} {{ 'item' if s.entry_count == 1 else 'items' }}</span>
+                                </td>
+                                <td><span class="badge badge-limit">{{ s.visit_count }} visits</span></td>
+                                <td>
+                                    {% if s.expires %}
+                                        <span class="chat-time" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
+                                    {% else %}
+                                        <span class="badge badge-success">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td class="actions-cell">
+                                    <form action="{{ url_for('admin.route_delete_share', share_id=s.id) }}"
+                                          method="POST"
+                                          class="form-inline"
+                                          data-confirm="Delete share '{{ s.id }}'? Users with this URL will immediately lose access to downloads.">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
+                                                aria-label="Delete share {{ s.id }}">{{ macros.icon('delete') }}</button>
+                                    </form>
+                                </td>
                             </tr>
-                            <tr class="row-detail" hidden>
-                                <td colspan="6">{{ s.detail or 'No further detail available.' }}</td>
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="empty-state">No shares created yet.</td>
                             </tr>
-                            {% endfor %}
+                        {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </details>
-            {% endif %}
-            <div class="button-row">
-                <form method="POST" action="{{ url_for('admin.route_health_scan') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-primary">Scan for changes</button>
-                </form>
-                <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
-                      data-confirm="Re-check every song in the library, including ones already checked? This can take a while on large libraries.">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="full" value="1">
-                    <button type="submit" class="btn btn-outline">Full re-scan</button>
-                </form>
             </div>
-        </div>
+        </section>
 
-        <div class="card">
-            <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
-            <p class="card-hint">
-                Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
-                <code>audiomuse_url</code> to be configured under Library settings.
-            </p>
-            <p class="card-hint">
-                Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)
-                but it doesn't expose them through its API. So writing them back into beets' <code>acoustid_id</code>
-                / <code>acoustid_fingerprint</code> fields isn't currently possible.
-            </p>
-            <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
-                  data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline">Fingerprint library</button>
-            </form>
-        </div>
+        {# Settings tabs #}
+        {% for cat in settings_categories %}
+            <section class="tab-content" id="tab-{{ cat }}" :class="{ active: active === '{{ cat }}' }" role="tabpanel">
+                <div class="card">
+                    <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
+                    {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions, setting_pills) }}
+                </div>
 
-        <div class="card">
-            <div class="table-header"><h2>Server Info</h2></div>
-            <dl class="kv-grid">
-                <dt>BeetstreamNext</dt><dd>v{{ server_info.version }}</dd>
-                <dt>Beets</dt>
-                <dd>
-                    v{{ server_info.beets_version }}
-                    {% if beets_schema_drift %}<span class="badge badge-admin">schema drift</span>{% endif %}
-                </dd>
-                <dt>Python</dt>         <dd>{{ server_info.python_version }}</dd>
-                <dt>OS</dt>             <dd>{{ server_info.os }}</dd>
-                <dt>Uptime</dt>         <dd>{{ server_info.uptime }}</dd>
-                <dt>DB path</dt>        <dd><code>{{ server_info.db_path }}</code></dd>
-                <dt>Library path</dt>   <dd><code>{{ server_info.library_path }}</code></dd>
-                <dt>Config path</dt>    <dd><code>{{ server_info.config_path }}</code></dd>
-                <dt>ffmpeg</dt>
-                <dd>
-                    <code>{{ server_info.ffmpeg_path }}</code>{% if server_info.ffmpeg_version %}  (v{{ server_info.ffmpeg_version }}){% endif %}
-                </dd>
-                <dt>mpv</dt>
-                <dd>
-                    <code>{{ server_info.mpv_path }}</code> {% if server_info.mpv_version %}  (v{{ server_info.mpv_version }}){% endif %}
-                </dd>
-            </dl>
-            {% if beets_schema_drift %}
-            <details class="podcast-episodes card-section">
-                <summary>Beets schema drift ({{ beets_schema_drift|length }} table{{ 's' if beets_schema_drift|length != 1 }})</summary>
-                <p class="card-hint">Another beets install may have touched this library.db... Just saying.</p>
-                <ul>
-                {% for table, info in beets_schema_drift.items() %}
-                    <li><code>{{ table }}</code>:
-                        {% if info.unknown_migrations %}unrecognized migration(s) — {{ info.unknown_migrations|join(', ') }}{% endif %}
-                        {% if info.unknown_columns %}unrecognized column(s) — {{ info.unknown_columns|join(', ') }}{% endif %}
-                        {% if info.missing_columns %}missing expected column(s) — {{ info.missing_columns|join(', ') }}{% endif %}
-                    </li>
+                {% if cat == 'security' %}
+                    {{ render_ip_list('whitelist', 'IP Whitelist',
+                              'If non-empty, only listed IPs can reach the server. Loopback IPs always pass.',
+                              'e.g. 192.168.1.42', settings_by_category.security['ip_whitelist'].value,
+                              settings_by_category.security['ip_whitelist'].pinned) }}
+                    {{ render_ip_list('blacklist', 'IP Blacklist',
+                              'Listed IPs are denied access regardless of whitelist.',
+                              'e.g. 203.0.113.5', settings_by_category.security['ip_blacklist'].value,
+                              settings_by_category.security['ip_blacklist'].pinned) }}
+                {% elif cat == 'podcasts' %}
+                    <div class="card">
+                        <div class="table-header">
+                            <h2>Podcast Channels</h2>
+                            <form method="POST" action="{{ url_for('admin.route_refresh_all_podcasts') }}"
+                                  class="form-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-outline">Refresh all</button>
+                            </form>
+                        </div>
+                        <p class="card-hint">Total storage used by downloaded episodes:
+                            <strong>{{ podcast_total_size }}</strong>.</p>
+
+                        {% if podcast_discovery_enabled %}
+                            <div class="radio-discovery form-group">
+                                <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
+                                <div class="setting-input-row">
+                                    <input type="text" id="podcastDiscoveryQuery" name="q" placeholder="Podcast title">
+                                    <button type="button" class="btn btn-outline"
+                                            hx-get="{{ url_for('admin.route_discover_podcasts') }}"
+                                            hx-include="#podcastDiscoveryQuery"
+                                            hx-target="#podcastDiscoveryResults"
+                                            hx-swap="innerHTML"
+                                            hx-trigger="click"
+                                            hx-disabled-elt="this"
+                                            hx-indicator="#podcastDiscoverySpinner">Search
+                                    </button>
+                                </div>
+                                <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">
+                                    Searching&hellip;</p>
+                                <div class="radio-discovery-results" id="podcastDiscoveryResults"></div>
+                            </div>
+                        {% endif %}
+
+                        <form method="POST" action="{{ url_for('admin.route_add_podcast') }}" class="ip-add-form"
+                              id="addPodcastForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
+                                   required>
+                            <button type="submit" class="btn btn-primary">Subscribe</button>
+                        </form>
+
+                        <form method="POST" action="{{ url_for('admin.route_import_podcast_opml') }}"
+                              enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="file" name="opml_file" id="podcastOpmlFile"
+                                   accept=".opml,.xml,text/xml,text/x-opml" class="hidden">
+                            <button type="button" class="btn btn-outline" data-action="pick-file"
+                                    data-target="podcastOpmlFile">Import OPML
+                            </button>
+                        </form>
+
+                        {% for ch in podcast_channels %}
+                            <div class="channel-row">
+                                <div class="channel-row-header">
+                                    {% if ch.has_image %}
+                                        <img class="cover-thumb"
+                                             src="{{ url_for('admin.route_serve_podcast_image', channel_id=ch.id) }}"
+                                             alt="">
+                                    {% else %}
+                                        <span class="cover-thumb cover-thumb-placeholder">{{ (ch.title or ch.url)[0]|upper }}</span>
+                                    {% endif %}
+                                    <div class="channel-row-info">
+                                        <div class="username-name">{{ ch.title or ch.url }}</div>
+                                        <div class="email-cell">{{ ch.url }}</div>
+                                        {% if ch.status == 'error' and ch.error_message %}
+                                            <div class="email-cell text-error">{{ ch.error_message }}</div>
+                                        {% endif %}
+                                        <div class="email-cell">
+                                            {% if ch.subscribers %}
+                                                Subscribers: {{ ch.subscribers|join(', ') }}
+                                            {% else %}
+                                                No subscribers
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="roles-cell">
+                            <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}"
+                                  id="podcast-channel-status-{{ ch.id }}"
+                                  data-status="{{ ch.status }}">{{ ch.status }}</span>
+                                        <span class="badge">{{ ch.downloaded_count }}/{{ ch.episode_count }} downloaded</span>
+                                        <span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>
+                                        <span class="badge badge-limit"
+                                              id="podcast-channel-size-{{ ch.id }}">{{ ch.storage_size }}</span>
+                                    </div>
+                                    <div class="actions-cell">
+                                        <form action="{{ url_for('admin.route_refresh_podcast', channel_id=ch.id) }}"
+                                              method="POST" class="form-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="icon-btn" title="Refresh now"
+                                                    aria-label="Refresh {{ (ch.title or ch.url) | e }}">{{ macros.icon('refresh') }}</button>
+                                        </form>
+                                        <form action="{{ url_for('admin.route_download_recent_podcast_episodes', channel_id=ch.id) }}"
+                                              method="POST" class="form-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="icon-btn" title="Download recent episodes"
+                                                    aria-label="Download recent episodes for {{ (ch.title or ch.url) | e }}">{{ macros.icon('download') }}</button>
+                                        </form>
+                                        <form action="{{ url_for('admin.route_delete_podcast', channel_id=ch.id) }}"
+                                              method="POST" class="form-inline"
+                                              data-confirm="Delete podcast channel '{{ (ch.title or ch.url) | e }}'? This removes it and its downloaded episodes for all subscribers.">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
+                                                    aria-label="Delete channel {{ (ch.title or ch.url) | e }}">{{ macros.icon('delete') }}</button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {% if ch.episode_count %}
+                                    <details class="podcast-episodes" data-channel-id="{{ ch.id }}"
+                                             hx-get="{{ url_for('admin.route_podcast_episodes', channel_id=ch.id) }}"
+                                             hx-trigger="toggle once"
+                                             hx-target="find .table-container"
+                                             hx-swap="innerHTML">
+                                        <summary>{{ ch.episode_count }}
+                                            episode{{ 's' if ch.episode_count != 1 }}</summary>
+                                        <div class="table-container">
+                                            <p class="empty-state">Loading&hellip;</p>
+                                        </div>
+                                    </details>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <p class="empty-state">No podcast channels yet. Subscribe to a feed above to get
+                                started.</p>
+                        {% endfor %}
+                        {% if podcast_channels %}
+                            <div class="card-footer">
+                                <a href="{{ url_for('admin.route_export_podcast_opml') }}" class="btn btn-outline">Export
+                                    to OPML</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </section>
+        {% endfor %}
+
+        {# Radios tab #}
+        <section class="tab-content" id="tab-radios" :class="{ active: active === 'radios' }" role="tabpanel">
+            <div class="card">
+                <div class="table-header">
+                    <h2>Internet Radio Stations</h2>
+                    <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
+                        + Add Station
+                    </button>
+                </div>
+
+                {% for s in radios %}
+                    <div class="channel-row">
+                        <div class="channel-row-header">
+                            {% if s.has_image %}
+                                <img class="cover-thumb"
+                                     src="{{ url_for('admin.route_serve_radio_image', station_id=s.id) }}" alt="">
+                            {% else %}
+                                <span class="cover-thumb cover-thumb-placeholder">{{ s.name[0]|upper }}</span>
+                            {% endif %}
+                            <div class="channel-row-info">
+                                <div class="username-name">{{ s.name }}</div>
+                                <div class="email-cell"><code>{{ s.stream_url }}</code></div>
+                                {% if s.homepage_url %}
+                                    <div class="email-cell"><a href="{{ s.homepage_url }}" target="_blank"
+                                                               rel="noopener">{{ s.homepage_url }}</a></div>
+                                {% endif %}
+                            </div>
+                            <div class="actions-cell">
+                                <button class="icon-btn"
+                                        data-action="edit-radio"
+                                        data-station="{{ s | tojson | forceescape }}"
+                                        title="Edit" aria-label="Edit {{ s.name }}">{{ macros.icon('edit') }}</button>
+                                <form action="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
+                                      method="POST"
+                                      class="form-inline"
+                                      data-confirm="Delete radio station '{{ s.name | e }}'?">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
+                                            aria-label="Delete {{ s.name }}">{{ macros.icon('delete') }}</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="empty-state">No radio stations yet. Add the first one to get started.</p>
                 {% endfor %}
-                </ul>
-            </details>
-            {% endif %}
-            <div class="button-row">
-                <form method="POST" action="{{ url_for('admin.route_restart_server') }}"
-                      data-confirm="Restart the server now?">
+            </div>
+        </section>
+
+        {# Beets interaction tab #}
+        <section class="tab-content" id="tab-beets" :class="{ active: active === 'beets' }" role="tabpanel">
+
+            <div class="card">
+                <div class="table-header"><h2>Beets Configuration</h2></div>
+                <p class="card-hint">
+                    <span class="config-label">Loaded config file:</span>
+                    <code id="beetsConfigPath">{{ beets_config.path }}</code>
+                    <span class="badge badge-admin" id="beetsConfigReadOnlyBadge"
+                          {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
+                </p>
+                <div class="card-section">
+                <textarea id="beetsConfigEditor" class="code-editor" spellcheck="false" autocomplete="off"
+                          autocapitalize="off" wrap="off"
+                          {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+                </div>
+                <div class="config-editor-footer">
+                    <p class="card-hint config-editor-loaded">
+                        Last read at
+                        <strong class="config-time" id="beetsConfigLoadedAt"
+                                data-timestamp="{{ (beets_config.loaded_at * 1000) | int }}">&mdash;</strong>
+                        <span class="test-result config-editor-result" id="beetsConfigResult"></span>
+                    </p>
+                    <div class="button-row config-editor-actions">
+                        <button type="button" class="btn btn-outline" data-action="reload-beets-config"
+                                data-url="{{ url_for('admin.route_read_beets_config') }}">Reload
+                        </button>
+                        <button type="button" class="btn btn-primary" id="beetsConfigSaveBtn"
+                                data-action="save-beets-config"
+                                data-url="{{ url_for('admin.route_save_beets_config') }}"
+                                {% if beets_config.read_only %}disabled{% endif %}>Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-header">
+                    <h2>Library Scan</h2>
+                    <button class="btn btn-outline" data-action="refresh-scan-status"
+                            data-url="{{ url_for('admin.route_beets_scan_status') }}">Refresh
+                    </button>
+                </div>
+                <p class="card-hint">
+                    Runs an incremental, unattended <code>beet import</code> over the library's root directory to pick
+                    up newly-added files. Refuses to start if beets' <code>timid</code> import mode is enabled.
+                </p>
+                <dl class="kv-grid">
+                    <dt>Status</dt>
+                    <dd id="beets-scan-status-value">Loading...</dd>
+                    <dt>Tracks in library</dt>
+                    <dd id="beets-scan-count-value">&mdash;</dd>
+                </dl>
+                <form method="POST" action="{{ url_for('admin.route_beets_scan') }}" class="card-body-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline">Restart server</button>
+                    <button type="submit" class="btn btn-primary">Start scan</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="table-header">
+                    <h2>Last Import Log</h2>
+                    <div class="table-header-actions">
+                        <button type="button" class="btn btn-outline" data-action="copy-log"
+                                data-target="beetsImportLogText">{{ macros.icon('copy') }} <span
+                                class="btn-label">Copy</span></button>
+                        <button type="button" class="btn btn-outline" data-action="refresh-log"
+                                data-url="{{ url_for('admin.route_beets_import_log') }}"
+                                data-target="beetsImportLogText">
+                            {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
+                        </button>
+                    </div>
+                </div>
+                <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
+            </div>
+        </section>
+
+        {# Maintenance tab #}
+        <section class="tab-content" id="tab-maintenance" :class="{ active: active === 'maintenance' }" role="tabpanel">
+
+            <div class="card">
+                <div class="table-header"><h2>Offline files & Caches</h2></div>
+                <p class="card-hint">Disk usage: <strong>{{ cache_size }}</strong> total</p>
+                <dl class="kv-grid">
+                    {% for label, size in cache_sizes.items() %}
+                        <dt>{{ label }}</dt>
+                        <dd>{{ size }}</dd>
+                    {% endfor %}
+                </dl>
+                <div class="button-row">
+                    <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
+                          data-confirm="Clear all cached HTTP requests and thumbnails?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline">Clear thumbnails &amp; HTTP cache</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('admin.route_cleanup_offlines') }}"
+                          data-confirm="Clear old offline files?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline">Cleanup leftover files</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-header">
+                    <h2>Rate Limits</h2>
+                    <button class="btn btn-outline"
+                            hx-get="{{ url_for('admin.route_rate_limits') }}"
+                            hx-trigger="click, load"
+                            hx-target="#rate-limit-state"
+                            hx-swap="innerHTML">Refresh
+                    </button>
+                </div>
+                <div id="rate-limit-state" class="rate-limit-state">
+                    <p class="empty-state">Loading...</p>
+                </div>
+                <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
+                      data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
+                      class="rate-limit-clear">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Clear rate-limit failures</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="table-header"><h2>Database Cleanup</h2></div>
+                <p class="card-hint">
+                    Removes stale entries in the database (bookmarks, likes, ratings, play stats, queue entries and
+                    shares that
+                    point at a song or podcast episode that no longer exists). Also runs periodically in the background.
+                </p>
+                <form method="POST" action="{{ url_for('admin.route_database_cleanup') }}" class="card-body-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Run cleanup</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="table-header">
+                    <h2>Audio Health Scan</h2>
+                    <button class="btn btn-outline" data-action="refresh-health-status"
+                            data-url="{{ url_for('admin.route_health_scan_status') }}">Refresh
+                    </button>
+                </div>
+                <p class="card-hint">
+                    Look for bitstream corruption (bad bits that make some clients hang instead of playing,
+                    even though the file isn't completely broken). Flagged songs are then transparently transcoded
+                    on stream instead of direct-played. Runs incrementally in the background.
+                </p>
+                <dl class="kv-grid">
+                    <dt>Status</dt>
+                    <dd id="health-scan-status-value">Loading...</dd>
+                    <dt>Songs checked</dt>
+                    <dd id="health-scan-total-value">&mdash;</dd>
+                    <dt>Flagged songs</dt>
+                    <dd id="health-scan-count-value">&mdash;</dd>
+                </dl>
+                {% if flagged_songs %}
+                    <details class="podcast-episodes card-section">
+                        <summary>{{ flagged_songs|length }} flagged song{{ 's' if flagged_songs|length != 1 }}</summary>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Title</th>
+                                    <th>Artist</th>
+                                    <th>Album</th>
+                                    <th>Issue</th>
+                                    <th>Checked</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for s in flagged_songs %}
+                                    <tr class="expand-row" data-action="toggle-row-detail">
+                                        <td class="expand-cell">{{ macros.icon('chevron-down') }}</td>
+                                        <td>{{ s.title or '(untitled)' }}</td>
+                                        <td>{{ s.artist or '—' }}</td>
+                                        <td>{{ s.album or '—' }}</td>
+                                        <td><span class="badge badge-admin">{{ s.label }}</span></td>
+                                        <td><span class="chat-time" data-timestamp="{{ (s.checked_at * 1000) | int }}">Loading...</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="row-detail" hidden>
+                                        <td colspan="6">{{ s.detail or 'No further detail available.' }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                {% endif %}
+                <div class="button-row">
+                    <form method="POST" action="{{ url_for('admin.route_health_scan') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-primary">Scan for changes</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
+                          data-confirm="Re-check every song in the library, including ones already checked? This can take a while on large libraries.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="full" value="1">
+                        <button type="submit" class="btn btn-outline">Full re-scan</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
+                <p class="card-hint">
+                    Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
+                    <code>audiomuse_url</code> to be configured under Library settings.
+                </p>
+                <p class="card-hint">
+                    Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)
+                    but it doesn't expose them through its API. So writing them back into beets'
+                    <code>acoustid_id</code>
+                    / <code>acoustid_fingerprint</code> fields isn't currently possible.
+                </p>
+                <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
+                      data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Fingerprint library</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="table-header"><h2>Server Info</h2></div>
+                <dl class="kv-grid">
+                    <dt>BeetstreamNext</dt>
+                    <dd>v{{ server_info.version }}</dd>
+                    <dt>Beets</dt>
+                    <dd>
+                        v{{ server_info.beets_version }}
+                        {% if beets_schema_drift %}<span class="badge badge-admin">schema drift</span>{% endif %}
+                    </dd>
+                    <dt>Python</dt>
+                    <dd>{{ server_info.python_version }}</dd>
+                    <dt>OS</dt>
+                    <dd>{{ server_info.os }}</dd>
+                    <dt>Uptime</dt>
+                    <dd>{{ server_info.uptime }}</dd>
+                    <dt>DB path</dt>
+                    <dd><code>{{ server_info.db_path }}</code></dd>
+                    <dt>Library path</dt>
+                    <dd><code>{{ server_info.library_path }}</code></dd>
+                    <dt>Config path</dt>
+                    <dd><code>{{ server_info.config_path }}</code></dd>
+                    <dt>ffmpeg</dt>
+                    <dd>
+                        <code>{{ server_info.ffmpeg_path }}</code>{% if server_info.ffmpeg_version %}  (v
+                        {{ server_info.ffmpeg_version }}){% endif %}
+                    </dd>
+                    <dt>mpv</dt>
+                    <dd>
+                        <code>{{ server_info.mpv_path }}</code> {% if server_info.mpv_version %}  (v
+                        {{ server_info.mpv_version }}){% endif %}
+                    </dd>
+                </dl>
+                {% if beets_schema_drift %}
+                    <details class="podcast-episodes card-section">
+                        <summary>Beets schema drift ({{ beets_schema_drift|length }}
+                            table{{ 's' if beets_schema_drift|length != 1 }})
+                        </summary>
+                        <p class="card-hint">Another beets install may have touched this library.db... Just saying.</p>
+                        <ul>
+                            {% for table, info in beets_schema_drift.items() %}
+                                <li><code>{{ table }}</code>:
+                                    {% if info.unknown_migrations %}unrecognized migration(s) —
+                                        {{ info.unknown_migrations|join(', ') }}{% endif %}
+                                    {% if info.unknown_columns %}unrecognized column(s) —
+                                        {{ info.unknown_columns|join(', ') }}{% endif %}
+                                    {% if info.missing_columns %}missing expected column(s) —
+                                        {{ info.missing_columns|join(', ') }}{% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                {% endif %}
+                <div class="button-row">
+                    <form method="POST" action="{{ url_for('admin.route_restart_server') }}"
+                          data-confirm="Restart the server now?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline">Restart server</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-header">
+                    <h2>Server Log</h2>
+                    <div class="table-header-actions">
+                        <label class="log-autorefresh">
+                            <input type="checkbox" data-action="toggle-log-autorefresh"
+                                   data-refresh-target="refresh-log-btn">
+                            Auto-refresh
+                        </label>
+                        <button type="button" class="btn btn-outline" data-action="copy-log"
+                                data-target="serverLogText">{{ macros.icon('copy') }} <span
+                                class="btn-label">Copy</span></button>
+                        <button type="button" class="btn btn-outline" id="refresh-log-btn" data-action="refresh-log"
+                                data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText">
+                            {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
+                        </button>
+                    </div>
+                </div>
+                <pre class="log-view" id="serverLogText">{% if log_lines %}{{ log_lines|join('\n') }}{% else %}(no log
+                    output yet){% endif %}</pre>
+            </div>
+        </section>
+    </div>
+
+    <!-- Confirmation modal -->
+    <div class="modal-overlay modal-confirm" id="confirmModal" x-data="modalPanel('confirmModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content modal-content-small">
+            <h2>Confirm Action</h2>
+            <p class="confirm-text" x-text="message"></p>
+            <div class="confirm-actions">
+                <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
+                <button type="button" class="btn btn-primary" @click="confirmProceed()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt modal -->
+    <div class="modal-overlay modal-confirm" id="promptModal" x-data="modalPanel('promptModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content modal-content-small">
+            <h2>Edit</h2>
+            <p class="confirm-text" x-text="message"></p>
+            <div class="form-group">
+                <input type="text" id="promptInput" autocomplete="off" x-model="promptValue"
+                       @keydown.enter.prevent="promptProceed()">
+            </div>
+            <div class="confirm-actions">
+                <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
+                <button type="button" class="btn btn-primary" @click="promptProceed()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User create modal -->
+    <div class="modal-overlay" id="createModal" x-data="modalPanel('createModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Add New User</h2>
+            <form id="createForm" aria-label="Create BeetstreamNext user"
+                  action="{{ url_for('admin.route_create_user') }}" method="POST">
+                {{ create_form.csrf_token }}
+                <div class="form-group">
+                    <label for="createUsername">Username</label>
+                    {{ create_form.username(placeholder="Enter username", autocomplete="username") }}
+                </div>
+                <div class="form-group">
+                    <label for="createPassword">Password</label>
+                    {{ create_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
+                </div>
+                <div class="form-group">
+                    <label>Email <span class="label-hint">(optional)</span></label>
+                    {{ create_form.email(placeholder="user@example.com", autocomplete="email") }}
+                </div>
+                <div class="form-group" x-data="checkboxGroup">
+                    <div class="roles-header">
+                        <label class="label-inline">Roles &amp; Permissions</label>
+                        <div class="roles-actions">
+                            <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all
+                            </button>
+                            <span class="roles-sep">|</span>
+                            <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
+                        </div>
+                    </div>
+                    <div class="roles-grid">
+                        {% for name, label in role_fields %}
+                            <label class="role-item">{{ create_form[name]() }} {{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group form-row">
+                    <div>
+                        <label>Bitrate limit</label>
+                        {{ create_form.maxBitRate() }}
+                    </div>
+                    <label class="role-item role-item-standalone">{{ create_form.scrobblingEnabled() }}
+                        Scrobbling</label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Create account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- User edit modal -->
+    <div class="modal-overlay" id="editModal" x-data="modalPanel('editModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Edit User</h2>
+            <form method="POST" id="editForm"
+                  data-update-url="{{ url_for('admin.route_update_user', username='__USERNAME__') }}">
+                {{ edit_form.csrf_token }}
+                <p class="modal-username" id="editModalUsername"></p>
+                <div class="form-group">
+                    <label>Password</label>
+                    {{ edit_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
+                </div>
+                <div class="form-group">
+                    <label>Email <span class="label-hint">(optional)</span></label>
+                    {{ edit_form.email(placeholder="user@example.com", autocomplete="off") }}
+                </div>
+                <div class="form-group" x-data="checkboxGroup">
+                    <div class="roles-header">
+                        <label class="label-inline">Roles &amp; Permissions</label>
+                        <div class="roles-actions">
+                            <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all
+                            </button>
+                            <span class="roles-sep">|</span>
+                            <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
+                        </div>
+                    </div>
+                    <div class="roles-grid">
+                        {% for name, label in role_fields %}
+                            <label class="role-item">{{ edit_form[name]() }} {{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group form-row">
+                    <div>
+                        <label>Bitrate limit</label>
+                        {{ edit_form.maxBitRate() }}
+                    </div>
+                    <label class="role-item role-item-standalone">{{ edit_form.scrobblingEnabled() }} Scrobbling</label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Save changes</button>
+            </form>
+
+            {# Avatar: separate forms because upload is multipart #}
+            <hr class="modal-separator">
+            <div class="form-group">
+                <div class="avatar-section-header">
+                    <label class="label-inline">Avatar</label>
+                    <img id="editAvatarPreview" class="user-avatar hidden" alt=""
+                         data-avatar-url="{{ url_for('admin.route_serve_avatar', username='__USERNAME__') }}">
+                </div>
+                <form method="POST" id="avatarUploadForm" enctype="multipart/form-data" class="avatar-upload-form"
+                      data-update-url="{{ url_for('admin.route_upload_avatar', username='__USERNAME__') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required>
+                    <button type="submit" class="btn btn-outline">Upload</button>
+                </form>
+                <form method="POST" id="avatarDeleteForm" class="form-inline hidden"
+                      data-confirm="Remove avatar?"
+                      data-update-url="{{ url_for('admin.route_delete_avatar', username='__USERNAME__') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="action-link action-link-delete">Remove avatar</button>
                 </form>
             </div>
         </div>
+    </div>
 
-        <div class="card">
-            <div class="table-header">
-                <h2>Server Log</h2>
-                <div class="table-header-actions">
-                    <label class="log-autorefresh">
-                        <input type="checkbox" data-action="toggle-log-autorefresh" data-refresh-target="refresh-log-btn">
-                        Auto-refresh
+    <!-- Radio station create modal -->
+    <div class="modal-overlay" id="createRadioModal" x-data="modalPanel('createRadioModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Add Radio Station</h2>
+            {% if radio_discovery_enabled %}
+                <div class="radio-discovery form-group">
+                    <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
+                    <div class="setting-input-row">
+                        <input type="text" id="radioDiscoveryQuery" name="q" placeholder="Station name">
+                        <button type="button" class="btn btn-outline" data-action="discover-radios"
+                                data-favicon-proxy="{{ url_for('admin.route_radio_favicon_proxy') }}"
+                                hx-get="{{ url_for('admin.route_discover_radios') }}"
+                                hx-include="#radioDiscoveryQuery"
+                                hx-target="#radioDiscoveryResults"
+                                hx-swap="innerHTML"
+                                hx-trigger="click"
+                                hx-disabled-elt="this"
+                                hx-indicator="#radioDiscoverySpinner">Search
+                        </button>
+                    </div>
+                    <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
+                    <div class="radio-discovery-results" id="radioDiscoveryResults"></div>
+                </div>
+            {% endif %}
+            <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">
+                {{ radio_form.csrf_token }}
+                <div class="form-group">
+                    <label>Name</label>
+                    {{ radio_form.name(id="createRadioName", placeholder="My Favorite Station") }}
+                </div>
+                <div class="form-group">
+                    <label>Stream URL</label>
+                    {{ radio_form.streamUrl(id="createRadioStreamUrl", placeholder="https://stream.example.com/stream.mp3") }}
+                </div>
+                <div class="form-group">
+                    <label>Homepage URL <span class="label-hint">(optional)</span></label>
+                    {{ radio_form.homepageUrl(id="createRadioHomepageUrl", placeholder="https://example.com") }}
+                </div>
+                <div class="form-group">
+                    <label>Icon <span class="label-hint">(optional)</span></label>
+                    <div class="radio-icon-row">
+                        <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
+                                data-target="createRadioImage" aria-label="Choose station icon">
+                            <img id="createRadioIconPreview" class="hidden" alt="">
+                            <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
+                        </button>
+                        <span class="label-hint">Click to upload, or pick a search result above.</span>
+                    </div>
+                    <input type="file" id="createRadioImage" name="image" accept="image/jpeg,image/png,image/webp"
+                           class="hidden">
+                    <input type="hidden" id="createRadioFavicon" name="favicon_url">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Add station</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Radio station edit modal -->
+    <div class="modal-overlay" id="editRadioModal" x-data="modalPanel('editRadioModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Edit Radio Station</h2>
+            <form id="editRadioForm" method="POST" enctype="multipart/form-data"
+                  data-update-url-base="{{ url_for('admin.route_update_radio', station_id=1) }}">
+                {{ radio_form.csrf_token }}
+                <div class="form-group">
+                    <label>Name</label>
+                    {{ radio_form.name(id="editRadioName") }}
+                </div>
+                <div class="form-group">
+                    <label>Stream URL</label>
+                    {{ radio_form.streamUrl(id="editRadioStreamUrl") }}
+                </div>
+                <div class="form-group">
+                    <label>Homepage URL <span class="label-hint">(optional)</span></label>
+                    {{ radio_form.homepageUrl(id="editRadioHomepageUrl") }}
+                </div>
+                <div class="form-group">
+                    <label>Icon <span class="label-hint">(optional)</span></label>
+                    <div class="radio-icon-row">
+                        <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
+                                data-target="editRadioImage" aria-label="Choose station icon">
+                            <img id="editRadioImagePreview" class="hidden" alt=""
+                                 data-image-url-tmpl="{{ url_for('admin.route_serve_radio_image', station_id=1) | replace('/1/', '/__STATION_ID__/') }}">
+                            <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
+                        </button>
+                        <span class="label-hint">Click to change the icon.</span>
+                    </div>
+                    <input type="file" id="editRadioImage" name="image" accept="image/jpeg,image/png,image/webp"
+                           class="hidden">
+                    <label class="role-item role-item-standalone">
+                        <input type="checkbox" name="remove_image" id="editRadioRemoveImage"> Remove current icon
                     </label>
-                    <button type="button" class="btn btn-outline" data-action="copy-log" data-target="serverLogText">{{ macros.icon('copy') }} <span class="btn-label">Copy</span></button>
-                    <button type="button" class="btn btn-outline" id="refresh-log-btn" data-action="refresh-log"
-                            data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText">
-                        {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
-                    </button>
                 </div>
-            </div>
-            <pre class="log-view" id="serverLogText">{% if log_lines %}{{ log_lines|join('\n') }}{% else %}(no log output yet){% endif %}</pre>
-        </div>
-    </section>
-</div>
-
-<!-- Confirmation modal -->
-<div class="modal-overlay modal-confirm" id="confirmModal" x-data="modalPanel('confirmModal')"
-     :class="{ active: isOpen }" @click.self="close()">
-    <div class="modal-content modal-content-small">
-        <h2>Confirm Action</h2>
-        <p class="confirm-text" x-text="message"></p>
-        <div class="confirm-actions">
-            <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="confirmProceed()">Confirm</button>
-        </div>
-    </div>
-</div>
-
-<!-- Prompt modal -->
-<div class="modal-overlay modal-confirm" id="promptModal" x-data="modalPanel('promptModal')"
-     :class="{ active: isOpen }" @click.self="close()">
-    <div class="modal-content modal-content-small">
-        <h2>Edit</h2>
-        <p class="confirm-text" x-text="message"></p>
-        <div class="form-group">
-            <input type="text" id="promptInput" autocomplete="off" x-model="promptValue"
-                   @keydown.enter.prevent="promptProceed()">
-        </div>
-        <div class="confirm-actions">
-            <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="promptProceed()">OK</button>
-        </div>
-    </div>
-</div>
-
-<!-- User create modal -->
-<div class="modal-overlay" id="createModal" x-data="modalPanel('createModal')"
-     :class="{ active: isOpen }" @click.self="close()">
-    <div class="modal-content">
-        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-        <h2>Add New User</h2>
-        <form id="createForm" aria-label="Create BeetstreamNext user" action="{{ url_for('admin.route_create_user') }}" method="POST">
-            {{ create_form.csrf_token }}
-            <div class="form-group">
-                <label for="createUsername">Username</label>
-                {{ create_form.username(placeholder="Enter username", autocomplete="username") }}
-            </div>
-            <div class="form-group">
-                <label for="createPassword">Password</label>
-                {{ create_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
-            </div>
-            <div class="form-group">
-                <label>Email <span class="label-hint">(optional)</span></label>
-                {{ create_form.email(placeholder="user@example.com", autocomplete="email") }}
-            </div>
-            <div class="form-group" x-data="checkboxGroup">
-                <div class="roles-header">
-                    <label class="label-inline">Roles &amp; Permissions</label>
-                    <div class="roles-actions">
-                        <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all</button>
-                        <span class="roles-sep">|</span>
-                        <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
-                    </div>
-                </div>
-                <div class="roles-grid">
-                    {% for name, label in role_fields %}
-                    <label class="role-item">{{ create_form[name]() }} {{ label }}</label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group form-row">
-                <div>
-                    <label>Bitrate limit</label>
-                    {{ create_form.maxBitRate() }}
-                </div>
-                <label class="role-item role-item-standalone">{{ create_form.scrobblingEnabled() }} Scrobbling</label>
-            </div>
-            <button type="submit" class="btn btn-primary btn-full">Create account</button>
-        </form>
-    </div>
-</div>
-
-<!-- User edit modal -->
-<div class="modal-overlay" id="editModal" x-data="modalPanel('editModal')"
-     :class="{ active: isOpen }" @click.self="close()">
-    <div class="modal-content">
-        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-        <h2>Edit User</h2>
-        <form method="POST" id="editForm" data-update-url="{{ url_for('admin.route_update_user', username='__USERNAME__') }}">
-            {{ edit_form.csrf_token }}
-            <p class="modal-username" id="editModalUsername"></p>
-            <div class="form-group">
-                <label>Password</label>
-                {{ edit_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
-            </div>
-            <div class="form-group">
-                <label>Email <span class="label-hint">(optional)</span></label>
-                {{ edit_form.email(placeholder="user@example.com", autocomplete="off") }}
-            </div>
-            <div class="form-group" x-data="checkboxGroup">
-                <div class="roles-header">
-                    <label class="label-inline">Roles &amp; Permissions</label>
-                    <div class="roles-actions">
-                        <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all</button>
-                        <span class="roles-sep">|</span>
-                        <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
-                    </div>
-                </div>
-                <div class="roles-grid">
-                    {% for name, label in role_fields %}
-                    <label class="role-item">{{ edit_form[name]() }} {{ label }}</label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group form-row">
-                <div>
-                    <label>Bitrate limit</label>
-                    {{ edit_form.maxBitRate() }}
-                </div>
-                <label class="role-item role-item-standalone">{{ edit_form.scrobblingEnabled() }} Scrobbling</label>
-            </div>
-            <button type="submit" class="btn btn-primary btn-full">Save changes</button>
-        </form>
-
-        {# Avatar: separate forms because upload is multipart #}
-        <hr class="modal-separator">
-        <div class="form-group">
-            <div class="avatar-section-header">
-                <label class="label-inline">Avatar</label>
-                <img id="editAvatarPreview" class="user-avatar hidden" alt=""
-                     data-avatar-url="{{ url_for('admin.route_serve_avatar', username='__USERNAME__') }}">
-            </div>
-            <form method="POST" id="avatarUploadForm" enctype="multipart/form-data" class="avatar-upload-form"
-                  data-update-url="{{ url_for('admin.route_upload_avatar', username='__USERNAME__') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required>
-                <button type="submit" class="btn btn-outline">Upload</button>
-            </form>
-            <form method="POST" id="avatarDeleteForm" class="form-inline hidden"
-                  data-confirm="Remove avatar?"
-                  data-update-url="{{ url_for('admin.route_delete_avatar', username='__USERNAME__') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="action-link action-link-delete">Remove avatar</button>
+                <button type="submit" class="btn btn-primary btn-full">Save changes</button>
             </form>
         </div>
     </div>
-</div>
 
-<!-- Radio station create modal -->
-<div class="modal-overlay" id="createRadioModal" x-data="modalPanel('createRadioModal')"
-     :class="{ active: isOpen }" @click.self="close()">
-    <div class="modal-content">
-        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-        <h2>Add Radio Station</h2>
-        {% if radio_discovery_enabled %}
-        <div class="radio-discovery form-group">
-            <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
-            <div class="setting-input-row">
-                <input type="text" id="radioDiscoveryQuery" name="q" placeholder="Station name">
-                <button type="button" class="btn btn-outline" data-action="discover-radios"
-                        data-favicon-proxy="{{ url_for('admin.route_radio_favicon_proxy') }}"
-                        hx-get="{{ url_for('admin.route_discover_radios') }}"
-                        hx-include="#radioDiscoveryQuery"
-                        hx-target="#radioDiscoveryResults"
-                        hx-swap="innerHTML"
-                        hx-trigger="click"
-                        hx-disabled-elt="this"
-                        hx-indicator="#radioDiscoverySpinner">Search</button>
-            </div>
-            <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
-            <div class="radio-discovery-results" id="radioDiscoveryResults"></div>
-        </div>
-        {% endif %}
-        <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">
-            {{ radio_form.csrf_token }}
-            <div class="form-group">
-                <label>Name</label>
-                {{ radio_form.name(id="createRadioName", placeholder="My Favorite Station") }}
-            </div>
-            <div class="form-group">
-                <label>Stream URL</label>
-                {{ radio_form.streamUrl(id="createRadioStreamUrl", placeholder="https://stream.example.com/stream.mp3") }}
-            </div>
-            <div class="form-group">
-                <label>Homepage URL <span class="label-hint">(optional)</span></label>
-                {{ radio_form.homepageUrl(id="createRadioHomepageUrl", placeholder="https://example.com") }}
-            </div>
-            <div class="form-group">
-                <label>Icon <span class="label-hint">(optional)</span></label>
-                <div class="radio-icon-row">
-                    <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
-                            data-target="createRadioImage" aria-label="Choose station icon">
-                        <img id="createRadioIconPreview" class="hidden" alt="">
-                        <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
-                    </button>
-                    <span class="label-hint">Click to upload, or pick a search result above.</span>
+    {% if new_api_key %}
+        <!-- One-time API key display: rendered on this page load only. -->
+        <div class="modal-overlay" id="apiKeyModal" x-data="modalPanel('apiKeyModal')"
+             :class="{ active: isOpen }" x-init="open()">
+            <div class="modal-content">
+                <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+                <h2>API key for {{ new_api_key.username }}</h2>
+                <p class="api-key-hint">
+                    Please copy your API key and store it safely. It will <strong>not</strong> be shown again.
+                </p>
+                <div class="api-key-box">
+                    <code id="apiKeyValue">{{ new_api_key.key }}</code>
+                    <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
                 </div>
-                <input type="file" id="createRadioImage" name="image" accept="image/jpeg,image/png,image/webp" class="hidden">
-                <input type="hidden" id="createRadioFavicon" name="favicon_url">
+                <button type="button" class="btn btn-primary btn-full" @click="close()">
+                    I've saved the key
+                </button>
             </div>
-            <button type="submit" class="btn btn-primary btn-full">Add station</button>
-        </form>
-    </div>
-</div>
-
-<!-- Radio station edit modal -->
-<div class="modal-overlay" id="editRadioModal" x-data="modalPanel('editRadioModal')"
-     :class="{ active: isOpen }" @click.self="close()">
-    <div class="modal-content">
-        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-        <h2>Edit Radio Station</h2>
-        <form id="editRadioForm" method="POST" enctype="multipart/form-data"
-              data-update-url-base="{{ url_for('admin.route_update_radio', station_id=1) }}">
-            {{ radio_form.csrf_token }}
-            <div class="form-group">
-                <label>Name</label>
-                {{ radio_form.name(id="editRadioName") }}
-            </div>
-            <div class="form-group">
-                <label>Stream URL</label>
-                {{ radio_form.streamUrl(id="editRadioStreamUrl") }}
-            </div>
-            <div class="form-group">
-                <label>Homepage URL <span class="label-hint">(optional)</span></label>
-                {{ radio_form.homepageUrl(id="editRadioHomepageUrl") }}
-            </div>
-            <div class="form-group">
-                <label>Icon <span class="label-hint">(optional)</span></label>
-                <div class="radio-icon-row">
-                    <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
-                            data-target="editRadioImage" aria-label="Choose station icon">
-                        <img id="editRadioImagePreview" class="hidden" alt=""
-                             data-image-url-tmpl="{{ url_for('admin.route_serve_radio_image', station_id=1) | replace('/1/', '/__STATION_ID__/') }}">
-                        <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
-                    </button>
-                    <span class="label-hint">Click to change the icon.</span>
-                </div>
-                <input type="file" id="editRadioImage" name="image" accept="image/jpeg,image/png,image/webp" class="hidden">
-                <label class="role-item role-item-standalone">
-                    <input type="checkbox" name="remove_image" id="editRadioRemoveImage"> Remove current icon
-                </label>
-            </div>
-            <button type="submit" class="btn btn-primary btn-full">Save changes</button>
-        </form>
-    </div>
-</div>
-
-{% if new_api_key %}
-<!-- One-time API key display: rendered on this page load only. -->
-<div class="modal-overlay" id="apiKeyModal" x-data="modalPanel('apiKeyModal')"
-     :class="{ active: isOpen }" x-init="open()">
-    <div class="modal-content">
-        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-        <h2>API key for {{ new_api_key.username }}</h2>
-        <p class="api-key-hint">
-            Please copy your API key and store it safely. It will <strong>not</strong> be shown again.
-        </p>
-        <div class="api-key-box">
-            <code id="apiKeyValue">{{ new_api_key.key }}</code>
-            <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
         </div>
-        <button type="button" class="btn btn-primary btn-full" @click="close()">
-            I've saved the key
-        </button>
-    </div>
-</div>
-{% endif %}
+    {% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
-<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
-<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
-<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}"
+            src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>
 {% endblock %}

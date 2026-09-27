@@ -1,0 +1,10 @@
+{% if not feeds %}
+<p class="empty-state">{{ message }}</p>
+{% else %}
+{% for feed in feeds %}
+<button type="button" class="radio-result-item" data-action="use-podcast-result" data-url="{{ feed.url }}">
+    <span class="radio-result-name">{{ feed.title or '(untitled)' }}</span>
+    <span class="radio-result-url">{{ feed.url }}</span>
+</button>
+{% endfor %}
+{% endif %}

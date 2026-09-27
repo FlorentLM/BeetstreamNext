@@ -119,21 +119,19 @@ def route_delete_radio(station_id: int) -> flask.Response:
 def route_discover_radios() -> flask.Response:
 
     if not flask.current_app.config.get('enable_radio_discovery'):
-        return flask.jsonify({'ok': False, 'message': 'Radio discovery is disabled.', 'stations': []})
+        return flask.render_template('partials/radio_search.html', stations=[], message='Radio discovery is disabled.')
 
     q = (flask.request.args.get('q') or '').strip()
     if not q:
-        return flask.jsonify({'ok': False, 'message': 'Enter a station name to search.', 'stations': []})
+        return flask.render_template('partials/radio_search.html', stations=[], message='Enter a station name to search.')
 
     stations = query_radio_browser(q, limit=15)
     if not stations:
-        return flask.jsonify({'ok': False, 'message': 'No stations found.', 'stations': []})
+        return flask.render_template('partials/radio_search.html', stations=[], message='No stations found.')
 
-    plur = 's' if len(stations) > 1 else ''
-    return flask.jsonify({
-        'ok': True,
-        'message': f'Found {len(stations)} station{plur}.',
-        'stations': [
+    return flask.render_template(
+        'partials/radio_search.html',
+        stations=[
             {
                 'name': s['name'],
                 'stream_url': s['stream_url'],
@@ -142,7 +140,8 @@ def route_discover_radios() -> flask.Response:
             }
             for s in stations
         ],
-    })
+        message=None,
+    )
 
 
 @admin_bp.route('/radios/favicon-proxy', methods=['GET'])
@@ -270,22 +269,17 @@ def route_export_podcast_opml() -> flask.Response:
 def route_discover_podcasts() -> flask.Response:
 
     if not flask.current_app.config.get('enable_podcast_discovery'):
-        return flask.jsonify({'ok': False, 'message': 'Podcast discovery is disabled.', 'feeds': []})
+        return flask.render_template('partials/podcast_search.html', feeds=[], message='Podcast discovery is disabled.')
 
     q = (flask.request.args.get('q') or '').strip()
     if not q:
-        return flask.jsonify({'ok': False, 'message': 'Enter a search term.', 'feeds': []})
+        return flask.render_template('partials/podcast_search.html', feeds=[], message='Enter a search term.')
 
     feeds = query_podcastindex(q, limit=15)
     if not feeds:
-        return flask.jsonify({'ok': False, 'message': 'No podcasts found.', 'feeds': []})
+        return flask.render_template('partials/podcast_search.html', feeds=[], message='No podcasts found.')
 
-    plur = 's' if len(feeds) > 1 else ''
-    return flask.jsonify({
-        'ok': True,
-        'message': f'Found {len(feeds)} podcast{plur}.',
-        'feeds': feeds,
-    })
+    return flask.render_template('partials/podcast_search.html', feeds=feeds, message=None)
 
 
 @admin_bp.route('/podcasts/refresh', methods=['POST'])

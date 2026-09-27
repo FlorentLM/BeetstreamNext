@@ -411,7 +411,11 @@ input:focus, select:focus { border-color: var(--primary); }
 .radio-icon-frame:hover .radio-icon-edit-overlay,
 .radio-icon-frame:focus-visible .radio-icon-edit-overlay { opacity: 1; }
 
-.test-result.radio-search-status { margin: 0.5rem; opacity: 0.8; }
+.test-result.radio-search-status { margin: 0.5rem; }
+
+.htmx-indicator { display: none; }
+.htmx-request.htmx-indicator,
+.htmx-request .htmx-indicator { display: inline; }
 
 .card > .radio-discovery { padding: 0 1.5rem; }
 
@@ -423,6 +427,7 @@ input:focus, select:focus { border-color: var(--primary); }
     border-radius: 8px;
     background: var(--input-bg);
 }
+.radio-discovery-results:empty { display: none; }
 .radio-result-item {
     display: flex;
     flex-direction: column;

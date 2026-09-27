@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.core.jukebox import (
 def route_discover_devices() -> flask.Response:
     from beetsplug.beetstreamnext.settings import settings_store
 
-    requested = flask.request.args.get('backend')
+    requested = flask.request.args.get('jukebox_backend')
     backend = requested if requested in ('server_hardware', 'sonos', 'chromecast') else settings_store.get('jukebox_backend')
 
     try:
@@ -36,10 +36,12 @@ def route_discover_devices() -> flask.Response:
                 for d in mpv_discovery()
             ]
     except JukeboxUnavailableException as e:
-        return flask.jsonify({'ok': False, 'message': str(e), 'devices': []})
+        return flask.render_template('partials/jukebox_devices.html', devices=[], ok=False, message=str(e))
 
     if not devices:
-        return flask.jsonify({'ok': False, 'message': f'No {kind} found.', 'devices': []})
+        return flask.render_template('partials/jukebox_devices.html', devices=[], ok=False, message=f'No {kind} found.')
 
     plur = 's' if len(devices) > 1 else ''
-    return flask.jsonify({'ok': True, 'message': f'Found {len(devices)} device{plur}.', 'devices': devices})
+    return flask.render_template(
+        'partials/jukebox_devices.html', devices=devices, ok=True, message=f'Found {len(devices)} device{plur}.'
+    )

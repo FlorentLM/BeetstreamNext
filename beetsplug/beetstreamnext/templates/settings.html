@@ -131,11 +131,14 @@
         <p class="test-result" id="test-result-podcastindex"></p>
     {%- elif key == 'jukebox_hardware_device' -%}
         <p class="setting-row-actions">
-            <button type="button" class="btn btn-outline" data-action="discover-devices"
-                    data-url="{{ url_for('admin.route_discover_devices') }}"
-                    data-select="set-{{ key }}"
-                    data-datalist="jukebox-devices-list"
-                    data-result="test-result-{{ key }}">Discover devices</button>
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_discover_devices') }}"
+                    hx-include="#set-jukebox_backend"
+                    hx-target="#jukebox-devices-list"
+                    hx-swap="innerHTML"
+                    hx-disabled-elt="this"
+                    hx-indicator="#jukebox-discovery-spinner">Discover devices</button>
+            <span id="jukebox-discovery-spinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</span>
         </p>
         <p class="test-result" id="test-result-{{ key }}"></p>
     {%- endif -%}
@@ -557,13 +560,18 @@
                 <div class="radio-discovery form-group">
                     <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
                     <div class="setting-input-row">
-                        <input type="text" id="podcastDiscoveryQuery" placeholder="Podcast title">
-                        <button type="button" class="btn btn-outline" data-action="discover-podcasts"
-                                data-url="{{ url_for('admin.route_discover_podcasts') }}"
-                                data-input="podcastDiscoveryQuery"
-                                data-results="podcastDiscoveryResults">Search</button>
+                        <input type="text" id="podcastDiscoveryQuery" name="q" placeholder="Podcast title">
+                        <button type="button" class="btn btn-outline"
+                                hx-get="{{ url_for('admin.route_discover_podcasts') }}"
+                                hx-include="#podcastDiscoveryQuery"
+                                hx-target="#podcastDiscoveryResults"
+                                hx-swap="innerHTML"
+                                hx-trigger="click, keyup[key=='Enter'] from:#podcastDiscoveryQuery"
+                                hx-disabled-elt="this"
+                                hx-indicator="#podcastDiscoverySpinner">Search</button>
                     </div>
-                    <div class="radio-discovery-results hidden" id="podcastDiscoveryResults"></div>
+                    <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
+                    <div class="radio-discovery-results" id="podcastDiscoveryResults"></div>
                 </div>
                 {% endif %}
 
@@ -1123,14 +1131,19 @@
         <div class="radio-discovery form-group">
             <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
             <div class="setting-input-row">
-                <input type="text" id="radioDiscoveryQuery" placeholder="Station name">
+                <input type="text" id="radioDiscoveryQuery" name="q" placeholder="Station name">
                 <button type="button" class="btn btn-outline" data-action="discover-radios"
-                        data-url="{{ url_for('admin.route_discover_radios') }}"
                         data-favicon-proxy="{{ url_for('admin.route_radio_favicon_proxy') }}"
-                        data-input="radioDiscoveryQuery"
-                        data-results="radioDiscoveryResults">Search</button>
+                        hx-get="{{ url_for('admin.route_discover_radios') }}"
+                        hx-include="#radioDiscoveryQuery"
+                        hx-target="#radioDiscoveryResults"
+                        hx-swap="innerHTML"
+                        hx-trigger="click, keyup[key=='Enter'] from:#radioDiscoveryQuery"
+                        hx-disabled-elt="this"
+                        hx-indicator="#radioDiscoverySpinner">Search</button>
             </div>
-            <div class="radio-discovery-results hidden" id="radioDiscoveryResults"></div>
+            <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
+            <div class="radio-discovery-results" id="radioDiscoveryResults"></div>
         </div>
         {% endif %}
         <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">

@@ -660,187 +660,22 @@
         }
     }
 
-    async function discoverDevices(button) {
-        const url = button.dataset.url;
-        const input = document.getElementById(button.dataset.select);
-        const datalist = document.getElementById(button.dataset.datalist);
-        const result = document.getElementById(button.dataset.result);
-        if (!url || !input || !datalist) return;
-
-        const previousValue = input.value;
-
-        const backendSelect = document.getElementById('set-jukebox_backend');
-        const discoverUrl = backendSelect ? `${url}?backend=${encodeURIComponent(backendSelect.value)}` : url;
-
-        button.disabled = true;
-        if (result) { result.className = 'test-result'; result.textContent = 'Searching...'; }
-
-        try {
-            const resp = await fetch(discoverUrl, { credentials: 'same-origin' });
-            const payload = await resp.json();
-            const devices = payload.devices || [];
-
-            datalist.innerHTML = '';
-
-            devices.forEach(dev => {
-                const opt = document.createElement('option');
-                opt.value = dev.id;
-                opt.label = `${dev.name} (${dev.detail})`;
-                datalist.appendChild(opt);
-            });
-
-            // only fill suggest when the field is empty and discovery found something
-            if (!previousValue && devices.length === 1) {
-                input.value = devices[0].id;
-            }
-
-            if (result) {
-                result.className = 'test-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
-                result.textContent = payload.message || (payload.ok ? 'OK' : 'Failed');
-            }
-        } catch (err) {
-            if (result) {
-                result.className = 'test-result test-result-fail';
-                result.textContent = 'Discovery failed: ' + err.message;
-            }
-        } finally {
-            button.disabled = false;
+    // only fill the field when it's empty and discovery found exactly one device
+    document.body.addEventListener('htmx:afterSwap', event => {
+        if (event.detail.target.id !== 'jukebox-devices-list') return;
+        const input = document.getElementById('set-jukebox_hardware_device');
+        const options = event.detail.target.querySelectorAll('option');
+        if (input && !input.value && options.length === 1) {
+            input.value = options[0].value;
         }
-    }
-
-    async function searchRadioStations(button) {
-        const url = button.dataset.url;
-        const input = document.getElementById(button.dataset.input);
-        const results = document.getElementById(button.dataset.results);
-        if (!url || !input || !results) return;
-
-        const q = input.value.trim();
-        if (!q) return;
-
-        button.disabled = true;
-        results.classList.remove('hidden');
-        results.innerHTML = '';
-        const status = document.createElement('p');
-        status.className = 'test-result radio-search-status';
-        status.textContent = 'Searching...';
-        results.appendChild(status);
-
-        try {
-            const resp = await fetch(`${url}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
-            const payload = await resp.json();
-            const stations = payload.stations || [];
-
-            results.innerHTML = '';
-
-            if (!stations.length) {
-                const p = document.createElement('p');
-                p.className = 'test-result test-result-fail';
-                p.textContent = payload.message || 'No stations found.';
-                results.appendChild(p);
-                return;
-            }
-
-            stations.forEach(station => {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'radio-result-item';
-                item.dataset.action = 'use-radio-result';
-                item.dataset.name = station.name || '';
-                item.dataset.streamUrl = station.stream_url || '';
-                item.dataset.homepageUrl = station.homepage_url || '';
-                item.dataset.favicon = station.favicon || '';
-
-                const name = document.createElement('span');
-                name.className = 'radio-result-name';
-                name.textContent = station.name || '(unnamed)';
-                item.appendChild(name);
-
-                const streamUrl = document.createElement('span');
-                streamUrl.className = 'radio-result-url';
-                streamUrl.textContent = station.stream_url || '';
-                item.appendChild(streamUrl);
-
-                results.appendChild(item);
-            });
-        } catch (err) {
-            results.innerHTML = '';
-            const p = document.createElement('p');
-            p.className = 'test-result test-result-fail';
-            p.textContent = 'Search failed: ' + err.message;
-            results.appendChild(p);
-        } finally {
-            button.disabled = false;
-        }
-    }
-
-    async function searchPodcasts(button) {
-        const url = button.dataset.url;
-        const input = document.getElementById(button.dataset.input);
-        const results = document.getElementById(button.dataset.results);
-        if (!url || !input || !results) return;
-
-        const q = input.value.trim();
-        if (!q) return;
-
-        button.disabled = true;
-        results.classList.remove('hidden');
-        results.innerHTML = '';
-        const status = document.createElement('p');
-        status.className = 'test-result radio-search-status';
-        status.textContent = 'Searching...';
-        results.appendChild(status);
-
-        try {
-            const resp = await fetch(`${url}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
-            const payload = await resp.json();
-            const feeds = payload.feeds || [];
-
-            results.innerHTML = '';
-
-            if (!feeds.length) {
-                const p = document.createElement('p');
-                p.className = 'test-result test-result-fail';
-                p.textContent = payload.message || 'No podcasts found.';
-                results.appendChild(p);
-                return;
-            }
-
-            feeds.forEach(feed => {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'radio-result-item';
-                item.dataset.action = 'use-podcast-result';
-                item.dataset.url = feed.url || '';
-
-                const title = document.createElement('span');
-                title.className = 'radio-result-name';
-                title.textContent = feed.title || '(untitled)';
-                item.appendChild(title);
-
-                const feedUrl = document.createElement('span');
-                feedUrl.className = 'radio-result-url';
-                feedUrl.textContent = feed.url || '';
-                item.appendChild(feedUrl);
-
-                results.appendChild(item);
-            });
-        } catch (err) {
-            results.innerHTML = '';
-            const p = document.createElement('p');
-            p.className = 'test-result test-result-fail';
-            p.textContent = 'Search failed: ' + err.message;
-            results.appendChild(p);
-        } finally {
-            button.disabled = false;
-        }
-    }
+    });
 
     function usePodcastResult(target) {
         const urlInput = document.getElementById('podcastFeedUrl');
         if (urlInput) urlInput.value = target.dataset.url || '';
 
         const results = document.getElementById('podcastDiscoveryResults');
-        if (results) results.classList.add('hidden');
+        if (results) results.innerHTML = '';
     }
 
     async function useRadioResult(target) {
@@ -861,7 +696,7 @@
         if (imageInput) imageInput.value = '';
 
         const results = document.getElementById('radioDiscoveryResults');
-        if (results) results.classList.add('hidden');
+        if (results) results.innerHTML = '';
 
         const preview = document.getElementById('createRadioIconPreview');
         if (!preview) return;
@@ -994,17 +829,8 @@
             case 'test-connection':
                 testConnection(target);
                 break;
-            case 'discover-devices':
-                discoverDevices(target);
-                break;
-            case 'discover-radios':
-                searchRadioStations(target);
-                break;
             case 'use-radio-result':
                 useRadioResult(target);
-                break;
-            case 'discover-podcasts':
-                searchPodcasts(target);
                 break;
             case 'use-podcast-result':
                 usePodcastResult(target);
@@ -1053,19 +879,6 @@
                     }
                 });
                 break;
-        }
-    });
-
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Enter' && event.target.id === 'radioDiscoveryQuery') {
-            event.preventDefault();
-            const button = document.querySelector('[data-action="discover-radios"]');
-            if (button) searchRadioStations(button);
-        }
-        if (event.key === 'Enter' && event.target.id === 'podcastDiscoveryQuery') {
-            event.preventDefault();
-            const button = document.querySelector('[data-action="discover-podcasts"]');
-            if (button) searchPodcasts(button);
         }
     });
 

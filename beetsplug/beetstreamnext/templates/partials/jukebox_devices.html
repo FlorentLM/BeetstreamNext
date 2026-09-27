@@ -1,0 +1,4 @@
+{% for d in devices %}
+<option value="{{ d.id }}" label="{{ d.name }} ({{ d.detail }})"></option>
+{% endfor %}
+<p id="test-result-jukebox_hardware_device" class="test-result {{ 'test-result-ok' if ok else 'test-result-fail' }}" hx-swap-oob="true">{{ message }}</p>

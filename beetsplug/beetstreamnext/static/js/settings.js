@@ -1,6 +1,119 @@
 (function () {
     'use strict';
 
+    // Alpine components (tabs, modals, checkbox-group toggles)
+    // (registered on 'alpine:init' so they exist before CSP build parses x-data)
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('modal', {
+            current: null,
+            message: '',
+            promptValue: '',
+            confirmResolve: null,
+            promptResolve: null,
+
+            show(id) { this.current = id; },
+
+            hide(id) {
+                if (id && this.current !== id) return;
+                this.current = null;
+                this.settleConfirm(false);
+                this.settlePrompt(null);
+            },
+
+            settleConfirm(result) {
+                if (!this.confirmResolve) return;
+                const resolve = this.confirmResolve;
+                this.confirmResolve = null;
+                resolve(result);
+            },
+
+            settlePrompt(result) {
+                if (!this.promptResolve) return;
+                const resolve = this.promptResolve;
+                this.promptResolve = null;
+                resolve(result);
+            },
+
+            confirm(message) {
+                return new Promise(resolve => {
+                    this.confirmResolve = resolve;
+                    this.message = message;
+                    this.show('confirmModal');
+                });
+            },
+
+            prompt(message, defaultValue) {
+                return new Promise(resolve => {
+                    this.promptResolve = resolve;
+                    this.message = message;
+                    this.promptValue = defaultValue || '';
+                    this.show('promptModal');
+                    setTimeout(() => {
+                        const input = document.getElementById('promptInput');
+                        if (input) { input.focus(); input.select(); }
+                    }, 50);
+                });
+            },
+
+            confirmProceed() {
+                this.settleConfirm(true);
+                this.hide('confirmModal');
+            },
+
+            promptProceed() {
+                this.settlePrompt(this.promptValue);
+                this.hide('promptModal');
+            }
+        });
+
+        Alpine.data('tabs', () => ({
+            active: 'users',
+            validTabs: [],
+
+            init() {
+                this.validTabs = Array.from(this.$el.querySelectorAll('.tab[data-tab]')).map(t => t.dataset.tab);
+                this.syncFromHash();
+                window.addEventListener('hashchange', () => this.syncFromHash());
+            },
+
+            syncFromHash() {
+                const hash = (window.location.hash || '').slice(1);
+                this.active = this.validTabs.includes(hash) ? hash : (this.validTabs[0] || 'users');
+            },
+
+            set(name) {
+                this.active = name;
+                history.replaceState(null, '', '#' + name);
+            },
+
+            closeModal() {
+                Alpine.store('modal').hide();
+            }
+        }));
+
+        // Routing modal state via getters bcause the CSP build doesn't resolve the nested $store
+        Alpine.data('modalPanel', (id) => ({
+            get isOpen() { return Alpine.store('modal').current === id; },
+            get message() { return Alpine.store('modal').message; },
+            get promptValue() { return Alpine.store('modal').promptValue; },
+            set promptValue(v) { Alpine.store('modal').promptValue = v; },
+            open() { Alpine.store('modal').show(id); },
+            close() { Alpine.store('modal').hide(id); },
+            confirmProceed() { Alpine.store('modal').confirmProceed(); },
+            promptProceed() { Alpine.store('modal').promptProceed(); }
+        }));
+
+        Alpine.data('checkboxGroup', () => ({
+            setAll(checked, skip = []) {
+                this.$el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    if (checked && skip.includes(cb.name)) return;
+                    cb.checked = checked;
+                });
+            }
+        }));
+    });
+
     // Theme
 
     function applyTheme(theme) {
@@ -21,122 +134,6 @@
             document.cookie = 'bsn-theme=' + next + '; Path=/; Max-Age=31536000; SameSite=Lax';
         } catch (e) {}
         applyTheme(next);
-    }
-
-    // Tabs
-
-    function activateTab(name) {
-        const tabs = Array.from(document.querySelectorAll('.tab'));
-        if (tabs.length === 0) return;
-        const valid = tabs.map(t => t.dataset.tab);
-        if (!valid.includes(name)) name = valid[0];
-
-        tabs.forEach(t => {
-            const active = t.dataset.tab === name;
-            t.classList.toggle('active', active);
-            t.setAttribute('aria-selected', active ? 'true' : 'false');
-        });
-        document.querySelectorAll('.tab-content').forEach(c => {
-            c.classList.toggle('active', c.dataset.tabContent === name);
-        });
-    }
-
-    function initTabsFromHash() {
-        const initial = (window.location.hash || '').replace('#', '') || 'users';
-        activateTab(initial);
-    }
-
-    window.addEventListener('hashchange', initTabsFromHash);
-
-    // Modals
-
-    function openModal(id) {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('active');
-    }
-
-    function closeModal(id) {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove('active');
-        if (id === 'confirmModal') settleConfirm(false);
-        if (id === 'promptModal') settlePrompt(null);
-    }
-
-    function closeAllModals() {
-        document.querySelectorAll('.modal-overlay.active').forEach(m => {
-            m.classList.remove('active');
-        });
-        settleConfirm(false);
-        settlePrompt(null);
-    }
-
-    let confirmSettle = null;
-    let promptSettle = null;
-
-    function settleConfirm(result) {
-        if (!confirmSettle) return;
-        const settle = confirmSettle;
-        confirmSettle = null;
-        settle(result);
-    }
-
-    function settlePrompt(result) {
-        if (!promptSettle) return;
-        const settle = promptSettle;
-        promptSettle = null;
-        settle(result);
-    }
-
-    function confirmModal(message) {
-        return new Promise(resolve => {
-            confirmSettle = resolve;
-            document.getElementById('confirmMessage').textContent = message;
-            openModal('confirmModal');
-        });
-    }
-
-    function submitPrompt() {
-        const input = document.getElementById('promptInput');
-        settlePrompt(input ? input.value : '');
-        closeModal('promptModal');
-    }
-
-    function promptModal(message, defaultValue) {
-        return new Promise(resolve => {
-            promptSettle = resolve;
-            document.getElementById('promptMessage').textContent = message;
-            const input = document.getElementById('promptInput');
-            if (input) {
-                input.value = defaultValue || '';
-                openModal('promptModal');
-                setTimeout(() => { input.focus(); input.select(); }, 50);
-            } else {
-                openModal('promptModal');
-            }
-        });
-    }
-
-    // Role checkboxes
-    // `data-skip` (comma-separated names) excludes specific roles
-    // (used to keep "select all" from giving admin)
-
-    function toggleRoles(formId, checked, skip) {
-        const form = document.getElementById(formId);
-        if (!form) return;
-        const skipSet = new Set((skip || '').split(',').map(s => s.trim()).filter(Boolean));
-        form.querySelectorAll('.roles-grid input[type="checkbox"]').forEach(cb => {
-            if (checked && skipSet.has(cb.name)) return;
-            cb.checked = checked;
-        });
-    }
-
-    // Generic checkbox group select all / select none
-    function toggleCheckboxGroup(containerId, checked) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.checked = checked;
-        });
     }
 
     // Edit modal
@@ -199,7 +196,7 @@
         const bitrate = form.querySelector('[name="maxBitRate"]');
         if (bitrate) bitrate.value = userData.maxBitRate || 0;
 
-        openModal('editModal');
+        Alpine.store('modal').show('editModal');
     }
 
     // Radio station edit modal
@@ -237,7 +234,7 @@
             }
         }
 
-        openModal('editRadioModal');
+        Alpine.store('modal').show('editRadioModal');
     }
 
     // One-time API key copy
@@ -769,38 +766,15 @@
     // Events
 
     document.addEventListener('click', event => {
-        const tab = event.target.closest('.tab[data-tab]');
-        if (tab) {
-            activateTab(tab.dataset.tab);
-            // replaceState so switching tabs doesn't pollute history
-            history.replaceState(null, '', '#' + tab.dataset.tab);
-            return;
-        }
-
         const target = event.target.closest('[data-action]');
         if (!target) return;
 
         switch (target.dataset.action) {
-            case 'open-modal':
-                openModal(target.dataset.target);
-                break;
-            case 'close-modal':
-                closeModal(target.dataset.target);
-                break;
-            case 'modal-backdrop':
-                if (event.target === target) closeModal(target.id);
-                break;
             case 'edit-user':
                 openEditModal(target);
                 break;
             case 'edit-radio':
                 openEditRadioModal(target);
-                break;
-            case 'roles-toggle':
-                toggleRoles(target.dataset.target, target.dataset.value === 'true', target.dataset.skip);
-                break;
-            case 'checkbox-group-toggle':
-                toggleCheckboxGroup(target.dataset.target, target.dataset.value === 'true');
                 break;
             case 'copy-api-key':
                 copyApiKey(target);
@@ -846,17 +820,10 @@
             case 'toggle-theme':
                 toggleTheme();
                 break;
-            case 'confirm-proceed':
-                settleConfirm(true);
-                closeModal('confirmModal');
-                break;
-            case 'prompt-proceed':
-                submitPrompt();
-                break;
             case 'edit-chat':
                 const msgId = target.dataset.id;
                 const oldText = target.dataset.text;
-                promptModal("Edit user's chat message:", oldText).then(newText => {
+                Alpine.store('modal').prompt("Edit user's chat message:", oldText).then(newText => {
                     if (newText !== null && newText.trim() !== "") {
                         const form = document.createElement('form');
                         form.method = 'POST';
@@ -880,6 +847,17 @@
                 });
                 break;
         }
+    });
+
+    // htmx's `keyup[key=='Enter']` trigger filters compile the condition with `new Function()`,
+    // which our CSP blocks (no 'unsafe-eval'). Enter-to-search is wired up here instead.
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        const input = event.target.closest('#podcastDiscoveryQuery, #radioDiscoveryQuery');
+        if (!input) return;
+        event.preventDefault();
+        const button = input.parentElement.querySelector('button[hx-get]');
+        if (button) button.click();
     });
 
     document.addEventListener('change', event => {
@@ -917,7 +895,7 @@
         const form = event.target.closest('form[data-confirm]');
         if (!form) return;
         event.preventDefault();
-        confirmModal(form.dataset.confirm).then(ok => {
+        Alpine.store('modal').confirm(form.dataset.confirm).then(ok => {
             if (ok) form.submit();
         });
     });
@@ -946,7 +924,7 @@
 
         event.preventDefault();
         const listed = entries.map(e => `'${e}'`).join(', ');
-        confirmModal(
+        Alpine.store('modal').confirm(
             `Warning: Your current IP (${clientIp || 'unknown'}) is NOT ${entries.length === 1 ? "" : "listed in"} ${listed}. ` +
             `\n\nAccess will be restricted to ${entries.length === 1 ? "that IP" : "these IPs"} and the current IP will lose access immediately.\n\nContinue?`
         ).then(ok => {
@@ -954,23 +932,9 @@
         });
     });
 
-    document.addEventListener('keydown', event => {
-        // Enter submits
-        if (event.key === 'Enter' && event.target.id === 'promptInput') {
-            event.preventDefault();
-            submitPrompt();
-        }
-    });
-
-    // Esc to close open modals
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closeAllModals();
-    });
-
     // Init
 
     applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
-    initTabsFromHash();
 
     const scanStatusRefreshBtn = document.querySelector('[data-action="refresh-scan-status"]');
     if (scanStatusRefreshBtn) refreshScanStatus(scanStatusRefreshBtn);
@@ -996,11 +960,5 @@
             editor.value = editor.value.slice(0, start) + '  ' + editor.value.slice(end);
             editor.selectionStart = editor.selectionEnd = start + 2;
         });
-    });
-
-    // Auto-show the one-time API key modal if the server rendered one
-    // Not dismissed by backdrop click just to be sure
-    document.querySelectorAll('.modal-overlay[data-autoshow]').forEach(m => {
-        m.classList.add('active');
     });
 })();

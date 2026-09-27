@@ -2,6 +2,9 @@
 {% import '_macros.html' as macros %}
 {% block title %} - Admin Dashboard{% endblock %}
 {% block styles %}
+{# settings.css defines .htmx-indicator/.htmx-request rules, so prevent htmx from injecting its <style> tag (it gets blokcked by CSP anyways) #}
+<meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+{# TODO: Use htmx 4 once everything is working with with 2.x #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 {% endblock %}
 
@@ -28,27 +31,27 @@
             {% endfor %}
         </select>
     {%- elif key == 'external_playlists_editors' -%}
-        <div class="roles-header">
-            <label class="setting-row-label">{{ key }}</label>
-            <div class="roles-actions">
-                <button type="button" class="text-btn" data-action="checkbox-group-toggle"
-                        data-target="cbgroup-{{ key }}" data-value="true" {{ dis }}>All</button>
-                <span class="roles-sep">|</span>
-                <button type="button" class="text-btn text-btn-muted" data-action="checkbox-group-toggle"
-                        data-target="cbgroup-{{ key }}" data-value="false" {{ dis }}>None</button>
+        <div x-data="checkboxGroup">
+            <div class="roles-header">
+                <label class="setting-row-label">{{ key }}</label>
+                <div class="roles-actions">
+                    <button type="button" class="text-btn" @click="setAll(true)" {{ dis }}>All</button>
+                    <span class="roles-sep">|</span>
+                    <button type="button" class="text-btn text-btn-muted" @click="setAll(false)" {{ dis }}>None</button>
+                </div>
             </div>
-        </div>
-        <div class="roles-grid" id="cbgroup-{{ key }}">
-            <label class="role-item">
-                <input type="checkbox" name="{{ key }}" value="*" {% if '*' in info.value %}checked{% endif %} {{ dis }}>
-                Everyone
-            </label>
-            {% for u in (users or []) %}
-            <label class="role-item">
-                <input type="checkbox" name="{{ key }}" value="{{ u.username }}" {% if u.username in info.value %}checked{% endif %} {{ dis }}>
-                {{ u.username }}
-            </label>
-            {% endfor %}
+            <div class="roles-grid">
+                <label class="role-item">
+                    <input type="checkbox" name="{{ key }}" value="*" {% if '*' in info.value %}checked{% endif %} {{ dis }}>
+                    Everyone
+                </label>
+                {% for u in (users or []) %}
+                <label class="role-item">
+                    <input type="checkbox" name="{{ key }}" value="{{ u.username }}" {% if u.username in info.value %}checked{% endif %} {{ dis }}>
+                    {{ u.username }}
+                </label>
+                {% endfor %}
+            </div>
         </div>
         <p class="label-hint">Empty selection = read-only.</p>
     {%- elif key == 'jukebox_hardware_device' -%}
@@ -244,7 +247,7 @@
 {% endmacro %}
 
 {% block body %}
-<div class="dashboard-container">
+<div class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()">
 
     <header class="header">
         <a href="{{ url_for('public.home') }}" class="brand-section">
@@ -290,26 +293,34 @@
     </div>
 
     <nav class="tabs" role="tablist">
-        <button class="tab" role="tab" data-tab="users" aria-controls="tab-users">Users</button>
+        <button class="tab" role="tab" data-tab="users" :class="{ active: active === 'users' }"
+                :aria-selected="active === 'users' ? 'true' : 'false'" @click="set('users')" aria-controls="tab-users">Users</button>
         {% for cat in settings_categories if cat != 'podcasts' %}
-        <button class="tab" role="tab" data-tab="{{ cat }}" aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
+        <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
+                :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')" aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
         {% endfor %}
         {% if 'podcasts' in settings_categories %}
-        <button class="tab" role="tab" data-tab="podcasts" aria-controls="tab-podcasts">Podcasts</button>
+        <button class="tab" role="tab" data-tab="podcasts" :class="{ active: active === 'podcasts' }"
+                :aria-selected="active === 'podcasts' ? 'true' : 'false'" @click="set('podcasts')" aria-controls="tab-podcasts">Podcasts</button>
         {% endif %}
-        <button class="tab" role="tab" data-tab="radios" aria-controls="tab-radios">Radios</button>
-        <button class="tab" role="tab" data-tab="shares" aria-controls="tab-shares">Shares</button>
-        <button class="tab" role="tab" data-tab="chat" aria-controls="tab-chat">Chat</button>
-        <button class="tab" role="tab" data-tab="beets" aria-controls="tab-beets">Beets</button>
-        <button class="tab" role="tab" data-tab="maintenance" aria-controls="tab-maintenance">Maintenance</button>
+        <button class="tab" role="tab" data-tab="radios" :class="{ active: active === 'radios' }"
+                :aria-selected="active === 'radios' ? 'true' : 'false'" @click="set('radios')" aria-controls="tab-radios">Radios</button>
+        <button class="tab" role="tab" data-tab="shares" :class="{ active: active === 'shares' }"
+                :aria-selected="active === 'shares' ? 'true' : 'false'" @click="set('shares')" aria-controls="tab-shares">Shares</button>
+        <button class="tab" role="tab" data-tab="chat" :class="{ active: active === 'chat' }"
+                :aria-selected="active === 'chat' ? 'true' : 'false'" @click="set('chat')" aria-controls="tab-chat">Chat</button>
+        <button class="tab" role="tab" data-tab="beets" :class="{ active: active === 'beets' }"
+                :aria-selected="active === 'beets' ? 'true' : 'false'" @click="set('beets')" aria-controls="tab-beets">Beets</button>
+        <button class="tab" role="tab" data-tab="maintenance" :class="{ active: active === 'maintenance' }"
+                :aria-selected="active === 'maintenance' ? 'true' : 'false'" @click="set('maintenance')" aria-controls="tab-maintenance">Maintenance</button>
     </nav>
 
     {# Users tab #}
-    <section class="tab-content" id="tab-users" data-tab-content="users" role="tabpanel">
+    <section class="tab-content" id="tab-users" :class="{ active: active === 'users' }" role="tabpanel">
         <div class="card">
             <div class="table-header">
                 <h2>User Directory</h2>
-                <button class="btn btn-primary" data-action="open-modal" data-target="createModal">
+                <button class="btn btn-primary" x-data="modalPanel('createModal')" @click="open()">
                     + Add New User
                 </button>
             </div>
@@ -390,7 +401,7 @@
     </section>
 
     {# Chat moderation tab #}
-    <section class="tab-content" id="tab-chat" data-tab-content="chat" role="tabpanel">
+    <section class="tab-content" id="tab-chat" :class="{ active: active === 'chat' }" role="tabpanel">
         <div class="card">
             <div class="table-header">
                 <h2>Post Announcement</h2>
@@ -464,7 +475,7 @@
     </section>
 
     {# Shares tab #}
-    <section class="tab-content" id="tab-shares" data-tab-content="shares" role="tabpanel">
+    <section class="tab-content" id="tab-shares" :class="{ active: active === 'shares' }" role="tabpanel">
         <div class="card">
             <div class="table-header">
                 <h2>Shares Directory</h2>
@@ -530,7 +541,7 @@
 
     {# Settings tabs #}
     {% for cat in settings_categories %}
-    <section class="tab-content" id="tab-{{ cat }}" data-tab-content="{{ cat }}" role="tabpanel">
+    <section class="tab-content" id="tab-{{ cat }}" :class="{ active: active === '{{ cat }}' }" role="tabpanel">
         <div class="card">
             <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
             {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions, setting_pills) }}
@@ -566,7 +577,7 @@
                                 hx-include="#podcastDiscoveryQuery"
                                 hx-target="#podcastDiscoveryResults"
                                 hx-swap="innerHTML"
-                                hx-trigger="click, keyup[key=='Enter'] from:#podcastDiscoveryQuery"
+                                hx-trigger="click"
                                 hx-disabled-elt="this"
                                 hx-indicator="#podcastDiscoverySpinner">Search</button>
                     </div>
@@ -663,11 +674,11 @@
     {% endfor %}
 
     {# Radios tab #}
-    <section class="tab-content" id="tab-radios" data-tab-content="radios" role="tabpanel">
+    <section class="tab-content" id="tab-radios" :class="{ active: active === 'radios' }" role="tabpanel">
         <div class="card">
             <div class="table-header">
                 <h2>Internet Radio Stations</h2>
-                <button class="btn btn-primary" data-action="open-modal" data-target="createRadioModal">
+                <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
                     + Add Station
                 </button>
             </div>
@@ -709,7 +720,7 @@
     </section>
 
     {# Beets interaction tab #}
-    <section class="tab-content" id="tab-beets" data-tab-content="beets" role="tabpanel">
+    <section class="tab-content" id="tab-beets" :class="{ active: active === 'beets' }" role="tabpanel">
 
         <div class="card">
             <div class="table-header"><h2>Beets Configuration</h2></div>
@@ -775,7 +786,7 @@
     </section>
 
     {# Maintenance tab #}
-    <section class="tab-content" id="tab-maintenance" data-tab-content="maintenance" role="tabpanel">
+    <section class="tab-content" id="tab-maintenance" :class="{ active: active === 'maintenance' }" role="tabpanel">
 
         <div class="card">
             <div class="table-header"><h2>Offline files & Caches</h2></div>
@@ -981,36 +992,40 @@
 </div>
 
 <!-- Confirmation modal -->
-<div class="modal-overlay modal-confirm" id="confirmModal" data-action="modal-backdrop">
+<div class="modal-overlay modal-confirm" id="confirmModal" x-data="modalPanel('confirmModal')"
+     :class="{ active: isOpen }" @click.self="close()">
     <div class="modal-content modal-content-small">
-        <h2 id="confirmTitle">Confirm Action</h2>
-        <p id="confirmMessage" class="confirm-text"></p>
+        <h2>Confirm Action</h2>
+        <p class="confirm-text" x-text="message"></p>
         <div class="confirm-actions">
-            <button type="button" class="btn btn-outline" data-action="close-modal" data-target="confirmModal">Cancel</button>
-            <button type="button" class="btn btn-primary" data-action="confirm-proceed" id="confirmProceed">Confirm</button>
+            <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="confirmProceed()">Confirm</button>
         </div>
     </div>
 </div>
 
 <!-- Prompt modal -->
-<div class="modal-overlay modal-confirm" id="promptModal" data-action="modal-backdrop">
+<div class="modal-overlay modal-confirm" id="promptModal" x-data="modalPanel('promptModal')"
+     :class="{ active: isOpen }" @click.self="close()">
     <div class="modal-content modal-content-small">
         <h2>Edit</h2>
-        <p id="promptMessage" class="confirm-text"></p>
+        <p class="confirm-text" x-text="message"></p>
         <div class="form-group">
-            <input type="text" id="promptInput" autocomplete="off">
+            <input type="text" id="promptInput" autocomplete="off" x-model="promptValue"
+                   @keydown.enter.prevent="promptProceed()">
         </div>
         <div class="confirm-actions">
-            <button type="button" class="btn btn-outline" data-action="close-modal" data-target="promptModal">Cancel</button>
-            <button type="button" class="btn btn-primary" data-action="prompt-proceed" id="promptProceed">OK</button>
+            <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="promptProceed()">OK</button>
         </div>
     </div>
 </div>
 
 <!-- User create modal -->
-<div class="modal-overlay" id="createModal" data-action="modal-backdrop">
+<div class="modal-overlay" id="createModal" x-data="modalPanel('createModal')"
+     :class="{ active: isOpen }" @click.self="close()">
     <div class="modal-content">
-        <button class="close-modal" data-action="close-modal" data-target="createModal" aria-label="Close">&times;</button>
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
         <h2>Add New User</h2>
         <form id="createForm" aria-label="Create BeetstreamNext user" action="{{ url_for('admin.route_create_user') }}" method="POST">
             {{ create_form.csrf_token }}
@@ -1026,15 +1041,13 @@
                 <label>Email <span class="label-hint">(optional)</span></label>
                 {{ create_form.email(placeholder="user@example.com", autocomplete="email") }}
             </div>
-            <div class="form-group">
+            <div class="form-group" x-data="checkboxGroup">
                 <div class="roles-header">
                     <label class="label-inline">Roles &amp; Permissions</label>
                     <div class="roles-actions">
-                        <button type="button" class="text-btn" data-action="roles-toggle"
-                                data-target="createForm" data-value="true" data-skip="adminRole">Select all</button>
+                        <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all</button>
                         <span class="roles-sep">|</span>
-                        <button type="button" class="text-btn text-btn-muted" data-action="roles-toggle"
-                                data-target="createForm" data-value="false">Clear</button>
+                        <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
                     </div>
                 </div>
                 <div class="roles-grid">
@@ -1056,9 +1069,10 @@
 </div>
 
 <!-- User edit modal -->
-<div class="modal-overlay" id="editModal" data-action="modal-backdrop">
+<div class="modal-overlay" id="editModal" x-data="modalPanel('editModal')"
+     :class="{ active: isOpen }" @click.self="close()">
     <div class="modal-content">
-        <button class="close-modal" data-action="close-modal" data-target="editModal" aria-label="Close">&times;</button>
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
         <h2>Edit User</h2>
         <form method="POST" id="editForm" data-update-url="{{ url_for('admin.route_update_user', username='__USERNAME__') }}">
             {{ edit_form.csrf_token }}
@@ -1071,15 +1085,13 @@
                 <label>Email <span class="label-hint">(optional)</span></label>
                 {{ edit_form.email(placeholder="user@example.com", autocomplete="off") }}
             </div>
-            <div class="form-group">
+            <div class="form-group" x-data="checkboxGroup">
                 <div class="roles-header">
                     <label class="label-inline">Roles &amp; Permissions</label>
                     <div class="roles-actions">
-                        <button type="button" class="text-btn" data-action="roles-toggle"
-                                data-target="editForm" data-value="true" data-skip="adminRole">Select all</button>
+                        <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all</button>
                         <span class="roles-sep">|</span>
-                        <button type="button" class="text-btn text-btn-muted" data-action="roles-toggle"
-                                data-target="editForm" data-value="false">Clear</button>
+                        <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
                     </div>
                 </div>
                 <div class="roles-grid">
@@ -1123,9 +1135,10 @@
 </div>
 
 <!-- Radio station create modal -->
-<div class="modal-overlay" id="createRadioModal" data-action="modal-backdrop">
+<div class="modal-overlay" id="createRadioModal" x-data="modalPanel('createRadioModal')"
+     :class="{ active: isOpen }" @click.self="close()">
     <div class="modal-content">
-        <button class="close-modal" data-action="close-modal" data-target="createRadioModal" aria-label="Close">&times;</button>
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
         <h2>Add Radio Station</h2>
         {% if radio_discovery_enabled %}
         <div class="radio-discovery form-group">
@@ -1138,7 +1151,7 @@
                         hx-include="#radioDiscoveryQuery"
                         hx-target="#radioDiscoveryResults"
                         hx-swap="innerHTML"
-                        hx-trigger="click, keyup[key=='Enter'] from:#radioDiscoveryQuery"
+                        hx-trigger="click"
                         hx-disabled-elt="this"
                         hx-indicator="#radioDiscoverySpinner">Search</button>
             </div>
@@ -1179,9 +1192,10 @@
 </div>
 
 <!-- Radio station edit modal -->
-<div class="modal-overlay" id="editRadioModal" data-action="modal-backdrop">
+<div class="modal-overlay" id="editRadioModal" x-data="modalPanel('editRadioModal')"
+     :class="{ active: isOpen }" @click.self="close()">
     <div class="modal-content">
-        <button class="close-modal" data-action="close-modal" data-target="editRadioModal" aria-label="Close">&times;</button>
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
         <h2>Edit Radio Station</h2>
         <form id="editRadioForm" method="POST" enctype="multipart/form-data"
               data-update-url-base="{{ url_for('admin.route_update_radio', station_id=1) }}">
@@ -1220,10 +1234,11 @@
 </div>
 
 {% if new_api_key %}
-<!-- One-time API key display: rendered on this page load only -->
-<div class="modal-overlay" id="apiKeyModal" data-autoshow="true">
+<!-- One-time API key display: rendered on this page load only. -->
+<div class="modal-overlay" id="apiKeyModal" x-data="modalPanel('apiKeyModal')"
+     :class="{ active: isOpen }" x-init="open()">
     <div class="modal-content">
-        <button class="close-modal" data-action="close-modal" data-target="apiKeyModal" aria-label="Close">&times;</button>
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
         <h2>API key for {{ new_api_key.username }}</h2>
         <p class="api-key-hint">
             Please copy your API key and store it safely. It will <strong>not</strong> be shown again.
@@ -1232,7 +1247,7 @@
             <code id="apiKeyValue">{{ new_api_key.key }}</code>
             <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
         </div>
-        <button type="button" class="btn btn-primary btn-full" data-action="close-modal" data-target="apiKeyModal">
+        <button type="button" class="btn btn-primary btn-full" @click="close()">
             I've saved the key
         </button>
     </div>
@@ -1244,4 +1259,5 @@
 <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
 <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
 <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>
 {% endblock %}

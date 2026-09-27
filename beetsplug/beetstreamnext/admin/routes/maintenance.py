@@ -55,7 +55,7 @@ def route_beets_scan_status() -> flask.Response:
         bsn_logger.warning(f'Could not read item count while checking scan status: {e}')
         items_count = None
 
-    return flask.jsonify({'scanning': is_importing(), 'count': items_count})
+    return flask.render_template('partials/beets_scan_status.html', scanning=is_importing(), count=items_count)
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])
@@ -161,7 +161,7 @@ def route_health_scan() -> flask.Response:
 @admin_bp.route('/maintenance/health-scan-status', methods=['GET'])
 @admin_required
 def route_health_scan_status() -> flask.Response:
-    return flask.jsonify({'scanning': is_scanning(), **health_stats()})
+    return flask.render_template('partials/health_scan_status.html', scanning=is_scanning(), **health_stats())
 
 
 @admin_bp.route('/maintenance/logs', methods=['GET'])

@@ -1,0 +1,6 @@
+<dt>Status</dt>
+<dd>{{ 'Scanning…' if scanning else 'Idle' }}</dd>
+<dt>Songs checked</dt>
+<dd>{{ total if total is not none else '—' }}</dd>
+<dt>Flagged songs</dt>
+<dd>{{ flagged if flagged is not none else '—' }}</dd>

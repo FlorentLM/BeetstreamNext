@@ -816,19 +816,22 @@
             <div class="card">
                 <div class="table-header">
                     <h2>Library Scan</h2>
-                    <button class="btn btn-outline" data-action="refresh-scan-status"
-                            data-url="{{ url_for('admin.route_beets_scan_status') }}">Refresh
+                    <button class="btn btn-outline"
+                            hx-get="{{ url_for('admin.route_beets_scan_status') }}"
+                            hx-trigger="click, load"
+                            hx-target="#beets-scan-status"
+                            hx-swap="innerHTML">Refresh
                     </button>
                 </div>
                 <p class="card-hint">
                     Runs an incremental, unattended <code>beet import</code> over the library's root directory to pick
                     up newly-added files. Refuses to start if beets' <code>timid</code> import mode is enabled.
                 </p>
-                <dl class="kv-grid">
+                <dl class="kv-grid" id="beets-scan-status">
                     <dt>Status</dt>
-                    <dd id="beets-scan-status-value">Loading...</dd>
+                    <dd>Loading...</dd>
                     <dt>Tracks in library</dt>
-                    <dd id="beets-scan-count-value">&mdash;</dd>
+                    <dd>&mdash;</dd>
                 </dl>
                 <form method="POST" action="{{ url_for('admin.route_beets_scan') }}" class="card-body-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -918,8 +921,11 @@
             <div class="card">
                 <div class="table-header">
                     <h2>Audio Health Scan</h2>
-                    <button class="btn btn-outline" data-action="refresh-health-status"
-                            data-url="{{ url_for('admin.route_health_scan_status') }}">Refresh
+                    <button class="btn btn-outline"
+                            hx-get="{{ url_for('admin.route_health_scan_status') }}"
+                            hx-trigger="click, load"
+                            hx-target="#health-scan-status"
+                            hx-swap="innerHTML">Refresh
                     </button>
                 </div>
                 <p class="card-hint">
@@ -927,13 +933,13 @@
                     even though the file isn't completely broken). Flagged songs are then transparently transcoded
                     on stream instead of direct-played. Runs incrementally in the background.
                 </p>
-                <dl class="kv-grid">
+                <dl class="kv-grid" id="health-scan-status">
                     <dt>Status</dt>
-                    <dd id="health-scan-status-value">Loading...</dd>
+                    <dd>Loading...</dd>
                     <dt>Songs checked</dt>
-                    <dd id="health-scan-total-value">&mdash;</dd>
+                    <dd>&mdash;</dd>
                     <dt>Flagged songs</dt>
-                    <dd id="health-scan-count-value">&mdash;</dd>
+                    <dd>&mdash;</dd>
                 </dl>
                 {% if flagged_songs %}
                     <details class="podcast-episodes card-section">

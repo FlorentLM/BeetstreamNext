@@ -330,45 +330,11 @@
         }
     }
 
-    async function refreshScanStatus(button) {
-        const url = button.dataset.url;
-        const statusEl = document.getElementById('beets-scan-status-value');
-        const countEl = document.getElementById('beets-scan-count-value');
-        if (!url || !statusEl) return;
-        try {
-            const resp = await fetch(url, {credentials: 'same-origin'});
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const payload = await resp.json();
-            statusEl.textContent = payload.scanning ? 'Scanning…' : 'Idle';
-            if (countEl) countEl.textContent = payload.count != null ? payload.count : '—';
-        } catch (err) {
-            statusEl.textContent = 'Failed to load: ' + err.message;
-        }
-    }
-
     function toggleRowDetail(row) {
         const detailRow = row.nextElementSibling;
         if (!detailRow || !detailRow.classList.contains('row-detail')) return;
         detailRow.hidden = !detailRow.hidden;
         row.classList.toggle('expanded', !detailRow.hidden);
-    }
-
-    async function refreshHealthStatus(button) {
-        const url = button.dataset.url;
-        const statusEl = document.getElementById('health-scan-status-value');
-        const totalEl = document.getElementById('health-scan-total-value');
-        const countEl = document.getElementById('health-scan-count-value');
-        if (!url || !statusEl) return;
-        try {
-            const resp = await fetch(url, {credentials: 'same-origin'});
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const payload = await resp.json();
-            statusEl.textContent = payload.scanning ? 'Scanning…' : 'Idle';
-            if (totalEl) totalEl.textContent = payload.total != null ? payload.total : '—';
-            if (countEl) countEl.textContent = payload.flagged != null ? payload.flagged : '—';
-        } catch (err) {
-            statusEl.textContent = 'Failed to load: ' + err.message;
-        }
     }
 
     // Podcast episode dl status polling
@@ -635,12 +601,6 @@
             case 'copy-log':
                 copyLogs(target);
                 break;
-            case 'refresh-scan-status':
-                refreshScanStatus(target);
-                break;
-            case 'refresh-health-status':
-                refreshHealthStatus(target);
-                break;
             case 'toggle-row-detail':
                 toggleRowDetail(target);
                 break;
@@ -782,12 +742,6 @@
     // Init
 
     applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
-
-    const scanStatusRefreshBtn = document.querySelector('[data-action="refresh-scan-status"]');
-    if (scanStatusRefreshBtn) refreshScanStatus(scanStatusRefreshBtn);
-
-    const healthStatusRefreshBtn = document.querySelector('[data-action="refresh-health-status"]');
-    if (healthStatusRefreshBtn) refreshHealthStatus(healthStatusRefreshBtn);
 
     startPodcastPollingIfBusy();
 

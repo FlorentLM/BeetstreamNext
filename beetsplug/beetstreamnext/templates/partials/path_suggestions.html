@@ -1,0 +1,6 @@
+{% for e in entries %}
+    <button type="button" class="suggestion-item" data-action="use-beets-path-result" data-path="{{ e }}">
+        <span class="suggestion-name">{{ e.name }}</span>
+        <span class="suggestion-url">{{ e }}</span>
+    </button>
+{% endfor %}

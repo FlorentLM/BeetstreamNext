@@ -330,6 +330,126 @@
         }
     }
 
+    // Beets import
+
+    const IMPORT_STATE_LABELS = {
+        idle: 'Idle', running: 'Running…', needs_input: 'Waiting for input',
+        completed: 'Completed', failed: 'Failed'
+    };
+
+    let importPollTimer = null;
+
+    function applyImportStatus(status) {
+        const statusEl = document.getElementById('beetsImportStatusValue');
+        const pathEl = document.getElementById('beetsImportPathValue');
+        const stdinInput = document.getElementById('beetsImportStdin');
+        const sendBtn = document.querySelector('[data-action="send-beets-import-input"]');
+        if (!statusEl) return false;
+
+        statusEl.textContent = IMPORT_STATE_LABELS[status.state] || status.state;
+        if (pathEl) pathEl.textContent = status.path || '—';
+
+        const live = status.state === 'running' || status.state === 'needs_input';
+        if (stdinInput) {
+            stdinInput.disabled = !live;
+            stdinInput.placeholder = live ? 'reply to beets…' : 'beets is idle';
+        }
+        if (sendBtn) sendBtn.disabled = !live;
+
+        return live;
+    }
+
+    async function pollImportOnce(statusUrl, logUrl) {
+        try {
+            const resp = await fetch(statusUrl, {credentials: 'same-origin'});
+            if (!resp.ok) return false;
+            const live = applyImportStatus(await resp.json());
+            if (logUrl) refreshLogs({dataset: {url: logUrl, target: 'beetsImportLogText'}});
+            return live;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function importSetPolling(active, statusUrl, logUrl) {
+        if (active && !importPollTimer) {
+            importPollTimer = setInterval(async () => {
+                if (!(await pollImportOnce(statusUrl, logUrl))) importSetPolling(false, statusUrl, logUrl);
+            }, 1500);
+        } else if (!active && importPollTimer) {
+            clearInterval(importPollTimer);
+            importPollTimer = null;
+        }
+    }
+
+    async function startBeetsImport(button) {
+        const url = button.dataset.url;
+        const pathInput = document.getElementById('beetsImportPath');
+        const result = document.getElementById('beetsImportStartResult');
+
+        if (!url || !pathInput) return;
+        const path = pathInput.value.trim();
+        if (!path) return;
+
+        button.disabled = true;
+        try {
+            const csrfInput = document.querySelector('input[name="csrf_token"]');
+            const resp = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                },
+                body: new URLSearchParams({path})
+            });
+
+            const payload = await resp.json();
+            if (result) {
+                result.className = 'test-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
+                result.textContent = payload.ok ? '' : payload.message;
+            }
+
+            const live = applyImportStatus(payload);
+            importSetPolling(live, button.dataset.statusUrl, button.dataset.logUrl);
+            if (live) pathInput.value = '';
+
+        } catch (err) {
+            if (result) {
+                result.className = 'test-result test-result-fail';
+                result.textContent = 'Failed to start: ' + err.message;
+            }
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    async function sendBeetsImportInput(button) {
+        const url = button.dataset.url;
+        const input = document.getElementById('beetsImportStdin');
+
+        if (!url || !input || input.disabled) return;
+        const text = input.value;
+        input.value = '';
+
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                },
+                body: new URLSearchParams({text})
+            });
+            applyImportStatus(await resp.json());
+        } catch (err) {
+            // next poll tick will do
+        }
+        input.focus();
+    }
+
     // Podcast episode dl status polling
     function formatBytes(bytes) {
         if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
@@ -493,6 +613,23 @@
         if (results) results.innerHTML = '';
     }
 
+    function useBeetsPathResult(target) {
+        const results = document.getElementById('beetsImportPathResults');
+        if (results) results.innerHTML = '';
+
+        const input = document.getElementById('beetsImportPath');
+        if (!input) return;
+
+        const path = (target.dataset.path || '') + '/';
+        input.value = path;
+        input.focus();
+
+        const url = input.getAttribute('hx-get');
+        if (url && window.htmx) {
+            htmx.ajax('GET', url, {source: input, target: '#beetsImportPathResults', values: {path}});
+        }
+    }
+
     async function useRadioResult(target) {
         const nameInput = document.getElementById('createRadioName');
         const streamInput = document.getElementById('createRadioStreamUrl');
@@ -594,6 +731,12 @@
             case 'copy-log':
                 copyLogs(target);
                 break;
+            case 'start-beets-import':
+                startBeetsImport(target);
+                break;
+            case 'send-beets-import-input':
+                sendBeetsImportInput(target);
+                break;
             case 'refresh-log':
                 refreshLogs(target);
                 break;
@@ -602,6 +745,9 @@
                 break;
             case 'use-podcast-result':
                 usePodcastResult(target);
+                break;
+            case 'use-beets-path-result':
+                useBeetsPathResult(target);
                 break;
             case 'pick-radio-icon':
                 const iconInput = document.getElementById(target.dataset.target);
@@ -653,6 +799,28 @@
         const button = input.parentElement.querySelector('button[hx-get]');
         if (button) button.click();
     });
+
+    // Enter to submit
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+
+        if (event.target.id === 'beetsImportPath') {
+            event.preventDefault();
+            const button = document.querySelector('[data-action="start-beets-import"]');
+            if (button) button.click();
+        } else if (event.target.id === 'beetsImportStdin') {
+            event.preventDefault();
+            const button = document.querySelector('[data-action="send-beets-import-input"]');
+            if (button && !button.disabled) button.click();
+        }
+    });
+
+    const beetsPathResults = document.getElementById('beetsImportPathResults');
+    if (beetsPathResults) {
+        beetsPathResults.addEventListener('mouseleave', () => {
+            beetsPathResults.innerHTML = '';
+        });
+    }
 
     document.addEventListener('change', event => {
         const target = event.target.closest('[data-action="toggle-log-autorefresh"]');
@@ -736,6 +904,13 @@
     startPodcastPollingIfBusy();
 
     document.querySelectorAll('[data-action="refresh-log"]').forEach(refreshLogs);
+
+    const startImportBtn = document.querySelector('[data-action="start-beets-import"]');
+    if (startImportBtn && startImportBtn.dataset.statusUrl) {
+        pollImportOnce(startImportBtn.dataset.statusUrl, startImportBtn.dataset.logUrl).then(live => {
+            importSetPolling(live, startImportBtn.dataset.statusUrl, startImportBtn.dataset.logUrl);
+        });
+    }
 
     formatChatTimes();
 

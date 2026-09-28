@@ -872,6 +872,26 @@ input:focus, select:focus {
     margin-right: 0;
 }
 
+.beets-path-field {
+    position: relative;
+    flex: 1;
+}
+
+.beets-path-field input {
+    width: 100%;
+}
+
+.beets-path-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 0.35rem;
+    z-index: 20;
+    background: var(--card-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
 /* Paired settings (like an API key + secret) stacked in one .setting-row-control */
 .setting-row-control input[type="text"] + .setting-row-label,
 .setting-row-control .setting-input-row + .setting-row-label {
@@ -994,8 +1014,8 @@ input:focus, select:focus {
     background: var(--overlay-sunken);
     border: 1px solid var(--border);
     border-radius: 8px;
-    height: 70vh;
-    max-height: 900px;
+    height: 50vh;
+    max-height: 800px;
     overflow: auto;
     font-family: ui-monospace, monospace;
     font-size: 0.8rem;
@@ -1141,7 +1161,7 @@ input:focus, select:focus {
 .code-editor {
     display: block;
     width: 100%;
-    height: 60vh;
+    height: 50vh;
     max-height: 800px;
     padding: 1rem;
     background: #000;

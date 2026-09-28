@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 import shlex
 import subprocess
@@ -19,9 +20,26 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.system import is_writable
 
+IS_WINDOWS = sys.platform == 'win32'
+
+if IS_WINDOWS:
+    from winpty import PtyProcess
+else:
+    import pty
+
 _lock = threading.Lock()
-_process: Optional[subprocess.Popen] = None
-_started_at: Optional[float] = None
+
+_proc: Optional[Any] = None         # subprocess.Popen or winpty.PtyProcess
+_master_fd: Optional[int] = None    # POSIX only, Windows pty process reads/writes itself
+_state: str = 'idle'                # idle, running, needs_input, completed, failed
+_current_path: Optional[str] = None
+_exit_code: Optional[int] = None
+
+_NEEDS_INPUT_SNIPPETS = (
+    '[A]pply', 'kip new', 'ter search', 'it, edit ',
+    '# selection (default', 'ore candidates',
+    'nter search, enter', 'This album is already in the library!',
+)
 
 
 def beets_import_is_safe() -> bool:
@@ -35,36 +53,36 @@ def beets_import_is_safe() -> bool:
         return False
 
 
+def import_status() -> dict:
+    """Current import state."""
+    with _lock:
+        return {'state': _state, 'path': _current_path, 'exit_code': _exit_code}
+
+
 def is_importing() -> bool:
-    """True while a triggered beets import subprocess is still running."""
+    """True while an import session is running or waiting on input."""
     with _lock:
-        return _process is not None and _process.poll() is None
+        return _state in ('running', 'needs_input')
 
 
-def start_import() -> Tuple[bool, str, bool]:
+def start_import(path: str) -> Tuple[bool, str]:
     """
-    Trigger an incremental, unattended `beet import` on the library's root directory, as a
-    background subprocess.
-
-    Refuses to start if beets' timid mode is on. Setting 'allow_disk_writes' must be on to allow
-    any beets configuration that touches the disk (file modification, copy, or write).
-
-    Returns (ok, message, already_running)
+    Start a `beet import` against `path`.
     """
-    global _process, _started_at
+    global _proc, _master_fd, _state, _current_path, _exit_code
 
     with _lock:
-        if _process is not None and _process.poll() is None:
-            return False, 'An import is already running.', True
+        if _state in ('running', 'needs_input'):
+            return False, 'An import is already running.'
+
+        candidate = Path(path).expanduser() if path else None
+        if not candidate or not candidate.is_dir():
+            return False, f"'{path}' is not a directory."
 
         if not beets_import_is_safe() and not settings_store.get('allow_disk_writes'):
-            return False, ("Refusing to import: the active beets config would write tags or copy/move files. "
-                            "Enable 'allow_disk_writes' to allow this."), False
+            return False, ("Refusing to import: beets config is set to allow writing tags or copying/moving files. "
+                            "Enable 'allow_disk_writes' in BeetstreamNext to allow this.")
 
-        if beets.config['import']['timid'].get(bool):
-            return False, "Can't run incremental import: beets' timid mode is enabled.", False
-
-        root_directory = str(app.config['root_directory'])
         library_path = str(app.config['BEETS_DB_PATH'])
 
         command = [sys.executable, '-m', 'beets', '-P', 'beetstreamnext']
@@ -73,33 +91,150 @@ def start_import() -> Tuple[bool, str, bool]:
         if config_path:
             command += ['-c', str(config_path)]
 
-        command += [
-            '-l', library_path,
-            '-d', root_directory,
-            'import', '-q', '-i', root_directory,
-        ]
+        command += ['-l', library_path, 'import', str(candidate)]
+
+        env = dict(os.environ)
+        env.pop('NO_COLOR', None)
+        env.setdefault('TERM', 'xterm-256color')
 
         try:
-            log_file = open(BEETS_IMPORT_LOG_PATH, 'wb')
+            open(BEETS_IMPORT_LOG_PATH, 'wb').close()
         except OSError as e:
-            bsn_logger.error(f'Could not open import log file: {e}')
-            return False, 'Failed to start the import (could not open log file).', False
+            bsn_logger.warning(f'Could not reset import log file: {e}')
 
+        if IS_WINDOWS:
+            try:
+                proc = PtyProcess.spawn(command, env=env)
+            except Exception as e:
+                bsn_logger.error(f'Failed to start beets import: {e}')
+                return False, 'Failed to start the import process.'
+
+            _proc = proc
+            _master_fd = None
+            pump_thread = threading.Thread(target=_pump_output_windows, args=(proc,), daemon=True)
+            pid_for_log = proc.pid
+
+        else:
+            master_fd, slave_fd = pty.openpty()
+            try:
+                proc = subprocess.Popen(
+                    command, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+                    close_fds=True, start_new_session=True, env=env,
+                )
+
+            except Exception as e:
+                os.close(master_fd)
+                os.close(slave_fd)
+                bsn_logger.error(f'Failed to start beets import: {e}')
+                return False, 'Failed to start the import process.'
+
+            finally:
+                os.close(slave_fd)
+
+            _proc = proc
+            _master_fd = master_fd
+            pump_thread = threading.Thread(target=_pump_output_posix, args=(proc, master_fd), daemon=True)
+            pid_for_log = proc.pid
+
+        _current_path = str(candidate)
+        _state = 'running'
+        _exit_code = None
+
+        pump_thread.start()
+
+        bsn_logger.info(f"Started beets import (pid {pid_for_log}) on '{candidate}': "
+                         f"{' '.join(shlex.quote(c) for c in command)}")
+        return True, 'Import started.'
+
+
+def _handle_output_chunk(log_file, text: str) -> None:
+
+    global _state
+
+    log_file.write(text)
+    log_file.flush()
+
+    if any(s in text for s in _NEEDS_INPUT_SNIPPETS):
+        with _lock:
+            if _state == 'running':
+                _state = 'needs_input'
+
+
+def _finish_import(log_file, exit_code: int) -> None:
+    global _state, _exit_code
+
+    with _lock:
+        _exit_code = exit_code
+        _state = 'completed' if exit_code == 0 else 'failed'
+
+    log_file.write(f'\n[beetstreamnext] Beets import finished (exit code {exit_code}).\n')
+    log_file.flush()
+
+    bsn_logger.info(f'Interactive beets import finished (exit {exit_code})')
+
+
+def _pump_output_posix(proc: subprocess.Popen, master_fd: int) -> None:
+    with open(BEETS_IMPORT_LOG_PATH, 'a', encoding='utf-8') as log_file:
         try:
-            proc = subprocess.Popen(
-                command, stdout=log_file, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL
-            )
-        except Exception as e:
-            bsn_logger.error(f'Failed to start beets import: {e}')
-            return False, 'Failed to start the import process.', False
+            while True:
+                try:
+                    chunk = os.read(master_fd, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                _handle_output_chunk(log_file, chunk.decode('utf-8', errors='replace'))
         finally:
-            log_file.close()   # the child got its own duplicated fd, safe to close ours
+            try:
+                os.close(master_fd)
+            except OSError:
+                pass
+            _finish_import(log_file, proc.wait())
 
-        _process = proc
-        _started_at = time.time()
 
-        bsn_logger.info(f"Started beets import (pid {proc.pid}): {' '.join(shlex.quote(c) for c in command)}")
-        return True, 'Import started.', False
+def _pump_output_windows(proc) -> None:
+    with open(BEETS_IMPORT_LOG_PATH, 'a', encoding='utf-8') as log_file:
+        try:
+            while True:
+                try:
+                    text = proc.read(65536)
+                except EOFError:
+                    break
+                if not text:
+                    break
+                _handle_output_chunk(log_file, text)
+        finally:
+            try:
+                exit_code = proc.exitstatus
+            except Exception:
+                exit_code = None
+            _finish_import(log_file, 0 if exit_code is None else exit_code)
+
+
+def send_import_input(text: str) -> Tuple[bool, str]:
+
+    global _state
+
+    with _lock:
+        if _proc is None or _state not in ('running', 'needs_input'):
+            return False, 'No import is waiting for input.'
+        proc = _proc
+        fd = _master_fd
+
+    try:
+        if IS_WINDOWS:
+            proc.write(text + '\r\n')
+        else:
+            os.write(fd, (text + '\n').encode('utf-8'))
+    except (OSError, EOFError) as e:
+        bsn_logger.warning(f'Failed to write to beets import stdin: {e}')
+        return False, 'Failed to send input.'
+
+    with _lock:
+        if _state == 'needs_input':
+            _state = 'running'   # Assume this answers whatever prompt was up
+
+    return True, 'Sent.'
 
 
 def commit_likes(subsonic_id: str, key: str, value: Any) -> None:

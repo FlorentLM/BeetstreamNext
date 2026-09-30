@@ -8,6 +8,7 @@ import platform
 import shutil
 import subprocess
 import time
+from collections import deque
 from functools import lru_cache
 from itertools import groupby
 from pathlib import Path
@@ -331,3 +332,13 @@ def drop_python_tracebacks(log_lines: List[str]) -> List[str]:
         else:
             result.append('')
     return result
+
+
+def read_log(path: str | Path, max_lines: int = 1000, drop_python: bool = False) -> List[str]:
+
+    try:
+        with open(path, 'r', errors='replace') as f:
+            lines = [line.rstrip('\r\n') for line in deque(f, maxlen=max_lines)]
+    except OSError:
+        return []
+    return drop_python_tracebacks(lines) if drop_python else lines

@@ -7,20 +7,14 @@ import flask
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
-from beetsplug.beetstreamnext.utils.system import drop_python_tracebacks
+from beetsplug.beetstreamnext.utils.system import read_log
 from beetsplug.beetstreamnext.core.beets_interaction import start_import, import_status, send_import_input, read_config
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])
 @admin_required
 def route_beets_import_log() -> flask.Response:
-    try:
-        with open(BEETS_IMPORT_LOG_PATH, 'r', errors='replace') as f:
-            lines = drop_python_tracebacks(f.read().splitlines()[-1000:])
-    except OSError:
-        lines = []
-
-    return flask.jsonify({'lines': lines})
+    return flask.jsonify({'lines': read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)})
 
 
 @admin_bp.route('/beets/config', methods=['GET'])

@@ -215,3 +215,13 @@ MAX_PODCAST_IMAGE_DIM: int = 1024
 
 MAX_PODCAST_FEED_BYTES: int = 30 * 1024 * 1024   # 30 MB cap on a fetched podcast rss feed body
 MAX_OPML_BYTES: int = 2 * 1024 * 1024            # 2 MB cap on an uploaded OPML subscriptions export
+
+
+## Other stuff
+
+MAX_CHAT_CHAR: int = 1000
+
+
+## Other stuff
+
+MAX_CHAT_CHAR: int = 1000

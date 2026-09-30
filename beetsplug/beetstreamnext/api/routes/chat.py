@@ -4,6 +4,7 @@ import flask
 
 from .. import api_bp
 
+from beetsplug.beetstreamnext.constants import MAX_CHAT_CHAR
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -20,8 +21,8 @@ def endpoint_add_chat_message() -> flask.Response:
     if not message:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if len(message) > 1000:
-        return subsonic_error(0, message='Message exceeds maximum length (1000 characters).', resp_fmt=resp_fmt)
+    if len(message) > MAX_CHAT_CHAR:
+        return subsonic_error(0, message=f'Message exceeds maximum length ({MAX_CHAT_CHAR} characters).', resp_fmt=resp_fmt)
 
     username = flask.g.username
     now_ms = int(time.time() * 1000)

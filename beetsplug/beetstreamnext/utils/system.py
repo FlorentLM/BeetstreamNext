@@ -9,9 +9,10 @@ import shutil
 import subprocess
 import time
 from functools import lru_cache
+from itertools import groupby
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 
@@ -309,3 +310,24 @@ def purge(folder: Path, max_age: Optional[float] = None, now: Optional[float] = 
             bsn_logger.warning(f"Failed to delete '{entry}': {e}")
 
     return n
+
+
+def drop_python_tracebacks(log_lines: List[str]) -> List[str]:
+    python_tracebacks = (
+        'The above exception was the direct cause of the following exception:',
+        'During handling of the above exception, another exception occurred:',
+        'Traceback (most recent call last):'
+    )
+    kept = []
+    for _, group in groupby(log_lines, key=bool):
+        chunk = list(group)
+        if not chunk[0].startswith(python_tracebacks):
+            kept.extend(chunk)
+
+    result = []
+    for line, group in groupby(kept, key=bool):
+        if line:
+            result.extend(group)
+        else:
+            result.append('')
+    return result

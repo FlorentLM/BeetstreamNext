@@ -6,7 +6,27 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, import_status, send_import_input
+from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
+from beetsplug.beetstreamnext.utils.system import drop_python_tracebacks
+from beetsplug.beetstreamnext.core.beets_interaction import start_import, import_status, send_import_input, read_config
+
+
+@admin_bp.route('/beets/import-log', methods=['GET'])
+@admin_required
+def route_beets_import_log() -> flask.Response:
+    try:
+        with open(BEETS_IMPORT_LOG_PATH, 'r', errors='replace') as f:
+            lines = drop_python_tracebacks(f.read().splitlines()[-1000:])
+    except OSError:
+        lines = []
+
+    return flask.jsonify({'lines': lines})
+
+
+@admin_bp.route('/beets/config', methods=['GET'])
+@admin_required
+def route_read_beets_config() -> flask.Response:
+    return flask.render_template('partials/beets_config.html', beets_config=read_config())
 
 
 @admin_bp.route('/beets/import/start', methods=['POST'])

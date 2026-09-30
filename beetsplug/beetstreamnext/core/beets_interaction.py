@@ -42,7 +42,7 @@ _NEEDS_INPUT_SNIPPETS = (
 )
 
 
-def beets_import_is_safe() -> bool:
+def is_import_safe() -> bool:
     """
     Returns True if the resolved beets config has no disk-affecting side effects
     (no file modification, moving or copying)
@@ -79,7 +79,7 @@ def start_import(path: str) -> Tuple[bool, str]:
         if not candidate or not candidate.is_dir():
             return False, f"'{path}' is not a directory."
 
-        if not beets_import_is_safe() and not settings_store.get('allow_disk_writes'):
+        if not is_import_safe() and not settings_store.get('allow_disk_writes'):
             return False, ("Refusing to import: beets config is set to allow writing tags or copying/moving files. "
                             "Enable 'allow_disk_writes' in BeetstreamNext to allow this.")
 

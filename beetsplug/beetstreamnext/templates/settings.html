@@ -5,9 +5,8 @@
 {% block title %} - Admin Dashboard{% endblock %}
 
 {% block styles %}
-    {# settings.css defines .htmx-indicator/.htmx-request rules, so prevent htmx from injecting its <style> tag (it gets blokcked by CSP anyways) #}
-    <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
-    {# TODO: Use htmx 4 once everything is working with with 2.x #}
+    {# settings.css defines .htmx-indicator/.htmx-request rules, so prevent htmx from injecting its own indicator CSS. #}
+    <meta name="htmx-config" content='{"includeIndicatorCSS": false, "noSwap": [204, 304, "4xx", "5xx"]}'>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 {% endblock %}
 
@@ -122,7 +121,7 @@
                     hx-get="{{ url_for('admin.route_test_lastfm') }}"
                     hx-target="#test-result-lastfm"
                     hx-swap="outerHTML"
-                    hx-disabled-elt="this"
+                    hx-disable="this"
                     hx-indicator="#test-indicator-lastfm"
                     {{ 'disabled' if not settings['lastfm_api_key'].is_set else '' }}>Test connection
             </button>
@@ -135,7 +134,7 @@
                     hx-get="{{ url_for('admin.route_test_audiomuse') }}"
                     hx-target="#test-result-audiomuse"
                     hx-swap="outerHTML"
-                    hx-disabled-elt="this"
+                    hx-disable="this"
                     hx-indicator="#test-indicator-audiomuse"
                     {{ 'disabled' if not settings['audiomuse_url'].value else '' }}>Test connection
             </button>
@@ -148,7 +147,7 @@
                     hx-get="{{ url_for('admin.route_test_podcastindex') }}"
                     hx-target="#test-result-podcastindex"
                     hx-swap="outerHTML"
-                    hx-disabled-elt="this"
+                    hx-disable="this"
                     hx-indicator="#test-indicator-podcastindex"
                     {{ 'disabled' if not (settings['podcastindex_api_key'].is_set and settings['podcastindex_api_secret'].is_set) else '' }}>
                 Test connection
@@ -163,7 +162,7 @@
                     hx-include="#set-jukebox_backend"
                     hx-target="#jukebox-devices-list"
                     hx-swap="innerHTML"
-                    hx-disabled-elt="this"
+                    hx-disable="this"
                     hx-indicator="#jukebox-discovery-spinner">Discover devices
             </button>
             <span id="jukebox-discovery-spinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</span>
@@ -642,7 +641,7 @@
                                             hx-target="#podcastDiscoveryResults"
                                             hx-swap="innerHTML"
                                             hx-trigger="click"
-                                            hx-disabled-elt="this"
+                                            hx-disable="this"
                                             hx-indicator="#podcastDiscoverySpinner">Search
                                     </button>
                                 </div>
@@ -1202,7 +1201,7 @@
                                 hx-target="#radioDiscoveryResults"
                                 hx-swap="innerHTML"
                                 hx-trigger="click"
-                                hx-disabled-elt="this"
+                                hx-disable="this"
                                 hx-indicator="#radioDiscoverySpinner">Search
                         </button>
                     </div>

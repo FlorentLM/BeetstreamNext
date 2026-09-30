@@ -27,14 +27,14 @@
                 hx-get="{{ url_for('admin.route_read_beets_config') }}"
                 hx-target="#beetsConfigEditorWrap"
                 hx-swap="outerHTML"
-                hx-disabled-elt="this">Reload
+                hx-disable="this">Reload
         </button>
         <button type="button" class="btn btn-primary"
                 hx-post="{{ url_for('admin.route_save_beets_config') }}"
                 hx-include="#beetsConfigEditor"
                 hx-target="#beetsConfigEditorWrap"
                 hx-swap="outerHTML"
-                hx-disabled-elt="this"
+                hx-disable="this"
                 {% if beets_config.read_only %}disabled{% endif %}>Save
         </button>
     </div>

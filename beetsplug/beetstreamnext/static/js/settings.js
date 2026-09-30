@@ -554,9 +554,10 @@
     }
 
     // Episodes lists are lazy-loaded htmx
-    document.body.addEventListener('htmx:afterSwap', event => {
-        if (!event.detail.target.closest('.podcast-episodes')) return;
-        formatChatTimes(event.detail.target);
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        if (!target?.closest('.podcast-episodes')) return;
+        formatChatTimes(target);
         startPodcastPollingIfBusy();
     });
 
@@ -577,32 +578,34 @@
         el.textContent = isNaN(ms) ? '—' : new Date(ms).toLocaleTimeString();
     }
 
-    document.body.addEventListener('htmx:oobAfterSwap', event => {
-        if (event.detail.target.id !== 'beetsConfigFooter') return;
+    document.body.addEventListener('htmx:after:swap', event => {
+        if (event.detail.ctx.target?.id !== 'beetsConfigEditorWrap') return;
         const footer = document.getElementById('beetsConfigFooter');
         if (footer) footer.querySelectorAll('.config-time').forEach(formatConfigTime);
     });
 
     // htmx requests are same-origin -> attach the CSRF token to every one
-    document.body.addEventListener('htmx:configRequest', event => {
+    document.body.addEventListener('htmx:config:request', event => {
         const csrfInput = document.querySelector('input[name="csrf_token"]');
-        if (csrfInput) event.detail.headers['X-CSRFToken'] = csrfInput.value;
+        if (csrfInput) event.detail.ctx.request.headers['X-CSRFToken'] = csrfInput.value;
     });
 
     // only fill the field when it's empty and discovery found exactly one device
-    document.body.addEventListener('htmx:afterSwap', event => {
-        if (event.detail.target.id !== 'jukebox-devices-list') return;
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        if (target?.id !== 'jukebox-devices-list') return;
         const input = document.getElementById('set-jukebox_hardware_device');
-        const options = event.detail.target.querySelectorAll('option');
+        const options = target.querySelectorAll('option');
         if (input && !input.value && options.length === 1) {
             input.value = options[0].value;
         }
     });
 
     // Edit user/radio forms, lazy-loaded
-    document.body.addEventListener('htmx:afterSwap', event => {
-        if (event.detail.target.id === 'editModalBody') Alpine.store('modal').show('editModal');
-        if (event.detail.target.id === 'editRadioModalBody') Alpine.store('modal').show('editRadioModal');
+    document.body.addEventListener('htmx:after:swap', event => {
+        const id = event.detail.ctx.target?.id;
+        if (id === 'editModalBody') Alpine.store('modal').show('editModal');
+        if (id === 'editRadioModalBody') Alpine.store('modal').show('editRadioModal');
     });
 
     function usePodcastResult(target) {

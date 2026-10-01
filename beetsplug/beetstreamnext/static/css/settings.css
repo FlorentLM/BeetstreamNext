@@ -214,6 +214,15 @@ h2 {
     opacity: 0.8;
 }
 
+.text-btn-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.text-btn-icon .material-symbols-outlined {
+    font-size: 18px;
+}
+
 .roles-sep {
     color: var(--text-muted);
     font-size: 0.8rem;
@@ -957,6 +966,9 @@ input:focus, select:focus {
 }
 
 .setting-restart-note {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
     margin: 0.4rem 0 0;
     font-size: 0.78rem;
     color: #fbbf24;
@@ -964,10 +976,18 @@ input:focus, select:focus {
 }
 
 .setting-locked-note {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
     margin: 0.4rem 0 0;
     font-size: 0.78rem;
     color: var(--text-muted);
     font-weight: 500;
+}
+
+.setting-restart-note .material-symbols-outlined,
+.setting-locked-note .material-symbols-outlined {
+    font-size: 14px;
 }
 
 .setting-help {
@@ -1216,8 +1236,7 @@ input:focus, select:focus {
 }
 
 .expand-cell .icon-chevron {
-    width: 14px;
-    height: 14px;
+    font-size: 14px;
     transition: transform 0.15s;
 }
 

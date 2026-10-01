@@ -25,7 +25,7 @@
                     data-target="editRadioImage" aria-label="Choose station icon">
                 <img id="editRadioImagePreview" class="{{ '' if station.has_image else 'hidden' }}" alt=""
                      {% if station.has_image %}src="{{ url_for('admin.route_serve_radio_image', station_id=station.id) }}"{% endif %}>
-                <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
+                <span class="radio-icon-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
             </button>
             <span class="label-hint">Click to change the icon.</span>
         </div>

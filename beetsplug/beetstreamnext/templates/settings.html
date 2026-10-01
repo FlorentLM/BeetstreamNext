@@ -39,9 +39,8 @@
             <div class="roles-header">
                 <label class="setting-row-label">{{ key }}</label>
                 <div class="roles-actions">
-                    <button type="button" class="text-btn" @click="setAll(true)" {{ dis }}>All</button>
-                    <span class="roles-sep">|</span>
-                    <button type="button" class="text-btn text-btn-muted" @click="setAll(false)" {{ dis }}>None</button>
+                    <button type="button" class="text-btn text-btn-icon" title="Select all" aria-label="Select all" @click="setAll(true)" {{ dis }}><span class="material-symbols-outlined">select_all</span></button>
+                    <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection" aria-label="Clear selection" @click="setAll(false)" {{ dis }}><span class="material-symbols-outlined">deselect</span></button>
                 </div>
             </div>
             <div class="roles-grid">
@@ -196,12 +195,11 @@
                 <div class="setting-row-meta">
                     <p class="setting-description">{{ (PAIRED_DESCRIPTIONS[key] if key in PAIRED_DESCRIPTIONS else info.description) | safe }}</p>
                     {% if info.requires_restart %}
-                        <p class="setting-restart-note"><i class="material-icons">restart_alt</i> Requires server
-                            restart</p>
+                        <p class="setting-restart-note"><span class="material-symbols-outlined">restart_alt</span> Requires server restart</p>
                     {% endif %}
                     {% if info.locked %}
-                        <p class="setting-locked-note"><i
-                                class="material-icons">lock</i> {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file.' }}
+                        <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
+                            {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file' }}
                         </p>
                     {% elif info.overridden and not info.sensitive %}
                         <p class="setting-row-actions">
@@ -238,8 +236,8 @@
         <div class="table-header"><h2>{{ title }}</h2></div>
         <p class="card-hint">{{ hint }}</p>
         {% if pinned %}
-            <p class="setting-locked-note"><i class="material-icons">lock</i> {{ pinned|length }} pinned via a CLI flag,
-                env var, or config file.</p>
+            <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
+                {{ pinned|length }} pinned via a CLI flag, env var, or config file.</p>
         {% endif %}
         <form method="POST"
               action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
@@ -1138,10 +1136,8 @@
                     <div class="roles-header">
                         <label class="label-inline">Roles &amp; Permissions</label>
                         <div class="roles-actions">
-                            <button type="button" class="text-btn" @click="setAll(true, ['adminRole'])">Select all
-                            </button>
-                            <span class="roles-sep">|</span>
-                            <button type="button" class="text-btn text-btn-muted" @click="setAll(false)">Clear</button>
+                            <button type="button" class="text-btn text-btn-icon" title="Select all" aria-label="Select all" @click="setAll(true, ['adminRole'])"><span class="material-symbols-outlined">select_all</span></button>
+                <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection" aria-label="Clear selection" @click="setAll(false)"><span class="material-symbols-outlined">deselect</span></button>
                         </div>
                     </div>
                     <div class="roles-grid">
@@ -1219,7 +1215,7 @@
                         <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
                                 data-target="createRadioImage" aria-label="Choose station icon">
                             <img id="createRadioIconPreview" class="hidden" alt="">
-                            <span class="radio-icon-edit-overlay"><i class="material-icons">edit</i></span>
+                            <span class="material-symbols-outlined">edit</span>
                         </button>
                         <span class="label-hint">Click to upload, or pick a search result above.</span>
                     </div>

@@ -10,6 +10,7 @@ from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from beetsplug.beetstreamnext.utils.text import split_list
+from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.constants import (
     LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
@@ -88,11 +89,16 @@ class RateLimiter:
             self._store[key].append(now)
             self._ip_store[ip].append(now)
 
+        admin_events.publish('rate-limits', '')
+
     def reset(self, ip: str, username: str = ''):
         """Clear failures for an (IP, username) pair. The IP-wide bucket is kept."""
         key = (ip, username)
         with self._lock:
-            self._store.pop(key, None)
+            removed = self._store.pop(key, None)
+
+        if removed:
+            admin_events.publish('rate-limits', '')
 
     def sweep(self):
         """Remove all stale buckets from memory."""
@@ -112,12 +118,16 @@ class RateLimiter:
             for ip in stale_ips:
                 self._ip_store.pop(ip, None)
 
+        if stale or stale_ips:
+            admin_events.publish('rate-limits', '')
+
     def purge(self) -> int:
         """Forget every recorded failure. Returns the number of buckets cleared."""
         with self._lock:
             n = len(self._store) + len(self._ip_store)
             self._store.clear()
             self._ip_store.clear()
+        admin_events.publish('rate-limits', '')
         return n
 
     def report(self) -> dict:

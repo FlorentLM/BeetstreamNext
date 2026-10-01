@@ -9,7 +9,8 @@ import confuse
 import yaml
 from beets.library import Library
 
-from beetsplug.beetstreamnext.console import print_box, drift_lines, TermColors
+from beetsplug.beetstreamnext.console import print_box, drift_lines
+from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import DEFAULT_CONFIG_PATH, DEFAULT_DB_TIMEOUT
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.health import detect_beets_drift

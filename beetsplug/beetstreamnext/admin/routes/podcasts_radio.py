@@ -439,42 +439,6 @@ def route_podcast_episodes(channel_id: int) -> flask.Response:
 @admin_bp.route('/podcasts/status', methods=['GET'])
 @admin_required
 def route_podcast_status() -> flask.Response:
-    """Live channel/episode status, polled by the Podcasts tab so it stays current without a manual page reload."""
+    """Initial read of channel/episode status (live updates done over SSE)."""
 
-    podcast_manager = flask.current_app.config['podcast_manager']
-
-    with database() as db:
-        channel_rows = db.execute(
-            """
-            SELECT pc.id, pc.status, pc.error_message,
-                   (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
-                    WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
-            FROM podcast_channels pc
-            """
-        ).fetchall()
-        episode_rows = db.execute(
-            """
-            SELECT id, status, file_size, error_message
-            FROM podcast_episodes
-            """
-        ).fetchall()
-
-    return flask.jsonify({
-        'channels': {
-            str(r['id']): {
-                'status': r['status'],
-                'error_message': r['error_message'],
-                'storage_size': human_bytes(r['bytes_on_disk']),
-            }
-            for r in channel_rows
-        },
-        'episodes': {
-            str(r['id']): {
-                'status': r['status'],
-                'file_size': r['file_size'],
-                'error_message': r['error_message'],
-                'bytes_downloaded': podcast_manager.download_progress(r['id']) if r['status'] == 'downloading' else None,
-            }
-            for r in episode_rows
-        },
-    })
+    return flask.jsonify(flask.current_app.config['podcast_manager'].status_snapshot())

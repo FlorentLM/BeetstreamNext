@@ -13,11 +13,13 @@ from beetsplug.beetstreamnext.constants import (
     DATA_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch, normalize_url, https_variant
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url
 from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.utils.general import human_bytes
 from beetsplug.beetstreamnext.utils.system import purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
 
@@ -133,6 +135,7 @@ class PodcastManager:
         self._downloading_episodes: set = set()
         self._cancel_events: dict[int, Event] = {}
         self._download_progress: dict[int, int] = {}
+        self._last_push = 0.0
 
     @staticmethod
     def storage_dir() -> Path:
@@ -149,6 +152,63 @@ class PodcastManager:
         """Bytes written for download progressbar, or None if not downloading."""
         with self._download_lock:
             return self._download_progress.get(episode_id)
+
+    def status_snapshot(self) -> dict:
+        """Channel and episode status."""
+
+        with database() as db:
+            channel_rows = db.execute(
+                """
+                SELECT pc.id, pc.status, pc.error_message,
+                       (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
+                        WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
+                FROM podcast_channels pc
+                """
+            ).fetchall()
+            episode_rows = db.execute(
+                """
+                SELECT id, status, file_size, error_message
+                FROM podcast_episodes
+                """
+            ).fetchall()
+
+        return {
+            'channels': {
+                str(r['id']): {
+                    'status': r['status'],
+                    'error_message': r['error_message'],
+                    'storage_size': human_bytes(r['bytes_on_disk']),
+                }
+                for r in channel_rows
+            },
+            'episodes': {
+                str(r['id']): {
+                    'status': r['status'],
+                    'file_size': r['file_size'],
+                    'error_message': r['error_message'],
+                    'bytes_downloaded': self.download_progress(r['id']) if r['status'] == 'downloading' else None,
+                }
+                for r in episode_rows
+            },
+        }
+
+    def push_status(self, throttle: float = 0.0) -> None:
+        """
+        Publish the current status to connected admin sessions.
+        """
+        if not admin_events.has_subscribers():
+            return
+
+        now = time.monotonic()
+        with self._download_lock:
+            if throttle and now - self._last_push < throttle:
+                return
+            self._last_push = now
+
+        try:
+            admin_events.publish('podcast-status', self.status_snapshot())
+        except Exception as e:
+            bsn_logger.debug(f'Could not push podcast status: {e}')
 
     @with_app_context
     def remove_leftovers(self) -> dict[str, int]:
@@ -294,6 +354,7 @@ class PodcastManager:
                     WHERE id = ?
                     """, (channel_id,)
                 )
+            self.push_status()
 
             try:
                 feed, resolved_url = prefetched if prefetched is not None else _fetch_feed(row['url'])
@@ -418,6 +479,7 @@ class PodcastManager:
         finally:
             with self._refresh_lock:
                 self._refreshing_channels.discard(channel_id)
+            self.push_status()
 
     @with_app_context
     def refresh(self, channel_id: Optional[int] = None, download_recents: bool = False, username: Optional[str] = None) -> None:
@@ -708,6 +770,8 @@ class PodcastManager:
             except OSError as e:
                 bsn_logger.warning(f"Failed to remove podcast episode file '{row['file_path']}': {e}")
 
+        self.push_status()
+
     # Episodes
 
     def _record_want(self, username: str, episode_id: int) -> None:
@@ -750,6 +814,7 @@ class PodcastManager:
                 WHERE id = ?
                 """, (episode_id,)
             )
+        self.push_status()
         return True
 
     @with_app_context
@@ -786,6 +851,7 @@ class PodcastManager:
                             size += len(chunk)
                             with self._download_lock:
                                 self._download_progress[episode_id] = size
+                            self.push_status(throttle=0.5)
 
                 os.replace(tmp_path, target_path)
 
@@ -840,6 +906,7 @@ class PodcastManager:
                 self._downloading_episodes.discard(episode_id)
                 self._cancel_events.pop(episode_id, None)
                 self._download_progress.pop(episode_id, None)
+            self.push_status()
 
     @with_app_context
     def download(self, episode_id: int) -> None:
@@ -988,6 +1055,8 @@ class PodcastManager:
         except OSError as e:
             bsn_logger.warning(f"Failed to remove podcast episode file '{row['file_path']}': {e}")
 
+        self.push_status()
+
     def relayed_download(self, episode_id: int, channel_id: int, audio_url: str):
         """
         Starts a streamed HTTP GET for an episode that isn't downloaded yet.
@@ -1013,6 +1082,7 @@ class PodcastManager:
                     WHERE id = ?
                     """, (episode_id,)
                 )
+            self.push_status()
 
             channel_dir = self.storage_dir() / str(channel_id)
             channel_dir.mkdir(parents=True, exist_ok=True)
@@ -1042,6 +1112,7 @@ class PodcastManager:
 
             with self._download_lock:
                 self._downloading_episodes.discard(episode_id)
+            self.push_status()
 
             raise
 
@@ -1083,6 +1154,7 @@ class PodcastManager:
         finally:
             with self._download_lock:
                 self._downloading_episodes.discard(episode_id)
+            self.push_status()
 
     def delete_episode(self, episode_id: int) -> None:
         """
@@ -1121,3 +1193,5 @@ class PodcastManager:
                 Path(row['file_path']).unlink(missing_ok=True)
             except OSError as e:
                 bsn_logger.warning(f"Failed to remove podcast episode file '{row['file_path']}': {e}")
+
+        self.push_status()

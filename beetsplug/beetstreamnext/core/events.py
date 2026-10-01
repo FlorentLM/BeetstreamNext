@@ -29,6 +29,13 @@ class EventBus:
             with self._lock:
                 self._subscribers.discard(q)
 
+    def has_subscribers(self) -> bool:
+        """
+        Lets publishers skip building payloads if nobody's listening.
+        """
+        with self._lock:
+            return bool(self._subscribers)
+
     def publish(self, event: str, data: Any) -> None:
         """
         Push an event to every connected admin session.

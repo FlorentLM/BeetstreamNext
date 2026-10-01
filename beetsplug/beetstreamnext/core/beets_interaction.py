@@ -19,6 +19,7 @@ from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
 
 IS_WINDOWS = sys.platform == 'win32'
@@ -65,9 +66,14 @@ def import_running() -> bool:
     return import_status()['state'] in ('running', 'needs_input')
 
 
+def htmlify_log() -> list[str]:
+    """Import log as HTML lines (escaped, ANSI converted)."""
+    return [ansi_to_html(line) for line in read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)]
+
+
 def _push_import_status() -> None:
     """Publish import status and recent log to connected admin sessions."""
-    admin_events.publish('beets-import', {**import_status(), 'lines': read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)})
+    admin_events.publish('beets-import', {**import_status(), 'lines': htmlify_log()})
 
 
 def start_import(path: str) -> Tuple[bool, str]:

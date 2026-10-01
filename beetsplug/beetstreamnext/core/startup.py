@@ -11,7 +11,8 @@ from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.console import TermColors, print_box
+from beetsplug.beetstreamnext.console import print_box
+from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS
 from beetsplug.beetstreamnext.core.commands import check_onboarding
 from beetsplug.beetstreamnext.core.database import ensure_secret, rotate_session_key

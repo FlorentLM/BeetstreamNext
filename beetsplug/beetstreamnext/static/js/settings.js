@@ -225,80 +225,6 @@
         return ok;
     }
 
-    // Rate-limit panel
-
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[c]));
-    }
-
-    // Convert ANSI color/style escape codes to HTML
-    const ANSI_COLOR_CLASS = {
-        30: 'ansi-fg-black', 31: 'ansi-fg-red', 32: 'ansi-fg-green', 33: 'ansi-fg-yellow',
-        34: 'ansi-fg-blue', 35: 'ansi-fg-magenta', 36: 'ansi-fg-cyan', 37: 'ansi-fg-white',
-        90: 'ansi-fg-bright-black', 91: 'ansi-fg-bright-red', 92: 'ansi-fg-bright-green',
-        93: 'ansi-fg-bright-yellow', 94: 'ansi-fg-bright-blue', 95: 'ansi-fg-bright-magenta',
-        96: 'ansi-fg-bright-cyan', 97: 'ansi-fg-bright-white'
-    };
-
-    function ansiLineToHtml(line) {
-        let html = '';
-        let openSpan = false;
-        let colorClass = null, bold = false, dim = false, italic = false, underline = false;
-
-        function closeSpan() {
-            if (openSpan) {
-                html += '</span>';
-                openSpan = false;
-            }
-        }
-
-        function openSpanIfStyled() {
-            const classes = [];
-            if (colorClass) classes.push(colorClass);
-            if (bold) classes.push('ansi-bold');
-            if (dim) classes.push('ansi-dim');
-            if (italic) classes.push('ansi-italic');
-            if (underline) classes.push('ansi-underline');
-            if (classes.length) {
-                html += '<span class="' + classes.join(' ') + '">';
-                openSpan = true;
-            }
-        }
-
-        const parts = line.split(/(\x1b\[[0-9;]*[a-zA-Z])/);
-        for (const part of parts) {
-            const m = /^\x1b\[([0-9;]*)([a-zA-Z])$/.exec(part);
-            if (m) {
-                if (m[2] !== 'm') continue;   // not a color/style code, skip
-                const codes = m[1] ? m[1].split(';').map(Number) : [0];
-                closeSpan();
-                for (const code of codes) {
-                    if (code === 0) {
-                        colorClass = null;
-                        bold = dim = italic = underline = false;
-                    } else if (code === 1) bold = true;
-                    else if (code === 2) dim = true;
-                    else if (code === 3) italic = true;
-                    else if (code === 4) underline = true;
-                    else if (code === 22) {
-                        bold = false;
-                        dim = false;
-                    } else if (code === 23) italic = false;
-                    else if (code === 24) underline = false;
-                    else if (code === 39) colorClass = null;
-                    else if (ANSI_COLOR_CLASS[code]) colorClass = ANSI_COLOR_CLASS[code];
-                }
-                openSpanIfStyled();
-            } else if (part) {
-                html += escapeHtml(part);
-            }
-        }
-        closeSpan();
-        return html;
-    }
-
     async function refreshLogs(button) {
         const url = button.dataset.url;
         const target = document.getElementById(button.dataset.target);
@@ -309,25 +235,43 @@
             const payload = await resp.json();
             const lines = payload.lines || [];
             const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-            target.innerHTML = lines.length ? lines.map(ansiLineToHtml).join('\n') : '(no log output yet)';
+            target.innerHTML = lines.length ? lines.join('\n') : '(no log output yet)';
+            target.dataset.lines = lines.length;
             if (wasAtBottom) target.scrollTop = target.scrollHeight;
         } catch (err) {
             target.textContent = 'Failed to load log: ' + err.message;
         }
     }
 
-    let logAutoRefreshTimer = null;
 
-    function toggleLogAutoRefresh(checkbox) {
-        if (logAutoRefreshTimer) {
-            clearInterval(logAutoRefreshTimer);
-            logAutoRefreshTimer = null;
+    const SERVER_LOG_MAX_LINES = 2500;   // server keeps 2000, so resync from it when the page has drifted too far
+
+    function handleServerLogSse(event) {
+        const target = document.getElementById('serverLogText');
+        if (!target) return;
+
+        let batch;
+        try {
+            batch = JSON.parse(event.detail.data);
+        } catch (err) {
+            return;   // Malformed payload, Refresh should resync
         }
-        if (checkbox.checked) {
-            const button = document.getElementById(checkbox.dataset.refreshTarget);
-            if (!button) return;
-            logAutoRefreshTimer = setInterval(() => refreshLogs(button), 5000);
+        if (!Array.isArray(batch) || !batch.length) return;
+
+        const count = parseInt(target.dataset.lines) || 0;
+        if (count >= SERVER_LOG_MAX_LINES) {
+            refreshLogs({dataset: {url: target.dataset.url, target: target.id}});
+            return;
         }
+
+        const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+        if (count === 0) {
+            target.innerHTML = batch.join('\n');
+        } else {
+            target.insertAdjacentHTML('beforeend', '\n' + batch.join('\n'));
+        }
+        target.dataset.lines = count + batch.length;
+        if (wasAtBottom) target.scrollTop = target.scrollHeight;
     }
 
     // Beets import
@@ -361,7 +305,7 @@
         const target = document.getElementById('beetsImportLogText');
         if (!target) return;
         const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-        target.innerHTML = lines.length ? lines.map(ansiLineToHtml).join('\n') : '(no import run yet)';
+        target.innerHTML = lines.length ? lines.join('\n') : '(no import run yet)';
         if (wasAtBottom) target.scrollTop = target.scrollHeight;
     }
 
@@ -446,115 +390,91 @@
         input.focus();
     }
 
-    // Podcast episode dl status polling
+    // Podcast channel/episode status
     function formatBytes(bytes) {
         if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB';
         return bytes + ' B';
     }
 
-    let podcastPollTimer = null;
-    let podcastPollInterval = null;
-
-    function podcastSetPollInterval(ms) {
-        if (podcastPollInterval === ms) return;
-        if (podcastPollTimer) clearInterval(podcastPollTimer);
-        podcastPollInterval = ms;
-        podcastPollTimer = setInterval(refreshPodcastStatuses, ms);
-    }
-
-    async function refreshPodcastStatuses() {
-        try {
-            const resp = await fetch('/admin/podcasts/status', {credentials: 'same-origin'});
-            if (!resp.ok) return;
-            const data = await resp.json();
-            let busy = false;
-            let activelyDownloading = false;
-
-            for (const [id, info] of Object.entries(data.channels || {})) {
-                const badge = document.getElementById(`podcast-channel-status-${id}`);
-                if (badge && badge.dataset.status !== info.status) {
-                    badge.textContent = info.status;
-                    badge.dataset.status = info.status;
-                    badge.classList.toggle('badge-admin', info.status === 'error');
-                }
-
-                const sizeEl = document.getElementById(`podcast-channel-size-${id}`);
-                if (sizeEl && info.storage_size !== undefined && sizeEl.textContent !== info.storage_size) {
-                    sizeEl.textContent = info.storage_size;
-                }
-
-                if (info.status === 'new' || info.status === 'downloading') busy = true;
+    function applyPodcastStatus(data) {
+        for (const [id, info] of Object.entries(data.channels || {})) {
+            const badge = document.getElementById(`podcast-channel-status-${id}`);
+            if (badge && badge.dataset.status !== info.status) {
+                badge.textContent = info.status;
+                badge.dataset.status = info.status;
+                badge.classList.toggle('badge-admin', info.status === 'error');
             }
 
-            for (const [id, info] of Object.entries(data.episodes || {})) {
-                const badge = document.getElementById(`podcast-episode-status-${id}`);
-                if (badge && badge.dataset.status !== info.status) {
-                    badge.textContent = info.status;
-                    badge.dataset.status = info.status;
-                    badge.classList.toggle('badge-admin', info.status === 'error');
+            const sizeEl = document.getElementById(`podcast-channel-size-${id}`);
+            if (sizeEl && info.storage_size !== undefined && sizeEl.textContent !== info.storage_size) {
+                sizeEl.textContent = info.storage_size;
+            }
+        }
 
-                    const dl = document.getElementById(`podcast-episode-dl-${id}`);
-                    const cancel = document.getElementById(`podcast-episode-cancel-${id}`);
-                    const del = document.getElementById(`podcast-episode-del-${id}`);
-                    if (dl) dl.hidden = info.status === 'completed' || info.status === 'downloading';
-                    if (cancel) cancel.hidden = info.status !== 'downloading';
-                    if (del) del.hidden = info.status !== 'completed';
+        for (const [id, info] of Object.entries(data.episodes || {})) {
+            const badge = document.getElementById(`podcast-episode-status-${id}`);
+            if (badge && badge.dataset.status !== info.status) {
+                badge.textContent = info.status;
+                badge.dataset.status = info.status;
+                badge.classList.toggle('badge-admin', info.status === 'error');
 
-                    const sizeEl = document.getElementById(`podcast-episode-size-${id}`);
-                    if (sizeEl && info.file_size) {
-                        sizeEl.innerHTML = `<span class="badge badge-limit">${formatBytes(info.file_size)}</span>`;
-                    }
+                const dl = document.getElementById(`podcast-episode-dl-${id}`);
+                const cancel = document.getElementById(`podcast-episode-cancel-${id}`);
+                const del = document.getElementById(`podcast-episode-del-${id}`);
+                if (dl) dl.hidden = info.status === 'completed' || info.status === 'downloading';
+                if (cancel) cancel.hidden = info.status !== 'downloading';
+                if (del) del.hidden = info.status !== 'completed';
+
+                const sizeEl = document.getElementById(`podcast-episode-size-${id}`);
+                if (sizeEl && info.file_size) {
+                    sizeEl.innerHTML = `<span class="badge badge-limit">${formatBytes(info.file_size)}</span>`;
                 }
+            }
 
-                const progressEl = document.getElementById(`podcast-episode-progress-${id}`);
-                if (progressEl) {
-                    progressEl.hidden = info.status !== 'downloading';
-                    if (info.status === 'downloading') {
-                        if (info.file_size) {
-                            progressEl.max = info.file_size;
-                            progressEl.value = info.bytes_downloaded || 0;
-                        } else {
-                            progressEl.removeAttribute('max');
-                            progressEl.removeAttribute('value');
-                        }
-                    }
-                }
-
+            const progressEl = document.getElementById(`podcast-episode-progress-${id}`);
+            if (progressEl) {
+                progressEl.hidden = info.status !== 'downloading';
                 if (info.status === 'downloading') {
-                    busy = true;
-                    activelyDownloading = true;
+                    if (info.file_size) {
+                        progressEl.max = info.file_size;
+                        progressEl.value = info.bytes_downloaded || 0;
+                    } else {
+                        progressEl.removeAttribute('max');
+                        progressEl.removeAttribute('value');
+                    }
                 }
             }
-
-            if (!busy && podcastPollTimer) {
-                clearInterval(podcastPollTimer);
-                podcastPollTimer = null;
-                podcastPollInterval = null;
-            } else if (busy) {
-                podcastSetPollInterval(activelyDownloading ? 1000 : 3000);
-            }
-        } catch (err) {
-            // network hiccup, next iter retries
         }
     }
 
-    function startPodcastPollingIfBusy() {
-        if (podcastPollTimer) return;
-        const busySelector = '[id^="podcast-channel-status-"][data-status="new"], '
-            + '[id^="podcast-channel-status-"][data-status="downloading"], '
-            + '[id^="podcast-episode-status-"][data-status="downloading"]';
-        if (!document.querySelector(busySelector)) return;
-        const activelyDownloading = document.querySelector('[id^="podcast-episode-status-"][data-status="downloading"]');
-        podcastSetPollInterval(activelyDownloading ? 1000 : 3000);
+    function handlePodcastStatusSse(event) {
+        try {
+            applyPodcastStatus(JSON.parse(event.detail.data));
+        } catch (err) {
+            // Malformed payload, next event will hopefully replace
+        }
     }
+
+
+    async function syncPodcastStatuses() {
+        try {
+            const resp = await fetch('/admin/podcasts/status', {credentials: 'same-origin'});
+            if (resp.ok) applyPodcastStatus(await resp.json());
+        } catch (err) {
+            // next SSE push will correct the view
+        }
+    }
+
+    if (adminSseSource) adminSseSource.addEventListener('podcast-status', handlePodcastStatusSse);
+    if (adminSseSource) adminSseSource.addEventListener('server-log', handleServerLogSse);
 
     // Episodes lists are lazy-loaded htmx
     document.body.addEventListener('htmx:after:swap', event => {
         const target = event.detail.ctx.target;
         if (!target?.closest('.podcast-episodes')) return;
         formatChatTimes(target);
-        startPodcastPollingIfBusy();
+        syncPodcastStatuses();
     });
 
     // Format HLS/chat/podcast epoch timestamps to human readable format
@@ -736,9 +656,6 @@
             case 'send-beets-import-input':
                 sendBeetsImportInput(target);
                 break;
-            case 'refresh-log':
-                refreshLogs(target);
-                break;
             case 'use-radio-result':
                 useRadioResult(target);
                 break;
@@ -822,9 +739,6 @@
     }
 
     document.addEventListener('change', event => {
-        const target = event.target.closest('[data-action="toggle-log-autorefresh"]');
-        if (target) toggleLogAutoRefresh(target);
-
         if (event.target.id === 'createRadioImage') {
             previewLocalRadioIcon(event.target, 'createRadioIconPreview', 'createRadioFavicon');
         }
@@ -900,9 +814,6 @@
 
     applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
 
-    startPodcastPollingIfBusy();
-
-    document.querySelectorAll('[data-action="refresh-log"]').forEach(refreshLogs);
 
     // One initial poll, then live updates on SSE connection
     const startImportBtn = document.querySelector('[data-action="start-beets-import"]');

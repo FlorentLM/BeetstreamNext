@@ -4,12 +4,14 @@ import re
 import sqlite3
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from beets.library import Album, Item, Library as BeetsLibrary
 
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database, dual_database
+from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.mappings import IDs
 from beetsplug.beetstreamnext.utils.system import find_ffmpeg, resolve_path
@@ -25,6 +27,23 @@ _KIND_LABELS = {
 
 _scan_lock = threading.Lock()
 _scanning = False
+_last_push = 0.0
+
+
+def _push_scan_status(throttle: float = 0.0) -> None:
+    """
+    Tells connected admin sessions to re read scan status
+    (but throttled while a scan is underway)
+    """
+
+    global _last_push
+
+    now = time.monotonic()
+    if throttle and now - _last_push < throttle:
+        return
+
+    _last_push = now
+    admin_events.publish('health-scan', '')
 
 
 def is_scanning() -> bool:
@@ -173,6 +192,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
         return counts
 
     _scanning = True
+    _push_scan_status()
     root_directory = app.config['root_directory']
 
     try:
@@ -196,6 +216,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
             seen_song_ids: set[str] = set()
 
             for beets_id, mb_trackid, mb_releasetrackid, raw_path, samplerate in item_rows:
+                _push_scan_status(throttle=1.0)
                 path = os.fsdecode(raw_path or b'')
                 if not path:
                     continue
@@ -284,6 +305,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
     finally:
         _scanning = False
         _scan_lock.release()
+        _push_scan_status()
 
     return counts
 

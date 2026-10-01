@@ -890,7 +890,7 @@
                     <h2>Rate Limits</h2>
                     <button class="btn btn-outline"
                             hx-get="{{ url_for('admin.route_rate_limits') }}"
-                            hx-trigger="click, load"
+                            hx-trigger="click, load, rate-limits from:#adminDashboard throttle:1s"
                             hx-target="#rate-limit-state"
                             hx-swap="innerHTML">Refresh
                     </button>
@@ -920,21 +920,16 @@
             </div>
 
             <div class="card">
-                <div class="table-header">
-                    <h2>Audio Health Scan</h2>
-                    <button class="btn btn-outline"
-                            hx-get="{{ url_for('admin.route_health_scan_status') }}"
-                            hx-trigger="click, load"
-                            hx-target="#health-scan-status"
-                            hx-swap="innerHTML">Refresh
-                    </button>
-                </div>
+                <div class="table-header"><h2>Audio Health Scan</h2></div>
                 <p class="card-hint">
                     Look for bitstream corruption (bad bits that make some clients hang instead of playing,
                     even though the file isn't completely broken). Flagged songs are then transparently transcoded
                     on stream instead of direct-played. Runs incrementally in the background.
                 </p>
-                <dl class="kv-grid" id="health-scan-status">
+                <dl class="kv-grid" id="health-scan-status"
+                    hx-get="{{ url_for('admin.route_health_scan_status') }}"
+                    hx-trigger="load, health-scan from:#adminDashboard throttle:1s"
+                    hx-swap="innerHTML">
                     <dt>Status</dt>
                     <dd>Loading...</dd>
                     <dt>Songs checked</dt>
@@ -1076,21 +1071,13 @@
                 <div class="table-header">
                     <h2>Server Log</h2>
                     <div class="table-header-actions">
-                        <label class="log-autorefresh">
-                            <input type="checkbox" data-action="toggle-log-autorefresh"
-                                   data-refresh-target="refresh-log-btn">
-                            Auto-refresh
-                        </label>
                         <button type="button" class="btn btn-outline" data-action="copy-log"
                                 data-target="serverLogText">{{ macros.icon('copy') }} <span
                                 class="btn-label">Copy</span></button>
-                        <button type="button" class="btn btn-outline" id="refresh-log-btn" data-action="refresh-log"
-                                data-url="{{ url_for('admin.route_logs') }}" data-target="serverLogText">
-                            {{ macros.icon('refresh') }} <span class="btn-label">Refresh</span>
-                        </button>
                     </div>
                 </div>
-                <pre class="log-view" id="serverLogText">{% if log_lines %}{{ log_lines|join('\n') }}{% else %}(no log
+                <pre class="log-view" id="serverLogText" data-lines="{{ log_lines|length }}"
+                     data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}{{ log_lines|map('safe')|join('\n') }}{% else %}(no log
                     output yet){% endif %}</pre>
             </div>
         </section>

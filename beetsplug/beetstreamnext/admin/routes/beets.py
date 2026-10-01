@@ -6,15 +6,13 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
-from beetsplug.beetstreamnext.utils.system import read_log
-from beetsplug.beetstreamnext.core.beets_interaction import start_import, import_status, send_import_input, read_config
+from beetsplug.beetstreamnext.core.beets_interaction import htmlify_log, start_import, import_status, send_import_input, read_config
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])
 @admin_required
 def route_beets_import_log() -> flask.Response:
-    return flask.jsonify({'lines': read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)})
+    return flask.jsonify({'lines': htmlify_log()})
 
 
 @admin_bp.route('/beets/config', methods=['GET'])

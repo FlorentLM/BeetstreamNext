@@ -2,9 +2,13 @@ from __future__ import annotations
 import re
 import logging
 import collections
-from typing import List
+import threading
+from typing import Optional, List
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from paste.translogger import TransLogger
+
+from beetsplug.beetstreamnext.core.events import admin_events
+from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 
 
 _werkzeug_regex = re.compile(r'("(?:GET|POST|PUT|DELETE|HEAD|PATCH|OPTIONS) )(\S+)( HTTP/\d)')
@@ -107,19 +111,43 @@ def apply_logs_redaction() -> None:
 class MemLogBuffer(logging.Handler):
     """Ring buffer to keep the last n log lines in memory (for the admin panel)."""
 
+    PUSH_INTERVAL = 0.25  # seconds
+
     def __init__(self, capacity: int = 2000):
         super().__init__()
+
         self.buffer: collections.deque = collections.deque(maxlen=capacity)
+
+        self._pending: List[str] = []
+        self._pending_lock = threading.Lock()
+        self._flush_timer: Optional[threading.Timer] = None
+
+    def _flush(self) -> None:
+        with self._pending_lock:
+            lines, self._pending = self._pending, []
+            self._flush_timer = None
+
+        if lines:
+            admin_events.publish('server-log', lines)
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            self.buffer.append(self.format(record))
+            line = self.format(record)
+            self.buffer.append(line)
+
+            if admin_events.has_subscribers():
+                with self._pending_lock:
+                    self._pending.append(ansi_to_html(line))
+                    if self._flush_timer is None:
+                        self._flush_timer = threading.Timer(self.PUSH_INTERVAL, self._flush)
+                        self._flush_timer.daemon = True
+                        self._flush_timer.start()
         except Exception:
             self.handleError(record)
 
     @property
     def recents(self) -> List[str]:
-        return list(self.buffer)
+        return [ansi_to_html(line) for line in self.buffer]
 
 
 class TracebackFilter(logging.Filter):

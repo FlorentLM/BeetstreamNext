@@ -16,7 +16,8 @@ from functools import lru_cache
 
 import flask
 
-from beetsplug.beetstreamnext.console import print_box, TermColors
+from beetsplug.beetstreamnext.console import print_box
+from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import ALPHANUM_CHARS, SESSION_KEY_ROTATION_DAYS, DB_BUSY_TIMEOUT_MS
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA

@@ -220,8 +220,3 @@ MAX_OPML_BYTES: int = 2 * 1024 * 1024            # 2 MB cap on an uploaded OPML 
 ## Other stuff
 
 MAX_CHAT_CHAR: int = 1000
-
-
-## Other stuff
-
-MAX_CHAT_CHAR: int = 1000

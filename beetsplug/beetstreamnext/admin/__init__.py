@@ -45,6 +45,7 @@ from .routes import (
     avatars,
     beets,
     chat,
+    events,
     jukebox,
     maintenance,
     podcasts_radio,

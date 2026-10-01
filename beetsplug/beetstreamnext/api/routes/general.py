@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.users_crud import load_username
-from beetsplug.beetstreamnext.core.beets_interaction import is_importing
+from beetsplug.beetstreamnext.core.beets_interaction import import_running
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 
@@ -280,7 +280,7 @@ def endpoint_get_scan_status() -> flask.Response:
 
     payload = {
         'scanStatus': {
-            "scanning": is_importing(),
+            "scanning": import_running(),
             "count": items_count
         }
     }

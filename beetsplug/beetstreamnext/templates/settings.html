@@ -276,7 +276,10 @@
 {% endmacro %}
 
 {% block body %}
-    <div class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()">
+    <div id="adminDashboard" class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()"
+         hx-sse:connect="{{ url_for('admin.route_admin_events') }}">
+
+        {# Shared SSE connection for all of admin panel #}
 
         <header class="header">
             <a href="{{ url_for('public.home') }}" class="brand-section">
@@ -1276,6 +1279,7 @@
 
 {% block scripts %}
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/hx-sse.min.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"

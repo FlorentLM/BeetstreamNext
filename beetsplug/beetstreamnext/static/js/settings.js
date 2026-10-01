@@ -337,8 +337,6 @@
         completed: 'Completed', failed: 'Failed'
     };
 
-    let importPollTimer = null;
-
     function applyImportStatus(status) {
         const statusEl = document.getElementById('beetsImportStatusValue');
         const pathEl = document.getElementById('beetsImportPathValue');
@@ -359,28 +357,27 @@
         return live;
     }
 
-    async function pollImportOnce(statusUrl, logUrl) {
+    function applyImportLines(lines) {
+        const target = document.getElementById('beetsImportLogText');
+        if (!target) return;
+        const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+        target.innerHTML = lines.length ? lines.map(ansiLineToHtml).join('\n') : '(no import run yet)';
+        if (wasAtBottom) target.scrollTop = target.scrollHeight;
+    }
+
+    function handleBeetsImportSse(event) {
         try {
-            const resp = await fetch(statusUrl, {credentials: 'same-origin'});
-            if (!resp.ok) return false;
-            const live = applyImportStatus(await resp.json());
-            if (logUrl) refreshLogs({dataset: {url: logUrl, target: 'beetsImportLogText'}});
-            return live;
+            const payload = JSON.parse(event.detail.data);
+            applyImportStatus(payload);
+            applyImportLines(payload.lines || []);
         } catch (err) {
-            return false;
+            // Malformed payload, next event will hopefully replace
         }
     }
 
-    function importSetPolling(active, statusUrl, logUrl) {
-        if (active && !importPollTimer) {
-            importPollTimer = setInterval(async () => {
-                if (!(await pollImportOnce(statusUrl, logUrl))) importSetPolling(false, statusUrl, logUrl);
-            }, 1500);
-        } else if (!active && importPollTimer) {
-            clearInterval(importPollTimer);
-            importPollTimer = null;
-        }
-    }
+
+    const adminSseSource = document.getElementById('adminDashboard');
+    if (adminSseSource) adminSseSource.addEventListener('beets-import', handleBeetsImportSse);
 
     async function startBeetsImport(button) {
         const url = button.dataset.url;
@@ -411,7 +408,6 @@
             }
 
             const live = applyImportStatus(payload);
-            importSetPolling(live, button.dataset.statusUrl, button.dataset.logUrl);
             if (live) pathInput.value = '';
 
         } catch (err) {
@@ -445,7 +441,7 @@
             });
             applyImportStatus(await resp.json());
         } catch (err) {
-            // next poll tick will do
+            // next SSE push will hopefully correct the view
         }
         input.focus();
     }
@@ -908,11 +904,16 @@
 
     document.querySelectorAll('[data-action="refresh-log"]').forEach(refreshLogs);
 
+    // One initial poll, then live updates on SSE connection
     const startImportBtn = document.querySelector('[data-action="start-beets-import"]');
     if (startImportBtn && startImportBtn.dataset.statusUrl) {
-        pollImportOnce(startImportBtn.dataset.statusUrl, startImportBtn.dataset.logUrl).then(live => {
-            importSetPolling(live, startImportBtn.dataset.statusUrl, startImportBtn.dataset.logUrl);
-        });
+        fetch(startImportBtn.dataset.statusUrl, {credentials: 'same-origin'})
+            .then(resp => resp.ok ? resp.json() : null)
+            .then(status => { if (status) applyImportStatus(status); })
+            .catch(() => {});
+        if (startImportBtn.dataset.logUrl) {
+            refreshLogs({dataset: {url: startImportBtn.dataset.logUrl, target: 'beetsImportLogText'}});
+        }
     }
 
     formatChatTimes();

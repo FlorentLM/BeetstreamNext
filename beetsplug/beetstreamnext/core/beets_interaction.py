@@ -16,9 +16,10 @@ import yaml
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.core.database import write_beets_field
+from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.utils.system import is_writable
+from beetsplug.beetstreamnext.utils.system import is_writable, read_log
 
 IS_WINDOWS = sys.platform == 'win32'
 
@@ -27,7 +28,7 @@ if IS_WINDOWS:
 else:
     import pty
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 _proc: Optional[Any] = None         # subprocess.Popen or winpty.PtyProcess
 _master_fd: Optional[int] = None    # POSIX only, Windows pty process reads/writes itself
@@ -54,15 +55,19 @@ def is_import_safe() -> bool:
 
 
 def import_status() -> dict:
-    """Current import state."""
+    """Snapshot of the current import state."""
     with _lock:
         return {'state': _state, 'path': _current_path, 'exit_code': _exit_code}
 
 
-def is_importing() -> bool:
-    """True while an import session is running or waiting on input."""
-    with _lock:
-        return _state in ('running', 'needs_input')
+def import_running() -> bool:
+    """Import session is running or waiting on input."""
+    return import_status()['state'] in ('running', 'needs_input')
+
+
+def _push_import_status() -> None:
+    """Publish import status and recent log to connected admin sessions."""
+    admin_events.publish('beets-import', {**import_status(), 'lines': read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)})
 
 
 def start_import(path: str) -> Tuple[bool, str]:
@@ -72,7 +77,7 @@ def start_import(path: str) -> Tuple[bool, str]:
     global _proc, _master_fd, _state, _current_path, _exit_code
 
     with _lock:
-        if _state in ('running', 'needs_input'):
+        if import_running():
             return False, 'An import is already running.'
 
         candidate = Path(path).expanduser() if path else None
@@ -144,6 +149,7 @@ def start_import(path: str) -> Tuple[bool, str]:
 
         bsn_logger.info(f"Started beets import (pid {pid_for_log}) on '{candidate}': "
                          f"{' '.join(shlex.quote(c) for c in command)}")
+        _push_import_status()
         return True, 'Import started.'
 
 
@@ -159,6 +165,8 @@ def _handle_output_chunk(log_file, text: str) -> None:
             if _state == 'running':
                 _state = 'needs_input'
 
+    _push_import_status()
+
 
 def _finish_import(log_file, exit_code: int) -> None:
     global _state, _exit_code
@@ -170,6 +178,7 @@ def _finish_import(log_file, exit_code: int) -> None:
     log_file.write(f'\n[beetstreamnext] Beets import finished (exit code {exit_code}).\n')
     log_file.flush()
 
+    _push_import_status()
     bsn_logger.info(f'Interactive beets import finished (exit {exit_code})')
 
 
@@ -234,6 +243,7 @@ def send_import_input(text: str) -> Tuple[bool, str]:
         if _state == 'needs_input':
             _state = 'running'   # Assume this answers whatever prompt was up
 
+    _push_import_status()
     return True, 'Sent.'
 
 

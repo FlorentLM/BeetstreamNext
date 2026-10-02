@@ -610,6 +610,26 @@
                               'Listed IPs are denied access regardless of whitelist.',
                               'e.g. 203.0.113.5', settings_by_category.security['ip_blacklist'].value,
                               settings_by_category.security['ip_blacklist'].pinned) }}
+                    <div class="card">
+                        <div class="table-header">
+                            <h2>Rate Limits</h2>
+                            <button class="btn btn-outline"
+                                    hx-get="{{ url_for('admin.route_rate_limits') }}"
+                                    hx-trigger="click, load, rate-limits from:#adminDashboard throttle:1s"
+                                    hx-target="#rate-limit-state"
+                                    hx-swap="innerHTML">Refresh
+                            </button>
+                        </div>
+                        <div id="rate-limit-state" class="rate-limit-state">
+                            <p class="empty-state">Loading...</p>
+                        </div>
+                        <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
+                              data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
+                              class="rate-limit-clear">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline">Clear rate-limit failures</button>
+                        </form>
+                    </div>
                 {% elif cat == 'podcasts' %}
                     <div class="card">
                         <div class="table-header">
@@ -873,27 +893,6 @@
                         <button type="submit" class="btn btn-outline">Cleanup leftover files</button>
                     </form>
                 </div>
-            </div>
-
-            <div class="card">
-                <div class="table-header">
-                    <h2>Rate Limits</h2>
-                    <button class="btn btn-outline"
-                            hx-get="{{ url_for('admin.route_rate_limits') }}"
-                            hx-trigger="click, load, rate-limits from:#adminDashboard throttle:1s"
-                            hx-target="#rate-limit-state"
-                            hx-swap="innerHTML">Refresh
-                    </button>
-                </div>
-                <div id="rate-limit-state" class="rate-limit-state">
-                    <p class="empty-state">Loading...</p>
-                </div>
-                <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
-                      data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
-                      class="rate-limit-clear">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline">Clear rate-limit failures</button>
-                </form>
             </div>
 
             <div class="card">

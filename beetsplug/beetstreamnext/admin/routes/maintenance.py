@@ -92,6 +92,10 @@ def route_audiomuse_fingerprint() -> flask.Response:
 def route_health_scan() -> flask.Response:
     full = flask.request.form.get('full', type=safe_str) == '1'
     started, message = start_scan(full=full)
+
+    if flask.request.headers.get('HX-Request'):
+        return route_health_scan_status()
+
     flask.flash(message, 'success' if started else 'info')
     return back_to('maintenance')
 

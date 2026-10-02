@@ -971,11 +971,15 @@
                     </details>
                 {% endif %}
                 <div class="button-row">
-                    <form method="POST" action="{{ url_for('admin.route_health_scan') }}">
+                    <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
+                          hx-post="{{ url_for('admin.route_health_scan') }}"
+                          hx-target="#health-scan-status" hx-swap="innerHTML">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-primary">Scan for changes</button>
                     </form>
                     <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
+                          hx-post="{{ url_for('admin.route_health_scan') }}" hx-trigger="confirmed"
+                          hx-target="#health-scan-status" hx-swap="innerHTML"
                           data-confirm="Re-check every song in the library, including ones already checked? This can take a while on large libraries.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="full" value="1">

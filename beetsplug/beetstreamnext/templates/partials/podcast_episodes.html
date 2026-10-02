@@ -39,22 +39,26 @@
                             {%- if e.file_size %} max="{{ e.file_size }}" value="0"{% endif %}></progress>
                 </td>
                 <td class="actions-cell">
-                    <form id="podcast-episode-dl-{{ e.id }}" method="POST" class="form-inline"
+                    <form id="podcast-episode-dl-{{ e.id }}" method="POST" class="form-inline" hx-swap="none"
                           action="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
+                          hx-post="{{ url_for('admin.route_download_podcast_episode', episode_id=e.id) }}"
                             {{ 'hidden' if e.status in ('completed', 'downloading') else '' }}>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="icon-btn" title="Download"
                                 aria-label="Download &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('download') }}</button>
                     </form>
-                    <form id="podcast-episode-cancel-{{ e.id }}" method="POST" class="form-inline"
+                    <form id="podcast-episode-cancel-{{ e.id }}" method="POST" class="form-inline" hx-swap="none"
                           action="{{ url_for('admin.route_cancel_podcast_episode_download', episode_id=e.id) }}"
+                          hx-post="{{ url_for('admin.route_cancel_podcast_episode_download', episode_id=e.id) }}"
                             {{ '' if e.status == 'downloading' else 'hidden' }}>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="icon-btn icon-btn-delete" title="Cancel download"
                                 aria-label="Cancel download of &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('cancel') }}</button>
                     </form>
-                    <form id="podcast-episode-del-{{ e.id }}" method="POST" class="form-inline"
+                    <form id="podcast-episode-del-{{ e.id }}" method="POST" class="form-inline" hx-swap="none"
                           action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
+                          hx-post="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
+                          hx-trigger="confirmed"
                           data-confirm="Remove this episode's downloaded file for all subscribers?"
                             {{ '' if e.status == 'completed' else 'hidden' }}>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

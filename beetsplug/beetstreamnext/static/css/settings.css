@@ -357,7 +357,8 @@ tr:hover td {
 
 .podcast-progress {
     display: block;
-    width: 100%;
+    width: 0;
+    min-width: 100%;
     height: 5px;
     margin-top: 0.35rem;
     border: none;

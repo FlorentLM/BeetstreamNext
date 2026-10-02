@@ -774,7 +774,9 @@
         if (!form) return;
         event.preventDefault();
         Alpine.store('modal').confirm(form.dataset.confirm).then(ok => {
-            if (ok) form.submit();
+            if (!ok) return;
+            if (form.hasAttribute('hx-post')) htmx.trigger(form, 'confirmed');
+            else form.submit();
         });
     });
 
@@ -806,7 +808,9 @@
             `Warning: Your current IP (${clientIp || 'unknown'}) is NOT ${entries.length === 1 ? "" : "listed in"} ${listed}. ` +
             `\n\nAccess will be restricted to ${entries.length === 1 ? "that IP" : "these IPs"} and the current IP will lose access immediately.\n\nContinue?`
         ).then(ok => {
-            if (ok) form.submit();
+            if (!ok) return;
+            if (form.hasAttribute('hx-post')) htmx.trigger(form, 'confirmed');
+            else form.submit();
         });
     });
 

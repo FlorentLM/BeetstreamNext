@@ -372,17 +372,31 @@ def route_serve_podcast_image(channel_id: int) -> flask.Response:
     return response
 
 
+def _episode_action_done(message: str, category: str = 'info') -> flask.Response:
+    """
+    Success is silent (SSE status push updates the row), failures flash and force a refresh to display the message.
+    """
+    if flask.request.headers.get('HX-Request'):
+        if category == 'info':
+            return flask.Response(status=204)
+        flask.flash(message, category)
+        response = flask.Response(status=204)
+        response.headers['HX-Refresh'] = 'true'
+        return response
+
+    flask.flash(message, category)
+    return back_to('podcasts')
+
+
 @admin_bp.route('/podcasts/episode/<int:episode_id>/download', methods=['POST'])
 @admin_required
 def route_download_podcast_episode(episode_id: int) -> flask.Response:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     if podcast_manager.background_download(episode_id):
-        flask.flash('Episode download started.', 'info')
-    else:
-        flask.flash('This episode has no known audio source.', 'error')
+        return _episode_action_done('Episode download started.')
 
-    return back_to('podcasts')
+    return _episode_action_done('This episode has no known audio source.', 'error')
 
 
 @admin_bp.route('/podcasts/episode/<int:episode_id>/cancel-download', methods=['POST'])
@@ -391,11 +405,9 @@ def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     if podcast_manager.cancel_download(episode_id):
-        flask.flash('Download cancelled.', 'info')
-    else:
-        flask.flash('This episode is not currently downloading.', 'error')
+        return _episode_action_done('Download cancelled.')
 
-    return back_to('podcasts')
+    return _episode_action_done('This episode is not currently downloading.', 'error')
 
 
 @admin_bp.route('/podcasts/episode/<int:episode_id>/delete', methods=['POST'])
@@ -404,9 +416,8 @@ def route_delete_podcast_episode(episode_id: int) -> flask.Response:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.delete_episode(episode_id)
-    flask.flash('Episode file removed for all subscribers.', 'info')
 
-    return back_to('podcasts')
+    return _episode_action_done('Episode file removed for all subscribers.')
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/episodes', methods=['GET'])

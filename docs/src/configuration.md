@@ -337,6 +337,30 @@ Required to allow <code>beet import</code> scans to modify content on disk (writ
 
 ---
 
+### `import_watch_enabled`
+
+Enable automatic Beets import for new files in configured watched folders.
+
+*type:* `bool`
+
+*default:* `False`
+
+*env:* `BSN_IMPORTWATCH_ENABLED`
+
+---
+
+### `import_watch_settle`
+
+How long to wait (in seconds) for a watched folder to stop changing before importing it (to avoid importing half-copied or half-downloaded albums).
+
+*type:* `int`
+
+*default:* `60`
+
+*env:* `BSN_IMPORTWATCH_SETTLE`
+
+---
+
 ### `never_transcode`
 
 Never transcode files, always stream the original.

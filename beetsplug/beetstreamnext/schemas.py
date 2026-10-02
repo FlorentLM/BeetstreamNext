@@ -447,7 +447,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'env_var': 'BSN_IMPORTWATCH_ENABLED',
     },
-    'import_watch_settle_seconds': {
+    'import_watch_settle': {
         'type': 'int',
         'default': 60,
         'category': 'library',

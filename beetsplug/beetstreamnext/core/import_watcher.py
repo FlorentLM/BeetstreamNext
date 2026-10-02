@@ -69,7 +69,7 @@ class ImportWatcher(threading.Thread):
             watched = [p for p in list_pinned_paths() if p['watch']]
             self._states = {k: v for k, v in self._states.items() if k in {p['path'] for p in watched}}
 
-            settle = settings_store.get('import_watch_settle_seconds')
+            settle = settings_store.get('import_watch_settle')
             now = time.monotonic()
 
             for entry in watched:

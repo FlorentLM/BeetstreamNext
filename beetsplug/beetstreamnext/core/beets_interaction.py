@@ -8,7 +8,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple, Any, List
 import beets
 import confuse
 import yaml
@@ -17,6 +17,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.events import admin_events
+from beetsplug.beetstreamnext.core.import_paths import validate_pinned_path
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
@@ -36,6 +37,7 @@ _master_fd: Optional[int] = None    # POSIX only, Windows pty process reads/writ
 _state: str = 'idle'                # idle, running, needs_input, completed, failed
 _current_path: Optional[str] = None
 _exit_code: Optional[int] = None
+_queue: List[dict] = []             # pinned paths waiting to be scanned
 
 _NEEDS_INPUT_SNIPPETS = (
     '[A]pply', 'kip new', 'ter search', 'it, edit ',
@@ -66,7 +68,7 @@ def import_running() -> bool:
     return import_status()['state'] in ('running', 'needs_input')
 
 
-def htmlify_log() -> list[str]:
+def htmlify_log() -> List[str]:
     """Import log as HTML lines (escaped, ANSI converted)."""
     return [ansi_to_html(line) for line in read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)]
 
@@ -76,7 +78,7 @@ def _push_import_status() -> None:
     admin_events.publish('beets-import', {**import_status(), 'lines': htmlify_log()})
 
 
-def start_import(path: str) -> Tuple[bool, str]:
+def start_import(path: str, quiet: bool = False, incremental: bool = False, reset_log: bool = True) -> Tuple[bool, str]:
     """
     Start a `beet import` against `path`.
     """
@@ -90,6 +92,15 @@ def start_import(path: str) -> Tuple[bool, str]:
         if not candidate or not candidate.is_dir():
             return False, f"'{path}' is not a directory."
 
+        if not candidate.is_absolute():
+            return False, 'Use an absolute path.'
+
+        # Pins are validated when added, but the library root or a symlink may have changed since
+        if quiet:
+            error = validate_pinned_path(candidate)
+            if error:
+                return False, error
+
         if not is_import_safe() and not settings_store.get('allow_disk_writes'):
             return False, ("Refusing to import: beets config is set to allow writing tags or copying/moving files. "
                             "Enable 'allow_disk_writes' in BeetstreamNext to allow this.")
@@ -102,16 +113,26 @@ def start_import(path: str) -> Tuple[bool, str]:
         if config_path:
             command += ['-c', str(config_path)]
 
-        command += ['-l', library_path, 'import', str(candidate)]
+        command += ['-l', library_path, 'import']
+        if quiet:
+            command += ['-q', '--incremental' if incremental else '--noincremental']
+        command.append(str(candidate))
 
         env = dict(os.environ)
         env.pop('NO_COLOR', None)
         env.setdefault('TERM', 'xterm-256color')
 
-        try:
-            open(BEETS_IMPORT_LOG_PATH, 'wb').close()
-        except OSError as e:
-            bsn_logger.warning(f'Could not reset import log file: {e}')
+        if reset_log:
+            try:
+                open(BEETS_IMPORT_LOG_PATH, 'wb').close()
+            except OSError as e:
+                bsn_logger.warning(f'Could not reset import log file: {e}')
+        else:
+            try:
+                with open(BEETS_IMPORT_LOG_PATH, 'a', encoding='utf-8') as f:
+                    f.write(f"\n[beetstreamnext] Next pinned path: {candidate}\n")
+            except OSError:
+                pass
 
         if IS_WINDOWS:
             try:
@@ -159,6 +180,38 @@ def start_import(path: str) -> Tuple[bool, str]:
         return True, 'Import started.'
 
 
+def start_scan(entries: List[dict]) -> Tuple[bool, str]:
+    """
+    Non-interactively import pinned paths.
+    """
+    global _queue
+
+    if not entries:
+        return False, 'No pinned import paths are configured.'
+
+    with _lock:
+        if import_running():
+            return False, 'An import is already running.'
+
+        ok, message = start_import(entries[0]['path'], quiet=True, incremental=entries[0]['incremental'])
+        if ok:
+            _queue = list(entries[1:])
+        return ok, message
+
+
+def _start_next_queued() -> None:
+    global _queue
+
+    with _lock:
+        if not _queue:
+            return
+        entry = _queue.pop(0)
+        ok, message = start_import(entry['path'], quiet=True, incremental=entry['incremental'], reset_log=False)
+        if not ok:
+            bsn_logger.warning(f"Pinned scan stopped at '{entry['path']}': {message}")
+            _queue = []
+
+
 def _handle_output_chunk(log_file, text: str) -> None:
 
     global _state
@@ -185,7 +238,9 @@ def _finish_import(log_file, exit_code: int) -> None:
     log_file.flush()
 
     _push_import_status()
-    bsn_logger.info(f'Interactive beets import finished (exit {exit_code})')
+    bsn_logger.info(f'Beets import finished (exit {exit_code})')
+
+    _start_next_queued()
 
 
 def _pump_output_posix(proc: subprocess.Popen, master_fd: int) -> None:

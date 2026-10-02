@@ -15,7 +15,8 @@ from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.users_crud import load_username
-from beetsplug.beetstreamnext.core.beets_interaction import import_running
+from beetsplug.beetstreamnext.core.beets_interaction import import_running, start_scan
+from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 
@@ -255,13 +256,11 @@ def endpoint_start_scan() -> flask.Response:
     if not flask.g.user_data.get('adminRole'):
         return subsonic_error(40, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
 
+    ok, message = start_scan(list_pinned_paths())
+    if not ok:
+        return subsonic_error(0, message=message, resp_fmt=resp_fmt)
 
-    # TODO: Reenable this properly
-    return subsonic_error(
-        0,
-        message="Library scan via Subsonic clients is currently disabled.",
-        resp_fmt=resp_fmt,
-    )
+    return subsonic_response({'scanStatus': {'scanning': import_running()}}, resp_fmt=resp_fmt)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/

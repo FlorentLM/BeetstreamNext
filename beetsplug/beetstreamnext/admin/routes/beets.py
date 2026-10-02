@@ -6,7 +6,8 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.beets_interaction import htmlify_log, start_import, import_status, send_import_input, read_config
+from beetsplug.beetstreamnext.core.beets_interaction import htmlify_log, start_import, import_status, import_running, send_import_input, read_config, start_scan
+from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths, add_pinned_path, remove_pinned_path, set_pinned_incremental
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])
@@ -51,14 +52,13 @@ def route_beets_import_browse() -> flask.Response:
     raw = (flask.request.args.get('path') or '').strip()
 
     if not raw:
-        root = flask.current_app.config.get('root_directory')
-        base, prefix = (Path(root).parent if root else Path.home()), ''
+        return flask.render_template('partials/path_suggestions.html', entries=[])
+
+    typed = Path(raw).expanduser()
+    if raw.endswith(os.sep) and typed.is_dir():
+        base, prefix = typed, ''
     else:
-        typed = Path(raw).expanduser()
-        if raw.endswith(os.sep) and typed.is_dir():
-            base, prefix = typed, ''
-        else:
-            base, prefix = typed.parent, typed.name
+        base, prefix = typed.parent, typed.name
 
     try:
         entries = sorted(
@@ -70,3 +70,44 @@ def route_beets_import_browse() -> flask.Response:
 
     return flask.render_template('partials/path_suggestions.html', entries=entries)
 
+
+
+def _pinned_paths_partial(message: str = '', ok: bool = True) -> flask.Response:
+    return flask.render_template(
+        'partials/pinned_paths.html', pinned=list_pinned_paths(), message=message, ok=ok, running=import_running()
+    )
+
+
+@admin_bp.route('/beets/pinned', methods=['GET'])
+@admin_required
+def route_pinned_paths() -> flask.Response:
+    return _pinned_paths_partial()
+
+
+@admin_bp.route('/beets/pinned/add', methods=['POST'])
+@admin_required
+def route_pinned_paths_add() -> flask.Response:
+    path = (flask.request.form.get('path') or '').strip()
+    ok, message = add_pinned_path(path, incremental=flask.request.form.get('incremental') == '1')
+    return _pinned_paths_partial(message, ok)
+
+
+@admin_bp.route('/beets/pinned/<int:path_id>/remove', methods=['POST'])
+@admin_required
+def route_pinned_paths_remove(path_id: int) -> flask.Response:
+    remove_pinned_path(path_id)
+    return _pinned_paths_partial()
+
+
+@admin_bp.route('/beets/pinned/<int:path_id>/incremental', methods=['POST'])
+@admin_required
+def route_pinned_paths_incremental(path_id: int) -> flask.Response:
+    set_pinned_incremental(path_id, flask.request.form.get('incremental') == '1')
+    return _pinned_paths_partial()
+
+
+@admin_bp.route('/beets/pinned/scan', methods=['POST'])
+@admin_required
+def route_pinned_paths_scan() -> flask.Response:
+    ok, message = start_scan(list_pinned_paths())
+    return _pinned_paths_partial(message, ok)

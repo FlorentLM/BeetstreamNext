@@ -1,0 +1,48 @@
+<p class="card-hint">Pinned folders to import <strong>non-interactively</strong>. These are what a Subsonic client's <code>startScan</code> runs.</p>
+
+{% if message and not ok %}
+    <p class="test-result {{ 'test-result-ok' if ok else 'test-result-fail' }}">{{ message }}</p>
+{% endif %}
+
+<div class="pinned-paths-frame">
+    <table class="rate-limit-table pinned-paths-table">
+        <thead>
+        <tr><th>Path</th><th>Incremental</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for p in pinned %}
+            <tr>
+                <td class="pinned-path">{{ p.path }}</td>
+                <td>
+                    <input type="checkbox" name="incremental" value="1" {{ 'checked' if p.incremental }}
+                           title="Skip folders already processed on earlier scans"
+                           hx-post="{{ url_for('admin.route_pinned_paths_incremental', path_id=p.id) }}"
+                           hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                           hx-target="#pinnedPaths"
+                           hx-swap="innerHTML">
+                </td>
+                <td>
+                    <form hx-post="{{ url_for('admin.route_pinned_paths_remove', path_id=p.id) }}"
+                          hx-target="#pinnedPaths"
+                          hx-swap="innerHTML">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="pinned-path-remove" title="Unpin" aria-label="Unpin"><span class="material-symbols-outlined">close</span></button>
+                    </form>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="3" class="pinned-path">No pinned paths yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pinned %}
+    <form class="card-body-form"
+          hx-post="{{ url_for('admin.route_pinned_paths_scan') }}"
+          hx-target="#pinnedPaths"
+          hx-swap="innerHTML">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary" data-pinned-scan {{ 'disabled' if running }}>Scan pinned paths now</button>
+    </form>
+{% endif %}

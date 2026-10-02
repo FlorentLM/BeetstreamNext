@@ -840,6 +840,11 @@
                                    hx-target="#beetsImportPathResults"
                                    hx-swap="innerHTML">
                             <div class="suggestion-list beets-path-dropdown" id="beetsImportPathResults"></div>
+                            <button type="button" class="beets-path-pin" title="Pin path" aria-label="Pin path"
+                                    hx-post="{{ url_for('admin.route_pinned_paths_add') }}"
+                                    hx-include="#beetsImportPath"
+                                    hx-vals='{"csrf_token": "{{ csrf_token() }}", "incremental": "1"}'
+                                    hx-target="#pinnedPaths" hx-swap="innerHTML"><span class="material-symbols-outlined">keep</span></button>
                         </div>
                         <button type="button" class="btn btn-primary" data-action="start-beets-import"
                                 data-url="{{ url_for('admin.route_beets_import_start') }}"
@@ -849,11 +854,13 @@
                     </div>
                     <p class="test-result" id="beetsImportStartResult"></p>
                 </form>
+                <div id="pinnedPaths"
+                     hx-get="{{ url_for('admin.route_pinned_paths') }}"
+                     hx-trigger="load"
+                     hx-swap="innerHTML"></div>
                 <dl class="kv-grid">
                     <dt>Status</dt>
                     <dd id="beetsImportStatusValue">Idle</dd>
-                    <dt>Path</dt>
-                    <dd id="beetsImportPathValue">&mdash;</dd>
                 </dl>
                 <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
                 <form class="card-body-form">

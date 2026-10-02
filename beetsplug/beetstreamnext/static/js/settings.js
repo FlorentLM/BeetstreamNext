@@ -127,7 +127,7 @@
 
         Alpine.data('checkboxGroup', () => ({
             setAll(checked, skip = []) {
-                this.$el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                this.$root.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                     if (checked && skip.includes(cb.name)) return;
                     cb.checked = checked;
                 });
@@ -283,20 +283,23 @@
 
     function applyImportStatus(status) {
         const statusEl = document.getElementById('beetsImportStatusValue');
-        const pathEl = document.getElementById('beetsImportPathValue');
         const stdinInput = document.getElementById('beetsImportStdin');
         const sendBtn = document.querySelector('[data-action="send-beets-import-input"]');
         if (!statusEl) return false;
 
-        statusEl.textContent = IMPORT_STATE_LABELS[status.state] || status.state;
-        if (pathEl) pathEl.textContent = status.path || '—';
-
         const live = status.state === 'running' || status.state === 'needs_input';
+
+        let label = IMPORT_STATE_LABELS[status.state] || status.state;
+        if (live && status.path) {
+            label = (status.state === 'running' ? 'Importing ' : 'Waiting for input on ') + status.path;
+        }
+        statusEl.textContent = label;
         if (stdinInput) {
             stdinInput.disabled = !live;
             stdinInput.placeholder = live ? 'reply to beets…' : 'beets is idle';
         }
         if (sendBtn) sendBtn.disabled = !live;
+        document.querySelectorAll('[data-pinned-scan]').forEach(btn => { btn.disabled = live; });
 
         return live;
     }

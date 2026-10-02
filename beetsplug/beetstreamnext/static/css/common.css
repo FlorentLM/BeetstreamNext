@@ -228,6 +228,21 @@ pre code {
     border-color: var(--text-muted);
 }
 
+.btn-warning {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid #f59e0b;
+    color: #f59e0b;
+}
+
+.btn-warning:hover {
+    background: rgba(245, 158, 11, 0.22);
+}
+
+.btn-small {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+}
+
 .btn-full {
     width: 100%;
     margin-top: 1rem;

@@ -439,6 +439,24 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'env_var': 'BSN_ALLOW_DISK_WRITES',
     },
+    'import_watch_enabled': {
+        'type': 'bool',
+        'default': False,
+        'category': 'library',
+        'description': "Enable automatic Beets import for new files in configured watched folders.",
+        'requires_restart': False,
+        'env_var': 'BSN_IMPORTWATCH_ENABLED',
+    },
+    'import_watch_settle_seconds': {
+        'type': 'int',
+        'default': 60,
+        'category': 'library',
+        'description': "How long to wait (in seconds) for a watched folder to stop changing before importing it "
+                        "(to avoid importing half-copied or half-downloaded albums).",
+        'requires_restart': False,
+        'env_var': 'BSN_IMPORTWATCH_SETTLE',
+        'validator': _validate_int_range(5, 86400),
+    },
     'never_transcode': {
         'type': 'bool',
         'default': False,

@@ -7,7 +7,7 @@
 <div class="pinned-paths-frame">
     <table class="rate-limit-table pinned-paths-table">
         <thead>
-        <tr><th>Path</th><th>Incremental</th><th></th></tr>
+        <tr><th>Path</th><th>Incremental</th><th>Watch</th><th>Last auto-scan</th><th></th></tr>
         </thead>
         <tbody>
         {% for p in pinned %}
@@ -22,6 +22,15 @@
                            hx-swap="innerHTML">
                 </td>
                 <td>
+                    <input type="checkbox" name="watch" value="1" {{ 'checked' if p.watch }}
+                           title="Automatically import new files from this folder"
+                           hx-post="{{ url_for('admin.route_pinned_paths_watch', path_id=p.id) }}"
+                           hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                           hx-target="#pinnedPaths"
+                           hx-swap="innerHTML">
+                </td>
+                <td>{{ p.last_triggered or '—' }}</td>
+                <td>
                     <form hx-post="{{ url_for('admin.route_pinned_paths_remove', path_id=p.id) }}"
                           hx-target="#pinnedPaths"
                           hx-swap="innerHTML">
@@ -31,7 +40,7 @@
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="3" class="pinned-path">No pinned paths yet.</td></tr>
+            <tr><td colspan="5" class="pinned-path">No pinned paths yet.</td></tr>
         {% endfor %}
         </tbody>
     </table>

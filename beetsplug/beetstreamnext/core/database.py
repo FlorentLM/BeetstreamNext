@@ -364,7 +364,9 @@ def initialise_db() -> None:
         CREATE TABLE IF NOT EXISTS pinned_import_paths (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             path TEXT NOT NULL UNIQUE,
-            incremental INTEGER NOT NULL DEFAULT 1
+            incremental INTEGER NOT NULL DEFAULT 1,
+            watch INTEGER NOT NULL DEFAULT 0,
+            last_triggered REAL
         )
         """
     )

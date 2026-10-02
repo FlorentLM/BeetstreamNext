@@ -856,7 +856,7 @@
                 </form>
                 <div id="pinnedPaths"
                      hx-get="{{ url_for('admin.route_pinned_paths') }}"
-                     hx-trigger="load"
+                     hx-trigger="load, pinned-paths from:#adminDashboard throttle:1s"
                      hx-swap="innerHTML"></div>
                 <dl class="kv-grid">
                     <dt>Status</dt>

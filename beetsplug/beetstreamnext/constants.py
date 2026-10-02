@@ -178,7 +178,8 @@ DEFAULT_PORT: int = 8080
 DB_BUSY_TIMEOUT_MS: int = 5000
 DEFAULT_DB_TIMEOUT: float = DB_BUSY_TIMEOUT_MS / 1000   # beets' 'timeout' kept in sync with the busy_timeout PRAGMA in BSN's db
 
-EVENT_BUS_INTERVAL: int = 15  # seconds (also how long a dead connection can hang around before cleanup)
+EVENT_BUS_INTERVAL: int = 15     # seconds (also how long a dead connection can hang around before cleanup)
+IMPORTWATCH_POLL_TIME: int = 30  # seconds
 
 
 ## URLs cleanup constants

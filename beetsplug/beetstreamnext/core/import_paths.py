@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -12,13 +13,21 @@ def list_pinned_paths() -> list[dict]:
     with database() as db:
         rows = db.execute(
             """
-            SELECT id, path, incremental 
+            SELECT id, path, incremental, watch, last_triggered
             FROM pinned_import_paths 
             ORDER BY path
             """
         ).fetchall()
 
-    return [{'id': r['id'], 'path': r['path'], 'incremental': bool(r['incremental'])} for r in rows]
+    return [
+        {
+            'id': r['id'], 'path': r['path'], 'incremental': bool(r['incremental']),
+            'watch': bool(r['watch']),
+            'last_triggered': (datetime.fromtimestamp(r['last_triggered']).strftime('%Y-%m-%d %H:%M')
+                               if r['last_triggered'] else None),
+        }
+        for r in rows
+    ]
 
 
 def validate_pinned_path(candidate: Path) -> Optional[str]:
@@ -73,4 +82,26 @@ def set_pinned_incremental(path_id: int, incremental: bool) -> None:
             SET incremental = ? 
             WHERE id = ?
             """, (int(incremental), path_id)
+        )
+
+
+def set_pinned_watch(path_id: int, watch: bool) -> None:
+    with database() as db:
+        db.execute(
+            """
+            UPDATE pinned_import_paths 
+            SET watch = ? 
+            WHERE id = ?
+            """, (int(watch), path_id)
+        )
+
+
+def mark_pinned_triggered(path_id: int) -> None:
+    with database() as db:
+        db.execute(
+            """
+            UPDATE pinned_import_paths 
+            SET last_triggered = unixepoch() 
+            WHERE id = ?
+            """, (path_id,)
         )

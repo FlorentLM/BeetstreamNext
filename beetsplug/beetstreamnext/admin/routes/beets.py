@@ -7,7 +7,7 @@ import flask
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.beets_interaction import htmlify_log, start_import, import_status, import_running, send_import_input, read_config, start_scan
-from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths, add_pinned_path, remove_pinned_path, set_pinned_incremental
+from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths, add_pinned_path, remove_pinned_path, set_pinned_incremental, set_pinned_watch
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])
@@ -103,6 +103,13 @@ def route_pinned_paths_remove(path_id: int) -> flask.Response:
 @admin_required
 def route_pinned_paths_incremental(path_id: int) -> flask.Response:
     set_pinned_incremental(path_id, flask.request.form.get('incremental') == '1')
+    return _pinned_paths_partial()
+
+
+@admin_bp.route('/beets/pinned/<int:path_id>/watch', methods=['POST'])
+@admin_required
+def route_pinned_paths_watch(path_id: int) -> flask.Response:
+    set_pinned_watch(path_id, flask.request.form.get('watch') == '1')
     return _pinned_paths_partial()
 
 

@@ -17,7 +17,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
 from beetsplug.beetstreamnext.core.database import write_beets_field
 from beetsplug.beetstreamnext.core.events import admin_events
-from beetsplug.beetstreamnext.core.import_paths import validate_pinned_path
+from beetsplug.beetstreamnext.core.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
@@ -196,7 +196,27 @@ def start_scan(entries: List[dict]) -> Tuple[bool, str]:
         ok, message = start_import(entries[0]['path'], quiet=True, incremental=entries[0]['incremental'])
         if ok:
             _queue = list(entries[1:])
+            for entry in entries:
+                if entry.get('watch'):
+                    mark_pinned_triggered(entry['id'])
+            admin_events.publish('pinned-paths', '')
         return ok, message
+
+
+def enqueue_scan(entry: dict) -> Tuple[bool, str]:
+    """
+    Add a pinned path to the non-interactive queue.
+    (starts immediately if no other is in the queue)
+    """
+    global _queue
+
+    with _lock:
+        if import_running():
+            if not any(q['path'] == entry['path'] for q in _queue):
+                _queue.append({**entry, 'incremental': True})
+            return True, 'Queued.'
+
+        return start_import(entry['path'], quiet=True, incremental=True)
 
 
 def _start_next_queued() -> None:

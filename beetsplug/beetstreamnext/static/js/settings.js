@@ -756,6 +756,12 @@
             if (removeCheckbox && event.target.files.length) removeCheckbox.checked = false;
         }
 
+        if (event.target.id === 'editUserAvatar') {
+            previewLocalRadioIcon(event.target, 'editUserAvatarPreview', null);
+            const removeCheckbox = document.getElementById('editUserRemoveAvatar');
+            if (removeCheckbox && event.target.files.length) removeCheckbox.checked = false;
+        }
+
         if (event.target.id === 'set-jukebox_backend') {
             const deviceInput = document.getElementById('set-jukebox_hardware_device');
             if (deviceInput && deviceInput.value) deviceInput.value = '';

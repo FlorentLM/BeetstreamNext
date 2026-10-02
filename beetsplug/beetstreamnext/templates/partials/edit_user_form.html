@@ -1,37 +1,28 @@
 <p class="modal-username">{{ user.username }}</p>
 
-{# Avatar: separate form because upload is multipart #}
-
-<div class="form-group">
-    <div class="avatar-section-header">
-        <label class="label-inline">Avatar</label>
-        {% if user.hasAvatar %}
-            <img class="user-avatar" alt=""
-                 src="{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}">
-        {% endif %}
-    </div>
-
-    <form method="POST" enctype="multipart/form-data" class="avatar-upload-form"
-          action="{{ url_for('admin.route_upload_avatar', username=user.username) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required>
-        <button type="submit" class="btn btn-outline">Upload</button>
-    </form>
-
-    {% if user.hasAvatar %}
-        <form method="POST" class="form-inline"
-              data-confirm="Remove avatar?"
-              action="{{ url_for('admin.route_delete_avatar', username=user.username) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="action-link action-link-delete">Remove avatar</button>
-        </form>
-    {% endif %}
-</div>
-
-<hr class="modal-separator">
-
-<form method="POST" action="{{ url_for('admin.route_update_user', username=user.username) }}">
+<form id="editUserForm" method="POST" enctype="multipart/form-data"
+      action="{{ url_for('admin.route_update_user', username=user.username) }}">
     {{ edit_form.csrf_token }}
+
+    <div class="form-group">
+        <label>Avatar <span class="label-hint">(optional)</span></label>
+
+        <div class="radio-icon-row">
+            <button type="button" class="radio-icon-frame radio-icon-frame-round" data-action="pick-radio-icon"
+                    data-target="editUserAvatar" aria-label="Choose avatar">
+                <img id="editUserAvatarPreview" class="{{ '' if user.hasAvatar else 'hidden' }}" alt=""
+                     {% if user.hasAvatar %}src="{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}"{% endif %}>
+                <span class="radio-icon-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
+            </button>
+            <span class="label-hint">Click to change the avatar</span>
+        </div>
+
+        <input type="file" id="editUserAvatar" name="avatar" accept="image/jpeg,image/png,image/webp"
+               class="hidden">
+        <label class="role-item role-item-standalone">
+            <input type="checkbox" name="remove_avatar" id="editUserRemoveAvatar"> Remove current avatar
+        </label>
+    </div>
 
     <div class="form-group">
         <label>Password</label>

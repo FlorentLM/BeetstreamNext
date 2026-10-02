@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import hashlib
+import io
 import flask
 
 from .. import admin_bp, admin_required
@@ -9,31 +11,38 @@ from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, Imag
 from beetsplug.beetstreamnext.core.users_crud import set_user_avatar, get_user_avatar
 
 
-@admin_bp.route('/users/<username>/avatar', methods=['POST'])
-@admin_required
-def route_upload_avatar(username: str) -> flask.Response:
-    file = flask.request.files.get('avatar')
+def read_uploaded_avatar(field: str = 'avatar') -> io.BytesIO | None:
+    """Reads, validates and resizes uploaded avatar. None if no file was given."""
+    file = flask.request.files.get(field)
     if file is None or not file.filename:
-        flask.flash("No file provided.", 'error')
-        return flask.redirect(flask.url_for('admin.route_settings'))
+        return None
 
     # Read with a hard cap
     data = file.read(MAX_AVATAR_BYTES + 1)
     if len(data) > MAX_AVATAR_BYTES:
-        flask.flash(f'File too large (max {MAX_AVATAR_BYTES // 1024} KB).', 'error')
-        return flask.redirect(flask.url_for('admin.route_settings'))
+        raise ValueError(f'File too large (max {MAX_AVATAR_BYTES // 1024} KB).')
 
     if sniff_image(data) is None:
-        flask.flash('Unsupported or corrupt image. Use JPEG, PNG or WebP.', 'error')
-        return flask.redirect(flask.url_for('admin.route_settings'))
+        raise ValueError('Unsupported or corrupt image. Use JPEG, PNG or WebP.')
 
     try:
-        blob = resize_image(data, size=MAX_AVATAR_DIM, crop=True)
+        return resize_image(data, size=MAX_AVATAR_DIM, crop=True)
     except (ImageTooLarge, OSError):
-        flask.flash('Unsupported, corrupt, or oversized image.', 'error')
+        raise ValueError('Unsupported, corrupt, or oversized image.')
+
+
+@admin_bp.route('/users/<username>/avatar', methods=['POST'])
+@admin_required
+def route_upload_avatar(username: str) -> flask.Response:
+    try:
+        blob = read_uploaded_avatar()
+    except ValueError as e:
+        flask.flash(str(e), 'error')
         return flask.redirect(flask.url_for('admin.route_settings'))
 
-    if set_user_avatar(username, blob):
+    if blob is None:
+        flask.flash("No file provided.", 'error')
+    elif set_user_avatar(username, blob):
         flask.flash(f"Avatar updated for '{username}'.", 'success')
     else:
         flask.flash(f"User '{username}' not found.", 'error')

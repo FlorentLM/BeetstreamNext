@@ -135,7 +135,7 @@ def _add_security_headers(response):
             "font-src 'self' https://fonts.gstatic.com; "
             "style-src 'self' https://fonts.googleapis.com; "
             f"script-src 'self' 'nonce-{nonce}'; "
-            "img-src 'self' data:; "
+            "img-src 'self' data: blob:; "
             "connect-src 'self'; "
             "form-action 'self'; "
             "frame-ancestors 'none'; "

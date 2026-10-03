@@ -10,7 +10,8 @@ from beetsplug.beetstreamnext.core.jukebox import (
 
 @admin_bp.route('/settings/jukebox/discover-devices', methods=['GET'])
 @admin_required
-def route_discover_devices() -> flask.Response:
+def route_discover_devices() -> str:
+
     from beetsplug.beetstreamnext.settings import settings_store
 
     requested = flask.request.args.get('jukebox_backend')

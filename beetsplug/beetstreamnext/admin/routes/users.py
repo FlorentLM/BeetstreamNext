@@ -53,7 +53,7 @@ def route_create_user() -> flask.Response:
 
 @admin_bp.route('/users/edit/<username>', methods=['GET'])
 @admin_required
-def route_edit_user(username) -> flask.Response:
+def route_edit_user(username) -> str:
     """Pre-filled edit form for user edit, lazy-loaded."""
 
     user = get_userdata(username, fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])

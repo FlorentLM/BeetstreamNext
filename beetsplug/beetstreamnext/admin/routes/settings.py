@@ -117,7 +117,7 @@ def route_clear_setting(category: str, key: str) -> flask.Response:
 ##
 # Library integrations: test connection
 
-def test_result(result_id: str, ok: bool, message: str) -> flask.Response:
+def test_result(result_id: str, ok: bool, message: str) -> str:
     return flask.render_template('partials/test_result.html', result_id=result_id, ok=ok, message=message)
 
 

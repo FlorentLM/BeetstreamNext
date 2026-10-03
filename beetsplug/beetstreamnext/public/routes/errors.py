@@ -7,10 +7,10 @@ from .. import public_bp
 
 
 @public_bp.app_errorhandler(404)
-def page_not_found(_e: Any) -> Tuple[str, int]:
+def page_not_found(_e: Any) -> Tuple[str, str]:
     error = {
         'code': 404,
         'title': '*record scratches*',
         'message': "Looks like you're lost.",
     }
-    return render_template('error.html', error=error), error['code']
+    return render_template('error.html', error=error), str(error['code'])

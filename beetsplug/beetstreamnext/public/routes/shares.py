@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import re
 import secrets
 import time
 import zipfile
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import flask
 from flask import render_template
@@ -97,7 +98,7 @@ def _zip_album(items: List) -> Path:
 
 
 @public_bp.route('/share/<share_id>')
-def share_view(share_id: str) -> flask.Response:
+def share_view(share_id: str) -> str | Tuple[str, str]:
     with database() as db:
         share = db.execute(
             """
@@ -116,7 +117,7 @@ def share_view(share_id: str) -> flask.Response:
             'title': 'Share Expired',
             'message': 'This share has expired and is no longer accessible.',
         }
-        return render_template('error.html', error=error), 410
+        return render_template('error.html', error=error), str(410)
 
     with database() as db:
         db.execute(
@@ -179,8 +180,10 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     # their parent album)
     with database() as db:
         explicit_match = db.execute(
-            """SELECT 1 FROM share_entries WHERE share_id = ? AND item_id = ?""",
-            (share_id, entry_id)
+            """
+            SELECT 1 FROM share_entries 
+            WHERE share_id = ? AND item_id = ?
+            """, (share_id, entry_id)
         ).fetchone()
 
     if not explicit_match:
@@ -217,6 +220,7 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
         flask.abort(403)
 
     from beetsplug.beetstreamnext.core.images import send_album_art, round_image_size
+
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 

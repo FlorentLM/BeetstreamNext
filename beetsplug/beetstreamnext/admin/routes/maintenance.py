@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.constants import SERVER_NAME
 
 @admin_bp.route('/beets/config', methods=['POST'])
 @admin_required
-def route_save_beets_config() -> flask.Response:
+def route_save_beets_config() -> str:
     content = flask.request.form.get('content', '')
     ok, message = write_config(content)
     return flask.render_template(
@@ -102,7 +102,7 @@ def route_health_scan() -> flask.Response:
 
 @admin_bp.route('/maintenance/health-scan-status', methods=['GET'])
 @admin_required
-def route_health_scan_status() -> flask.Response:
+def route_health_scan_status() -> str:
     return flask.render_template('partials/health_scan_status.html', scanning=is_scanning(), **health_stats())
 
 

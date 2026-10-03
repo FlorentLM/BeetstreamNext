@@ -87,7 +87,7 @@ def route_update_radio(station_id: int) -> flask.Response:
 
 @admin_bp.route('/radios/<int:station_id>/edit', methods=['GET'])
 @admin_required
-def route_edit_radio(station_id: int) -> flask.Response:
+def route_edit_radio(station_id: int) -> str:
     """Pre-filled edit form for radio station edit, lazy-loaded."""
 
     with database() as db:
@@ -126,7 +126,7 @@ def route_delete_radio(station_id: int) -> flask.Response:
 
 @admin_bp.route('/radios/discover', methods=['GET'])
 @admin_required
-def route_discover_radios() -> flask.Response:
+def route_discover_radios() -> str:
 
     if not flask.current_app.config.get('enable_radio_discovery'):
         return flask.render_template('partials/radio_search.html', stations=[], message='Radio discovery is disabled.')
@@ -353,7 +353,7 @@ def route_delete_podcast_episode(episode_id: int) -> flask.Response:
 
 @admin_bp.route('/podcasts/<int:channel_id>/episodes', methods=['GET'])
 @admin_required
-def route_podcast_episodes(channel_id: int) -> flask.Response:
+def route_podcast_episodes(channel_id: int) -> str:
     """Episodes table for a channel, lazy-loaded."""
 
     with database() as db:

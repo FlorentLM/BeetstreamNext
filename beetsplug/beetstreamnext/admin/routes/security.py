@@ -65,7 +65,7 @@ def route_ip_remove(list_type: str) -> flask.Response:
 
 @admin_bp.route('/maintenance/rate-limits', methods=['GET'])
 @admin_required
-def route_rate_limits() -> flask.Response:
+def route_rate_limits() -> str:
     return flask.render_template('partials/rate_limit.html', report=rate_limiter.report())
 
 

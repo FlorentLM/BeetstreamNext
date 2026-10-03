@@ -13,6 +13,7 @@
 - [Public shares](features/public-shares.md)
 - [Radio & podcasts](./features/radio-and-podcasts.md)
 - [Jukebox mode](./features/jukebox.md)
+- [Beets import](./features/beets-import.md)
 
 # Installation
 

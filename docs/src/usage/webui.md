@@ -72,7 +72,7 @@ View the full chat log, edit/delete any user's message for moderation, or post s
 
 ### Beets
 
-Interact with the Beets installation: view/update Beets' `config.yaml` and run imports.
+Interact with the Beets installation: view/update Beets' `config.yaml` and run imports (see [Beets import](../features/beets-import.md) for the details).
 
 #### Interactive import
 

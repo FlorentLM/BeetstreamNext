@@ -33,7 +33,7 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 - **Jukebox mode**: play on the server's own hardware, a Sonos speaker, or a Chromecast device ([details](https://florentlm.github.io/BeetstreamNext/features/jukebox.html))
 - **Library augmentation**: artist bios, similar artists/songs, ratings, lyrics, sonic similarity ([details](https://florentlm.github.io/BeetstreamNext/features/library-augmentation.html))
 - **Internet radio & podcasts**, managed independently of your Beets library ([details](https://florentlm.github.io/BeetstreamNext/features/radio-and-podcasts.html))
-- **Playlists**: BeetstreamNext's own per-user playlists, plus read/write access to Beets' `playlist`/`smartplaylist` files ([details](https://florentlm.github.io/BeetstreamNext/features/playlists.html))
+- **Playlists**: BeetstreamNext's own per-user playlists, and read/write access to Beets' `playlist`/`smartplaylist` files ([details](https://florentlm.github.io/BeetstreamNext/features/playlists.html))
 - **Public shares**: landing pages and download links, no client or account required ([details](https://florentlm.github.io/BeetstreamNext/features/public-shares.html))
 - **Security**: IP allow/deny lists, adaptive rate-limiting ([details](https://florentlm.github.io/BeetstreamNext/features/security.html))
 - **Advanced Beets queries**: prefix a client search with `beets:`/`b:` to run a full Beets query instead of a simple search

@@ -117,7 +117,7 @@ style F fill:#f8d7da44,stroke:#dc3545,stroke-width:3px
 
 Every other setting follows the (roughly similar) order defined in [Configuration](./configuration.md), and can also be set from the Admin panel (except `library_path`, see **Note** below).
 
-> **Note:** Since `--library-db`/`BEETS_LIBRARY_DB`/`library_db` (in the YAML) is required on every run just to locate BeetstreamNext's own database, there's no scenario where it isn't explicitly set, so it is currently never editable in the WebUI (I might revise this).
+> **Note:** Since `--library-db`/`BEETS_LIBRARY_DB`/`library_db` (in the YAML) is required on every run just to locate BeetstreamNext's database, there's no scenario where it isn't explicitly set, so it is currently never editable in the WebUI (I might revise this).
 
 At minimum, you should point **BeetstreamNext** to your `library.db` and music root:
 

@@ -6,8 +6,8 @@ A lot of what shows up in your Subsonic client (artist photos, biographies, comm
 
 - **Artist biographies**: From [Last.fm](https://www.last.fm/api) if `lastfm_api_key` is set, otherwise from [Wikipedia](https://www.wikipedia.org/) if `fetch_artists_biographies` is enabled.
 - **Artist top tracks and similar artists/songs**: From Last.fm, using `lastfm_api_key`.
-- **Album/artist ratings**: Either your users' own local ratings, or [Discogs](https://www.discogs.com/developers)' public community rating via `discogs_ratings` (`off` / `fallback` / `prefer`).
-- **Lyrics**: Served from Beets' own stored lyrics if present, or fetched on-the-fly using Beets' `lyrics` plugin (`fetch_lyrics`), optionally written back into Beets with `save_lyrics`.
+- **Album/artist ratings**: Either your local users' ratings, or [Discogs](https://www.discogs.com/developers)' public community rating via `discogs_ratings` (`off` / `fallback` / `prefer`).
+- **Lyrics**: Served from Beets' stored lyrics if present, or fetched on-the-fly using Beets' `lyrics` plugin (`fetch_lyrics`), optionally written back into Beets with `save_lyrics`.
 - **Album version/edition info** (e.g. "Deluxe Edition", "Japanese Expanded Edition"): From [MusicBrainz](https://musicbrainz.org/), via `fetch_album_version`, optionally saved with `save_album_version`.
 
 ## Artwork

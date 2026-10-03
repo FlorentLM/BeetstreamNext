@@ -58,7 +58,7 @@ beetstreamnext [command] [username] [options]
 | `--config PATH`         | —                  | BeetstreamNext YAML config file (default location is OS-dependent, see [here](../installation.md))               |
 | `--library-db PATH`     | `BEETS_LIBRARY_DB` | Path to the Beets `library.db`                                                                                   |
 | `--music-root PATH`     | `MUSIC_ROOT`       | Music root directory (where song paths are relative to)                                                          |
-| `--bsn-db PATH`         | `BSN_DB_PATH`      | Path to BeetstreamNext's own database (default: alongside `library.db`, or `/config` in Docker)                  |
+| `--bsn-db PATH`         | `BSN_DB_PATH`      | Path to BeetstreamNext's database (default: alongside `library.db`, or `/config` in Docker)                      |
 | `--beets-config PATH`   | `BSN_BEETS_CONFIG` | Optional Beets config file, for path formats/plugins only (default: `$BEETSDIR/config.yaml`, if set and present) |
 | `--host HOST[,HOST...]` | `BSN_HOST`         | Host(s) to listen on                                                                                             |
 | `--port PORT`           | `BSN_PORT`         | Port to listen on                                                                                                |

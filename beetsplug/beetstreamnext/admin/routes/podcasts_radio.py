@@ -193,7 +193,7 @@ def route_serve_radio_image(station_id: int) -> flask.Response:
 def route_add_podcast() -> flask.Response:
 
     url = (flask.request.form.get('url') or '').strip()
-    channel_id, error = flask.g.podcast_manager.create_channel(flask.session.get('username'), url)
+    channel_id, error = flask.current_app.config['podcast_manager'].create_channel(flask.session.get('username'), url)
 
     if channel_id is None:
         flask.flash(f"Could not subscribe to podcast feed '{url}': {error}", 'error')
@@ -212,7 +212,7 @@ def route_import_podcast_opml() -> flask.Response:
         if data is None:
             flask.flash('Choose an OPML file to import.', 'error')
         else:
-            for message, category in flask.g.podcast_manager.import_opml(
+            for message, category in flask.current_app.config['podcast_manager'].import_opml(
                     flask.session.get('username'), data):
                 flask.flash(message, category)
 
@@ -225,13 +225,13 @@ def route_import_podcast_opml() -> flask.Response:
 @admin_bp.route('/podcasts/export-opml', methods=['GET'])
 @admin_required
 def route_export_podcast_opml() -> flask.Response:
-    return flask.g.podcast_manager.send_opml()
+    return flask.current_app.config['podcast_manager'].send_opml()
 
 
 @admin_bp.route('/podcasts/discover', methods=['GET'])
 @admin_required
 def route_discover_podcasts() -> str:
-    feeds, message = flask.g.podcast_manager.discover(flask.request.args.get('q'))
+    feeds, message = flask.current_app.config['podcast_manager'].discover(flask.request.args.get('q'))
     return flask.render_template('partials/podcast_search.html', feeds=feeds, message=message)
 
 
@@ -239,7 +239,7 @@ def route_discover_podcasts() -> str:
 @admin_required
 def route_refresh_all_podcasts() -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.background_refresh()
     flask.flash('Refreshing all podcast channels in the background.', 'info')
 
@@ -250,7 +250,7 @@ def route_refresh_all_podcasts() -> flask.Response:
 @admin_required
 def route_refresh_podcast(channel_id: int) -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.background_refresh(channel_id)
     flask.flash('Refreshing channel in the background.', 'info')
 
@@ -261,7 +261,7 @@ def route_refresh_podcast(channel_id: int) -> flask.Response:
 @admin_required
 def route_download_recent_podcast_episodes(channel_id: int) -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     count = podcast_manager.download_recent_episodes(channel_id, username=flask.session.get('username'))
 
     if count:
@@ -279,7 +279,7 @@ def route_download_recent_podcast_episodes(channel_id: int) -> flask.Response:
 @admin_required
 def route_delete_podcast(channel_id: int) -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.delete_channel(channel_id)
     flask.flash('Podcast channel deleted for all subscribers.', 'info')
 
@@ -315,7 +315,7 @@ def _episode_action_done(message: str, category: str = 'info') -> flask.Response
 @admin_required
 def route_download_podcast_episode(episode_id: int) -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     if podcast_manager.background_download(episode_id):
         return _episode_action_done('Episode download started.')
 
@@ -326,7 +326,7 @@ def route_download_podcast_episode(episode_id: int) -> flask.Response:
 @admin_required
 def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     if podcast_manager.cancel_download(episode_id):
         return _episode_action_done('Download cancelled.')
 
@@ -337,7 +337,7 @@ def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
 @admin_required
 def route_delete_podcast_episode(episode_id: int) -> flask.Response:
 
-    podcast_manager = flask.g.podcast_manager
+    podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.delete_episode(episode_id)
 
     return _episode_action_done('Episode file removed for all subscribers.')
@@ -375,4 +375,4 @@ def route_podcast_episodes(channel_id: int) -> flask.Response:
 def route_podcast_status() -> flask.Response:
     """Initial read of channel/episode status (live updates done over SSE)."""
 
-    return flask.jsonify(flask.g.podcast_manager.status_snapshot())
+    return flask.jsonify(flask.current_app.config['podcast_manager'].status_snapshot())

@@ -269,7 +269,7 @@ def route_settings() -> flask.Response:
             shares=shares_list,
             radios=radios,
             radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
-            podcast_discovery_enabled=flask.g.podcast_manager.discovery_enabled,
+            podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,
             podcast_channels=podcast_channels,
             podcast_total_size=human_bytes(podcast_total_bytes),
             flagged_songs=flagged_songs(),

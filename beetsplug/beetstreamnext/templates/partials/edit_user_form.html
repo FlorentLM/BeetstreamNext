@@ -10,8 +10,8 @@
         <div class="radio-icon-row">
             <button type="button" class="radio-icon-frame radio-icon-frame-round" data-action="pick-radio-icon"
                     data-target="editUserAvatar" aria-label="Choose avatar">
-                <img id="editUserAvatarPreview" class="{{ '' if user.hasAvatar else 'hidden' }}" alt=""
-                     {% if user.hasAvatar %}src="{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}"{% endif %}>
+                <img id="editUserAvatarPreview" class="{{ '' if user.avatarLastChanged else 'hidden' }}" alt=""
+                     {% if user.avatarLastChanged %}src="{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}"{% endif %}>
                 <span class="radio-icon-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
             </button>
             <span class="label-hint">Click to change the avatar</span>
@@ -43,7 +43,7 @@
             </div>
         </div>
         <div class="roles-grid">
-            {% for name, label in role_fields %}
+            {% for name, label, _ in USER_ROLES_SCHEMA %}
                 <label class="role-item">{{ edit_form[name]() }} {{ label }}</label>
             {% endfor %}
         </div>

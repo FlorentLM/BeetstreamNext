@@ -22,8 +22,29 @@ from beetsplug.beetstreamnext.constants import (
 ##
 # General helpers
 
+def start_session(username: str, **extra) -> None:
+    """Login `username` in the WebUI."""
+    flask.session.clear()   # prevent session fixation
+    flask.session.permanent = True
+    flask.session['username'] = username
+    flask.session.update(extra)
+
+
+def read_upload(field: str, max_bytes: int) -> bytes | None:
+    """Content of the uploaded file. ValueError if size > `max_bytes`."""
+    file = flask.request.files.get(field)
+    if file is None or not file.filename:
+        return None
+
+    data = file.read(max_bytes + 1)     # Hard cap
+    if len(data) > max_bytes:
+        raise ValueError(f'File too large (max {max_bytes // 1024} KB).')
+
+    return data
+
+
 def request_url(path_part: str) -> str:
-    """Build an absolute URL for 'path_part', mirroring the current request's own scheme+host."""
+    """Build an absolute URL for 'path_part', mirroring the current request's scheme+host."""
     from beetsplug.beetstreamnext.settings import settings_store
 
     scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'

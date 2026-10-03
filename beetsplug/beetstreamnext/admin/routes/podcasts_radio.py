@@ -4,35 +4,15 @@ from io import BytesIO
 
 from .. import admin_bp, admin_required, back_to
 
-from beetsplug.beetstreamnext.constants import FEEDPARSER, MAX_AVATAR_DIM, MAX_AVATAR_BYTES, MAX_OPML_BYTES
+from beetsplug.beetstreamnext.constants import MAX_OPML_BYTES
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.images import sniff_image, resize_image, ImageTooLarge, send_radio_art, send_podcast_art
+from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
-from beetsplug.beetstreamnext.core.external import query_radio_browser, query_podcastindex
+from beetsplug.beetstreamnext.core.external import query_radio_browser
 from beetsplug.beetstreamnext.admin.forms import RadioStationForm, flash_form_errors
+from beetsplug.beetstreamnext.admin.routes.avatars import read_uploaded_image
 from beetsplug.beetstreamnext.utils.text import safe_str, format_duration
-from beetsplug.beetstreamnext.utils.general import human_bytes
-
-
-def _uploaded_image() -> bytes | None:
-    """Reads + validates the image file field."""
-    file = flask.request.files.get('image')
-    if file is None or not file.filename:
-        return None
-
-    data = file.read(MAX_AVATAR_BYTES + 1)
-
-    if len(data) > MAX_AVATAR_BYTES:
-        raise ValueError(f'Image too large (max {MAX_AVATAR_BYTES // 1024} KB).')
-
-    if sniff_image(data) is None:
-        raise ValueError('Unsupported or corrupt image. Use JPEG, PNG or WebP.')
-
-    try:
-        return resize_image(data, size=MAX_AVATAR_DIM, crop=True).getvalue()
-
-    except (ImageTooLarge, OSError):
-        raise ValueError('Unsupported, corrupt, or oversized image.')
+from beetsplug.beetstreamnext.utils.general import human_bytes, read_upload
 
 
 ##
@@ -48,7 +28,7 @@ def route_create_radio() -> flask.Response:
         return back_to('radios')
 
     try:
-        image = _uploaded_image()
+        image = read_uploaded_image('image')
     except ValueError as e:
         flask.flash(str(e), 'error')
         return back_to('radios')
@@ -77,7 +57,7 @@ def route_update_radio(station_id: int) -> flask.Response:
         return back_to('radios')
 
     try:
-        image = _uploaded_image()
+        image = read_uploaded_image('image')
     except ValueError as e:
         flask.flash(str(e), 'error')
         return back_to('radios')
@@ -198,7 +178,7 @@ def route_radio_favicon_proxy() -> flask.Response:
 @admin_required
 def route_serve_radio_image(station_id: int) -> flask.Response:
 
-    response = send_radio_art(station_id)
+    response = send_stored_art('radio', station_id)
     if response is None:
         flask.abort(404)
 
@@ -212,17 +192,8 @@ def route_serve_radio_image(station_id: int) -> flask.Response:
 @admin_required
 def route_add_podcast() -> flask.Response:
 
-    if not FEEDPARSER:
-        flask.flash("Podcast feeds need the 'feedparser' package to be installed on the server.", 'error')
-        return back_to('podcasts')
-
     url = (flask.request.form.get('url') or '').strip()
-    if not url:
-        flask.flash('Feed URL is required.', 'error')
-        return back_to('podcasts')
-
-    podcast_manager = flask.current_app.config['podcast_manager']
-    channel_id, error = podcast_manager.create_channel(flask.session.get('username'), url)
+    channel_id, error = flask.g.podcast_manager.create_channel(flask.session.get('username'), url)
 
     if channel_id is None:
         flask.flash(f"Could not subscribe to podcast feed '{url}': {error}", 'error')
@@ -236,46 +207,17 @@ def route_add_podcast() -> flask.Response:
 @admin_required
 def route_import_podcast_opml() -> flask.Response:
 
-    if not FEEDPARSER:
-        flask.flash("Podcast feeds need the 'feedparser' package to be installed on the server.", 'error')
-        return back_to('podcasts')
-
-    file = flask.request.files.get('opml_file')
-    if file is None or not file.filename:
-        flask.flash('Choose an OPML file to import.', 'error')
-        return back_to('podcasts')
-
-    data = file.read(MAX_OPML_BYTES + 1)
-    if len(data) > MAX_OPML_BYTES:
-        flask.flash(f'OPML file too large (max {MAX_OPML_BYTES // 1024} KB).', 'error')
-        return back_to('podcasts')
-
-    podcast_manager = flask.current_app.config['podcast_manager']
-
     try:
-        result = podcast_manager.import_opml(flask.session.get('username'), data)
+        data = read_upload('opml_file', MAX_OPML_BYTES)
+        if data is None:
+            flask.flash('Choose an OPML file to import.', 'error')
+        else:
+            for message, category in flask.g.podcast_manager.import_opml(
+                    flask.session.get('username'), data):
+                flask.flash(message, category)
+
     except ValueError as e:
         flask.flash(f'Could not import OPML file: {e}', 'error')
-        return back_to('podcasts')
-
-    added, already, failed = result['added'], result['already_subscribed'], result['failed']
-
-    if not added and not already and not failed:
-        flask.flash('No podcast feeds found in that OPML file.', 'error')
-        return back_to('podcasts')
-
-    parts = []
-    if added:
-        parts.append(f'{len(added)} added')
-    if already:
-        parts.append(f'{len(already)} already subscribed')
-    if failed:
-        parts.append(f'{len(failed)} failed')
-
-    flask.flash(f"OPML import: {', '.join(parts)}.", 'success' if added else 'info')
-
-    for url, error in failed:
-        flask.flash(f"Could not subscribe to '{url}': {error}", 'error')
 
     return back_to('podcasts')
 
@@ -283,40 +225,21 @@ def route_import_podcast_opml() -> flask.Response:
 @admin_bp.route('/podcasts/export-opml', methods=['GET'])
 @admin_required
 def route_export_podcast_opml() -> flask.Response:
-
-    podcast_manager = flask.current_app.config['podcast_manager']
-    data = podcast_manager.export_opml()
-
-    return flask.Response(
-        data,
-        mimetype='text/x-opml+xml',
-        headers={'Content-Disposition': 'attachment; filename="BeetstreamNext-Podcasts.opml"'},
-    )
+    return flask.g.podcast_manager.send_opml()
 
 
 @admin_bp.route('/podcasts/discover', methods=['GET'])
 @admin_required
-def route_discover_podcasts() -> flask.Response:
-
-    if not flask.current_app.config.get('enable_podcast_discovery'):
-        return flask.render_template('partials/podcast_search.html', feeds=[], message='Podcast discovery is disabled.')
-
-    q = (flask.request.args.get('q') or '').strip()
-    if not q:
-        return flask.render_template('partials/podcast_search.html', feeds=[], message='Enter a search term.')
-
-    feeds = query_podcastindex(q, limit=15)
-    if not feeds:
-        return flask.render_template('partials/podcast_search.html', feeds=[], message='No podcasts found.')
-
-    return flask.render_template('partials/podcast_search.html', feeds=feeds, message=None)
+def route_discover_podcasts() -> str:
+    feeds, message = flask.g.podcast_manager.discover(flask.request.args.get('q'))
+    return flask.render_template('partials/podcast_search.html', feeds=feeds, message=message)
 
 
 @admin_bp.route('/podcasts/refresh', methods=['POST'])
 @admin_required
 def route_refresh_all_podcasts() -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     podcast_manager.background_refresh()
     flask.flash('Refreshing all podcast channels in the background.', 'info')
 
@@ -327,7 +250,7 @@ def route_refresh_all_podcasts() -> flask.Response:
 @admin_required
 def route_refresh_podcast(channel_id: int) -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     podcast_manager.background_refresh(channel_id)
     flask.flash('Refreshing channel in the background.', 'info')
 
@@ -338,7 +261,7 @@ def route_refresh_podcast(channel_id: int) -> flask.Response:
 @admin_required
 def route_download_recent_podcast_episodes(channel_id: int) -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     count = podcast_manager.download_recent_episodes(channel_id, username=flask.session.get('username'))
 
     if count:
@@ -356,7 +279,7 @@ def route_download_recent_podcast_episodes(channel_id: int) -> flask.Response:
 @admin_required
 def route_delete_podcast(channel_id: int) -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     podcast_manager.delete_channel(channel_id)
     flask.flash('Podcast channel deleted for all subscribers.', 'info')
 
@@ -366,7 +289,7 @@ def route_delete_podcast(channel_id: int) -> flask.Response:
 @admin_bp.route('/podcasts/<int:channel_id>/image', methods=['GET'])
 @admin_required
 def route_serve_podcast_image(channel_id: int) -> flask.Response:
-    response = send_podcast_art(channel_id)
+    response = send_stored_art('podcast', channel_id)
     if response is None:
         flask.abort(404)
     return response
@@ -392,7 +315,7 @@ def _episode_action_done(message: str, category: str = 'info') -> flask.Response
 @admin_required
 def route_download_podcast_episode(episode_id: int) -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     if podcast_manager.background_download(episode_id):
         return _episode_action_done('Episode download started.')
 
@@ -403,7 +326,7 @@ def route_download_podcast_episode(episode_id: int) -> flask.Response:
 @admin_required
 def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     if podcast_manager.cancel_download(episode_id):
         return _episode_action_done('Download cancelled.')
 
@@ -414,7 +337,7 @@ def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
 @admin_required
 def route_delete_podcast_episode(episode_id: int) -> flask.Response:
 
-    podcast_manager = flask.current_app.config['podcast_manager']
+    podcast_manager = flask.g.podcast_manager
     podcast_manager.delete_episode(episode_id)
 
     return _episode_action_done('Episode file removed for all subscribers.')
@@ -452,4 +375,4 @@ def route_podcast_episodes(channel_id: int) -> flask.Response:
 def route_podcast_status() -> flask.Response:
     """Initial read of channel/episode status (live updates done over SSE)."""
 
-    return flask.jsonify(flask.current_app.config['podcast_manager'].status_snapshot())
+    return flask.jsonify(flask.g.podcast_manager.status_snapshot())

@@ -84,7 +84,7 @@ def is_docker() -> bool:
 
 
 def config_location() -> Path:
-    """Default dir for beetstreamnext.yaml (and, in Docker, BSN's own db/secrets)"""
+    """Default dir for beetstreamnext.yaml (and, in Docker, BSN's database/secrets)"""
 
     if is_docker():
         return Path('/config')

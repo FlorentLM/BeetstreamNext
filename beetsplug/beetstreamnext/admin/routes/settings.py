@@ -4,18 +4,19 @@ import flask
 
 from .. import admin_bp, admin_required, back_to
 
-from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes, external_url
+from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.health import flagged_songs
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
+from beetsplug.beetstreamnext.core.shares import list_shares
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
-from beetsplug.beetstreamnext.constants import RADIO_BROWSER, PODCASTINDEX
-from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.constants import RADIO_BROWSER
+from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.admin.forms import UserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
 
@@ -189,8 +190,6 @@ def route_settings() -> flask.Response:
     cache_size = human_bytes(sum(cache_bytes.values()))
 
     users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
-    for u in users:
-        u['hasAvatar'] = bool(u.get('avatarLastChanged'))
 
     # Load chat messages for moderation
     chat_page = max(1, flask.request.args.get('chat_page', default=1, type=int))
@@ -207,24 +206,7 @@ def route_settings() -> flask.Response:
             """, (_CHAT_PAGE_SIZE, (chat_page - 1) * _CHAT_PAGE_SIZE)
         ).fetchall()
 
-    # Load active shares
-    with database() as db:
-        shares_rows = db.execute(
-            """
-            SELECT s.id, s.username, s.description, s.expires, s.created, s.visit_count,
-                   (SELECT COUNT(*) FROM share_entries se WHERE se.share_id = s.id) as entry_count
-            FROM shares s
-            ORDER BY s.created DESC
-            """
-        ).fetchall()
-
-    # build shares URLs
-    shares_list = []
-
-    for r in shares_rows:
-        s_dict = dict(r)
-        s_dict['url'] = external_url(flask.url_for('public.share_view', share_id=r['id']))
-        shares_list.append(s_dict)
+    shares_list = list_shares()
 
     # Load radio stations
     with database() as db:
@@ -287,7 +269,7 @@ def route_settings() -> flask.Response:
             shares=shares_list,
             radios=radios,
             radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
-            podcast_discovery_enabled=flask.current_app.config.get('enable_podcast_discovery', False) and PODCASTINDEX,
+            podcast_discovery_enabled=flask.g.podcast_manager.discovery_enabled,
             podcast_channels=podcast_channels,
             podcast_total_size=human_bytes(podcast_total_bytes),
             flagged_songs=flagged_songs(),
@@ -295,7 +277,6 @@ def route_settings() -> flask.Response:
             beets_config=read_config(),
             create_form=UserForm(formdata=None),
             radio_form=RadioStationForm(formdata=None),
-            role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],
             server_info=get_server_info(extended=True),
             current_username=flask.session.get('username'),
             new_api_key=new_api_key,

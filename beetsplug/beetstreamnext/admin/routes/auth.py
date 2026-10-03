@@ -6,6 +6,7 @@ import flask
 from .. import admin_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.general import start_session
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, load_all_users, load_user_roles, webui_login
@@ -38,10 +39,7 @@ def route_setup() -> flask.Response:
 
             # Auto-login into settings and show API key modal
 
-            flask.session.clear()   # prevent session fixation
-            flask.session.permanent = True
-            flask.session['username'] = username
-            flask.session['_api_key_token'] = token
+            start_session(username, _api_key_token=token)
 
             return flask.redirect(flask.url_for('admin.route_settings'))
 
@@ -72,9 +70,7 @@ def route_login() -> flask.Response:
         if ok and load_user_roles(username).get('adminRole', False):
             # Success. Clear failures for this IP and establish session
             rate_limiter.reset(client_ip, attempted_user)
-            flask.session.clear()  # prevent session fixation
-            flask.session.permanent = True
-            flask.session['username'] = username
+            start_session(username)
             return flask.redirect(flask.url_for('admin.route_settings'))
 
         # Same generic message whether password was wrong or user isn't an admin

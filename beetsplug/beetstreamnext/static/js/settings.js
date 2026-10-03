@@ -135,54 +135,6 @@
         }));
     });
 
-    // Theme
-
-    function applyTheme(theme) {
-        if (theme === 'light') {
-            document.documentElement.setAttribute('data-theme', 'light');
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-        }
-        document.querySelectorAll('[data-action="toggle-theme"]').forEach(btn => {
-            btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
-        });
-    }
-
-    function toggleTheme() {
-        const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-        const next = current === 'light' ? 'dark' : 'light';
-        try {
-            document.cookie = 'bsn-theme=' + next + '; Path=/; Max-Age=31536000; SameSite=Lax';
-        } catch (e) {
-        }
-        applyTheme(next);
-    }
-
-
-    // One-time API key copy
-
-    function copyApiKey(button) {
-        const el = document.getElementById('apiKeyValue');
-        if (!el) return;
-        const key = el.textContent.trim();
-
-        const done = () => {
-            button.textContent = 'Copied';
-            setTimeout(() => {
-                button.textContent = 'Copy';
-            }, 2000);
-        };
-
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(key).then(done).catch(() => {
-                if (copySel(key)) done();
-            });
-        } else {
-            // No Clipboard API over plain HTTP, fallback to execCommand
-            if (copySel(key)) done();
-        }
-    }
-
     function copyLogs(button) {
         const el = document.getElementById(button.dataset.target);
         if (!el) return;
@@ -198,31 +150,7 @@
             }, 2000);
         };
 
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(() => {
-                if (copySel(text)) done();
-            });
-        } else {
-            if (copySel(text)) done();
-        }
-    }
-
-    function copySel(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        let ok = false;
-        try {
-            ok = document.execCommand('copy');
-        } catch (e) {
-            // ignore
-        }
-        document.body.removeChild(ta);
-        return ok;
+        bsnCommon.copyText(text, done);
     }
 
     async function refreshLogs(button) {
@@ -476,19 +404,8 @@
     document.body.addEventListener('htmx:after:swap', event => {
         const target = event.detail.ctx.target;
         if (!target?.closest('.podcast-episodes')) return;
-        formatChatTimes(target);
         syncPodcastStatuses();
     });
-
-    // Format HLS/chat/podcast epoch timestamps to human readable format
-    function formatChatTimes(root = document) {
-        root.querySelectorAll('.chat-time').forEach(el => {
-            const ms = parseInt(el.dataset.timestamp);
-            if (!isNaN(ms)) {
-                el.textContent = new Date(ms).toLocaleString();
-            }
-        });
-    }
 
     // Beets config editor "last read at"
 
@@ -501,12 +418,6 @@
         if (event.detail.ctx.target?.id !== 'beetsConfigEditorWrap') return;
         const footer = document.getElementById('beetsConfigFooter');
         if (footer) footer.querySelectorAll('.config-time').forEach(formatConfigTime);
-    });
-
-    // htmx requests are same-origin -> attach the CSRF token to every one
-    document.body.addEventListener('htmx:config:request', event => {
-        const csrfInput = document.querySelector('input[name="csrf_token"]');
-        if (csrfInput) event.detail.ctx.request.headers['X-CSRFToken'] = csrfInput.value;
     });
 
     // only fill the field when it's empty and discovery found exactly one device
@@ -647,9 +558,6 @@
         if (!target) return;
 
         switch (target.dataset.action) {
-            case 'copy-api-key':
-                copyApiKey(target);
-                break;
             case 'copy-log':
                 copyLogs(target);
                 break;
@@ -671,13 +579,6 @@
             case 'pick-radio-icon':
                 const iconInput = document.getElementById(target.dataset.target);
                 if (iconInput) iconInput.click();
-                break;
-            case 'pick-file':
-                const fileInput = document.getElementById(target.dataset.target);
-                if (fileInput) fileInput.click();
-                break;
-            case 'toggle-theme':
-                toggleTheme();
                 break;
             case 'edit-chat':
                 const msgId = target.dataset.id;
@@ -708,17 +609,6 @@
         }
     });
 
-    // htmx's `keyup[key=='Enter']` trigger filters compile the condition with `new Function()`,
-    // which our CSP blocks (no 'unsafe-eval'). Enter-to-search is wired up here instead.
-    document.addEventListener('keydown', event => {
-        if (event.key !== 'Enter') return;
-        const input = event.target.closest('#podcastDiscoveryQuery, #radioDiscoveryQuery');
-        if (!input) return;
-        event.preventDefault();
-        const button = input.parentElement.querySelector('button[hx-get]');
-        if (button) button.click();
-    });
-
     // Enter to submit
     document.addEventListener('keydown', event => {
         if (event.key !== 'Enter') return;
@@ -744,10 +634,6 @@
     document.addEventListener('change', event => {
         if (event.target.id === 'createRadioImage') {
             previewLocalRadioIcon(event.target, 'createRadioIconPreview', 'createRadioFavicon');
-        }
-
-        if (event.target.id === 'podcastOpmlFile' && event.target.files.length) {
-            event.target.form.submit();
         }
 
         if (event.target.id === 'editRadioImage') {
@@ -825,8 +711,6 @@
 
     // Init
 
-    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
-
 
     // One initial poll, then live updates on SSE connection
     const startImportBtn = document.querySelector('[data-action="start-beets-import"]');
@@ -840,7 +724,6 @@
         }
     }
 
-    formatChatTimes();
 
     document.querySelectorAll('.config-time').forEach(formatConfigTime);
 

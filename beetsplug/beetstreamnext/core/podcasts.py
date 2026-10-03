@@ -6,15 +6,17 @@ import time
 from threading import Thread, Lock, Event
 import urllib.parse
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    DATA_LOCATION, FEEDPARSER, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
+    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.events import admin_events
-from beetsplug.beetstreamnext.core.external import http_session, capped_image_fetch, normalize_url, https_variant
+from beetsplug.beetstreamnext.core.external import (
+    http_session, capped_image_fetch, normalize_url, https_variant, query_podcastindex
+)
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url
@@ -25,9 +27,9 @@ from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
 
 
 ##
-# Feed parsing helpers (these are stateless)
+# Feed parsing helpers
 
-def _get_audio_url(entry) -> tuple[str, int]:
+def _get_audio_url(entry) -> Tuple[str, int]:
 
     for enc in entry.get('enclosures', []) or []:
         href = enc.get('href') or enc.get('url')
@@ -70,7 +72,7 @@ def _fetch_feed_bytes(url: str) -> bytes:
     return bytes(buf)
 
 
-def _parse_opml(data: bytes) -> list[str]:
+def _parse_opml(data: bytes) -> List[str]:
     """
     Extracts feed URLs from an OPML file.
     """
@@ -89,7 +91,7 @@ def _parse_opml(data: bytes) -> list[str]:
         raise ValueError(f'Not a valid OPML/XML file: {e}')
 
     seen: set = set()
-    urls: list[str] = []
+    urls: List[str] = []
 
     for outline in root.iter('outline'):
         url = (outline.get('xmlUrl') or '').strip()
@@ -514,7 +516,7 @@ class PodcastManager:
 
     def create_channel(
         self, username: str, url: str, download_recents: bool = True
-    ) -> tuple[Optional[int], Optional[str]]:
+    ) -> Tuple[Optional[int], Optional[str]]:
         """
         Subscribes username to a podcast channel, deduped first by URL then by feed title.
 
@@ -523,6 +525,9 @@ class PodcastManager:
 
         if not FEEDPARSER:
             return None, "Podcast feeds need the 'feedparser' package to be installed on the server."
+
+        if not url.strip():
+            return None, 'Feed URL is required.'
 
         url = normalize_url(url)
         alt_url = https_variant(url)
@@ -653,7 +658,50 @@ class PodcastManager:
 
         return len(episode_ids)
 
-    def export_opml(self) -> bytes:
+    @property
+    def discovery_enabled(self) -> bool:
+        return bool(settings_store.get('enable_podcast_discovery') and PODCASTINDEX)
+
+    def discover(self, query: Optional[str]) -> Tuple[List[dict], str | None]:
+        """PodcastIndex search for the Web UI. Returns (feeds, error message)."""
+
+        if not self.discovery_enabled:
+            return [], 'Podcast discovery is disabled.'
+
+        query = (query or '').strip()
+        if not query:
+            return [], 'Enter a search term.'
+
+        feeds = query_podcastindex(query, limit=15)
+        return (feeds, None) if feeds else ([], 'No podcasts found.')
+
+    def subscribed_channels(self, username: str) -> List[dict]:
+        """Podcast channels `username` is subscribed to (by title)."""
+
+        with database() as db:
+            rows = db.execute(
+                """
+                SELECT pc.*
+                FROM podcast_channels pc
+                JOIN podcast_subscriptions ps ON ps.channel_id = pc.id
+                WHERE ps.username = ?
+                ORDER BY pc.title COLLATE NOCASE
+                """, (username,)
+            ).fetchall()
+
+        return [dict(r) for r in rows]
+
+    def send_opml(self, username: Optional[str] = None):
+        """OPML export as a file download."""
+        import flask
+
+        return flask.Response(
+            self.export_opml(username),
+            mimetype='text/x-opml+xml',
+            headers={'Content-Disposition': 'attachment; filename="BeetstreamNext-Podcasts.opml"'},
+        )
+
+    def export_opml(self, username: Optional[str] = None) -> bytes:
         """
         Generates an OPML file of all the podcast channels in the library
         """
@@ -661,13 +709,24 @@ class PodcastManager:
         import xml.etree.ElementTree as ET
 
         with database() as db:
-            rows = db.execute(
-                """
-                SELECT title, url
-                FROM podcast_channels
-                ORDER BY title COLLATE NOCASE
-                """
-            ).fetchall()
+            if username is None:
+                rows = db.execute(
+                    """
+                    SELECT title, url
+                    FROM podcast_channels
+                    ORDER BY title COLLATE NOCASE
+                    """
+                ).fetchall()
+            else:
+                rows = db.execute(
+                    """
+                    SELECT c.title, c.url
+                    FROM podcast_channels c
+                             JOIN podcast_subscriptions ps ON ps.channel_id = c.id
+                    WHERE ps.username = ?
+                    ORDER BY c.title COLLATE NOCASE
+                    """, (username,)
+                ).fetchall()
 
         root = ET.Element('opml', version='2.0')
         head = ET.SubElement(root, 'head')
@@ -684,16 +743,20 @@ class PodcastManager:
         ET.indent(root)
         return ET.tostring(root, encoding='utf-8', xml_declaration=True)
 
-    def import_opml(self, username: str, data: bytes) -> dict:
+    def import_opml(self, username: str, data: bytes) -> List[Tuple[str, str]]:
         """
         Subscribes username to every feed found in an OPML document.
+        Returns (message, flash category) for the outcome.
         """
+
+        if not FEEDPARSER:
+            raise ValueError("Podcast feeds need the 'feedparser' package to be installed on the server.")
 
         urls = _parse_opml(data)
 
-        added: list[str] = []
-        already_subscribed: list[str] = []
-        failed: list[tuple[str, str]] = []
+        added: List[str] = []
+        already_subscribed: List[str] = []
+        failed: List[Tuple[str, str]] = []
 
         for url in urls:
             norm = normalize_url(url)
@@ -719,7 +782,21 @@ class PodcastManager:
             else:
                 added.append(url)
 
-        return {'added': added, 'already_subscribed': already_subscribed, 'failed': failed}
+        if not (added or already_subscribed or failed):
+            return [('No podcast feeds found in that OPML file.', 'error')]
+
+        parts = []
+        if added:
+            parts.append(f'{len(added)} added')
+        if already_subscribed:
+            parts.append(f'{len(already_subscribed)} already subscribed')
+        if failed:
+            parts.append(f'{len(failed)} failed')
+
+        return [
+            (f"OPML import: {', '.join(parts)}.", 'success' if added else 'info'),
+            *((f"Could not subscribe to '{url}': {error}", 'error') for url, error in failed),
+        ]
 
     def unsubscribe(self, username: str, channel_id: int, force: bool = False) -> None:
         """

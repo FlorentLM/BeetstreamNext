@@ -8,9 +8,9 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, set_user_avatar
-from beetsplug.beetstreamnext.admin.routes.avatars import read_uploaded_avatar
+from beetsplug.beetstreamnext.admin.routes.avatars import read_uploaded_image
 from beetsplug.beetstreamnext.admin.forms import UserForm, EditUserForm, collect_form_data, flash_form_errors
-from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS
 
 
 @admin_bp.route('/users/create', methods=['POST'])
@@ -60,13 +60,10 @@ def route_edit_user(username) -> flask.Response:
     if not user:
         flask.abort(404)
 
-    user['hasAvatar'] = bool(user.get('avatarLastChanged'))
-
     return flask.render_template(
         'partials/edit_user_form.html',
         user=user,
         edit_form=EditUserForm(formdata=None, data=user),
-        role_fields=[(name, label) for name, label, _ in USER_ROLES_SCHEMA],
     )
 
 
@@ -86,7 +83,7 @@ def route_update_user(username) -> flask.Response:
             if form.password.data:
                 updates['password'] = form.password.data
 
-            avatar = read_uploaded_avatar()
+            avatar = read_uploaded_image()
 
             update_user(username, **updates)
 

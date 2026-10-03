@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.core.mappings import Resolve
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import (
     round_image_size, send_album_art, thumbnail_path, playlist_mosaic, image_from_song,
-    resize_image, send_artist_image, send_radio_art, send_podcast_art
+    resize_image, send_artist_image, send_stored_art
 )
 
 
@@ -90,19 +90,19 @@ def endpoint_get_cover_art() -> flask.Response:
 
     elif entry_type == 'radio':
         if entry:
-            response = send_radio_art(entry['id'])
+            response = send_stored_art('radio', entry['id'])
             if response is not None:
                 return response
 
     elif entry_type == 'podcast_channel':
         if entry:
-            response = send_podcast_art(entry['id'], size)
+            response = send_stored_art('podcast', entry['id'], size)
             if response is not None:
                 return response
 
     elif entry_type == 'podcast_episode':
         if entry:
-            response = send_podcast_art(entry['channel_id'], size)
+            response = send_stored_art('podcast', entry['channel_id'], size)
             if response is not None:
                 return response
 

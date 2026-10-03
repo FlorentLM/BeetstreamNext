@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL
 from beetsplug.beetstreamnext.core.database import close_database
+from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.text import format_duration
 
 ##
@@ -40,6 +41,7 @@ app.config['THUMBNAIL_CACHE_PATH'].mkdir(parents=True, exist_ok=True)
 app.config['ARTIST_IMAGE_DATA_PATH'].mkdir(parents=True, exist_ok=True)
 
 app.jinja_env.filters['duration'] = format_duration
+app.jinja_env.globals['USER_ROLES_SCHEMA'] = USER_ROLES_SCHEMA
 
 csrf = CSRFProtect(app)
 

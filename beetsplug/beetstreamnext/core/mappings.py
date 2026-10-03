@@ -423,8 +423,7 @@ class IDs:
         if neither is available (unstable across reimports).
 
         beets_id/mb_albumid/albumartist/album can come from either an album row or a
-        song's own copies of the same fields (items store mb_albumid/albumartist/album
-        directly too).
+        song's own version of the same fields (items store mb_albumid/albumartist/album directly too).
         """
         mbid = str(mb_albumid or '').strip()
         if mbid:

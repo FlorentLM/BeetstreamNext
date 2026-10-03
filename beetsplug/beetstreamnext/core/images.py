@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import hashlib
 import re
 import subprocess
@@ -66,7 +67,6 @@ def sniff_image(data: bytes) -> str | None:
 def tokenised_image_url(subsonic_id: str, size: Optional[int] = None) -> str:
     """
     Token-gated URL for an image, to be included inside another endpoint's response.
-    (they can't carry the caller's own Subsonic auth params)
     """
     if not subsonic_id:
         return ''
@@ -405,7 +405,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
             _persist_album_art(image_bytes, album, album_dir)
             return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
-    # Last resort: extract an embedded picture from one of the album's own tracks
+    # Last resort: extract an embedded picture from one of the album's tracks
     if album_dir:
         embedded_bytes = image_from_song(album_dir)
         if embedded_bytes:
@@ -574,9 +574,23 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     return None
 
 
-def send_podcast_art(channel_id: int, size: Optional[int] = None) -> flask.Response | None:
+def send_stored_art(kind: str, row_id: int, size: Optional[int] = None) -> flask.Response | None:
+    """Image stored in the database for a podcast channel or radio station ('podcast' / 'radio')."""
+
+    if kind == 'podcast':
+        table = 'podcast_channels'
+    elif kind == 'radio':
+        table = 'internet_radio_stations'
+    else:
+        return None
+
     with database() as db:
-        row = db.execute("""SELECT image FROM podcast_channels WHERE id=?""", (channel_id,)).fetchone()
+        row = db.execute(
+            f"""
+            SELECT image FROM {table} 
+            WHERE id = ?
+            """, (row_id,)
+        ).fetchone()
 
     if not row or not row['image']:
         return None
@@ -586,17 +600,3 @@ def send_podcast_art(channel_id: int, size: Optional[int] = None) -> flask.Respo
         return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
     return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']) or 'image/jpeg')
-
-
-def send_radio_art(station_id: int) -> flask.Response | None:
-    with database() as db:
-        row = db.execute(
-            """
-            SELECT image FROM internet_radio_stations
-            WHERE id=?
-            """, (station_id,)
-        ).fetchone()
-
-    if row and row['image']:
-        return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']) or 'image/jpeg')
-    return None

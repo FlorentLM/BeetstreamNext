@@ -384,7 +384,7 @@
                             <tr>
                                 <td>
                                     <div class="avatar-cell">
-                                        {% if u.hasAvatar %}
+                                        {% if u.avatarLastChanged %}
                                             <img class="user-avatar"
                                                  src="{{ url_for('admin.route_serve_avatar', username=u.username) }}?v={{ (u.avatarLastChanged or 0)|int }}"
                                                  alt="">
@@ -405,7 +405,7 @@
                                 <td>
                                     <div class="roles-cell">
                                         {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
-                                        {% for name, label in role_fields %}
+                                        {% for name, label, _ in USER_ROLES_SCHEMA %}
                                             {% if name != 'adminRole' and u[name] %}
                                                 <span class="badge">{{ label }}</span>{% endif %}
                                         {% endfor %}
@@ -1143,7 +1143,7 @@
                         </div>
                     </div>
                     <div class="roles-grid">
-                        {% for name, label in role_fields %}
+                        {% for name, label, _ in USER_ROLES_SCHEMA %}
                             <label class="role-item">{{ create_form[name]() }} {{ label }}</label>
                         {% endfor %}
                     </div>
@@ -1266,6 +1266,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/hx-sse.min.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"
             src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>

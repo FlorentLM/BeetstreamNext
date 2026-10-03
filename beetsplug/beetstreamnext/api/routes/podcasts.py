@@ -11,22 +11,6 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
 
-def _list_channels(username: str) -> List[dict]:
-
-    with database() as db:
-        rows = db.execute(
-            """
-            SELECT pc.*
-            FROM podcast_channels pc
-            JOIN podcast_subscriptions ps ON ps.channel_id = pc.id
-            WHERE ps.username = ?
-            ORDER BY pc.title COLLATE NOCASE
-            """, (username,)
-        ).fetchall()
-
-    return [dict(r) for r in rows]
-
-
 def _is_subscribed(username: str, channel_id: int) -> bool:
 
     with database() as db:
@@ -95,7 +79,7 @@ def endpoint_get_podcasts() -> flask.Response:
         channels = [channel]
 
     else:
-        channels = _list_channels(username)
+        channels = flask.g.podcast_manager.subscribed_channels(username)
 
     entries = [
         Serialise.podcast_channel(ch, _list_episodes(ch['id']) if include_episodes else None)
@@ -208,7 +192,7 @@ def endpoint_refresh_podcasts() -> flask.Response:
     if flask.g.user_data.get('adminRole'):
         podcast_manager.background_refresh()   # every channel, server-wide
     else:
-        for channel in _list_channels(flask.g.username):
+        for channel in flask.g.podcast_manager.subscribed_channels(flask.g.username):
             podcast_manager.background_refresh(channel['id'])
 
     return subsonic_response({}, resp_fmt=resp_fmt)

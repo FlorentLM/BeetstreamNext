@@ -29,7 +29,7 @@ def now_playing_cover() -> flask.Response:
     if not row:
         flask.abort(404)
 
-    from beetsplug.beetstreamnext.core.images import send_album_art, send_radio_art, round_image_size
+    from beetsplug.beetstreamnext.core.images import send_album_art, send_stored_art, round_image_size
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 
@@ -43,7 +43,7 @@ def now_playing_cover() -> flask.Response:
 
     elif entry_type == 'radio':
         if entry:
-            response = send_radio_art(entry['id'])
+            response = send_stored_art('radio', entry['id'])
             if response:
                 return response
 

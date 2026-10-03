@@ -8,7 +8,7 @@ Your configured `http://<host>:<port>/` (or your `external_hostname`) shows a pu
 
 > **Note:** The "Login" button will only show up on the host allowed by `admin_hostname` if this setting is set.
 
-If `public_now_playing` is enabled, a card displays the currently playing track (**off** by default).
+If `public_now_playing` is enabled, a card displays the currently playing track (_off_ by default).
 
 > 🖼️ *Screenshot: public homepage*
 
@@ -18,7 +18,11 @@ TODO
 
 ## Admin dashboard
 
-The dashboard is organized into tabs. Most settings are editable live, while some require a server restart to take effect. A setting that's already pinned by a CLI flag, environment variable, or `config.yaml` shows as locked/disabled here — see [Configuration reference](../configuration.md) for the precedence rules.
+The dashboard is organized into tabs. Most settings are editable live, those that require a server restart to take effect are clearly marked.
+
+A setting that is already pinned by a CLI flag, an environment variable, or a `config.yaml` value shows as _locked_/_disabled_ from the Web UI.
+
+See [Configuration reference](../configuration.md) for the precedence rules.
 
 ### Users
 
@@ -72,11 +76,15 @@ Interact with the Beets installation: view/update Beets' `config.yaml` and run i
 
 #### Interactive import
 
-Enter a directory to import in an interactive terminal-like view, similar to [Betanin](https://github.com/sentriz/betanin).
+Enter a directory, and start a `beet import` on it in an interactive terminal-like view, similar to [**Betanin**](https://github.com/sentriz/betanin).
+
+> 🖼️ *Screenshot: Import*
 
 #### Pinned import folders
 
-Pin the folders you regularly import from (your downloads directory for example) so they can be imported **non-interactively** from Subsonic clients (quiet mode: beets follows your config for `quiet_fallback`, `timid`, etc). See [`startScan`](../api-coverage.md).
+Pin the folders you regularly import from (a _downloads_ directory for instance) so they can be imported _non-interactively_ from Subsonic clients (quiet mode: beets follows your config for `quiet_fallback`, `timid`, etc).
+
+See [`startScan`](../api-coverage.md) endpoint.
 
 > **Note:** Imports that modify files on disk (writing tags, copying or moving files) need [`allow_disk_writes`](../configuration.md#library--metadata) to be enabled, unless your Beets config has `write`, `copy` and `move` all disabled.
 
@@ -84,12 +92,15 @@ Pin the folders you regularly import from (your downloads directory for example)
 
 When a pinned folder is flagged as **Watch**, new audio files dropped into it are imported automatically.
 
-> **Notes:**
->   - This needs the global [`import_watch_enabled`](../configuration.md#library--metadata) setting to be enabled.
->   - Watched folders are polled every 30 seconds.
->   - A folder is only imported once its contents have stopped changing for [`import_watch_settle`](../configuration.md#library--metadata) (60 sec by default), to avoid auto-importing half-copied or half-downloaded albums.
->   - Watched imports are always `quiet` and `incremental`.
->   - Skipping rules follow your Beets configuration.
+   - This needs the global [`import_watch_enabled`](../configuration.md#library--metadata) setting to be enabled.
+
+   - Watched folders are polled every 30 seconds.
+
+   - A folder is only imported once its contents have stopped changing for [`import_watch_settle`](../configuration.md#library--metadata) (60 sec by default). This is to avoid auto-importing half-copied or half-downloaded albums.
+
+   - Watched imports are always `quiet` and `incremental`.
+
+   - Skipping rules follow your Beets configuration.
 
 ### Maintenance
 

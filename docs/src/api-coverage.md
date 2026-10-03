@@ -2,7 +2,7 @@
 
 > See [Features](./features/index.md) for what BeetstreamNext adds on top of the spec itself :)
 
-BeetstreamNext implements essentially the entire Subsonic/OpenSubsonic REST API. The only unsupported endpoints are video-related:
+**BeetstreamNext** implements essentially the entire Subsonic/OpenSubsonic REST API. The only unsupported endpoints are video-related:
 
 - [`getCaptions`](https://opensubsonic.netlify.app/docs/endpoints/getcaptions/)
 - [`getVideoInfo`](https://opensubsonic.netlify.app/docs/endpoints/getvideoinfo/)
@@ -101,11 +101,11 @@ BeetstreamNext implements essentially the entire Subsonic/OpenSubsonic REST API.
 
 </details>
 
-> **Note:** Following the reference Subsonic specification, error responses are returned with an **HTTP 200** status. The actual outcome is in the response body's `status` field (`"ok"` or `"failed"`, with an error `code`/`message` on failure). Don't rely on the HTTP status alone to detect a failed call.
+> **Note:** Following the reference Subsonic specification, error responses are returned with an _HTTP 200_ status. The real outcome is in the response body's `status` field (`"ok"` or `"failed"`, with an error `code`/`message` on failure).
 
 ## Extensions
 
-Alongside the base spec, BeetstreamNext implements every [OpenSubsonic extension](https://opensubsonic.netlify.app/docs/extensions/).
+Alongside the base spec, BeetstreamNext implements all the [OpenSubsonic extensions](https://opensubsonic.netlify.app/docs/extensions/).
 
 | Extension                                                                                    | Description                                                                                                  |
 |----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
@@ -120,11 +120,11 @@ Alongside the base spec, BeetstreamNext implements every [OpenSubsonic extension
 | [`transcoding`](https://opensubsonic.netlify.app/docs/extensions/transcoding/)               | Clients making their own transcoding decisions and requesting transcoded streams directly                    |
 | [`sonicSimilarity`](https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/)       | Acoustic similarity and playlist path-finding (see [Library augmentation](features/library-augmentation.md)) |
 
-> **Note:** All these extensions are always advertised by the server except `sonicSimilarity`, which only appears if an [AudioMuse-AI instance is configured](./configuration.md#audiomuse_url).
+> **Note:** These extensions are always advertised by the server except for `sonicSimilarity` which only appears if an [**AudioMuse-AI** instance is configured](./configuration.md#audiomuse_url).
 
 ## Authentication
 
 Both authentication schemes from the spec are supported:
 
-- **API-key authentication** (recommended): Always available.
+- **API-key authentication** Always available, and recommended.
 - **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](./configuration.md#legacy_auth) if your client needs it.

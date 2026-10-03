@@ -2,9 +2,11 @@
 
 ## Direct play & transcoding
 
-BeetstreamNext serves files directly when a client can play them as-is, and transcodes on the fly via [FFmpeg](https://ffmpeg.org/) otherwise (bitrate limit requested by the client, unsupported format, etc.). You can set `never_transcode` to always stream the original file regardless of what the client asks for.
+BeetstreamNext serves files directly if a client requests them as-is, or transcodes on the fly via [FFmpeg](https://ffmpeg.org/) otherwise (bitrate limit requested by the client, unsupported format, etc.). 
 
-Direct play means fully lossless, bit-perfect streaming: FLAC, ALAC, and other lossless formats are sent to the client byte-for-byte exactly as they sit in your library.
+You can set `never_transcode` to always stream the original file regardless of what the client asks for.
+
+Direct play means fully lossless, bit-perfect streaming: FLAC, ALAC, and other lossless formats are sent to the client exactly as they sit in your library.
 
 ## Adaptive-bitrate HLS
 
@@ -21,13 +23,15 @@ BeetstreamNext can apply ReplayGain normalization server-side during transcoding
 
 ## Encoding errors detection & self-healing streams
 
-A background scan (also triggerable on-demand from the admin panel) probes files for decode errors. If a track is flagged, it is automatically routed through a transcode pass instead of direct play, so a corrupt/broken file doesn't just fail to play.
+A background scan probes files for decode errors. If a track is flagged, it is automatically routed through a transcode pass instead of direct play, so a corrupt/broken file doesn't just fail to play.
 
-This healing pass keeps the original container/codec (when the client doesn't ask for something else): a flagged FLAC or ALAC file is re-encoded through FFmpeg's decoder rather than streamed byte-for-byte, but the output stays lossless.
+This healing pass keeps the original container/codec (when the client doesn't ask for something else). A healed lossless file is re-encoded _losslessly_ rather than streamed byte-for-byte.
 
 ## Reverse-proxy file offloading
 
-Direct (non-transcoded) file serving can be offloaded to the reverse proxy instead of streaming bytes through the Python process, via `X-Accel-Redirect` (Nginx) or `X-Sendfile` (Apache). See [Reverse proxy & CORS](../reverse-proxy.md)) for how to setup.
+Direct (non-transcoded) file serving can be offloaded to the reverse proxy instead of streaming bytes through the Python process, via `X-Accel-Redirect` (Nginx) or `X-Sendfile` (Apache).
+
+See [Reverse proxy & CORS](../reverse-proxy.md)) for how to setup.
 
 ---
 

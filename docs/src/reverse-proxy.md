@@ -1,8 +1,12 @@
 # Reverse proxy & CORS
 
-BeetstreamNext reads standard HTTP headers to determine the original client's IP, so putting it behind a reverse proxy is straightforward. Enable the `reverse_proxy` option (see [configuration](./configuration.md#reverse_proxy)) so it trusts those forwarded headers, and set the `proxy_hops` to the number of trusted proxies in front of it.
+**BeetstreamNext** reads standard HTTP headers to determine the original client's IP, so putting it behind a reverse proxy is straightforward.
+
+Enable the `reverse_proxy` option (see [configuration](./configuration.md#reverse_proxy)) so it trusts those forwarded headers, and set the `proxy_hops` to the number of trusted proxies in front of it.
 
 ## Nginx
+
+Example configuration:
 
 ```nginx
 location /beetstreamnext {
@@ -30,13 +34,15 @@ example.com {
 
 ## Offloading file serving to the proxy
 
-Instead of streaming raw file bytes through the Python process, the reverse proxy can serve them directly. This only takes effect when `reverse_proxy` is enabled, and only helps for direct (non-transcoded) playback/downloads, transcoded streams always go through Python regardless.
+Instead of streaming raw file bytes through the Python process, the reverse proxy can serve them directly.
 
-Set `sendfile_method` to `x-accel-redirect` (Nginx) or `x-sendfile` (Apache).
+This only takes effect when `reverse_proxy` is enabled, and only helps for direct (non-transcoded) playback/downloads.
+
+Set `sendfile_method` to `x-accel-redirect` for Nginx, or `x-sendfile` for Apache.
 
 ### Nginx (`x-accel-redirect`)
 
-Add an internal-only `location` block aliased to your music root, and point `sendfile_internal_prefix` at it (must match on both sides):
+Add an internal-only `location` block aliased to your music root, and point `sendfile_internal_prefix` at it:
 
 ```nginx
 location /_bsn_internal/ {
@@ -51,7 +57,7 @@ beetstreamnext:
     sendfile_internal_prefix: /_bsn_internal
 ```
 
-`/_bsn_internal` is the default for `sendfile_internal_prefix`, so you only need to set it explicitly if you use a different prefix.
+`/_bsn_internal` is the default for `sendfile_internal_prefix`.
 
 ### Apache (`x-sendfile`, via `mod_xsendfile`)
 
@@ -65,11 +71,11 @@ beetstreamnext:
     sendfile_method: x-sendfile
 ```
 
-`sendfile_internal_prefix` isn't used with `x-sendfile` (it's Nginx-specific).
+`sendfile_internal_prefix` isn't used with `x-sendfile`.
 
 ## Full working example: Nginx sidecar for a Docker deployment
 
-Putting everything together, a minimal `nginx.conf` that reverse-proxies a `beetstreamnext` container on the same Docker network _and offloads direct file serving_ via `X-Accel-Redirect`:
+Putting everything together, a minimal `nginx.conf` that reverse-proxies a `beetstreamnext` container on the same Docker network _and_ offloads direct file serving via `X-Accel-Redirect`:
 
 ```nginx
 worker_processes 1;
@@ -103,30 +109,34 @@ http {
 }
 ```
 
-Here `8888` can be whatever port (`BSN_PORT`/`port` setting) BeetstreamNext is listening on internally, only Nginx's port needs to be published to the host. `/music` must be the same music folder mounted into both the `nginx` and `beetstreamnext` containers, with the same relative layout under each mount point (the absolute host path doesn't need to match).
+Here `8888` can be whatever port (`BSN_PORT`/`port` setting) BeetstreamNext is listening on internally, only Nginx's port needs to be published to the host.
+
+`/music` must be the same music folder mounted into both the `nginx` and `beetstreamnext` containers, with the same relative layout under each mount point (but the absolute host path doesn't need to match).
 
 The matching BeetstreamNext settings:
 
 ```yaml
 beetstreamnext:
     reverse_proxy: true
-    proxy_hops: 2   # The number of proxies actually in front of BeetstreamNext. 1 if the Nginx container is the only one, more if it's itself behind Traefik/Cloudflare/etc
+    proxy_hops: 2   # The number of proxies in front of BeetstreamNext
     sendfile_method: x-accel-redirect
     sendfile_internal_prefix: /_bsn_internal
 ```
+
+> **Note:** For `proxy_hops`, use `1` if the Nginx container is the only proxy, more if Nginx is itself behind a reverse proxy (Traefik, Cloudflare, etc)
 
 ## Web clients and CORS
 
 By default, CORS is disabled. Native mobile/desktop apps usually ignore CORS entirely, so you probably don't need to change anything for those.
 
-However, if you want to use a _web-based_ Subsonic player hosted on a _different_ domain than BeetstreamNext, your browser will block the connection unless you explicitly allow that origin:
+However, if you want to use a _web-based_ Subsonic player hosted on a _different_ domain than **BeetstreamNext**, your browser will block the connection unless you explicitly allow that origin:
 
 ```yaml
 beetstreamnext:
     cors_origins: 'https://music.example.com' # comma-separated list, or '*' for all
 ```
 
-If you're behind an SSO gateway (Authelia, Authentik, etc.), or the web player is a bit quirky, you might also need:
+If you're behind an SSO gateway (Authelia, Authentik, etc), or if the web player is a bit quirky, you might also need:
 
 ```yaml
 beetstreamnext:

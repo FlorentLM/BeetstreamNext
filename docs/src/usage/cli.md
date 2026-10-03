@@ -1,34 +1,36 @@
 # CLI
 
-BeetstreamNext can be started via two different entrypoints (via `beet beetstreamnext` in **plugin mode**, or via `beetstreamnext` in **standalone mode**, see [Installation](../installation.md)), but the command-line surface underneath is the same in both modes (user management, cache clearing, server flags).
+**BeetstreamNext** can be started via two different entrypoints (via `beet beetstreamnext` in plugin mode, or via `beetstreamnext` in standalone mode, see [Installation](../installation.md)).
+
+However, the command-line surface underneath is the same in both modes (user management, cache clearing, server flags).
 
 ## Plugin mode
 
-In **plugin mode**, everything goes through Beets' own `beet beetstreamnext` subcommand:
+In **plugin mode**, everything goes through Beets' `beet beetstreamnext` subcommand:
 
 ```bash
 beet beetstreamnext [options]
 ```
 
-| Flag                           | Effect                                                                                         |
-|--------------------------------|------------------------------------------------------------------------------------------------|
-| *(none)*                       | Start the server                                                                               |
-| `--host HOST[,HOST...]`        | Override `host` for this run (comma-separated for multiple)                                    |
-| `--port PORT`                  | Override `port` for this run                                                                   |
-| `--threads N`                  | Override how many threads the Waitress worker uses for this run                                |
-| `--debug`                      | Run in Flask debug mode                                                                        |
-| `--force-trust-host`           | Force debug mode even when not bound to localhost (_NOT_ recommended)                          |
-| `-c`, `--create-user`          | Create a new user (interactive prompts)                                                        |
-| `--noinput`                    | With `--create-user`: non-interactive, see [Unattended bootstrap](#unattended-bootstrap) below |
-| `-u`, `--update-user USERNAME` | Update an existing user's roles (interactive prompts)                                          |
-| `-d`, `--delete-user USERNAME` | Delete a user (asks for confirmation)                                                          |
-| `-p`, `--password USERNAME`    | Change a user's password (interactive prompts)                                                 |
-| `--list-users`                 | List all registered users and their roles                                                      |
-| `--clear-cache`                | Clear the thumbnail and HTTP caches                                                            |
+| Flag                           | Effect                                                                                                     |
+|--------------------------------|------------------------------------------------------------------------------------------------------------|
+| *(none)*                       | Start the server                                                                                           |
+| `--host HOST[,HOST...]`        | Override `host` for this run (comma-separated for multiple)                                                |
+| `--port PORT`                  | Override `port` for this run                                                                               |
+| `--threads N`                  | Override how many threads the Waitress worker uses for this run                                            |
+| `--debug`                      | Run in Flask debug mode                                                                                    |
+| `--force-trust-host`           | Force debug mode even when not bound to localhost (_NOT RECOMMENDED_)                                      |
+| `-c`, `--create-user`          | Create a new user (interactive prompts)                                                                    |
+| `--noinput`                    | With `--create-user`: non-interactive, see [Unattended first run](../installation.md#unattended-first-run) |
+| `-u`, `--update-user USERNAME` | Update an existing user's roles (interactive prompts)                                                      |
+| `-d`, `--delete-user USERNAME` | Delete a user (asks for confirmation)                                                                      |
+| `-p`, `--password USERNAME`    | Change a user's password (interactive prompts)                                                             |
+| `--list-users`                 | List all registered users and their roles                                                                  |
+| `--clear-cache`                | Clear the thumbnail and HTTP caches                                                                        |
 
-A user-management or cache flag runs that action and exits (it doesn't start the server).
+> **Note:** User-management or cache flags do not start the server.
 
-Settings not overridden by a flag come from Beets' `config.yaml` (under the `beetstreamnext:` key) as usual, see the [configuration reference](../configuration.md).
+Settings not overridden by a flag come from Beets' `config.yaml` (under the `beetstreamnext:` key), see the [configuration reference](../configuration.md).
 
 ## Standalone mode
 
@@ -62,20 +64,20 @@ beetstreamnext [command] [username] [options]
 | `--port PORT`           | `BSN_PORT`         | Port to listen on                                                                                                |
 | `--threads N`           | `BSN_THREADS`      | Waitress worker threads                                                                                          |
 | `--debug`               | —                  | Run in Flask debug mode                                                                                          |
-| `--force-trust-host`    | —                  | Force debug mode even when not bound to localhost (_NOT_ recommended)                                            |
-| `--noinput`             | —                  | With `create-user`: non-interactive, see [Unattended bootstrap](#unattended-bootstrap) below                     |
+| `--force-trust-host`    | —                  | Force debug mode even when not bound to localhost (_NOT RECOMMENDED_)                                            |
+| `--noinput`             | —                  | With `create-user`: non-interactive, see [Unattended first run](../installation.md#unattended-first-run)         |
 
 See the [configuration reference](../configuration.md) for the full settings precedence rules, or [Installation](../installation.md#standalone-mode) for more on `library-db`/`music-root` specifically.
 
 ## Interactive prompts
 
-`create-user`/`--create-user`, `update-user`/`--update-user`, `passwd`/`--password`, and `delete-user`/`--delete-user` all prompt on the terminal rather than taking everything as flags:
+`create-user`/`--create-user`, `update-user`/`--update-user`, `passwd`/`--password`, and `delete-user`/`--delete-user` all prompt interactively on the terminal:
 
-- **Create**: asks for a username (flags invalid characters and offers a sanitized alternative), a password (enforcing a minimum length), and asks you if the new user should be an admin or not.
-- **Update**: walks through every role one at a time, showing its current state — press Enter to leave a role unchanged, or `y`/`n` to enable/disable it.
-- **Password change**: asks for the new password.
-- **Delete**: asks for a confirmation before removing the account.
+- **Create**: Asks for a username (flags invalid characters and offers a sanitized alternative), a password, and asks you if the new user should be an admin or not.
+- **Update**: Walks through every role one at a time (press Enter to leave a role unchanged, or `y`/`n` to enable/disable it).
+- **Password change**: Asks for the new password.
+- **Delete**: Asks for a confirmation before removing the account.
 
-This is _deliberate_: these commands touch credentials, and user input is mandatory. There is _one_ exception to this, the [unattended first run](../installation.md#unattended-first-run).
+The interactivity is _deliberate_: these commands touch credentials, so user input is mandatory. Only exception to this is the [Unattended first run](../installation.md#unattended-first-run).
 
 ---

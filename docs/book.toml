@@ -11,7 +11,13 @@ preferred-dark-theme = "coal"
 additional-css = ["theme/custom.css"]
 git-repository-url = "https://github.com/FlorentLM/BeetstreamNext"
 edit-url-template = "https://github.com/FlorentLM/BeetstreamNext/edit/main/docs/{path}"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [output.html.search]
 enable = true
 limit-results = 20
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"

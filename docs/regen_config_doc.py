@@ -29,21 +29,40 @@ BeetstreamNext settings can be set from various ways:
 1. Explicit sources: 
    - via CLI flag
    - via an environment variable
-   - in **plugin mode**: via **Beets' `config.yaml`**, under a `beetstreamnext:` block (see [Installation](./installation.md#plugin-mode))
-   - in **standalone mode**: via **BeetstreamNext's own config YAML (see [Installation](./installation.md#standalone-mode))
-2. **The Admin WebUI**: Only for settings that aren't already pinned by one of the _explicit_ sources above. When a setting is pinned by any of those sources, its field in the Admin panel shows as locked/disabled.
+   - in plugin mode: via **Beets**' `config.yaml`, under a `beetstreamnext:` block (see [Installation](./installation.md#plugin-mode))
+   - in standalone mode: via **BeetstreamNext**'s config YAML (see [Installation](./installation.md#standalone-mode))
+2. **The Admin WebUI**: Only for settings that aren't already pinned by one of the _explicit_ sources above. When a setting is pinned by any of those sources, its field in the Admin panel is locked/disabled.
 
 Settings resolve order (first one set takes precedence):
 
 - in **plugin mode**:
 
-        CLI flag > environment variable > Beets' config's `beetstreamnext:` block > WebUI setting > Built-in default
+```mermaid
+flowchart LR
+    A("CLI flag") --> B("environment variable") --> C("Beets' config's <code>beetstreamnext:</code> block") --> D("WebUI setting") --> E("Built-in default")
+
+style A fill:#ffffff12,stroke:#808080
+style B fill:#ffffff12,stroke:#808080
+style C fill:#ffffff12,stroke:#808080
+style D fill:#ffffff12,stroke:#808080
+style E fill:#ffffff12,stroke:#808080
+```
 
 - in **standalone mode**:
 
-        CLI flag > environment variable > BeetstreamNext's YAML config file > Beets' config file (if you point it at one, and only for `library-db`/`music-root`) > WebUI setting > Built-in default
+```mermaid
+flowchart LR
+    A("CLI flag") --> B("environment variable") --> C("BeetstreamNext's YAML config file") --> D("Beets' config file<br/><br/>(if you point it at one, and only for <code>library-db</code> and <code>music-root</code>)") --> E("WebUI setting") --> F("Built-in default")
 
-List-based settings (like for example `ip_whitelist`/`ip_blacklist`) are a bit more flexible: only the individual entries coming from an _explicit_ source are pinned, but you can still add/remove other entries on top of them from the Admin panel.
+style A fill:#ffffff12,stroke:#808080
+style B fill:#ffffff12,stroke:#808080
+style C fill:#ffffff12,stroke:#808080
+style D fill:#ffffff12,stroke:#808080
+style E fill:#ffffff12,stroke:#808080
+style F fill:#ffffff12,stroke:#808080
+```
+
+For list-based settings (like for example `ip_whitelist`/`ip_blacklist`): pinning is _per individual entry_.
 
 Settings marked <span style="color:#fab915">**requires restart**</span> only take effect after the server is restarted. Settings marked <span style="color:#6b5c58">**standalone only**</span> are not used when running as a Beets plugin.
 

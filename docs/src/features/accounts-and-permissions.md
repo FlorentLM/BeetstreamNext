@@ -4,18 +4,20 @@
 
 Both authentication schemes from the Subsonic/OpenSubsonic spec are supported:
 
-- **API-key authentication** (recommended): Always available. A user's API key is shown once, on account creation.
+- **API-key authentication**: This scheme is always supported and is the recommended one.
 - **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](../configuration.md#server--network) if you need it.
 
 ## Multi-user system
 
 Every user account has their own bookmarks, ratings, favorites, play statistics, and play queues, all synced across whatever devices/clients they use.
 
-BeetstreamNext stores this data separately from your Beets library, since Beets itself has no concept of multi-user data. However, you _can_ have one user's likes/ratings persist inside the Beets library (so they survive outside BeetstreamNext and are visible to other Beets tools): set `ratings_writeback_user` to that username.
+**BeetstreamNext** stores this data separately from your Beets library, since Beets itself has no concept of multi-user data.
 
-## Use roles
+_You can_, however, have one user's likes/ratings persist inside the Beets library so they survive outside BeetstreamNext and are visible to other Beets plugins/tools: set `ratings_writeback_user` to that username.
 
-Users permissions are [as defined](https://opensubsonic.netlify.app/docs/responses/user/) by the OpenSubsonic/Subsonic spec: controlled by a set of independent role flags. These can be set from the admin panel's Users tab (or `--update-user`/`update-user` on the CLI):
+## User roles
+
+Users permissions are [as defined](https://opensubsonic.netlify.app/docs/responses/user/) by the OpenSubsonic/Subsonic spec's _roles_. These roles can be set from the admin panel's **Users** tab (or `--update-user`/`update-user` on the CLI):
 
 | Role       | Default | Allows                                                          |
 |------------|---------|-----------------------------------------------------------------|

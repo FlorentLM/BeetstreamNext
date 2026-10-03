@@ -3,18 +3,18 @@
 ## Zero-file-modification by default
 
 BeetstreamNext is designed for people who manage metadata inside Beets but don't want tags written back to disk.
-Every "save"-style setting defaults to **off**, and disk writes in general are additionally gated behind the `allow_disk_writes` setting.
+Every setting that would write something to your files/disk defaults to **off**, and disk writes in general are additionally gated behind the `allow_disk_writes` setting.
 
 ## OpenSubsonic API: Full coverage
 
-BeetstreamNext implements all of the Subsonic/OpenSubsonic REST API, including its extensions. The only endpoints it doesn't support are the video-related ones (BeetstreamNext is an audio server, and Beets doesn't manage video anyway).
+BeetstreamNext implements (almost) all of the Subsonic/OpenSubsonic REST API, including its extensions.
+
+The only endpoints it doesn't support are the video-related ones (BeetstreamNext is an audio server, and Beets doesn't manage video anyway).
 See [API coverage](../api-coverage.md) for the full endpoint-by-endpoint checklist, and [Tested clients](../clients.md) for apps confirmed to work.
 
 ## BeetstreamNext's additional features
 
-Beets is a tagger and library manager: it only knows what's tagged in your files (or in MusicBrainz, if you tagged from there). A lot of what shows up in a BeetstreamNext client, artist photos, biographies, community ratings, "songs like this one", isn't in your Beets library at all.
-
-| Area                   | Additions over Beets                                                                                               | Details                                                       |
+| Area                   | Additions over Beets                                                                                               | More details                                                  |
 |------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
 | Streaming              | Direct play, on-the-fly transcoding, adaptive-bitrate HLS, server-side ReplayGain, self-healing streams            | [Streaming & audio quality](./streaming.md)                   |
 | Metadata & artwork     | Artist bios, top tracks, similar artists/songs, album/artist ratings, lyrics, album editions, sonic similarity     | [Library augmentation](library-augmentation.md)               |
@@ -28,7 +28,7 @@ Beets is a tagger and library manager: it only knows what's tagged in your files
 
 ## External data sources
 
-Everything below is fetched live from third-party services (entirely optional, and **off** by default):
+Additional data and library augmentation comes from third-party services (they are all entirely optional):
 
 | Data                                               | Source                                                                                                      | Enabled by                                |
 |----------------------------------------------------|-------------------------------------------------------------------------------------------------------------|-------------------------------------------|
@@ -44,7 +44,7 @@ Everything below is fetched live from third-party services (entirely optional, a
 | Podcast channel discovery                          | [Podcast Index](https://podcastindex.org/)                                                                  | `enable_podcast_discovery`                |
 | Song Lyrics                                        | Uses Beets' `lyrics` plugin's configured external sources                                                   | `fetch_lyrics`/`save_lyrics`              |
 
-> **Note:** None of these ever get written back into Beets or your files unless the matching `save_*` setting is also enabled. See [Library augmentation](library-augmentation.md) for more detail.
+> **Note:** None of these ever get written into Beets or your files, unless the matching `save_*` setting is also enabled. See [Library augmentation](library-augmentation.md) for more detail.
 
 ---
 

@@ -2,9 +2,9 @@
 
 BeetstreamNext should be compatible with virtually _any_ Subsonic/OpenSubsonic/Navidrome client.
 
-Navidrome maintains a nice list of existing clients [here](https://www.navidrome.org/apps/).
+The Navidrome project maintains a nice list of existing clients [here](https://www.navidrome.org/apps/).
 
-It has been specifically tested and confirmed working with:
+I specifically tested it with:
 
 ## Android
 
@@ -16,7 +16,6 @@ It has been specifically tested and confirmed working with:
 - [Tempus](https://github.com/eddyizm/tempus)
 - [SubTune](https://github.com/TaylorKunZhang/SubTune)
 - [GoSonic](https://play.google.com/store/apps/details?id=com.readysteadygosoftware.gosonic)
-- [K-19 Player](https://github.com/ulysg/k19-player)
 - [Ultrasonic](https://gitlab.com/ultrasonic/ultrasonic)
 
 ## iOS

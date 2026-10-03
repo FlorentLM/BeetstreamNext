@@ -1,34 +1,42 @@
 # Installation
 
-BeetstreamNext can run in two modes:
+**BeetstreamNext** can run in two modes:
 
-- **Plugin mode**: Attaches to an existing [Beets](https://beets.io) install and reuses its `config.yaml`. This is the original, most-tested way to run it.
-- **Standalone mode**: BeetstreamNext runs in its own process, pointed directly at a `library.db` (still `beets`-managed, just not invoked _as_ a Beets plugin). Useful when Beets itself lives in a different container or host than BeetstreamNext, e.g. a shared library managed by [Betanin](https://github.com/sentriz/betanin).
+- **Plugin mode**: Attaches to an existing [Beets](https://beets.io) install and reuses its `config.yaml`.
+- **Standalone mode**: Runs in its own process, pointed directly at a `library.db` (still `beets`-managed, just not invoked _as_ a Beets plugin). Useful when Beets lives in a different container or host than **BeetstreamNext**.
 
 Both existing modes share the same [feature set](./features/index.md) and [settings](./configuration.md), only how you configure and launch the server differ slightly.
 
 ## Requirements
 
 - Python 3.13+
-- **Plugin mode** needs a working Beets install with a library you already import music into. **Standalone mode** needs `beets` available as a Python package (for its query engine and file-path handling).
-- Optionally (but like, _highly_ recommended), [`ffmpeg`](https://ffmpeg.org/) installed and available on `PATH`.
+- [**Beets**](https://beets.readthedocs.io/en/stable/guides/main.html) installed
+  - **Plugin mode** needs a working Beets install with a library you already import music into.
+  - **Standalone mode** needs `beets` available as a Python package (for its query engine and file-path handling).
+- [`ffmpeg`](https://ffmpeg.org/) installed and available on `PATH`
 - Optionally, [`mpv`](https://mpv.io/) installed and available on `PATH` for jukebox mode using the server's own audio hardware (not needed for the `sonos`/`chromecast` jukebox backends, or if you don't use jukebox mode. See [Jukebox](./features/jukebox.md) info).
 
-- Both binaries can instead be pointed to explicitly via the `ffmpeg_path`/`mpv_path` settings if they aren't on your `PATH`.
+> **Note:** Both `ffmpeg` and `mpv` binaries can be pointed to explicitly via the `ffmpeg_path`/`mpv_path` settings if they aren't on your `PATH`.
 
-> **Note:** These requirements are for running from source (needed either way for **Plugin mode**, or for **Standalone mode** if not using Docker). If you run **Standalone mode** via the [Docker image](#docker) instead, Python, `beets`, and `ffmpeg` are already bundled with it.
+> **Note:** These requirements are for running from source. If you run **BeetstreamNext** via the [Docker image](#docker) instead, everything is already bundled with it.
 
-## 1. Clone and install
+## Running from source
 
-Only needed for **Plugin mode**, or for **Standalone mode** run from source. Skip this entirely if you're running **Standalone mode** via [Docker](#docker) — the published image needs no local install at all.
+### 1. Clone and install:
 
 ```bash
 git clone https://github.com/FlorentLM/BeetstreamNext.git
-cd BeetstreamNext
-pip install .
-```
+pip install BeetstreamNext
+````
 
-Optional extras pull in Python dependencies for specific features:
+or if you installed Beets via the recommended `uv tool` command:
+
+```bash
+git clone https://github.com/FlorentLM/BeetstreamNext.git
+uv tool install beets --with ./BeetstreamNext --reinstall
+````
+
+Optional extras add the dependencies for specific features:
 
 ```bash
 pip install .[wiki]              # Wikipedia artist-biographies (using wikipedia-api)
@@ -37,18 +45,23 @@ pip install .[podcast-discovery] # Podcast channel discovery (using the Podcast 
 pip install .[radio-discovery]   # Internet radio station discovery (using the Radio Browser API)
 pip install .[sonos]             # Sonos speaker jukebox backend (using SoCo)
 pip install .[chromecast]        # Chromecast jukebox backend (using pychromecast)
+```
+
+or 
+
+```bash
 pip install .[all]               # Installs all optional dependencies
 ```
 
 (With `uv`, use for instance `uv sync --extra podcasts`, or `uv sync --extra all`)
 
-This installs a `beetstreamnext` console command (used by **standalone mode**) alongside the `beetstreamnext` Beets plugin (used by **plugin mode**). These are two separate entrypoints sharing the same codebase.
+This installs a `beetstreamnext` console command (used by **standalone mode**) alongside the `beetstreamnext` Beets plugin (used by **plugin mode**).
 
-## 2. Configure and run
+### 2. Configure and run
 
-### Plugin mode
+#### Plugin mode
 
-Add `beetstreamnext` to the `plugins` line in Beets' `config.yaml`, and put any BeetstreamNext settings under a `beetstreamnext:` block in that file. See the [configuration reference](./configuration.md) for the full list of available settings:
+Add `beetstreamnext` to the `plugins` line in Beets' `config.yaml`, and put any **BeetstreamNext** settings under a `beetstreamnext:` block in that file:
 
 ```yaml
 plugins: beetstreamnext
@@ -57,39 +70,62 @@ beetstreamnext:
   port: 8080
 ```
 
+See the [configuration reference](./configuration.md) for the full list of available settings.
+
 Then just run it through `beet`'s own subcommand:
 
 ```bash
 beet beetstreamnext
 ```
 
-Other plugin-mode flags: `--create-user`, `--update-user USERNAME`, `--delete-user USERNAME`, `--password USERNAME`, `--list-users`, `--clear-cache`, plus `--host`/`--port`/`--threads`/`--debug` to override those settings for a single run. See [CLI usage](./usage/cli.md#plugin-mode) for the full command reference.
+Plugin-mode flags:
 
-### Standalone mode
+`--create-user`, `--update-user USERNAME`, `--delete-user USERNAME`, `--password USERNAME`, `--list-users`, `--clear-cache`, plus `--host`/`--port`/`--threads`/`--debug` to override those settings for a single run.
+
+See [CLI usage](./usage/cli.md#plugin-mode) for the full command reference.
+
+#### Standalone mode
 
 Standalone mode resolves its Beets library path (`library-db`) and music root (`music-root`) following a specific order:
 
 - `library_db`:
 
-      `--library-db` CLI flag > BEETS_LIBRARY_DB env var > `library_db` in YAML > beets.config['library'] (only if `beets_config_path` was resolved) > Error
+```mermaid
+flowchart LR
+    A("<code>--library-db</code> CLI flag") --> B("<code>BEETS_LIBRARY_DB</code> env var") --> C("<code>library_db</code> in YAML config") --> D("beets.config['library']<br/><br/>(only if <code>beets_config_path</code> was resolved)") --> E("Error")
+
+style A fill:#ffffff12,stroke:#808080
+style B fill:#ffffff12,stroke:#808080
+style C fill:#ffffff12,stroke:#808080
+style D fill:#ffffff12,stroke:#808080
+style E fill:#f8d7da44,stroke:#dc3545,stroke-width:3px
+```
 
 - `music_root`:
 
-      `--music-root` CLI flag > MUSIC_ROOT env var > `music_root` in YAML > beets.config['directory'] (only if `beets_config_path` was resolved) > WebUI setting > Error
+```mermaid
+flowchart LR
+    A("<code>--music-root</code> CLI flag") --> B("<code>MUSIC_ROOT</code> env var") --> C("<code>music_root</code> in YAML config") --> D("beets.config['library']<br/><br/>(only if <code>beets_config_path</code> was resolved)") --> E("WebUI setting") --> F("Error")
 
-Every other setting follows the (roughly similar) order defined in [Configuration](./configuration.md) and can also be set from the Admin panel (except `library_path`, see **Note** below).
+style A fill:#ffffff12,stroke:#808080
+style B fill:#ffffff12,stroke:#808080
+style C fill:#ffffff12,stroke:#808080
+style D fill:#ffffff12,stroke:#808080
+style E fill:#ffffff12,stroke:#808080
+style F fill:#f8d7da44,stroke:#dc3545,stroke-width:3px
+```
+
+Every other setting follows the (roughly similar) order defined in [Configuration](./configuration.md), and can also be set from the Admin panel (except `library_path`, see **Note** below).
 
 > **Note:** Since `--library-db`/`BEETS_LIBRARY_DB`/`library_db` (in the YAML) is required on every run just to locate BeetstreamNext's own database, there's no scenario where it isn't explicitly set, so it is currently never editable in the WebUI (I might revise this).
 
-You can run standalone mode directly from the source install above, or run it via the [prebuilt Docker image](#docker) instead.
-
-At minimum, point it at your `library.db` and music root:
+At minimum, you should point **BeetstreamNext** to your `library.db` and music root:
 
 ```bash
 beetstreamnext run --library-db /path/to/library.db --music-root /path/to/music
 ```
 
-Or via a YAML config file. Pass `--config`, or drop it at the default location for your platform:
+Or via a YAML config file, pass `--config`, or just put your configuration file at the default location for your platform:
 
 - Docker: `/config/beetstreamnext.yaml`
 - Linux/macOS: `$XDG_CONFIG_HOME/beetstreamnext/beetstreamnext.yaml` (usually `~/.config/beetstreamnext/beetstreamnext.yaml`)
@@ -106,7 +142,7 @@ port: 8080
 beetstreamnext run --config /path/to/beetstreamnext.yaml
 ```
 
-Or via environment variables (handy for containers):
+You can also use environment variables (handy for containers):
 
 ```bash
 export BEETS_LIBRARY_DB=/path/to/library.db
@@ -114,13 +150,21 @@ export MUSIC_ROOT=/path/to/music
 beetstreamnext run
 ```
 
-Other standalone subcommands: `create-user`, `update-user USERNAME`, `delete-user USERNAME`, `passwd USERNAME`, `list-users`, `clear-cache`. See [CLI usage](./usage/cli.md#standalone-mode) for the full flag list (`--bsn-db`, `--beets-config`, `--host`, `--port`, `--threads`, `--debug`, `--force-trust-host`).
+Standalone subcommands:
 
-> **Note:** If a Beets config file passed via `--beets-config` contains its own `beetstreamnext:` section, it is _ignored_ in standalone mode. Put those settings in a dedicated BeetstreamNext `--config` YAML file, or `BSN_*` environment variables, or set them via the Admin WebUI instead.
+`create-user`, `update-user USERNAME`, `delete-user USERNAME`, `passwd USERNAME`, `list-users`, `clear-cache`
 
-#### Docker
+See [CLI usage](./usage/cli.md#standalone-mode) for the full flag list (`--bsn-db`, `--beets-config`, `--host`, `--port`, `--threads`, `--debug`, `--force-trust-host`).
 
-A prebuilt image is published to GHCR on every release: `ghcr.io/florentlm/beetstreamnext:latest` (or a specific version, e.g. `:2.0.0`).
+> **Note:** If a Beets config file passed via `--beets-config` contains a `beetstreamnext:` section, it will be _ignored_ in standalone mode. Put those settings in a dedicated BeetstreamNext `--config` YAML file, or `BSN_*` environment variables, or set them via the Admin WebUI.
+
+## Run via Docker
+
+A prebuilt image is published to GitHub Container Registry (GHCR):
+
+`ghcr.io/florentlm/beetstreamnext:latest` (or use a specific version tag if you wish, e.g. `:2.0.0`).
+
+Minimal example command:
 
 ```bash
 docker run -d --name beetstreamnext \
@@ -135,7 +179,9 @@ docker run -d --name beetstreamnext \
   ghcr.io/florentlm/beetstreamnext:latest
 ```
 
-If you need something the published image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific `beets` version pinned to match another tool, a smaller image without `mpv`, or debug tools), you should build it yourself instead using the `Dockerfile` at the repository root:
+If you need something the default image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific pinned `beets` version, debug tools, etc), you should build it yourself instead using the `Dockerfile` available at the repository root.
+
+Example:
 
 ```bash
 docker build -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
@@ -143,42 +189,62 @@ docker build -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
 
 Build-time options (`--build-arg`):
 
-- `EXTRAS` (default `all`): which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
-- `BEETS_VERSION`: install this exact version of `beets` instead of whatever `pyproject.toml` would otherwise pick.
-- `WITH_MPV` (default `true`): install `mpv`, needed for the `server_hardware` jukebox backend (see [Jukebox mode](./features/jukebox.md#running-in-docker) for the audio passthrough you still need to set up separately). You can set to `false` if you don't use that backend and want a smaller image.
-- `WITH_DEBUG_TOOLS` (default `false`): also install `curl`, `wget`, `ping`, `dig`/`nslookup`, `nc`, and `ip`/`ss`, for poking at networking issues from inside the container (e.g. `docker exec -it beetstreamnext curl ...`). Off by default to keep the image lean.
-- `PYTHON_VERSION` (default `3.13`): Python version to build against.
+- `EXTRAS` _(default_ `all`_)_: which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
 
-Then run it the same way as the `docker run` command above, substituting `beetstreamnext` for the image name.
+- `PYTHON_VERSION` _(default_ `3.13`_)_: Python version to use instead of the one defined in `pyproject.toml`.
 
-- `/config` is where `beetstreamnext.yaml`, the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key)), BeetstreamNext's own database (`beetstreamnext.db`), and a `data/` subfolder (downloaded podcast episodes, saved artist images) are stored.
-- `/cache` is scratch space, split into two subfolders: `data` (thumbnails, HTTP cache, session key), worth keeping across restarts, and `tmp` (transcode tempfiles, HLS sessions, zip downloads, SQLite/Python tempfiles), fine to discard. Neither is necessary to mount, but you can (if you want the cache to survive restarts too), and you can mount them separately if you want different backing storage for each (see [hardening the container](#advanced-hardening-the-container) below).
-- `PUID`/`PGID` (default `1000`/`1000`) should match the user that owns your library/music files on the host.
+- `BEETS_VERSION`: `beets` to use instead of the one defined in `pyproject.toml`.
+
+- `WITH_MPV` _(default_ `true`_)_: install `mpv` (needed for the `server_hardware` jukebox backend, see [Jukebox mode](./features/jukebox.md#running-in-docker)). You can set to `false` if you don't use that backend and want a smaller image.
+
+- `WITH_DEBUG_TOOLS` _(default_ `false`_)_: also install `curl`, `wget`, `ping`, `dig`/`nslookup`, `nc`, and `ip`/`ss`, for poking at networking issues from inside the container (e.g. `docker exec -it beetstreamnext curl ...`).
+
+### Image paths
+
+- `/config` contains:
+  - the `beetstreamnext.yaml` configuration file
+  - the `.env` file (holding `BEETSTREAMNEXT_KEY`, see [Encryption key](#3-encryption-key))
+  - the BeetstreamNext database (`beetstreamnext.db`)
+  - a `data/` subfolder: contains downloaded podcast episodes, and saved artist images
+
+- `/cache` is scratch space, with two subfolders:
+  - `data`: thumbnails, HTTP cache, session key
+  - `tmp`: transcode tempfiles, HLS sessions, zip downloads, SQLite/Python tempfiles
+
+> **Note:** The `data` cache subfolder is worth bind-mounting to keep the data across containers restarts. The `tmp` subfolder is fine to discard, but you can bind-mount it if you want the cache to survive restarts. Mounting them separately is useful if you want different backing storage for each (see [hardening the container](#advanced-hardening-the-container) below).
+
+### Other image options
+
+`PUID`/`PGID` (default `1000`/`1000`): these should match the user that owns your library/music files on the host.
 
 > **Note:** BeetstreamNext never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to that `PUID`/`PGID` before dropping to it for the rest of the process's life.
 
-> **Note:** Don't mount your library/music paths at `/config` or `/cache`, or the startup `chown` will recursively re-own them. If you want to control the folders' ownership yourself, you can run the container as a specific user directly (use `docker run --user UID:GID`, in which case also make sure `/config` is already owned by that user), and the entrypoint will notice and won't try to switch users itself.
+> **Note:** If you want to control the folders' ownership yourself, you can also run the container as a specific user directly (use `docker run --user UID:GID`, in which case also make sure `/config` is already owned by that user), and the entrypoint will notice and won't try to switch users itself.
 
-##### docker-compose
+## Run via docker-compose
 
-There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (BeetstreamNext only, pulling the published image by default). Edit the two host paths in it, then:
+There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (**BeetstreamNext** only, pulling the published image by default).
+
+Edit the two host paths in it, then:
 
 ```bash
 docker compose up -d
 ```
 
-To build locally instead — e.g. to pin `BEETS_VERSION` — comment out the `image:` line and uncomment `build: .`.
+To build locally instead, comment out the `image:` line and uncomment `build: .`.
 
-##### Example stack: BeetstreamNext + Betanin
+### Example stack: BeetstreamNext + Betanin
 
-A small stack pairing BeetstreamNext with [Betanin](https://github.com/sentriz/betanin), a web UI that drives `beet import`. Betanin owns the beets config and `library.db`, BeetstreamNext only ever reads them. The two containers need to share:
+A small stack pairing BeetstreamNext with [**Betanin**](https://github.com/sentriz/betanin), a web UI that drives `beet import`. In this example, **Betanin** owns the beets config and `library.db`, **BeetstreamNext** only ever reads them.
 
-- The beets home directory (`config.yaml` + `library.db`): needs read-write for Betanin, can be read-only for BeetstreamNext
-- The music directory: read-only for both, since neither needs to write into it
+The two containers need to share:
 
-> **Note:** Concurrent SQLite access to `library.db` is only reliable _on a real shared filesystem or bind-mount_ (same host, sharing a named volume). If Betanin and BeetstreamNext ever end up on different hosts, don't mount `library.db` itself over NFS/SMB from both sides, SQLite's file locking isn't reliable over most network filesystem protocols.
+- The beets home directory (`config.yaml` + `library.db`): needs to be read-write for **Betanin**, but can be read-only for **BeetstreamNext**
+- The music directory: can be read-only for both
 
-This assumes it's saved as `docker-compose.yml` at the root of a BeetstreamNext checkout (`build: .` needs the `Dockerfile` there).
+> **Note:** Concurrent SQLite access to `library.db` is only reliable _on a real shared filesystem or bind-mount_ (same host, sharing a named volume). If Betanin and BeetstreamNext are on different hosts, do _not_ mount `library.db` over NFS/SMB, SQLite's file locking isn't reliable over most network filesystem protocols.
+
+This example assumes it is saved as `docker-compose.yml` at the root of a BeetstreamNext checkout (`build: .` needs the `Dockerfile` there).
 
 ```yaml
 services:
@@ -227,22 +293,29 @@ volumes:
   beetstreamnext-config:
 ```
 
-> **Note:**: You can run `docker exec betanin beet version` (or whatever your betanin container is called) to see which version of beets it is using.
+> **Note:** You can run `docker exec betanin beet version` (or whatever your Betanin container is called) to see which version of beets it is using.
 
-Edit the two `/path/to/...` host paths, then `docker compose up -d`. Open Betanin at `:9393` to configure/run imports, then BeetstreamNext at `:8080`.
+Edit the two `/path/to/...` host paths, then `docker compose up -d`.
 
-> **Note:** Because the music folder and library are mounted `:ro` for BeetstreamNext here, the admin panel will show a red "read-only" pill next to any setting that would try to write to them (see [Configuration reference](./configuration.md)).
+Open **Betanin** at `:9393` to configure/run imports, and **BeetstreamNext** at `:8080`.
 
-##### Mapping paths when the library owner mounts music elsewhere
+> **Note:** Because the music folder and library are mounted `:ro` for BeetstreamNext here, the admin panel will show a red "read-only" pill next to any setting that would otherwise write to them (see [Configuration reference](./configuration.md)).
 
-Beets stores each track's path in `library.db` as a relative path to the `directory` value in its YAML config file, exactly as seen by whatever process ran `beet import`/`beet update`. In the example above, `beet` is in the `betanin` container, but it could just as well be a different machine entirely. The compose file example above avoids any issue by mounting the one music directory (on the host) at an identical path in both containers (`/music`).
+### Remapping paths
 
-If you can't (or don't want to) do that, use `music_root` with `library_remote_path`:
+Beets stores track paths in `library.db` as a relative path to the `directory` value in its YAML config file, exactly as they were seen by the `beet import`/`beet update` process.
 
-- `music_root`: where BeetstreamNext itself mounts the music volume
-- `library_remote_path`: where the container/machine that owns the library mounted that *same* volume when it wrote `library.db`
+In the example above, `beet` is in the `betanin` container, but it could just as well be on a different machine entirely. The compose file example above avoids any issue by mounting the one music directory (on the host) at an identical path in both containers (`/music`).
 
-BeetstreamNext will then substitute one prefix for the other on every path it reads out of the library, so for instance a `/downloads/music/Artist/Album/01.flac` path in `library.db` would resolve to `/music/Artist/Album/01.flac` in BeetstreamNext's container.
+If you can't (or don't want to) use the same path in both, you can use `music_root` with `library_remote_path`:
+
+- `music_root`: where **BeetstreamNext** sees mounts the music volume
+
+- `library_remote_path`: where the container/machine that owns the library sees that same folder
+
+BeetstreamNext will then substitute one prefix for the other on every path it reads from the library.
+
+So, for instance, a `/downloads/music/Artist/Album/01.flac` path in `library.db` would resolve to `/music/Artist/Album/01.flac` in **BeetstreamNext**'s container.
 
 Example:
 
@@ -263,9 +336,7 @@ services:
       # ...
 ```
 
-> **Note:** Obviously this only matters in **standalone mode**. In plugin mode, BeetstreamNext runs _inside_ beets' own process so it shares its `directory` setting directly, and the paths already agree.
-
-##### Adding an Nginx sidecar for offloading file serving
+### Adding an Nginx sidecar for offloading file serving
 
 To offload file serving with an an Nginx sidecar, remove `ports: - "8080:8080"` from the `beetstreamnext` service (Nginx is the one that publishes to the host), then add:
 
@@ -283,9 +354,9 @@ To offload file serving with an an Nginx sidecar, remove `ports: - "8080:8080"` 
       - /path/to/music:/music:ro   # Same host path as beetstreamnext's /music above
 ```
 
-BeetstreamNext also needs `reverse_proxy: true` set (and `sendfile_method: x-accel-redirect`).
+**BeetstreamNext** also needs `reverse_proxy: true` and `sendfile_method: x-accel-redirect`.
 
-And see the [Full working example: Nginx sidecar for a Docker deployment](./reverse-proxy.md#full-working-example-nginx-sidecar-for-a-docker-deployment) for the matching `nginx.conf`.
+See the [Full working example: Nginx sidecar for a Docker deployment](./reverse-proxy.md#full-working-example-nginx-sidecar-for-a-docker-deployment) for the matching `nginx.conf`.
 
 Other standalone subcommands work by overriding the container's command. For example, an [unattended first run](#unattended-first-run):
 
@@ -298,28 +369,17 @@ docker run --rm \
   beetstreamnext create-user --noinput
 ```
 
-> **Note:** `-v /path/to/config:/config` must point at the _same host path_ as the main `run` container above (the encryption key and the user this creates both get stored under `/config`, so the two runs need to share it to see the same user/key).
+> **Note:** here `-v /path/to/config:/config` must point at the _same host path_ as what you'll use in the main `run` command (the encryption key and the user this creates both get stored under `/config`, so the two runs need to share it to see the same user/key).
 
 > **Note:** When using Docker, you probably want to use Docker secrets. You can add the `BSN_NO_KEY_FILE=1` to that command to prevent it from writing the `.env` file (see [unattended first run](#unattended-first-run)).
 
-##### Who runs `beet`?
+#### Advanced: hardening the container
 
-BeetstreamNext only reads the library. Something still has to run `beet import` or any other thing you want to do with Beets. Two ways to do that:
-
-- **Use this container:** It already has `beets` installed, so you can use that directly. The image sets `BEETSDIR=/config/beets`, so `beet` (ran inside the container) reads/writes `/config/beets/config.yaml`.
-  - BeetstreamNext itself picks up that same file automatically too (as a fallback `--beets-config`/`BSN_BEETS_CONFIG`), so as long as your beets `config.yaml` lives there, both tools agree on the library/music paths with no extra flags. Just create/edit `config.yaml` at `/path/to/config/beets/config.yaml` on the host (same volume as the one mounted at `/config` above).
-  - I recommend adding `alias beet="docker exec -it --user beetstream beetstreamnext beet"` to your host's `.bashrc` / `.zshrc` for convenience. The `--user beetstream` is important here, since `docker exec` runs as root by default and you don't want `beet` writing root-owned files into your library/music paths.
-  - If you'd rather keep an existing beets config file _elsewhere_ instead, you can point `--beets-config`/`BSN_BEETS_CONFIG` (and, if you also invoke `beet` in the container, `docker exec`'s `BEETSDIR` or `beet --config`) at it explicitly, which overrides the `/config/beets` default.
-
-- **Use a separate beets install:** Point BeetstreamNext at a `library.db` managed elsewhere (your own machine, or in another container like [Betanin](https://github.com/sentriz/betanin)) by mounting the same files into both.
-
-##### Advanced: hardening the container
-
-There are some compose/`docker run` hardening options people like to enable. Some details worth knowing about before:
+There are some compose/`docker run` hardening options people like to enable.
 
 - **`read_only: true`**
 
-Makes the whole container filesystem read-only except explicitly mounted volumes. `/config` is already a normal writable volume mount. `/cache` is generally not, but it's also where Python and SQLite write temp files, so if you turn on `read_only`, you need to give it a `tmpfs` mount:
+Makes the whole container filesystem read-only except explicitly mounted volumes. `/config` is already a normal writable volume mount, but if you're not mounting `/cache`, you need to give it a `tmpfs` mount:
 
 ```yaml
 read_only: true
@@ -327,7 +387,7 @@ tmpfs:
   - /cache:mode=1777
 ```
 
-> **Note:** a `tmpfs` mount lives in RAM and is counted against the container's memory limit (`deploy.resources.limits.memory`), and can't be reclaimed under memory pressure. If you have a big library, a full scan can make SQLite write sizeable temp files into `/cache`, and if that goes over the container's total memory limit, the write fails with what looks like a SQLite disk I/O error. Either give the tmpfs an explicit size (`/cache:mode=1777,size=256m`) and raise the container's memory limit, or mount `/cache` as a normal volume instead.
+> **Note:** a `tmpfs` mount lives in RAM and is counted against the container's memory limit (`deploy.resources.limits.memory`), and can't be reclaimed under memory pressure. If you have a big library, a full scan can make SQLite write sizeable temp files into `/cache`, which may trigger SQLite disk I/O errors. Either give the tmpfs an explicit size (`/cache:mode=1777,size=256m`) _and_ raise the container's memory limit, or mount `/cache` as a normal volume instead.
 
 Since `/cache` is split into `/cache/data` and `/cache/tmp`, you can also mount just the `tmp` half as `tmpfs` and leave `data` as a normal volume, so the cache survives restarts but the write-heavy half still gets RAM speed:
 
@@ -358,7 +418,7 @@ cap_add:
   - DAC_OVERRIDE  # Needed for the above two to work on files that are not already owned by PUID/PGID
 ```
 
-...unless you use a custom user (see below).
+...unless you use a custom user:
 
 - **`user: PUID:GID`**
 
@@ -399,46 +459,47 @@ deploy:
 pids_limit: 100
 ```
 
-## 3. Encryption key
+## Encryption key
 
-User passwords aren't hashed, they're stored _reversibly encrypted_, because Subsonic's legacy MD5-token auth requires the server to recompute `md5(password + salt)` on every login, which needs the plaintext password to be recoverable... The server key `BEETSTREAMNEXT_KEY` is that database encryption key.
+User passwords aren't hashed, they are stored _reversibly encrypted_, because Subsonic's legacy MD5-token auth requires the server to recompute `md5(password + salt)` on every login, which needs the plaintext password to be recoverable...
 
-This is meant to protect against the database file leaking on its own: a backup that includes `library.db`/`beetstreamnext.db` but not the dotfiles, a misconfigured endpoint serving the db file, a db copied to a new host without also copying its key, ...this sort of thing. It does **not** protect against a fully compromised filesystem: anyone who can read both the database *and* wherever the key lives can decrypt everything... but in a situation like this, your BeetstreamNext data is probably going to be the least of your worries :D
+The server key `BEETSTREAMNEXT_KEY` is that database encryption key.
+
+This is meant to protect against the database file leaking on its own: a backup that includes `library.db`/`beetstreamnext.db` but not the dotfiles, a misconfigured endpoint serving the db file, a db copied to a new host without also copying its key ...this sort of thing.
 
 Given that, how the server key is provisioned matters:
 
-- **You have real secrets management** (Docker secrets, systemd `LoadCredential`, Vault, a k8s Secret, etc): set `BEETSTREAMNEXT_KEY` as an environment variable yourself, however your setup injects secrets, *before* the first run. BeetstreamNext detects it and uses it: it's never written to disk.
-- **You don't**: on first run, BeetstreamNext generates one, prints it _once_, and saves it to a `.env` file next to your database. Keep that file safe: set restrictive permissions if your platform doesn't already (it's created with `0600`), and make sure it's excluded from anywhere the database itself isn't equally protected (e.g. don't back up one without the other, etc.).
+- **You have secrets management** (Docker secrets, systemd `LoadCredential`, Vault, a k8s Secret, etc): Set `BEETSTREAMNEXT_KEY` as an environment variable *before* the first run. **BeetstreamNext** detects it and uses it. It's never written to disk.
 
-Either way: if the key is lost, stored passwords become unrecoverable and you'll need to delete the database and set up again.
+- **You don't have secrets management**: On first run, **BeetstreamNext** generates a new key, prints it _once_, and saves it to a `.env` file next to your database. Keep that file safe: set restrictive permissions if your platform doesn't already (it's created with `0600`), and make sure it's excluded from anywhere the database itself isn't equally protected.
+
+If the key is lost, stored passwords become unrecoverable and you will need to delete the **BeetstreamNext** database and set up again (of course your Beets library stays perfectly fine).
 
 > **Note:** You also need this server key during the first-run admin account creation if using the Web UI (see below).
 
-## 4. First run
+## First run
 
 The first time the server starts with no users in the database, it walks you through creating the initial admin account:
 
-- **Running interactively in a terminal** (the common case for both `beet beetstreamnext` and `beetstreamnext run`): you're prompted right there for a username and password, and the account is created automatically as an admin.
-- **Running non-interactively** (a service manager, a container, anything without a TTY attached): Accessing the Web UI directs you to a setup wizard. That page asks for an admin username and password, plus the `BEETSTREAMNEXT_KEY` from the step above (to avoid letting anyone set up the account before you do).
-- **Fully unattended** (for instance a Docker container with no TTY and nobody to click through a setup page): *before* starting the server, run `create-user --noinput` (with `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` set) as a separate, one-time step — see below.
+- **Running interactively in a terminal**: you're prompted right there for a username and password, and the account is created automatically as an admin.
 
-Either way, the admin user account's API key is shown once, on creation. **Save it**. It's what you'll enter into a Subsonic client instead of a password when using API-key authentication.
+- **Running non-interactively** (a service manager, a container, anything without a TTY attached): Accessing the Web UI directs you to a setup wizard. That page will ask for the `BEETSTREAMNEXT_KEY` from the step above (this is to prevent letting anyone else who accesses the web UI from setting up the account before you do).
 
-Once at least one user exists, use `--create-user`/`create-user` (or the admin panel's Users tab) to create other user accounts (admins or not).
+- **Fully unattended** (for instance a Docker container with no TTY and nobody to click through a setup page): *before* starting the server, run once `create-user --noinput` (with `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` set). See [below](#unattended-first-run).
+
+Either way, the admin user account's API key is shown _once_. **Save it**. It's what you'll enter into a Subsonic client instead of a password when using API-key authentication.
+
+Once at least one user exists, use `--create-user`/`create-user` (or the admin panel's Users tab) to create other user accounts.
 
 ### Unattended first run
 
-You can setup the first admin account in a completely unattended way.
+You can setup the first admin account in a completely unattended way by using `--noinput` with the `create-user` command.
 
-Use `--create-user --noinput` (for **plugin mode**) or `create-user --noinput` (for **standalone mode**)
+This reads the `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` env vars, creates that admin account, prints its API-key, and exits immediately (it doesn't start the server).
 
-This reads the `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` env vars, creates that one admin account, prints its API-key, and exits (it doesn't start the server).
+You can also add `BSN_NO_KEY_FILE=1` to prevent it from writing the `.env` file containing the `BEETSTREAMNEXT_KEY` server key.
 
-You can also add `BSN_NO_KEY_FILE=1` to prevent it from writing tne `.env` file containing the server key (`BEETSTREAMNEXT_KEY`). It will only print it for you to copy into your secrets manager.
-
-```bash
-BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=hunter2 beetstreamnext create-user --noinput --library-db /path/to/library.db
-```
+Example:
 
 ```bash
 BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=hunter2 beet beetstreamnext --create-user --noinput
@@ -448,7 +509,7 @@ BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=hunter2 beet beetstreamnext --create-use
 
 > **Note:** This is a _one-time_ step. It will refuse to run if any user account already exists.
 
-## 5. Normal startup
+## Startup
 
 By default the server listens on `0.0.0.0:8080`. Open `http://<host>:8080` to see the public homepage, where you can log into the admin dashboard (see [Web UI usage](usage/webui.md)).
 

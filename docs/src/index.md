@@ -6,19 +6,19 @@
 
 **BeetstreamNext** exposes your **[Beets](https://beets.io)** music library over the **[OpenSubsonic API](https://opensubsonic.netlify.app/)**, letting you stream your music to any Subsonic/OpenSubsonic/Navidrome-compatible client.
 
-Essentially all of the Subsonic/OpenSubsonic API specification is supported, including its extensions. Only the video-streaming functionalities are excluded (see [API coverage](./api-coverage.md)).
+It supports all of the Subsonic/OpenSubsonic API specification, including its extensions. Only the video-streaming functionalities are excluded (see [API coverage](./api-coverage.md)).
 
-**BeetstreamNext** also reaches beyond your **Beets** library to provide metadata augmentation (artist biographies and pictures, Discogs ratings, etc...) and additional reliability/security tweaks.
+**BeetstreamNext** also provides metadata augmentation beyond your **Beets** library (artist biographies and pictures, Discogs ratings, etc...) and a few additional features and tweaks.
 
 See [Features](./features/index.md) for the full detailed view.
 
 ## Docs overview
 
-- **[Features](./features/index.md)**: full API coverage (including internet radio, podcasts, playlists, public shares, multi-user accounts & permissions, jukebox mode...), along with BeetstreamNexts's own additional features.
-- **[Installation](./installation.md)**: Install as a Beets plugin or as a standalone server.
+- **[Features](./features/index.md)**: full API coverage (including internet radio, podcasts, playlists, public shares, multi-user accounts & permissions, jukebox mode...), along with BeetstreamNexts's additional features.
+- **[Installation](./installation.md)**: Installation instructions, as a Beets plugin or as a standalone server.
 - **[Usage](./usage/cli.md)**: The [CLI](./usage/cli.md) commands (plugin mode and standalone mode) and a quick tour of the [Web UI](usage/webui.md).
 - **[Configuration reference](./configuration.md)**: Every setting by category, plus instructions on [reverse proxy & CORS](./reverse-proxy.md) setup.
-- **[Reference](./api-coverage.md)**: Details of [API coverage](./api-coverage.md) and [tested clients](./clients.md).
+- **[Reference](./api-coverage.md)**: Details of [implemented endpoints](./api-coverage.md) and [tested clients](./clients.md).
 
 ## Project history
 

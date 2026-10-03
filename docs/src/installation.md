@@ -221,6 +221,40 @@ Build-time options (`--build-arg`):
 
 > **Note:** If you want to control the folders' ownership yourself, you can also run the container as a specific user directly (use `docker run --user UID:GID`, in which case also make sure `/config` is already owned by that user), and the entrypoint will notice and won't try to switch users itself.
 
+### Adding beets plugins
+
+Third-party beets plugins can be added without rebuilding the image. Set `BSN_BEETS_PLUGINS` to a whitespace-separated list of `pip`-friendly entries (PyPI packages names or git repositories):
+
+```bash
+-e BSN_BEETS_PLUGINS="beets-follow git+https://github.com/FlorentLM/beets-cataloghint.git git+https://github.com/someone/beets-otherplugin.git@v1.2.0"
+```
+
+Or in docker-compose:
+
+```yaml
+environment:
+  BSN_BEETS_PLUGINS: >-
+    beets-follow
+    git+https://github.com/FlorentLM/beets-cataloghint.git
+    git+https://github.com/FlorentLM/beets-unskipper.git
+```
+
+> Check em out! → [beets-cataloghint](https://github.com/FlorentLM/beets-cataloghint) and [beets-unskipper](https://github.com/FlorentLM/beets-unskipper) ← 😃
+
+Then enable the plugin in your beets config (`/config/beets/config.yaml`) as usual, and restart the container:
+
+```yaml
+plugins: follow cataloghint unskipper
+```
+
+At startup, the container installs the list into `/config/plugins/installed` (so they persist across container re-creation). It only reinstalls if the list changes, and it removes the plugins removed from the list.
+
+You can also use `/config/plugins/requirements.txt` file to list your wanted plugins. If present, its content is merged with `BSN_BEETS_PLUGINS`.
+
+> **Note:** Plugins can't replace packages shipped with the image (`beets` itself, or **BeetstreamNext**'s dependencies). A plugin requiring an incompatible version fails to install, and the container starts without the change.
+
+> **Note:** Plugins with system-level dependencies (a command-line tool, a C library) can't be installed this way. The image only includes `git`, `ffmpeg` (and `mpv` unless disabled). Use a custom image `FROM` the published one if you need that.
+
 ## Run via docker-compose
 
 There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (**BeetstreamNext** only, pulling the published image by default).

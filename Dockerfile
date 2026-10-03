@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         ffmpeg \
         util-linux \
         tini \
+        git \
         $( [ "$WITH_MPV" = "true" ] && echo mpv ) \
         $( [ "$WITH_DEBUG_TOOLS" = "true" ] && echo curl wget iputils-ping dnsutils netcat-openbsd iproute2 ) \
     && rm -rf /var/lib/apt/lists/*
@@ -47,8 +48,12 @@ RUN groupadd --gid 1000 beetstream && \
 
 WORKDIR /app
 COPY --from=builder --chown=beetstream:beetstream /app/.venv /app/.venv
+COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# User-installed beets plugins
+RUN echo /config/plugins/installed > "$(/app/.venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')/bsn_user_plugins.pth"
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \

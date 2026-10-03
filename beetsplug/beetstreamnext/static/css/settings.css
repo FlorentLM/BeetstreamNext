@@ -1048,6 +1048,10 @@ input:focus, select:focus {
 }
 
 /* Card hints and inline card forms */
+.card .flash {
+    margin: 1rem 1.5rem;
+}
+
 .card-hint {
     margin: 1rem 1.5rem;
     color: var(--text-muted);

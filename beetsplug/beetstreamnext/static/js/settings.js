@@ -675,6 +675,15 @@
         });
     });
 
+    // hx-confirm use the modal
+    document.body.addEventListener('htmx:confirm', event => {
+        event.preventDefault();
+        Alpine.store('modal').confirm(event.detail.ctx.confirm).then(ok => {
+            if (ok) event.detail.issueRequest();
+            else event.detail.dropRequest();
+        });
+    });
+
     // Roughly same input validation as the server does, just to know "this'll get rejected" or not
     function looksLikeIpOrCidr(s) {
         const ipv4 = /^(\d{1,3})(\.\d{1,3}){3}(\/\d{1,2})?$/;

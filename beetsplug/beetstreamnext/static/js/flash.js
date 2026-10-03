@@ -5,7 +5,10 @@
     const FADE_MS = 300;
     const COLLAPSE_MS = 250;
 
-    document.querySelectorAll('.flash').forEach(el => {
+    function dismissLater(el) {
+        if (el.dataset.flashScheduled) return;
+        el.dataset.flashScheduled = '1';
+
         setTimeout(() => {
             el.style.transition = `opacity ${FADE_MS}ms ease`;
             el.style.opacity = '0';
@@ -26,5 +29,13 @@
                 setTimeout(() => el.remove(), COLLAPSE_MS);
             }, FADE_MS);
         }, DISPLAY_MS);
+    }
+
+    document.querySelectorAll('.flash').forEach(dismissLater);
+
+    // Messages rendered by htmx partials
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        if (target) target.querySelectorAll('.flash').forEach(dismissLater);
     });
 })();

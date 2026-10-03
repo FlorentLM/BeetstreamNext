@@ -19,3 +19,9 @@
         <span class="material-symbols-outlined icon-chevron">keyboard_arrow_down</span>
     {%- endif -%}
 {%- endmacro %}
+
+
+{% macro podcast_title(p, error_badge=false) -%}
+    {{ p.title or p.url }}
+    {%- if error_badge and p.status == 'error' %} <span class="badge badge-limit">error</span>{% endif -%}
+{%- endmacro %}

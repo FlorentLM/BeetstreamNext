@@ -1,0 +1,56 @@
+{% from '_macros.html' import icon %}
+<div class="table-container">
+    <table>
+        <thead>
+        <tr>
+            <th>{{ 'ID / Link' if admin else 'Description' }}</th>
+            {% if admin %}<th>Creator</th><th>Description</th>{% endif %}
+            <th>Items</th>
+            <th>{{ 'Traffic' if admin else 'Visits' }}</th>
+            <th>Expires</th>
+            <th class="cell-right">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for s in shares %}
+            <tr>
+                {% if admin %}
+                    <td><a href="{{ s.url }}" target="_blank" rel="noopener" class="username-name"><code>{{ s.id }}</code></a></td>
+                    <td><strong>{{ s.username }}</strong></td>
+                    <td>
+                        {% if s.description %}<span class="email-cell">{{ s.description }}</span>
+                        {% else %}<span class="rate-limit-anon">—</span>{% endif %}
+                    </td>
+                    <td><span class="badge">{{ s.entry_count }} {{ 'item' if s.entry_count == 1 else 'items' }}</span></td>
+                    <td><span class="badge badge-limit">{{ s.visit_count or 0 }} visits</span></td>
+                {% else %}
+                    <td><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.description or s.id }}</a></td>
+                    <td>{{ s.entry_count }}</td>
+                    <td>{{ s.visit_count or 0 }}</td>
+                {% endif %}
+                <td>
+                    {% if s.expires %}
+                        <span class="chat-time" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
+                    {% elif admin %}
+                        <span class="badge badge-success">Never</span>
+                    {% else %}
+                        Never
+                    {% endif %}
+                </td>
+                <td class="actions-cell">
+                    <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}"
+                            hx-post="{{ url_for(delete_endpoint, share_id=s.id) }}"
+                            hx-target="closest .table-container" hx-swap="outerHTML"
+                            hx-confirm="Delete share '{{ s.id }}'? Its public link will stop working immediately.">
+                        {{ icon('delete') }}
+                    </button>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="{{ 7 if admin else 5 }}" class="empty-state">
+                {{ 'No shares created yet.' if admin else "You haven't shared anything." }}
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

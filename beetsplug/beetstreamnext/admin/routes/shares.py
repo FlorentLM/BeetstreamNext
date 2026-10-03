@@ -1,18 +1,28 @@
 from __future__ import annotations
 import flask
 
-from .. import admin_bp, admin_required, back_to
+from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.shares import list_shares
+
+
+def _shares_partial() -> str:
+    return flask.render_template('partials/shares_table.html', shares=list_shares(), admin=True,
+                                 delete_endpoint='admin.route_delete_share')
+
+
+@admin_bp.route('/shares', methods=['GET'])
+@admin_required
+def route_shares() -> str:
+    return _shares_partial()
 
 
 @admin_bp.route('/shares/delete/<share_id>', methods=['POST'])
 @admin_required
-def route_delete_share(share_id: str) -> flask.Response:
+def route_delete_share(share_id: str) -> str:
 
     with database() as db:
         db.execute("""DELETE FROM shares WHERE id = ?""", (share_id,))
 
-    flask.flash(f"Share '{share_id}' deleted successfully.", 'success')
-
-    return back_to('shares')
+    return _shares_partial()

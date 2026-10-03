@@ -188,6 +188,18 @@ def route_serve_radio_image(station_id: int) -> flask.Response:
 ##
 # Podcasts
 
+def _channels_partial(message: str | None = None) -> str:
+    channels, total_size = flask.current_app.config['podcast_manager'].channels_overview()
+    return flask.render_template('partials/podcast_channels.html', channels=channels, total_size=total_size,
+                                 message=message, ok=True)
+
+
+@admin_bp.route('/podcasts/channels', methods=['GET'])
+@admin_required
+def route_podcast_channels() -> str:
+    return _channels_partial()
+
+
 @admin_bp.route('/podcasts/add', methods=['POST'])
 @admin_required
 def route_add_podcast() -> flask.Response:
@@ -248,42 +260,38 @@ def route_refresh_all_podcasts() -> flask.Response:
 
 @admin_bp.route('/podcasts/<int:channel_id>/refresh', methods=['POST'])
 @admin_required
-def route_refresh_podcast(channel_id: int) -> flask.Response:
+def route_refresh_podcast(channel_id: int) -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.background_refresh(channel_id)
-    flask.flash('Refreshing channel in the background.', 'info')
 
-    return back_to('podcasts')
+    return _channels_partial('Refreshing channel in the background.')
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/download-recents', methods=['POST'])
 @admin_required
-def route_download_recent_podcast_episodes(channel_id: int) -> flask.Response:
+def route_download_recent_podcast_episodes(channel_id: int) -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     count = podcast_manager.download_recent_episodes(channel_id, username=flask.session.get('username'))
 
     if count:
-        flask.flash(f"Downloading {count} recent episode{'s' if count != 1 else ''}.", 'info')
+        message = f"Downloading {count} recent episode{'s' if count != 1 else ''}."
     else:
-        flask.flash(
-            "No episodes to download (already downloaded/downloading, or "
-            "'podcast_auto_download_count' is set to 0).", 'info'
-        )
+        message = ("No episodes to download (already downloaded/downloading, or "
+                   "'podcast_auto_download_count' is set to 0).")
 
-    return back_to('podcasts')
+    return _channels_partial(message)
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/delete', methods=['POST'])
 @admin_required
-def route_delete_podcast(channel_id: int) -> flask.Response:
+def route_delete_podcast(channel_id: int) -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.delete_channel(channel_id)
-    flask.flash('Podcast channel deleted for all subscribers.', 'info')
 
-    return back_to('podcasts')
+    return _channels_partial('Podcast channel deleted for all subscribers.')
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/image', methods=['GET'])

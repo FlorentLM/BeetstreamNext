@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import calendar
 import os
 import shutil
@@ -690,6 +691,43 @@ class PodcastManager:
             ).fetchall()
 
         return [dict(r) for r in rows]
+
+    def channels_overview(self) -> Tuple[List[dict], str]:
+        """Admin view: all channels with subscribers, episode counts, disk usage."""
+
+        with database() as db:
+            channel_rows = db.execute(
+                """
+                SELECT pc.id, pc.title, pc.url, pc.status, pc.error_message,
+                       (pc.image IS NOT NULL) AS has_image,
+                       (SELECT COUNT(*) FROM podcast_episodes pe WHERE pe.channel_id = pc.id) AS episode_count,
+                       (SELECT COUNT(*) FROM podcast_episodes pe
+                        WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS downloaded_count,
+                       (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
+                        WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
+                FROM podcast_channels pc
+                ORDER BY pc.title COLLATE NOCASE
+                """
+            ).fetchall()
+
+            subscription_rows = db.execute(
+                """
+                SELECT channel_id, username
+                FROM podcast_subscriptions
+                ORDER BY username COLLATE NOCASE
+                """
+            ).fetchall()
+
+        subscribers: dict[int, list] = {}
+        for row in subscription_rows:
+            subscribers.setdefault(row['channel_id'], []).append(row['username'])
+
+        channels = [
+            {**dict(r), 'subscribers': subscribers.get(r['id'], []), 'storage_size': human_bytes(r['bytes_on_disk'])}
+            for r in channel_rows
+        ]
+
+        return channels, human_bytes(sum(r['bytes_on_disk'] for r in channel_rows))
 
     def send_opml(self, username: Optional[str] = None):
         """OPML export as a file download."""

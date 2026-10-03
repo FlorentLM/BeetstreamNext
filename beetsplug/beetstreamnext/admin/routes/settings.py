@@ -11,7 +11,6 @@ from beetsplug.beetstreamnext.core.health import flagged_songs
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.shares import list_shares
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
@@ -206,8 +205,6 @@ def route_settings() -> flask.Response:
             """, (_CHAT_PAGE_SIZE, (chat_page - 1) * _CHAT_PAGE_SIZE)
         ).fetchall()
 
-    shares_list = list_shares()
-
     # Load radio stations
     with database() as db:
         radio_rows = db.execute(
@@ -220,43 +217,6 @@ def route_settings() -> flask.Response:
 
     radios = [dict(r) for r in radio_rows]
 
-    # Load podcast channels, subscribers, episode count and disk usage
-    with database() as db:
-        channel_rows = db.execute(
-            """
-            SELECT pc.id, pc.title, pc.url, pc.status, pc.error_message,
-                   (pc.image IS NOT NULL) AS has_image,
-                   (SELECT COUNT(*) FROM podcast_episodes pe WHERE pe.channel_id = pc.id) AS episode_count,
-                   (SELECT COUNT(*) FROM podcast_episodes pe
-                    WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS downloaded_count,
-                   (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
-                    WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
-            FROM podcast_channels pc
-            ORDER BY pc.title COLLATE NOCASE
-            """
-        ).fetchall()
-
-        subscription_rows = db.execute(
-            """
-            SELECT channel_id, username
-            FROM podcast_subscriptions
-            ORDER BY username COLLATE NOCASE
-            """
-        ).fetchall()
-
-    subscribers_by_channel: dict[int, list] = {}
-    for row in subscription_rows:
-        subscribers_by_channel.setdefault(row['channel_id'], []).append(row['username'])
-
-    podcast_channels = []
-    podcast_total_bytes = 0
-    for row in channel_rows:
-        ch = dict(row)
-        ch['subscribers'] = subscribers_by_channel.get(ch['id'], [])
-        ch['storage_size'] = human_bytes(ch['bytes_on_disk'])
-        podcast_total_bytes += ch['bytes_on_disk']
-        podcast_channels.append(ch)
-
     resp = flask.make_response(
         flask.render_template(
             'settings.html',
@@ -266,12 +226,9 @@ def route_settings() -> flask.Response:
             chat_pages=chat_pages,
             cache_size=cache_size,
             cache_sizes=cache_sizes,
-            shares=shares_list,
             radios=radios,
             radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
             podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,
-            podcast_channels=podcast_channels,
-            podcast_total_size=human_bytes(podcast_total_bytes),
             flagged_songs=flagged_songs(),
             beets_schema_drift=flask.current_app.config.get('BEETS_SCHEMA_DRIFT', {}),
             beets_config=read_config(),

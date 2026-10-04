@@ -4,6 +4,18 @@
     // Alpine components (tabs, checkbox-group toggles)
     // (registered on 'alpine:init' so they exist before CSP build parses x-data)
 
+    // Artist image modal
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        const store = Alpine.store('modal');
+        if (target?.id === 'artistImageModalBody') store.show('artistImageModal');
+        else if (target?.id === 'artistImageList' && target.querySelector('.flash-success')
+            && store.current === 'artistImageModal') {
+            store.hide('artistImageModal');
+            document.getElementById('artistImageModalBody').innerHTML = '';     // no stale preview next time
+        }
+    });
+
     document.addEventListener('alpine:init', () => {
         Alpine.data('tabs', () => ({
             active: 'users',

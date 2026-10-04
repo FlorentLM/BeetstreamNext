@@ -93,6 +93,13 @@ class RadioStationForm(FlaskForm):
     homepageUrl = StringField('Homepage URL', validators=[Optional(), Length(max=1024)])
 
 
+class ArtistImageForm(FlaskForm):
+    """
+    Form for uploading a manual artist image.
+    """
+    name = StringField('Artist', validators=[DataRequired(), Length(max=256)])
+
+
 # Attach the role checkboxes from the registry
 # (WTForms rebuilds the unbound-field list on class attribute assignment, so this is safe)
 for _name, _label, _default in USER_ROLES_SCHEMA:

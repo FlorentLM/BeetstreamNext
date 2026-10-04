@@ -23,6 +23,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.deezer import query_deezer
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_coverartarchive
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
+from beetsplug.beetstreamnext.core.media.artist_images import find_uploaded_image
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 if TYPE_CHECKING:
@@ -500,19 +501,36 @@ def _first_deezer_artist(names: list[str]) -> dict:
     return {}
 
 
+def _send_blob(image: bytes, size: Optional[int]) -> flask.Response | None:
+    if size:
+        resized = _cached_resize(BytesIO(image), size)
+        return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+    return flask.send_file(BytesIO(image), mimetype=sniff_image(image) or 'image/jpeg')
+
+
 def send_artist_image(artist, size=None) -> flask.Response | None:
     from beetsplug.beetstreamnext.core.library.ids import IDs
     from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
     artist = strip_text(artist)
+    artist_mbid = ''
     if IDs.decode_type(artist) == 'artist':
         resolved = Resolve.artist(artist)
-        artist_name = resolved[0] if resolved else ''
+        artist_name, artist_mbid = resolved if resolved else ('', '')
     else:
         artist_name = artist
 
     if not artist_name:
         return None
+
+    # Manual uploads take priority
+    if not artist_mbid:
+        from beetsplug.beetstreamnext.core.library.resolve import get_artist_metadata
+        artist_mbid = get_artist_metadata(artist_name)['mbid']
+
+    manual = find_uploaded_image(artist_name, artist_mbid)
+    if manual:
+        return _send_blob(manual, size)
 
     cache_key = hashlib.md5(artist_name.encode('utf-8')).hexdigest()
     local_image_path = app.config['ARTIST_IMAGE_DATA_PATH'] / f'{cache_key}.jpg'
@@ -600,11 +618,7 @@ def send_stored_art(kind: str, row_id: int, size: Optional[int] = None) -> flask
     if not row or not row['image']:
         return None
 
-    if size:
-        resized = _cached_resize(BytesIO(row['image']), size)
-        return flask.send_file(resized, mimetype='image/jpeg') if resized else None
-
-    return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']) or 'image/jpeg')
+    return _send_blob(row['image'], size)
 
 
 def read_uploaded_image(field: str = 'avatar') -> bytes | None:

@@ -185,6 +185,18 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS artist_images (
+            artist_key  TEXT PRIMARY KEY, -- the artist's Subsonic ID (IDs.encode_artist: mbid if known, else name)
+            name        TEXT NOT NULL,
+            image       BLOB,
+            source      TEXT NOT NULL DEFAULT 'manual',
+            uploaded_at REAL
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS podcast_channels
         (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,

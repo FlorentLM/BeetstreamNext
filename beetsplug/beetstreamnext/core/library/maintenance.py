@@ -193,6 +193,12 @@ def sweep_stale_references() -> dict[str, int]:
 
                 purged[f'{table} (deleted songs)'] = len(to_delete)
 
+        # Images of artists that left the library
+        from beetsplug.beetstreamnext.core.media.artist_images import remove_orphan_images
+        n = remove_orphan_images()
+        if n:
+            purged['artist image(s) (artists no longer in library)'] = n
+
         # Settings: keys no longer present in the schema (renamed/removed settings)
         placeholders = ','.join('?' * len(SETTINGS_SCHEMA))
         cur = db.execute(

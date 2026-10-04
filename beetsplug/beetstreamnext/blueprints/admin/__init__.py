@@ -40,6 +40,7 @@ def back_to(anchor: str) -> flask.Response:
 
 
 from .routes import (
+    artists,
     auth,
     beets,
     chat,

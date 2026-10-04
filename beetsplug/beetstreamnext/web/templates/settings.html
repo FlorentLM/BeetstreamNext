@@ -94,6 +94,10 @@
                     :aria-selected="active === 'radios' ? 'true' : 'false'" @click="set('radios')"
                     aria-controls="tab-radios">Radios
             </button>
+            <button class="tab" role="tab" data-tab="artists" :class="{ active: active === 'artists' }"
+                    :aria-selected="active === 'artists' ? 'true' : 'false'" @click="set('artists')"
+                    aria-controls="tab-artists">Artists
+            </button>
             <button class="tab" role="tab" data-tab="shares" :class="{ active: active === 'shares' }"
                     :aria-selected="active === 'shares' ? 'true' : 'false'" @click="set('shares')"
                     aria-controls="tab-shares">Shares
@@ -284,6 +288,23 @@
 
                 <div id="radioList">
                     {% include 'partials/radio_list.html' %}
+                </div>
+            </div>
+        </section>
+
+        {# Artists tab #}
+        <section class="tab-content" id="tab-artists" :class="{ active: active === 'artists' }" role="tabpanel">
+            <div class="card">
+                <div class="table-header">
+                    <h2>Custom artist images</h2>
+                    <button class="btn btn-primary"
+                            hx-get="{{ url_for('admin.route_artist_image_form') }}"
+                            hx-target="#artistImageModalBody" hx-swap="innerHTML">
+                        + Add Image
+                    </button>
+                </div>
+
+                <div id="artistImageList" hx-get="{{ url_for('admin.route_artist_images') }}" hx-trigger="load">
                 </div>
             </div>
         </section>
@@ -637,6 +658,15 @@
     </div>
 
     {% include 'partials/radio_modals.html' %}
+
+    <div class="modal-overlay" id="artistImageModal" x-data="modalPanel('artistImageModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Artist image</h2>
+            <div id="artistImageModalBody"></div>
+        </div>
+    </div>
 
     {# One-time API key display #}
     <div id="apiKeySlot"></div>

@@ -1,0 +1,31 @@
+{% from '_macros.html' import icon %}
+
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+{% endif %}
+
+{% for a in artist_images %}
+    <div class="channel-row">
+        <div class="channel-row-header">
+            <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, v=a.uploaded_at|int) }}" alt="">
+            <div class="channel-row-info">
+                <div class="username-name">{{ a.name }}</div>
+                <div class="email-cell">{% if a.has_mbid %}Linked to MusicBrainz ID{% else %}No MusicBrainz ID (will be lost if artist is renamed){% endif %}</div>
+            </div>
+            <div class="actions-cell">
+                <button class="icon-btn"
+                        hx-get="{{ url_for('admin.route_artist_image_form', key=a.artist_key) }}"
+                        hx-target="#artistImageModalBody"
+                        hx-swap="innerHTML"
+                        title="Replace image" aria-label="Replace image of {{ a.name }}">{{ icon('edit') }}</button>
+                <button class="icon-btn icon-btn-delete" title="Remove" aria-label="Remove image of {{ a.name }}"
+                        hx-post="{{ url_for('admin.route_delete_artist_image') }}"
+                        hx-vals='{"key": {{ a.artist_key|tojson|forceescape }}}'
+                        hx-target="#artistImageList" hx-swap="innerHTML"
+                        hx-confirm="Remove the custom image of '{{ a.name | e }}'?">{{ icon('delete') }}</button>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <p class="empty-state">No custom artist images yet. Artists without one use Deezer (if enabled).</p>
+{% endfor %}

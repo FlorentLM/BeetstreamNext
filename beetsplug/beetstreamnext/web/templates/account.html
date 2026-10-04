@@ -193,12 +193,27 @@
             </div>
         {% endif %}
 
+        {# Radio stations #}
+        <div class="card">
+            <div class="table-header">
+                <h2>My radio stations</h2>
+                <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
+                    + Add Station
+                </button>
+            </div>
+
+            <div id="radioList"
+                 hx-get="{{ url_for('account.route_radios') }}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML"></div>
+        </div>
+
         {# Data export #}
         <div class="card">
             <div class="table-header"><h2>My data</h2></div>
             <p class="card-hint">
                 Download everything stored about you (profile, likes, ratings, bookmarks, play history,
-                play queue, shares, podcast subscriptions and chat messages) as a JSON file.
+                play queue, shares, podcast subscriptions, radio stations and chat messages) as a JSON file.
             </p>
             <div class="card-body-form">
                 <a class="btn btn-primary" href="{{ url_for('account.route_export_data') }}" download>Export my data</a>
@@ -241,6 +256,9 @@
             </div>
         </div>
     </div>
+
+    {% include 'partials/radio_modals.html' %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -248,6 +266,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"
             src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>

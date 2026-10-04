@@ -177,7 +177,8 @@ def initialise_db() -> None:
             stream_url TEXT NOT NULL,
             homepage_url TEXT,
             image BLOB,
-            image_mtime REAL
+            image_mtime REAL,
+            owner TEXT REFERENCES users (username) ON DELETE CASCADE
         )
         """
     )

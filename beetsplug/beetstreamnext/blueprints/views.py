@@ -33,8 +33,22 @@ def render_shares(username: Optional[str] = None) -> str:
 ##
 # Radios
 
-def render_radios(message: Optional[str] = None) -> str:
-    return flask.render_template('partials/radio_list.html', radios=list_radios(), message=message, ok=True)
+def radio_endpoints(bp_name: str) -> dict[str, str]:
+    """Endpoint names of the radio routes registered on blueprint `bp_name`, for the templates."""
+    return {
+        key: f'{bp_name}.route_{key}_radio' for key in ('create', 'update', 'edit', 'delete', 'image')} | {
+        'list': f'{bp_name}.route_radios',
+        'discover': f'{bp_name}.route_discover_radios',
+        'favicon_proxy': f'{bp_name}.route_radio_favicon_proxy',
+    }
+
+
+def render_radios(username: str, message: Optional[str] = None, bp_name: str = 'admin') -> str:
+    return flask.render_template('partials/radio_list.html',
+                                 radios=list_radios(username),
+                                 message=message,
+                                 ok=True,
+                                 radio_ep=radio_endpoints(bp_name))
 
 
 def render_radio_discovery(query: Optional[str]) -> str:

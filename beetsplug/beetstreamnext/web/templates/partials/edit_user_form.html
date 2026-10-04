@@ -1,3 +1,5 @@
+{% import '_macros.html' as macros %}
+
 <p class="modal-username">{{ user.username }}</p>
 
 <form id="editUserForm" enctype="multipart/form-data" x-data="iconPicker"
@@ -12,19 +14,8 @@
     <div class="form-group">
         <label>Avatar <span class="label-hint">(optional)</span></label>
 
-        <div class="radio-icon-row">
-            <button type="button" class="radio-icon-frame radio-icon-frame-round" @click="pick()" aria-label="Choose avatar">
-                <img x-show="previewSrc" :src="previewSrc" alt="">
-                <span class="radio-icon-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
-            </button>
-            <span class="label-hint">Click to change the avatar</span>
-        </div>
-
-        <input type="file" id="editUserAvatar" name="avatar" accept="image/jpeg,image/png,image/webp"
-               class="hidden" x-ref="file" @change="onFileChange()">
-        <label class="role-item role-item-standalone">
-            <input type="checkbox" name="remove_avatar" id="editUserRemoveAvatar" x-ref="remove"> Remove current avatar
-        </label>
+        {{ macros.icon_picker('avatar', 'editUserAvatar', 'Avatar', 'Choose avatar', 'Click to change the avatar', round=true,
+                              remove_name='remove_avatar', remove_id='editUserRemoveAvatar', remove_label='Remove current avatar') }}
     </div>
 
     <div class="form-group">

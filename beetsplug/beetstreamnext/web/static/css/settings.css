@@ -620,13 +620,13 @@ input:focus, select:focus {
     display: none !important;
 }
 
-.radio-icon-row {
+.icon-picker-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
 }
 
-.radio-icon-frame {
+.icon-picker-frame {
     appearance: none;
     -webkit-appearance: none;
     position: relative;
@@ -644,18 +644,18 @@ input:focus, select:focus {
     cursor: pointer;
 }
 
-.radio-icon-frame-round {
+.icon-picker-frame-round {
     border-radius: 50%;
 }
 
-.radio-icon-frame img {
+.icon-picker-frame img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
 
-.radio-icon-edit-overlay {
+.icon-picker-edit-overlay {
     position: absolute;
     inset: 0;
     display: flex;
@@ -667,12 +667,12 @@ input:focus, select:focus {
     transition: opacity 0.15s ease;
 }
 
-.radio-icon-edit-overlay .material-icons {
+.icon-picker-edit-overlay .material-icons {
     font-size: 1.2rem;
 }
 
-.radio-icon-frame:hover .radio-icon-edit-overlay,
-.radio-icon-frame:focus-visible .radio-icon-edit-overlay {
+.icon-picker-frame:hover .icon-picker-edit-overlay,
+.icon-picker-frame:focus-visible .icon-picker-edit-overlay {
     opacity: 1;
 }
 

@@ -1,0 +1,68 @@
+{% import '_macros.html' as macros %}
+
+{# Radio station create/edit modals #}
+
+    <div class="modal-overlay" id="createRadioModal" x-data="modalPanel('createRadioModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Add Radio Station</h2>
+            {% if radio_discovery_enabled %}
+                <div class="radio-discovery form-group">
+                    <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
+                    <div class="setting-input-row">
+                        <input type="text" id="radioDiscoveryQuery" name="q" placeholder="Station name">
+                        <button type="button" class="btn btn-outline" data-action="discover-radios"
+                                data-favicon-proxy="{{ url_for(radio_ep.favicon_proxy) }}"
+                                hx-get="{{ url_for(radio_ep.discover) }}"
+                                hx-include="#radioDiscoveryQuery"
+                                hx-target="#radioDiscoveryResults"
+                                hx-swap="innerHTML"
+                                hx-trigger="click"
+                                hx-disable="this"
+                                hx-indicator="#radioDiscoverySpinner">Search
+                        </button>
+                    </div>
+                    <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
+                    <div class="suggestion-list" id="radioDiscoveryResults"></div>
+                </div>
+            {% endif %}
+            <form id="createRadioForm" x-data="iconPicker" @radio-icon.window="applyRemote($event)" @reset="clear()"
+                  hx-post="{{ url_for(radio_ep.create) }}"
+                  hx-encoding="multipart/form-data"
+                  hx-target="#radioList"
+                  hx-swap="innerHTML" enctype="multipart/form-data">
+                {{ radio_form.csrf_token }}
+                <div class="modal-result" id="createRadioResult"></div>
+                <div class="form-group">
+                    <label>Name</label>
+                    {{ radio_form.name(id="createRadioName", placeholder="My Favorite Station") }}
+                </div>
+                <div class="form-group">
+                    <label>Stream URL</label>
+                    {{ radio_form.streamUrl(id="createRadioStreamUrl", placeholder="https://stream.example.com/stream.mp3") }}
+                </div>
+                <div class="form-group">
+                    <label>Homepage URL <span class="label-hint">(optional)</span></label>
+                    {{ radio_form.homepageUrl(id="createRadioHomepageUrl", placeholder="https://example.com") }}
+                </div>
+                <div class="form-group">
+                    <label>Icon <span class="label-hint">(optional)</span></label>
+                    {{ macros.icon_picker('image', 'createRadioImage', 'Icon', 'Choose station icon', 'Click to upload, or pick a search result above.', overlay=false) }}
+                    <input type="hidden" id="createRadioFavicon" name="favicon_url" x-ref="favicon">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Add station</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- station edit modal -->
+    <div class="modal-overlay" id="editRadioModal" x-data="modalPanel('editRadioModal')"
+         :class="{ active: isOpen }" @click.self="close()">
+        <div class="modal-content">
+            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+            <h2>Edit Radio Station</h2>
+            <div id="editRadioModalBody"></div>
+        </div>
+    </div>
+

@@ -27,3 +27,24 @@
     {{ p.title or p.url }}
     {%- if error_badge and p.status == 'error' %} <span class="badge badge-limit">error</span>{% endif -%}
 {%- endmacro %}
+
+
+{% macro icon_picker(name, input_id, label, aria_label, hint, round=false, overlay=true, remove_name=none, remove_id=none, remove_label=none) -%}
+
+<div class="icon-picker-row">
+    <button type="button" class="icon-picker-frame{% if round %} icon-picker-frame-round{% endif %}" @click="pick()" aria-label="{{ aria_label }}">
+        <img x-show="previewSrc" :src="previewSrc" alt="">
+        {% if overlay %}<span class="icon-picker-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
+        {% else %}<span class="material-symbols-outlined">edit</span>{% endif %}
+    </button>
+    <span class="label-hint">{{ hint }}</span>
+</div>
+<input type="file" id="{{ input_id }}" name="{{ name }}" accept="image/jpeg,image/png,image/webp"
+       class="hidden" x-ref="file" @change="onFileChange()">
+{% if remove_name %}
+<label class="role-item role-item-standalone">
+    <input type="checkbox" name="{{ remove_name }}" id="{{ remove_id }}" x-ref="remove"> {{ remove_label }}
+</label>
+{% endif %}
+
+{%- endmacro %}

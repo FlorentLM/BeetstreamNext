@@ -30,64 +30,6 @@
             }
         }));
 
-        // Icon/avatar upload frame: preview of the chosen (or current) image
-        // Root is <form>, so form.reset() clears the preview
-        Alpine.data('iconPicker', () => ({
-            previewSrc: '',
-            blobUrl: '',
-
-            init() {
-                this.previewSrc = this.$el.dataset.src || '';
-            },
-
-            revokeBlob() {
-                if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
-                this.blobUrl = '';
-            },
-
-            showBlob(blob) {
-                this.revokeBlob();
-                this.blobUrl = URL.createObjectURL(blob);
-                this.previewSrc = this.blobUrl;
-            },
-
-            pick() {
-                this.$refs.file.click();
-            },
-
-            onFileChange() {
-                const file = this.$refs.file.files[0];
-                if (this.$refs.favicon) this.$refs.favicon.value = '';
-                if (file) {
-                    this.showBlob(file);
-                    if (this.$refs.remove) this.$refs.remove.checked = false;
-                } else {
-                    this.clear();
-                }
-            },
-
-            clear() {
-                this.revokeBlob();
-                this.previewSrc = '';
-            },
-
-            // Icon from a Radio Browser result
-            applyRemote(event) {
-                const blob = event.detail.blob;
-                this.$refs.file.value = '';
-                if (!blob) {
-                    this.clear();
-                    return;
-                }
-                this.showBlob(blob);
-                if (typeof DataTransfer !== 'undefined') {
-                    const dt = new DataTransfer();
-                    dt.items.add(new File([blob], 'icon', {type: blob.type || 'application/octet-stream'}));
-                    this.$refs.file.files = dt.files;
-                }
-            }
-        }));
-
         // Beets import panel: status/log pushed over the admin SSE stream (with one initial poll on page load)
         Alpine.data('beetsImport', () => {
             const LABELS = {
@@ -410,7 +352,6 @@
     // Modal forms swap the list behind them on success
     const MODAL_FORMS = {
         usersTable: [['createModal', 'createForm'], ['editModal', null]],
-        radioList: [['createRadioModal', 'createRadioForm'], ['editRadioModal', null]],
     };
     document.body.addEventListener('htmx:after:swap', event => {
         const target = event.detail.ctx.target;
@@ -435,11 +376,10 @@
         if (target.querySelector('.flash-success')) document.getElementById('announceForm')?.reset();
     });
 
-    // Edit user/radio forms, lazy-loaded
+    // Edit user forms, lazy-loaded
     document.body.addEventListener('htmx:after:swap', event => {
         const id = event.detail.ctx.target?.id;
         if (id === 'editModalBody') Alpine.store('modal').show('editModal');
-        if (id === 'editRadioModalBody') Alpine.store('modal').show('editRadioModal');
     });
 
     function usePodcastResult(target) {
@@ -467,46 +407,6 @@
         }
     }
 
-    async function useRadioResult(target) {
-        const nameInput = document.getElementById('createRadioName');
-        const streamInput = document.getElementById('createRadioStreamUrl');
-        const homepageInput = document.getElementById('createRadioHomepageUrl');
-        if (nameInput) nameInput.value = target.dataset.name || '';
-        if (streamInput) streamInput.value = target.dataset.streamUrl || '';
-        if (homepageInput) homepageInput.value = target.dataset.homepageUrl || '';
-
-        const favicon = target.dataset.favicon || '';
-        const faviconInput = document.getElementById('createRadioFavicon');
-
-        // Kept for create_station() in case the icon fetch here fails client-side
-        if (faviconInput) faviconInput.value = favicon;
-
-        const results = document.getElementById('radioDiscoveryResults');
-        if (results) results.innerHTML = '';
-
-        const sendIcon = blob => window.dispatchEvent(new CustomEvent('radio-icon', {detail: {blob}}));
-        sendIcon(null);
-
-        const searchButton = document.querySelector('[data-action="discover-radios"]');
-        const proxyBase = searchButton ? searchButton.dataset.faviconProxy : '';
-        const name = target.dataset.name || '';
-        const homepage = target.dataset.homepageUrl || '';
-        if (!proxyBase || !name) return;
-
-        // Fetch the resolved icon here so it can be reused in create_station()
-        const params = new URLSearchParams({name});
-        if (favicon) params.set('url', favicon);
-        if (homepage) params.set('homepage', homepage);
-
-        try {
-            const resp = await fetch(`${proxyBase}?${params.toString()}`, {credentials: 'same-origin'});
-            if (!resp.ok) return;
-            sendIcon(await resp.blob());
-        } catch (err) {
-            // Left empty, favicon_url still lets create_station() try server-side
-        }
-    }
-
     // Events
 
     document.addEventListener('click', event => {
@@ -516,9 +416,6 @@
         switch (target.dataset.action) {
             case 'copy-log':
                 copyLogs(target);
-                break;
-            case 'use-radio-result':
-                useRadioResult(target);
                 break;
             case 'use-podcast-result':
                 usePodcastResult(target);

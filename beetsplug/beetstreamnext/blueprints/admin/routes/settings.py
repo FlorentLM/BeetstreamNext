@@ -22,6 +22,7 @@ from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA, SETTINGS_CATEGORIES
 from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.blueprints.forms import UserForm, RadioStationForm
+from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
@@ -229,7 +230,8 @@ def route_settings() -> flask.Response:
             **chat_page_context(flask.request.args.get('chat_page', default=1, type=int)),
             cache_size=cache_size,
             cache_sizes=cache_sizes,
-            radios=list_radios(),
+            radios=list_radios(flask.session['username']),
+            radio_ep=radio_endpoints('admin'),
             IP_LIST_META=IP_LIST_META,
             radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
             podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,

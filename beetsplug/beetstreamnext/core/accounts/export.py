@@ -59,5 +59,8 @@ def export_user_data(username: str) -> Dict[str, Any]:
                 JOIN podcast_channels c ON c.id = e.channel_id
                 WHERE d.username = ?
             """, (username,)),
+            'radio_stations': _get_rows(db, """
+                SELECT name, stream_url, homepage_url FROM internet_radio_stations WHERE owner = ?
+            """, (username,)),
             'chat_messages': _get_rows(db, "SELECT time, message FROM chat_messages WHERE username = ?", (username,)),
         }

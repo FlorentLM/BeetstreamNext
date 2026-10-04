@@ -4,12 +4,13 @@
     <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
 {% endif %}
 
+
 {% for s in radios %}
     <div class="channel-row">
         <div class="channel-row-header">
             {% if s.has_image %}
                 <img class="cover-thumb"
-                     src="{{ url_for('admin.route_serve_radio_image', station_id=s.id) }}" alt="">
+                     src="{{ url_for(radio_ep.image, station_id=s.id) }}" alt="">
             {% else %}
                 <span class="cover-thumb cover-thumb-placeholder">{{ s.name[0]|upper }}</span>
             {% endif %}
@@ -23,12 +24,12 @@
             </div>
             <div class="actions-cell">
                 <button class="icon-btn"
-                        hx-get="{{ url_for('admin.route_edit_radio', station_id=s.id) }}"
+                        hx-get="{{ url_for(radio_ep.edit, station_id=s.id) }}"
                         hx-target="#editRadioModalBody"
                         hx-swap="innerHTML"
                         title="Edit" aria-label="Edit {{ s.name }}">{{ icon('edit') }}</button>
                 <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ s.name }}"
-                        hx-post="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
+                        hx-post="{{ url_for(radio_ep.delete, station_id=s.id) }}"
                         hx-target="#radioList" hx-swap="innerHTML"
                         hx-confirm="Delete radio station '{{ s.name | e }}'?">{{ icon('delete') }}</button>
             </div>

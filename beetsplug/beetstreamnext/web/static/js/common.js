@@ -138,4 +138,63 @@
     });
 
     window.bsnCommon = {copyText};
+
+    document.addEventListener('alpine:init', () => {
+        // Image picker (radio icons, user avatars)
+        Alpine.data('iconPicker', () => ({
+            previewSrc: '',
+            blobUrl: '',
+
+            init() {
+                this.previewSrc = this.$el.dataset.src || '';
+            },
+
+            revokeBlob() {
+                if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
+                this.blobUrl = '';
+            },
+
+            showBlob(blob) {
+                this.revokeBlob();
+                this.blobUrl = URL.createObjectURL(blob);
+                this.previewSrc = this.blobUrl;
+            },
+
+            pick() {
+                this.$refs.file.click();
+            },
+
+            onFileChange() {
+                const file = this.$refs.file.files[0];
+                if (this.$refs.favicon) this.$refs.favicon.value = '';
+                if (file) {
+                    this.showBlob(file);
+                    if (this.$refs.remove) this.$refs.remove.checked = false;
+                } else {
+                    this.clear();
+                }
+            },
+
+            clear() {
+                this.revokeBlob();
+                this.previewSrc = '';
+            },
+
+            // Icon from Radio Browser result
+            applyRemote(event) {
+                const blob = event.detail.blob;
+                this.$refs.file.value = '';
+                if (!blob) {
+                    this.clear();
+                    return;
+                }
+                this.showBlob(blob);
+                if (typeof DataTransfer !== 'undefined') {
+                    const dt = new DataTransfer();
+                    dt.items.add(new File([blob], 'icon', {type: blob.type || 'application/octet-stream'}));
+                    this.$refs.file.files = dt.files;
+                }
+            }
+        }));
+    });
 })();

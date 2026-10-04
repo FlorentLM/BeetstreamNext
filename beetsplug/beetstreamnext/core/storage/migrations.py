@@ -97,6 +97,20 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
             else:
                 bsn_logger.warning('Beets database not found... Stable album id migration deferred to next startup.')
 
+    ## _________ Migration 6: Version 5 -> 6 (radio stations become per-user: the shared stations
+    ##            are copied to every user, then removed), 04/10/2026
+    MIGRATION_6_VER = 6
+
+    if curr_version < MIGRATION_6_VER:
+        have_table = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='internet_radio_stations'"""
+        ).fetchone()
+
+        if have_table:
+            _make_radios_per_user(cursor)
+
+        curr_version = MIGRATION_6_VER
+
     ## ___________________________________________________________________
 
     # Update version in db
@@ -105,6 +119,33 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
         INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('version', ?)
         """, (curr_version,)
     )
+
+def _make_radios_per_user(cursor: sqlite3.Cursor) -> None:
+
+    columns = [row[1] for row in cursor.execute("""PRAGMA table_info(internet_radio_stations)""")]
+    if 'owner' not in columns:
+        cursor.execute(
+            """
+            ALTER TABLE internet_radio_stations
+            ADD COLUMN owner TEXT REFERENCES users (username) ON DELETE CASCADE
+            """
+        )
+
+    have_users = cursor.execute("""SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'""").fetchone()
+    if not have_users:
+        return
+
+    cursor.execute(
+        """
+        INSERT INTO internet_radio_stations (name, stream_url, homepage_url, image, image_mtime, owner)
+        SELECT s.name, s.stream_url, s.homepage_url, s.image, s.image_mtime, u.username
+        FROM internet_radio_stations AS s
+        CROSS JOIN users AS u
+        WHERE s.owner IS NULL
+        """
+    )
+    cursor.execute("""DELETE FROM internet_radio_stations WHERE owner IS NULL""")
+
 
 def _rebuild_play_queue_entries(conn: sqlite3.Connection) -> None:
     """

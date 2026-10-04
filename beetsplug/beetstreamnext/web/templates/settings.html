@@ -276,7 +276,7 @@
         <section class="tab-content" id="tab-radios" :class="{ active: active === 'radios' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
-                    <h2>Internet Radio Stations</h2>
+                    <h2>My radio stations</h2>
                     <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
                         + Add Station
                     </button>
@@ -636,78 +636,7 @@
         </div>
     </div>
 
-    <!-- Radio station create modal -->
-    <div class="modal-overlay" id="createRadioModal" x-data="modalPanel('createRadioModal')"
-         :class="{ active: isOpen }" @click.self="close()">
-        <div class="modal-content">
-            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-            <h2>Add Radio Station</h2>
-            {% if radio_discovery_enabled %}
-                <div class="radio-discovery form-group">
-                    <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
-                    <div class="setting-input-row">
-                        <input type="text" id="radioDiscoveryQuery" name="q" placeholder="Station name">
-                        <button type="button" class="btn btn-outline" data-action="discover-radios"
-                                data-favicon-proxy="{{ url_for('admin.route_radio_favicon_proxy') }}"
-                                hx-get="{{ url_for('admin.route_discover_radios') }}"
-                                hx-include="#radioDiscoveryQuery"
-                                hx-target="#radioDiscoveryResults"
-                                hx-swap="innerHTML"
-                                hx-trigger="click"
-                                hx-disable="this"
-                                hx-indicator="#radioDiscoverySpinner">Search
-                        </button>
-                    </div>
-                    <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
-                    <div class="suggestion-list" id="radioDiscoveryResults"></div>
-                </div>
-            {% endif %}
-            <form id="createRadioForm" x-data="iconPicker" @radio-icon.window="applyRemote($event)" @reset="clear()"
-                  hx-post="{{ url_for('admin.route_create_radio') }}"
-                  hx-encoding="multipart/form-data"
-                  hx-target="#radioList"
-                  hx-swap="innerHTML" enctype="multipart/form-data">
-                {{ radio_form.csrf_token }}
-                <div class="modal-result" id="createRadioResult"></div>
-                <div class="form-group">
-                    <label>Name</label>
-                    {{ radio_form.name(id="createRadioName", placeholder="My Favorite Station") }}
-                </div>
-                <div class="form-group">
-                    <label>Stream URL</label>
-                    {{ radio_form.streamUrl(id="createRadioStreamUrl", placeholder="https://stream.example.com/stream.mp3") }}
-                </div>
-                <div class="form-group">
-                    <label>Homepage URL <span class="label-hint">(optional)</span></label>
-                    {{ radio_form.homepageUrl(id="createRadioHomepageUrl", placeholder="https://example.com") }}
-                </div>
-                <div class="form-group">
-                    <label>Icon <span class="label-hint">(optional)</span></label>
-                    <div class="radio-icon-row">
-                        <button type="button" class="radio-icon-frame" @click="pick()" aria-label="Choose station icon">
-                            <img x-show="previewSrc" :src="previewSrc" alt="">
-                            <span class="material-symbols-outlined">edit</span>
-                        </button>
-                        <span class="label-hint">Click to upload, or pick a search result above.</span>
-                    </div>
-                    <input type="file" id="createRadioImage" name="image" accept="image/jpeg,image/png,image/webp"
-                           class="hidden" x-ref="file" @change="onFileChange()">
-                    <input type="hidden" id="createRadioFavicon" name="favicon_url" x-ref="favicon">
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Add station</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Radio station edit modal -->
-    <div class="modal-overlay" id="editRadioModal" x-data="modalPanel('editRadioModal')"
-         :class="{ active: isOpen }" @click.self="close()">
-        <div class="modal-content">
-            <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-            <h2>Edit Radio Station</h2>
-            <div id="editRadioModalBody"></div>
-        </div>
-    </div>
+    {% include 'partials/radio_modals.html' %}
 
     {# One-time API key display #}
     <div id="apiKeySlot"></div>
@@ -719,6 +648,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"
             src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>

@@ -147,9 +147,10 @@ def seed_demo(app, lib, import_root: Path | None = None) -> None:
             create_user(username, password, admin=False)
 
         with database() as db:
-            for name, stream, home in RADIOS:
-                db.execute("INSERT INTO internet_radio_stations (name, stream_url, homepage_url) VALUES (?, ?, ?)",
-                           (name, stream, home))
+            for owner in ('admin', *(username for username, _ in USERS)):
+                for name, stream, home in RADIOS:
+                    db.execute("INSERT INTO internet_radio_stations (name, stream_url, homepage_url, owner) VALUES (?, ?, ?, ?)",
+                               (name, stream, home, owner))
 
             for i, (title, desc, episodes) in enumerate(PODCASTS, 1):
                 cur = db.execute(

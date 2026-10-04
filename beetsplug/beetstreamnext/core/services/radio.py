@@ -39,6 +39,7 @@ def resolve_station_icon(name: str, favicon_url: Optional[str] = None, homepage_
 
 
 def create_station(
+        owner: str,
         name: str,
         stream_url: str,
         homepage_url: Optional[str] = None,
@@ -47,7 +48,7 @@ def create_station(
     ) -> Tuple[int | None, str | None]:
     """
     Returns (station_id, error_message).
-    station_id is None if the stream URL is already registered
+    station_id is None if the owner already has this stream URL
     """
 
     stream_url = normalize_url(stream_url, probe_https=True)
@@ -59,8 +60,8 @@ def create_station(
             """
             SELECT name
             FROM internet_radio_stations
-            WHERE stream_url = ? OR stream_url = ?
-            """, (stream_url, https_variant(stream_url))
+            WHERE owner = ? AND (stream_url = ? OR stream_url = ?)
+            """, (owner, stream_url, https_variant(stream_url))
         ).fetchone()
 
     if existing:
@@ -72,9 +73,9 @@ def create_station(
     with database() as db:
         cur = db.execute(
             """
-            INSERT INTO internet_radio_stations (name, stream_url, homepage_url, image, image_mtime)
-            VALUES (?, ?, ?, ?, ?)
-            """, (name, stream_url, homepage_url, image, time.time() if image else None)
+            INSERT INTO internet_radio_stations (name, stream_url, homepage_url, image, image_mtime, owner)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (name, stream_url, homepage_url, image, time.time() if image else None, owner)
         )
 
     return cur.lastrowid, None
@@ -85,21 +86,37 @@ def update_station(
         name: str,
         stream_url: str,
         homepage_url: Optional[str] = None,
-        image: Optional[bytes] = None
+        image: Optional[bytes] = None,
+        *,
+        owner: str
     ) -> str | None:
-    """Updates a station. Returns an error if the new stream URL collides with another station."""
+    """
+    Updates one of `owner`'s stations. Returns an error if the new stream URL collides with another
+    of their stations, or if the station is not found.
+    """
 
     stream_url = normalize_url(stream_url, probe_https=True)
     if homepage_url:
         homepage_url = normalize_url(homepage_url)
 
     with database() as db:
+        station = db.execute(
+            """
+            SELECT 1
+            FROM internet_radio_stations
+            WHERE id = ? AND owner = ?
+            """, (station_id, owner)
+        ).fetchone()
+
+        if not station:
+            return 'Radio station not found.'
+
         existing = db.execute(
             """
             SELECT name
             FROM internet_radio_stations
-            WHERE id != ? AND (stream_url = ? OR stream_url = ?)
-            """, (station_id, stream_url, https_variant(stream_url))
+            WHERE id != ? AND owner = ? AND (stream_url = ? OR stream_url = ?)
+            """, (station_id, owner, stream_url, https_variant(stream_url))
         ).fetchone()
 
         if existing:
@@ -116,25 +133,30 @@ def update_station(
     return None
 
 
-def list_radios() -> List[dict]:
+def list_radios(owner: str) -> List[dict]:
+    """`owner`'s stations."""
 
     with database() as db:
         rows = db.execute(
             """
-            SELECT id, name, stream_url, homepage_url, (image IS NOT NULL) AS has_image
+            SELECT id, name, stream_url, homepage_url, owner, (image IS NOT NULL) AS has_image
             FROM internet_radio_stations
+            WHERE owner = ?
             ORDER BY name COLLATE NOCASE
-            """
+            """, (owner,)
         ).fetchall()
 
     return [dict(r) for r in rows]
 
 
-def delete_station(station_id: int) -> None:
+def delete_station(station_id: int, owner: str) -> bool:
+    """Deletes one of `owner`'s stations."""
     with database() as db:
-        db.execute(
+        cur = db.execute(
             """
-            DELETE FROM internet_radio_stations 
-            WHERE id=?
-            """, (station_id,)
+            DELETE FROM internet_radio_stations
+            WHERE id = ? AND owner = ?
+            """, (station_id, owner)
         )
+
+    return cur.rowcount > 0

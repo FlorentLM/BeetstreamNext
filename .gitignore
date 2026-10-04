@@ -50,4 +50,6 @@ TODOs.md
 .*
 
 # temporarily ignoring tests
-tests/
+tests/integrated/
+tests/unit/
+tests/conftest.py

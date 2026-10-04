@@ -9,7 +9,7 @@ Your configured `http://<host>:<port>/` (or your `external_hostname`) shows a pu
 
 If `public_now_playing` is enabled, a card displays the currently playing track (_off_ by default).
 
-> 🖼️ *Screenshot: public homepage*
+<img class="screenshot" src="../images/light/screenshot_home.png" alt="Public homepage">
 
 ## Public shares
 
@@ -27,37 +27,39 @@ See [Configuration reference](../configuration.md) for the precedence rules.
 
 Create/update/delete users, toggle their [roles](../features/accounts-and-permissions.md#roles), regenerate an API key, and manage avatars.
 
+<img class="screenshot" src="../images/light/screenshot_users.png" alt="Users">
+
 ### Server
 
 Every [Server & Network](../configuration.md#server--network) related setting.
 
-> 🖼️ *Screenshot: Server settings page*
+<img class="screenshot" src="../images/light/screenshot_server.png" alt="Server settings">
 
 ### Library
 
 Every [Library & Metadata](../configuration.md#library--metadata) related setting.
 
-> 🖼️ *Screenshot: Library settings page*
+<img class="screenshot" src="../images/light/screenshot_library.png" alt="Library settings">
 
 ### Audio
 
 Every [Audio & Jukebox](../configuration.md#audio--jukebox) related setting.
 
-> 🖼️ *Screenshot: Audio settings page*
+<img class="screenshot" src="../images/light/screenshot_audio.png" alt="Audio settings">
 
 ### Security
 
 Live view of the current _IP allow/deny_ lists and _rate-limit_ state (see [Security](../features/security.md)). Allows adding/removing entries, and clearing rate-limit buckets.
 
-> 🖼️ *Screenshot: Security tab*
+<img class="screenshot" src="../images/light/screenshot_security.png" alt="Security tab">
 
 ### Podcasts & radio
 
 Add/refresh/delete podcast subscriptions and internet radio stations server-wide including radio [station discovery](../features/radio-and-podcasts.md#internet-radio) when `enable_radio_discovery` is on.
 
-> 🖼️ *Screenshot: Radios*
+<img class="screenshot" src="../images/light/screenshot_radios.png" alt="Radio stations">
 
-> 🖼️ *Screenshot: Podcasts*
+<img class="screenshot" src="../images/light/screenshot_podcasts.png" alt="Podcasts">
 
 ### Shares
 
@@ -67,7 +69,7 @@ View and revoke any active [public share](../features/public-shares.md).
 
 View the full chat log, edit/delete any user's message for moderation, or post server announcements.
 
-> 🖼️ *Screenshot: chat moderation panel*
+<img class="screenshot" src="../images/light/screenshot_chat.png" alt="Chat moderation">
 
 ### Beets
 
@@ -77,7 +79,7 @@ Interact with the Beets installation: view/update Beets' `config.yaml` and run i
 
 Enter a directory, and start a `beet import` on it in an interactive terminal-like view, similar to [**Betanin**](https://github.com/sentriz/betanin).
 
-> 🖼️ *Screenshot: Import*
+<img class="screenshot" src="../images/light/screenshot_beets.png" alt="Beets configuration and import">
 
 #### Pinned import folders
 

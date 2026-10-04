@@ -228,3 +228,19 @@
 /*#mdbook-theme-list button#mdbook-theme-ayu {*/
 /*    display: none;*/
 /*}*/
+
+/* Web UI screenshots: soft shadow all around */
+img.screenshot {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem auto;
+    border-radius: 8px;
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.18);
+}
+
+.coal img.screenshot,
+.navy img.screenshot,
+.ayu img.screenshot {
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+}

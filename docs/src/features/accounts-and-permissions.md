@@ -36,6 +36,12 @@ A new user account starts with the defaults above unless overridden at creation.
 
 > **Note:** A few roles from the spec (`coverArtRole`, `uploadRole`, `videoConversionRole`) are exposed for client/spec compatibility but do currently nothing in BeetstreamNext.
 
+## User account page
+
+Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, API key, and (if they are allowed) their public shares and podcast subscriptions.
+
+> **Note:** Unlike the admin panel, this is **not** restrictable by host (see [`admin_hostname`](../configuration.md#admin_hostname)). Admins who sign in from a hostname other than `admin_hostname` will see the non-admin view of their account.
+
 ## Chat
 
 BeetstreamNext implements the standard Subsonic chat endpoints (`getChatMessages`/`addChatMessage`). Any client with a chat feature can use it as a simple message board.

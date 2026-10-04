@@ -29,6 +29,10 @@ class EventBus:
             with self._lock:
                 self._subscribers.discard(q)
 
+    def subscriber_count(self) -> int:
+        with self._lock:
+            return len(self._subscribers)
+
     def has_subscribers(self) -> bool:
         """
         Lets publishers skip building payloads if nobody's listening.

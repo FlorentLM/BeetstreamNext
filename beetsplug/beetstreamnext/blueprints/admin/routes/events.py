@@ -7,6 +7,7 @@ import flask
 from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.constants import EVENT_BUS_INTERVAL
 
 
@@ -16,6 +17,12 @@ def route_admin_events() -> flask.Response:
     """
     Shared SSE stream for the admin panel's live updating views.
     """
+
+    # Each open stream keeps a Waitress worker thread
+    max_streams = max(1, settings_store.get('threads') // 4)
+    if admin_events.subscriber_count() >= max_streams:
+        return flask.Response('Too many live update streams open', status=503, headers={'Retry-After': str(EVENT_BUS_INTERVAL)})
+
     username = flask.session.get('username')
     app = flask.current_app._get_current_object()   # the stream runs after the request context is gone
 

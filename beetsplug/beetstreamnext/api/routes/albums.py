@@ -6,7 +6,9 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.images import tokenised_image_url

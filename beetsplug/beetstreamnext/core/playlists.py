@@ -14,7 +14,9 @@ from beetsplug.beetstreamnext.utils.system import creation_date, safe_join
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.images import fetch_playlist_images
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 if TYPE_CHECKING:
     from beets.library import Item

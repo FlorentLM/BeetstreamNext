@@ -9,7 +9,8 @@ from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxBackend, JukeboxUnavailableException
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import Resolve, Serialise
+from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 
 def _sync_now_playing(player: JukeboxBackend, username: str, status: dict) -> None:

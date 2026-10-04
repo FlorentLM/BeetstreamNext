@@ -778,7 +778,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
 
     Rows for a song that no longer exists in the library are dropped.
     """
-    from beetsplug.beetstreamnext.core.mappings import IDs
+    from beetsplug.beetstreamnext.core.ids import IDs
 
     # this migration runs before app.config['root_directory'] is set so this is needed
     _root_dir = beets.config['directory'].get()
@@ -965,7 +965,7 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path) -> Non
     A row for an album that no longer exists in the library is left untouched,
     there's nothing to remap it to, and it's harmless anyway.
     """
-    from beetsplug.beetstreamnext.core.mappings import IDs
+    from beetsplug.beetstreamnext.core.ids import IDs
 
     conn.commit()   # close any implicit transaction before toggling FK enforcement
     conn.execute("""PRAGMA foreign_keys = OFF""")

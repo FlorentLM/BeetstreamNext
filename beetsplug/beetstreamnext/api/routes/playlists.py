@@ -8,7 +8,8 @@ from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import Resolve, Serialise
+from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 

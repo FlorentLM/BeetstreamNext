@@ -10,7 +10,9 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise, standardise_datadict
+from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @api_bp.route('/scrobble', methods=['GET', 'POST'])

@@ -423,7 +423,7 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
     if not playlist.songs:
         return None
 
-    from beetsplug.beetstreamnext.core.mappings import Resolve
+    from beetsplug.beetstreamnext.core.resolve import Resolve
 
     half = max(size // 2, 1)
     tiles = []
@@ -497,7 +497,8 @@ def _first_deezer_artist(names: list[str]) -> dict:
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:
-    from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
+    from beetsplug.beetstreamnext.core.ids import IDs
+    from beetsplug.beetstreamnext.core.resolve import Resolve
 
     artist = strip_text(artist)
     if IDs.decode_type(artist) == 'artist':

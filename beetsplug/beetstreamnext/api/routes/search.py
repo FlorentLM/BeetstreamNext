@@ -7,7 +7,7 @@ from .. import api_bp
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import Serialise
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
 @api_bp.route('/search', methods=['GET', 'POST'])

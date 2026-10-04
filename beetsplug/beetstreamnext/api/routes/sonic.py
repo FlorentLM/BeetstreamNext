@@ -4,7 +4,8 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import Resolve, Serialise
+from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.cache import preload_songs

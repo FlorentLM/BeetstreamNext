@@ -9,7 +9,9 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise, standardise_datadict
+from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
 @api_bp.route('/getBookmarks', methods=['GET', 'POST'])

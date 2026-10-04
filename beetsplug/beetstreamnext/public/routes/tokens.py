@@ -4,7 +4,7 @@ import requests
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.core.mappings import Resolve
+from beetsplug.beetstreamnext.core.resolve import Resolve
 from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser, image_tokeniser
 from beetsplug.beetstreamnext.utils.general import send_file
 from beetsplug.beetstreamnext.core.images import send_album_art, send_artist_image

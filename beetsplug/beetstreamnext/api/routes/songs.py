@@ -12,7 +12,9 @@ from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, Serialise
+from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.serialise import Serialise
 
 def song_payload(subsonic_song_id: str) -> dict:
     song_item = Resolve.song(subsonic_song_id)

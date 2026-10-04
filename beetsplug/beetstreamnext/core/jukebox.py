@@ -580,7 +580,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
         they're represented as an audio broadcast with a matching protocol info.
         """
         from soco.data_structures import DidlResource, DidlObject, DidlAudioBroadcast
-        from beetsplug.beetstreamnext.core.mappings import IDs
+        from beetsplug.beetstreamnext.core.ids import IDs
 
         uri = self._resolve_uri(path)
 
@@ -778,7 +778,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
         """Metadata and cover art for the Chromecast 'now playing' screen."""
 
         from pychromecast.controllers.media import METADATA_TYPE_MUSICTRACK
-        from beetsplug.beetstreamnext.core.mappings import Serialise
+        from beetsplug.beetstreamnext.core.serialise import Serialise
         from beetsplug.beetstreamnext.core.images import tokenised_image_url
 
         try:
@@ -805,7 +805,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
         }
 
     def _backend_play_from(self, index: int) -> None:
-        from beetsplug.beetstreamnext.core.mappings import IDs
+        from beetsplug.beetstreamnext.core.ids import IDs
 
         entry_id, path = self._queue[index]
         uri = self._resolve_uri(path)

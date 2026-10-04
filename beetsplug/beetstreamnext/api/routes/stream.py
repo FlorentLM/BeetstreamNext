@@ -21,7 +21,8 @@ from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, res
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.health import needs_healing
-from beetsplug.beetstreamnext.core.mappings import IDs, Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.resolve import Resolve, standardise_datadict
 
 FORMAT_MAP = {
     # Lossy

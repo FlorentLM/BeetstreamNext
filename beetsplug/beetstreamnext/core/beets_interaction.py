@@ -337,7 +337,7 @@ def commit_likes(subsonic_id: str, key: str, value: Any) -> None:
      have no row in to attach a value to, so they are silently skipped.
     """
 
-    from beetsplug.beetstreamnext.core.mappings import Resolve
+    from beetsplug.beetstreamnext.core.resolve import Resolve
 
     entry_type, obj = Resolve.any(subsonic_id)
 

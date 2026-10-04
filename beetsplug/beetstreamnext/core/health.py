@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.database import database, dual_database
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.core.mappings import IDs
+from beetsplug.beetstreamnext.core.ids import IDs
 from beetsplug.beetstreamnext.utils.system import find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import format_duration
 
@@ -138,7 +138,7 @@ def flagged_songs() -> list[dict]:
     Resolves currently flagged songs, with display info (most recently checked first)
     """
 
-    from beetsplug.beetstreamnext.core.mappings import Resolve
+    from beetsplug.beetstreamnext.core.resolve import Resolve
 
     with database() as db:
         rows = db.execute(

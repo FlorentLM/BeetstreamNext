@@ -10,8 +10,8 @@ import flask
 import re
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, customstrip, standard_ascii, safe_str, format_elapsed
+from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, binary_version
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, strip_text, standard_ascii, safe_str, format_elapsed
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import (
     GENRE_MAP, GENRES_REGEX, GENRE_TOKEN_MAP, COLLAPSE_SPACES, DOT_TRANS, DECADE_APOSTROPHE,
@@ -80,8 +80,8 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
         stats['songs'] = tx.query("SELECT COUNT(*) FROM items")[0][0]
 
     if extended:
-        ffmpeg_path = find_ffmpeg()
-        mpv_path = find_mpv()
+        ffmpeg_path = find_binary('ffmpeg')
+        mpv_path = find_binary('mpv')
 
         from beetsplug.beetstreamnext.core.beets_interaction import config_path
 
@@ -149,7 +149,7 @@ def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
     cleaned = {}
 
     for g in split_tags:
-        tag = customstrip(standard_ascii(g), punctuation=True).strip()
+        tag = strip_text(standard_ascii(g), punctuation=True).strip()
         if not tag:
             continue
 

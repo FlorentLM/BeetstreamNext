@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.utils.text import format_bytes
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
-from beetsplug.beetstreamnext.core.users_crud import load_all_users
+from beetsplug.beetstreamnext.core.users_crud import list_users
 from beetsplug.beetstreamnext.core.radio import list_radios
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
@@ -186,7 +186,7 @@ def route_settings() -> flask.Response:
     cache_sizes = {label: format_bytes(n) for label, n in cache_bytes.items() if n > 0}
     cache_size = format_bytes(sum(cache_bytes.values()))
 
-    users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
+    users = list_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
 
     resp = flask.make_response(
         flask.render_template(

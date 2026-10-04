@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.auth import can_login, home_for, session_roles
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import start_session
 from beetsplug.beetstreamnext.core.security import rate_limiter
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles, webui_login
+from beetsplug.beetstreamnext.core.users_crud import get_user_roles, webui_login
 from beetsplug.beetstreamnext.forms import LoginForm
 
 
@@ -27,7 +27,7 @@ def route_login() -> flask.Response:
         ok, username = webui_login(attempted_user, form.password.data)
 
         # Users without the settings role are blocked here
-        roles = load_user_roles(username) if ok else {}
+        roles = get_user_roles(username) if ok else {}
 
         if ok and can_login(roles):
             rate_limiter.reset(client_ip, attempted_user)

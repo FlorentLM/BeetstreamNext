@@ -49,7 +49,8 @@ def split_list(value: Optional[Any], delim: str = ',') -> List[str]:
     return [s.strip() for raw in items for s in str(raw).split(delim) if s.strip()]
 
 
-def customstrip(value: Any, punctuation: bool = False) -> str:
+def strip_text(value: Any, punctuation: bool = False) -> str:
+    """Coerce to str (bytes decoded as UTF-8, '' if undecodable) and strip surrounding whitespace/control chars, and optionally punctuation too."""
     if not value:
         return ''
     if isinstance(value, bytes):
@@ -204,4 +205,4 @@ def safe_str(val: Any) -> str:
     s = str(val)
     s = unicodedata.normalize('NFC', s)
     s = standard_ascii(s)
-    return customstrip(s)
+    return strip_text(s)

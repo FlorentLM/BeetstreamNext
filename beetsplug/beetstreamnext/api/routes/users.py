@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.avatars import avatar_response
 from beetsplug.beetstreamnext.core.users_crud import (
-    create_user, update_user, delete_user, get_userdata, load_all_users
+    create_user, update_user, delete_user, get_userdata, list_users
 )
 
 
@@ -74,7 +74,7 @@ def endpoint_get_users() -> flask.Response:
 
     payload = {
         'users': {
-            'user': [user_payload(u) for u in load_all_users()]
+            'user': [user_payload(u) for u in list_users()]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

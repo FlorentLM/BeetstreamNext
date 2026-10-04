@@ -4,7 +4,7 @@ import hmac
 import flask
 from flask import Blueprint
 
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles, session_stamp
+from beetsplug.beetstreamnext.core.users_crud import get_user_roles, session_stamp
 from beetsplug.beetstreamnext.core.security import admin_host_allowed
 
 auth_bp = Blueprint('auth', __name__)
@@ -35,7 +35,7 @@ def session_roles() -> dict | None:
     if not username:
         return None
 
-    roles = load_user_roles(username)
+    roles = get_user_roles(username)
     stamp = flask.session.get('pv')
     if not can_login(roles) or not stamp or not hmac.compare_digest(stamp, session_stamp(username) or ''):
         flask.session.clear()

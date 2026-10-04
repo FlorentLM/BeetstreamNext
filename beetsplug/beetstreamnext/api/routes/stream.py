@@ -17,7 +17,7 @@ from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR, TRA
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, send_file
-from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, resolve_path
+from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.health import needs_healing
@@ -239,7 +239,7 @@ def _send_transcode(
 
     target = FORMAT_MAP.get(req_format.lower() if req_format else 'mp3', FORMAT_MAP['mp3'])
     target_lossless = target['lossless']
-    ffmpeg_bin = find_ffmpeg()
+    ffmpeg_bin = find_binary('ffmpeg')
 
     if FFMPEG_PYTHON:
         import ffmpeg
@@ -382,7 +382,7 @@ def _send_transcode_tempfile(
     """
 
     target = FORMAT_MAP.get(req_format.lower() if req_format else 'mp3', FORMAT_MAP['mp3'])
-    ffmpeg_bin = find_ffmpeg() or 'ffmpeg'
+    ffmpeg_bin = find_binary('ffmpeg') or 'ffmpeg'
 
     fd, tmp_name = tempfile.mkstemp(suffix=f".{target['f']}", dir=TRANSCODE_TMP_DIR)
     os.close(fd)
@@ -447,7 +447,7 @@ def try_transcode(
         exact_length: bool = False
     ) -> flask.Response | None:
 
-    if not (FFMPEG_PYTHON or find_ffmpeg()):
+    if not (FFMPEG_PYTHON or find_binary('ffmpeg')):
         return send_file(file_path)
 
     if exact_length:
@@ -559,7 +559,7 @@ def endpoint_stream_song() -> flask.Response | None:
 
     song_filename = Path(song_path).name
 
-    if needs_transcode and (FFMPEG_PYTHON or find_ffmpeg()):
+    if needs_transcode and (FFMPEG_PYTHON or find_binary('ffmpeg')):
         bsn_logger.warning(f"Transcode of song '{song_filename}' failed.")
         return subsonic_error(0, message='Transcoding failed.', resp_fmt=resp_fmt)
 
@@ -664,7 +664,7 @@ def endpoint_get_transcode_decision() -> flask.Response:
                         reasons.append(f'{attr}LimitExceeded')
 
     # Transcoding selection
-    can_transcode = bool(find_ffmpeg()) or FFMPEG_PYTHON
+    can_transcode = bool(find_binary('ffmpeg')) or FFMPEG_PYTHON
     transcode_stream = None
     tx_params = ''
 
@@ -840,7 +840,7 @@ def endpoint_hls() -> flask.Response | None:
     if not stream_dir.exists():
         stream_dir.mkdir(parents=True)
 
-        hls_ffmpeg_bin = find_ffmpeg()
+        hls_ffmpeg_bin = find_binary('ffmpeg')
         if not (hls_ffmpeg_bin or FFMPEG_PYTHON):
             return subsonic_error(0, message='FFmpeg is required for HLS streaming.', resp_fmt=resp_fmt)
 

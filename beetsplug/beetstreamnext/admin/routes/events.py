@@ -6,7 +6,7 @@ import flask
 
 from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.events import admin_events
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles
+from beetsplug.beetstreamnext.core.users_crud import get_user_roles
 from beetsplug.beetstreamnext.constants import EVENT_BUS_INTERVAL
 
 
@@ -29,7 +29,7 @@ def route_admin_events() -> flask.Response:
                 # to prevent demoted admin from continuing to receive events on an open stream
                 if time.monotonic() - last_check >= EVENT_BUS_INTERVAL:
                     with app.app_context():
-                        roles = load_user_roles(username)
+                        roles = get_user_roles(username)
 
                     if not (roles and roles.get('adminRole')):
                         return

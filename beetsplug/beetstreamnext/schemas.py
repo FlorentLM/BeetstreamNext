@@ -1,6 +1,7 @@
 from __future__ import annotations
 import ipaddress
 import shutil
+from functools import partial
 from typing import TypedDict, Any, Callable, Dict, List, Tuple
 from uuid import UUID
 
@@ -171,14 +172,9 @@ def _effective_podcast_dir() -> str:
     return str(DATA_LOCATION / 'podcasts')
 
 
-def _effective_ffmpeg_path() -> str:
-    from beetsplug.beetstreamnext.utils.system import find_ffmpeg
-    return find_ffmpeg() or 'Not found on PATH'
-
-
-def _effective_mpv_path() -> str:
-    from beetsplug.beetstreamnext.utils.system import find_mpv
-    return find_mpv() or 'Not found on PATH'
+def _effective_binary_path(name: str) -> str:
+    from beetsplug.beetstreamnext.utils.system import find_binary
+    return find_binary(name) or 'Not found on PATH'
 
 
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
@@ -730,7 +726,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'validator': _validate_path,
-        'on_empty': _effective_ffmpeg_path,
+        'on_empty': partial(_effective_binary_path, 'ffmpeg'),
     },
     'jukebox_allowed': {
         'type': 'bool',
@@ -788,7 +784,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'validator': _validate_path,
-        'on_empty': _effective_mpv_path,
+        'on_empty': partial(_effective_binary_path, 'mpv'),
     },
 
     # Security

@@ -5,7 +5,7 @@ import flask
 
 from .. import account_bp, account_required
 
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles
+from beetsplug.beetstreamnext.core.users_crud import get_user_roles
 from beetsplug.beetstreamnext.core.shares import list_shares, delete_share
 
 
@@ -13,7 +13,7 @@ def podcast_role_required(f):
     @wraps(f)
     @account_required
     def decorated(*args, **kwargs):
-        if not load_user_roles(flask.g.account_user).get('podcastRole'):
+        if not get_user_roles(flask.g.account_user).get('podcastRole'):
             flask.abort(403)
         return f(*args, **kwargs)
 

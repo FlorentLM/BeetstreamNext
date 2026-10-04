@@ -13,8 +13,8 @@ import flask
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import request_url, read_upload
-from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid, split_beets_multi
-from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path
+from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split_beets_multi
+from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
@@ -243,7 +243,7 @@ def image_from_song(path: str | Path) -> bytes | None:
             return None
         path = candidates[0]
 
-    ffmpeg_bin = find_ffmpeg()
+    ffmpeg_bin = find_binary('ffmpeg')
 
     if FFMPEG_PYTHON:
         import ffmpeg
@@ -499,7 +499,7 @@ def _first_deezer_artist(names: list[str]) -> dict:
 def send_artist_image(artist, size=None) -> flask.Response | None:
     from beetsplug.beetstreamnext.core.mappings import IDs, Resolve
 
-    artist = customstrip(artist)
+    artist = strip_text(artist)
     if IDs.decode_type(artist) == 'artist':
         resolved = Resolve.artist(artist)
         artist_name = resolved[0] if resolved else ''

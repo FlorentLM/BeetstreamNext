@@ -260,7 +260,7 @@ def load_username(api_key_hash: str) -> str:
     return row[0] if row else None
 
 
-def load_all_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
+def list_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
     """
     Load roles/metadata for all users. Defaults to public user fields only.
     """
@@ -293,7 +293,7 @@ def session_stamp(username: str) -> Optional[str]:
     return hmac.new(key, password.encode('utf-8'), hashlib.sha256).hexdigest()[:32]
 
 
-def load_user_roles(username: str) -> dict:
+def get_user_roles(username: str) -> dict:
     """Load all user fields except password, safe to cache in g."""
     return get_userdata(username)
 

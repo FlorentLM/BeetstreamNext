@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR, SOCO, PYCHROMECAST
 from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
-from beetsplug.beetstreamnext.utils.system import find_mpv, get_mimetype, AUDIO_MIMETYPES
+from beetsplug.beetstreamnext.utils.system import find_binary, get_mimetype, AUDIO_MIMETYPES
 from beetsplug.beetstreamnext.utils.text import parse_duration, format_duration
 from beetsplug.beetstreamnext.utils.general import request_url
 from beetsplug.beetstreamnext.core.logging import bsn_logger
@@ -85,7 +85,7 @@ _MPV_DEVICE_RE = re.compile(r"^'([^']+)'\s*\(([^)]*)\)$")
 def mpv_discovery(timeout: float = 5.0) -> List[dict]:
     """List the audio output devices mpv can see on this machine. Returns [{'name', 'device'}, ...]."""
 
-    mpv_bin = find_mpv()
+    mpv_bin = find_binary('mpv')
     if not mpv_bin:
         raise JukeboxUnavailableException("mpv wasn't found. Install it, or update the 'mpv_path' setting.")
 
@@ -336,7 +336,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
                 f'Jukebox: mpv is not running (last exit code: {self._proc.poll()}). (re)starting it.'
             )
 
-        mpv_bin = find_mpv()
+        mpv_bin = find_binary('mpv')
         if not mpv_bin:
             raise JukeboxUnavailableException("mpv wasn't found. Install it, or update the 'mpv_path' setting.")
 

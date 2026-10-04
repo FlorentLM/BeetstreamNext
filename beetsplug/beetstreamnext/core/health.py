@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.core.database import database, dual_database
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.mappings import IDs
-from beetsplug.beetstreamnext.utils.system import find_ffmpeg, resolve_path
+from beetsplug.beetstreamnext.utils.system import find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import format_duration
 
 DECODE_ERRORS_CHECK = 'decode_errors'
@@ -74,7 +74,7 @@ def check_decode_errors(file_path: str | Path, samplerate: int = 0) -> tuple[boo
     """
     Decode a file's audio stream through and looks for ffmpeg-reported corruption.
     """
-    ffmpeg_bin = find_ffmpeg() or 'ffmpeg'
+    ffmpeg_bin = find_binary('ffmpeg') or 'ffmpeg'
 
     try:
         result = subprocess.run(
@@ -183,7 +183,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
 
     counts = {'checked': 0, 'flagged': 0, 'skipped': 0, 'pruned': 0}
 
-    if not find_ffmpeg():
+    if not find_binary('ffmpeg'):
         bsn_logger.warning('Health scan skipped: ffmpeg not found.')
         return counts
 

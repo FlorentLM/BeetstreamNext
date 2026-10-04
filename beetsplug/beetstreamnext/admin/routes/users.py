@@ -7,7 +7,7 @@ from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, load_all_users, set_user_avatar, session_stamp
+from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, list_users, set_user_avatar, session_stamp
 from beetsplug.beetstreamnext.core.images import read_uploaded_image
 from beetsplug.beetstreamnext.core.avatars import avatar_response
 from beetsplug.beetstreamnext.forms import UserForm, EditUserForm, collect_form_data, form_error_messages
@@ -111,7 +111,7 @@ def _users_partial(message: str | None = None, ok: bool = True) -> str:
 
     return flask.render_template(
         'partials/users_table.html',
-        users=load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged']),
+        users=list_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged']),
         current_username=flask.session.get('username'),
         message=message,
         ok=ok,

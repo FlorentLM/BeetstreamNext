@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches
 from beetsplug.beetstreamnext.core.users_crud import (
-    create_user, delete_user, load_all_users, load_user_roles, update_user
+    create_user, delete_user, list_users, get_user_roles, update_user
 )
 
 
@@ -40,7 +40,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
     CLI command: Create a new user.
     """
     if noinput:
-        if load_all_users():
+        if list_users():
             print_box([
                 '',
                 "[ERROR] Can't use --noinput: user account(s) already present.",
@@ -124,7 +124,7 @@ def check_onboarding(standalone: bool, host: Sequence[str] = (), port: int = 0) 
     If a TTY is attached it prompts there. Otherwise it directs to WebUI setup page.
     """
 
-    if load_all_users():    # users exist, nothing to do
+    if list_users():    # users exist, nothing to do
         return
 
     if sys.stdin.isatty():
@@ -154,7 +154,7 @@ def cmd_update_user(username: str) -> None:
     CLI command: Update an existing user's roles
     """
 
-    current_data = load_user_roles(username)
+    current_data = get_user_roles(username)
     if not current_data:
         print(f"User '{username}' not found.")
         return
@@ -199,7 +199,7 @@ def cmd_list_users() -> None:
     CLI command: List all users
     """
 
-    all_users = load_all_users()
+    all_users = list_users()
     header = f"{'Username':<15} | {'Admin':<12} | {'Can stream':<12} | {'Can download':<12}"
     print(header)
     print('-' * len(header))

@@ -8,14 +8,14 @@ from .. import admin_bp
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import start_session
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.users_crud import create_user, load_all_users
+from beetsplug.beetstreamnext.core.users_crud import create_user, list_users
 from beetsplug.beetstreamnext.forms import OnboardingForm, flash_form_errors
 
 
 @admin_bp.route('/setup', methods=['GET', 'POST'])
 def route_setup() -> flask.Response:
 
-    if load_all_users():     # users exist: nothing to do here
+    if list_users():     # users exist: nothing to do here
         return flask.redirect(flask.url_for('auth.route_login'))
 
     form = OnboardingForm()

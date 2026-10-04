@@ -229,29 +229,18 @@ def make_hidden(filepath: bytes | str | Path) -> None:
             bsn_logger.warning(f"Could not set file as hidden on Windows: {e}")
 
 
-_last_logged_ffmpeg: Optional[str] = None
-_last_logged_mpv: Optional[str] = None
+_last_logged_binary: Dict[str, str] = {}
 
 
-def find_ffmpeg() -> Optional[str]:
-    global _last_logged_ffmpeg
+def find_binary(name: str) -> Optional[str]:
+
     from beetsplug.beetstreamnext.settings import settings_store
-    custom = settings_store.get('ffmpeg_path')
-    found = shutil.which(custom) if custom else shutil.which('ffmpeg')
-    if found and found != _last_logged_ffmpeg:
-        bsn_logger.info(f'ffmpeg found at: {found}')
-        _last_logged_ffmpeg = found
-    return found
 
-
-def find_mpv() -> Optional[str]:
-    global _last_logged_mpv
-    from beetsplug.beetstreamnext.settings import settings_store
-    custom = settings_store.get('mpv_path')
-    found = shutil.which(custom) if custom else shutil.which('mpv')
-    if found and found != _last_logged_mpv:
-        bsn_logger.info(f'MPV path: {found}')
-        _last_logged_mpv = found
+    custom = settings_store.get(f'{name}_path')
+    found = shutil.which(custom) if custom else shutil.which(name)
+    if found and found != _last_logged_binary.get(name):
+        bsn_logger.info(f'{name} found at: {found}')
+        _last_logged_binary[name] = found
     return found
 
 

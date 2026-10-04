@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter, strip_host_port
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
-from beetsplug.beetstreamnext.core.users_crud import load_all_users, load_user_roles, authenticate
+from beetsplug.beetstreamnext.core.users_crud import list_users, get_user_roles, authenticate
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 
@@ -23,7 +23,7 @@ def _any_users_exist() -> bool:
     """
     if app.config.get('_users_exist_cache'):
         return True
-    if load_all_users(fields=['username']):
+    if list_users(fields=['username']):
         app.config['_users_exist_cache'] = True
         return True
     return False
@@ -108,7 +108,7 @@ def _before_request() -> flask.Response | None:
 
     flask.g.lib = app.config['lib']
     flask.g.username = username
-    flask.g.user_data = load_user_roles(username)
+    flask.g.user_data = get_user_roles(username)
     flask.g.playlist_provider = app.config['playlist_provider']
     flask.g.podcast_manager = app.config['podcast_manager']
 

@@ -9,7 +9,8 @@ from beets.library import LibModel, Item
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.beets_interaction import write_beets_field
-from beetsplug.beetstreamnext.core.external import query_musicbrainz, query_discogs
+from beetsplug.beetstreamnext.core.external.musicbrainz import query_musicbrainz
+from beetsplug.beetstreamnext.core.external.discogs import query_discogs
 from beetsplug.beetstreamnext.core.cache import (
     preload_songs, preload_albums, one_rating, one_like, one_play_stats, avg_rating, get_song_counts
 )

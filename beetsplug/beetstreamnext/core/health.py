@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 import re
 import sqlite3
@@ -6,7 +7,6 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-
 from beets.library import Album, Item, Library as BeetsLibrary
 
 from beetsplug.beetstreamnext.application import app, with_app_context

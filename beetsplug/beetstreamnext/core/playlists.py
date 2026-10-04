@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import threading
 import urllib.parse
 from typing import TYPE_CHECKING, List, Optional, Generator

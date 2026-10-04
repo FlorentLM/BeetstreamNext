@@ -10,7 +10,9 @@ from .. import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import api_bool
-from beetsplug.beetstreamnext.core.external import query_lastfm, query_wikipedia, query_wikidata_title
+from beetsplug.beetstreamnext.core.external.lastfm import query_lastfm
+from beetsplug.beetstreamnext.core.external.wikipedia import query_wikipedia
+from beetsplug.beetstreamnext.core.external.musicbrainz import query_wikidata_title
 from beetsplug.beetstreamnext.core.cache import preload_artists
 from beetsplug.beetstreamnext.core.images import tokenised_image_url
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error

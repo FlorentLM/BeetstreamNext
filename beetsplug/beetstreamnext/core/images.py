@@ -15,11 +15,15 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import request_url, read_upload
 from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
-from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
-from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
-from beetsplug.beetstreamnext.core.connection import database
+from beetsplug.beetstreamnext.constants import (
+    MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
+)
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
+from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.external.deezer import query_deezer
+from beetsplug.beetstreamnext.core.external.musicbrainz import query_coverartarchive
+from beetsplug.beetstreamnext.core.external.session import capped_image_fetch
+from beetsplug.beetstreamnext.core.connection import database
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.playlists import Playlist

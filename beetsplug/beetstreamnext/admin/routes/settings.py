@@ -14,7 +14,9 @@ from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.users_crud import list_users
 from beetsplug.beetstreamnext.core.radio import list_radios
-from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
+from beetsplug.beetstreamnext.core.external.lastfm import test_lastfm_connection
+from beetsplug.beetstreamnext.core.external.audiomuse import test_audiomuse_connection
+from beetsplug.beetstreamnext.core.external.podcastindex import test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS

@@ -1,12 +1,12 @@
 from __future__ import annotations
+
 import time
 from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.connection import database
-from beetsplug.beetstreamnext.core.external import (
-    query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url
-)
+from beetsplug.beetstreamnext.core.external.radio_browser import query_radio_browser, fetch_favicon
+from beetsplug.beetstreamnext.core.external.session import capped_image_fetch, normalize_url
 from beetsplug.beetstreamnext.core.images import sniff_image
 from beetsplug.beetstreamnext.utils.net import https_variant
 

@@ -8,7 +8,7 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art, read_uploaded_image
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, list_radios, resolve_station_icon
-from beetsplug.beetstreamnext.core.external import query_radio_browser
+from beetsplug.beetstreamnext.core.external.radio_browser import query_radio_browser
 from beetsplug.beetstreamnext.forms import RadioStationForm, form_error_messages
 from beetsplug.beetstreamnext.utils.text import safe_str, format_duration, format_bytes
 

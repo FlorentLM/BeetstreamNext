@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.core.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.cache import preload_songs
-from beetsplug.beetstreamnext.core.external import _audiomuse_get
+from beetsplug.beetstreamnext.core.external.audiomuse import audiomuse_get
 
 
 def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:
@@ -50,7 +50,7 @@ def endpoint_get_sonic_similar_tracks() -> flask.Response:
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    data, err = _audiomuse_get('/api/similar_tracks', {'item_id': song_id, 'n': count})
+    data, err = audiomuse_get('/api/similar_tracks', {'item_id': song_id, 'n': count})
     if err:
         return subsonic_error(0, message=err, resp_fmt=resp_fmt)
 
@@ -74,7 +74,7 @@ def endpoint_find_sonic_path() -> flask.Response:
     if not start_id or not end_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    data, err = _audiomuse_get(
+    data, err = audiomuse_get(
         '/api/find_path',
         {'start_song_id': start_id, 'end_song_id': end_id, 'max_steps': max_steps},
         timeout=15.0

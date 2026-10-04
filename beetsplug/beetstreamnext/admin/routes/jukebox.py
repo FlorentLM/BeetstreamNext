@@ -3,9 +3,10 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.jukebox import (
-    sonos_discovery, chromecast_discovery, mpv_discovery, JukeboxUnavailableException,
-)
+from beetsplug.beetstreamnext.core.jukebox.sonos import sonos_discovery
+from beetsplug.beetstreamnext.core.jukebox.chromecast import chromecast_discovery
+from beetsplug.beetstreamnext.core.jukebox.local import mpv_discovery
+from beetsplug.beetstreamnext.core.jukebox.base import JukeboxUnavailableException
 
 
 @admin_bp.route('/settings/jukebox/discover-devices', methods=['GET'])

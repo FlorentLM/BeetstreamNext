@@ -7,7 +7,8 @@ from .. import api_bp
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.core.connection import database
-from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player, JukeboxBackend, JukeboxUnavailableException
+from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player
+from beetsplug.beetstreamnext.core.jukebox.base import JukeboxBackend, JukeboxUnavailableException
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.resolve import Resolve
 from beetsplug.beetstreamnext.core.serialise import Serialise

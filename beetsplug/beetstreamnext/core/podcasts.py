@@ -11,13 +11,13 @@ from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
+    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES, MAX_PODCAST_FEED_BYTES,
+    MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.events import admin_events
-from beetsplug.beetstreamnext.core.external import (
-    http_session, capped_image_fetch, normalize_url, query_podcastindex
-)
+from beetsplug.beetstreamnext.core.external.session import http_session, capped_image_fetch, normalize_url
+from beetsplug.beetstreamnext.core.external.podcastindex import query_podcastindex
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url

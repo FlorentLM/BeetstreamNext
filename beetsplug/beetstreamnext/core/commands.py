@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import getpass
 import sys
 from typing import Sequence
@@ -11,9 +12,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches
-from beetsplug.beetstreamnext.core.users_crud import (
-    create_user, delete_user, list_users, get_user_roles, update_user
-)
+from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, list_users, get_user_roles, update_user
 
 
 def _prompt_password(label: str) -> str:

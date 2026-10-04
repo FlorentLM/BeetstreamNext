@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import time
 import flask
 
 from .. import account_bp, account_required
@@ -9,10 +11,11 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.storage.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.accounts.users_crud import (
-    get_userdata, update_user, session_stamp, regenerate_api_key, set_user_avatar
+    get_userdata, update_user, session_stamp, regenerate_api_key, set_user_avatar, delete_user
 )
 from beetsplug.beetstreamnext.core.accounts.credentials import webui_login
-from beetsplug.beetstreamnext.blueprints.forms import AccountProfileForm, ChangePasswordForm, form_error_messages
+from beetsplug.beetstreamnext.core.accounts.export import export_user_data
+from beetsplug.beetstreamnext.blueprints.forms import AccountProfileForm, ChangePasswordForm, DeleteAccountForm, form_error_messages
 from beetsplug.beetstreamnext.core.media.avatars import save_uploaded_avatar, avatar_response
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, allowed_bitrates
 
@@ -41,6 +44,7 @@ def route_account() -> str:
         user=user,
         profile_form=form,
         password_form=ChangePasswordForm(formdata=None),
+        delete_form=DeleteAccountForm(formdata=None),
         new_api_key=new_api_key,
         podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,
         current_username=username,
@@ -152,3 +156,51 @@ def route_delete_avatar() -> str:
 @account_required
 def route_serve_avatar() -> flask.Response:
     return avatar_response(flask.g.account_user)
+
+
+@account_bp.route('/export', methods=['GET'])
+@account_required
+def route_export_data() -> flask.Response:
+
+    username = flask.g.account_user
+    payload = json.dumps(export_user_data(username), indent=2, ensure_ascii=False)
+
+    response = flask.Response(payload, mimetype='application/json')
+    response.headers['Content-Disposition'] = f'attachment; filename="beetstreamnext-{time.strftime("%Y%m%d")}.json"'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@account_bp.route('/delete', methods=['POST'])
+@account_required
+def route_delete_account() -> str | flask.Response:
+
+    username = flask.g.account_user
+    client_ip = flask.request.remote_addr or 'unknown'
+
+    form = DeleteAccountForm()
+
+    if rate_limiter.is_blocked(client_ip, username):
+        return flask.render_template('partials/action_result.html', message='Too many failed attempts. Try again later.', ok=False)
+
+    if not form.validate_on_submit():
+        return flask.render_template('partials/action_result.html', message=' '.join(form_error_messages(form)), ok=False)
+
+    ok, _ = webui_login(username, form.current_password.data)
+    if not ok:
+        rate_limiter.record(client_ip, username)
+        return flask.render_template('partials/action_result.html', message='Current password is incorrect.', ok=False)
+
+    try:
+        delete_user(username)
+    except Exception as e:
+        bsn_logger.error(f"Unexpected error deleting account '{username}': {e}")
+        return flask.render_template('partials/action_result.html', message='An unexpected error occurred.', ok=False)
+
+    rate_limiter.reset(client_ip, username)
+    flask.session.clear()
+    bsn_logger.info(f"User '{username}' deleted their own account.")
+
+    response = flask.make_response('')
+    response.headers['HX-Redirect'] = flask.url_for('public.home')
+    return response

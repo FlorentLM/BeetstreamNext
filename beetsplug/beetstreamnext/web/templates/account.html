@@ -192,6 +192,42 @@
                      hx-swap="innerHTML"></div>
             </div>
         {% endif %}
+
+        {# Data export #}
+        <div class="card">
+            <div class="table-header"><h2>My data</h2></div>
+            <p class="card-hint">
+                Download everything stored about you (profile, likes, ratings, bookmarks, play history,
+                play queue, shares, podcast subscriptions and chat messages) as a JSON file.
+            </p>
+            <div class="card-body-form">
+                <a class="btn btn-primary" href="{{ url_for('account.route_export_data') }}" download>Export my data</a>
+            </div>
+        </div>
+
+        {# Danger zone #}
+        <details class="danger-zone">
+            <summary>Danger zone</summary>
+            <div class="card">
+                <div class="table-header"><h2>Delete account</h2></div>
+                <p class="card-hint">
+                    Permanently deletes your account and all of the data above. This cannot be undone.
+                </p>
+                <form hx-post="{{ url_for('account.route_delete_account') }}"
+                      hx-trigger="confirmed"
+                      hx-target="#deleteAccountResult"
+                      hx-swap="innerHTML" class="card-body-form"
+                      data-confirm="Permanently delete your account and all its data? This cannot be undone.">
+                    {{ delete_form.csrf_token }}
+                    <div id="deleteAccountResult"></div>
+                    <div class="form-group">
+                        <label>Current password</label>
+                        {{ delete_form.current_password(autocomplete="current-password") }}
+                    </div>
+                    <button type="submit" class="btn btn-warning">Delete my account</button>
+                </form>
+            </div>
+        </details>
     </div>
 
     <div class="modal-overlay modal-confirm" id="confirmModal">

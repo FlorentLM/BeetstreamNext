@@ -218,6 +218,8 @@ def update_user(username: str, **updates):
 def delete_user(username: str) -> bool:
     """Core logic to delete a user and related data."""
     with database() as db:
+        # chat_messages is deliberately not foreign-keyed to users
+        db.execute("DELETE FROM chat_messages WHERE username = ?", (username,))
         cursor = db.execute(
             """
             DELETE

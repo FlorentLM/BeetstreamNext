@@ -77,6 +77,13 @@ class ChangePasswordForm(PasswordConfirmMixin, FlaskForm):
     password = new_password_field()
 
 
+class DeleteAccountForm(FlaskForm):
+    """
+    Form for a user deleting their own account: requires the current password.
+    """
+    current_password = PasswordField('Current password', validators=[DataRequired()])
+
+
 class RadioStationForm(FlaskForm):
     """
     Form for creating/editing a radio station.

@@ -30,7 +30,7 @@ _scanning = False
 _last_push = 0.0
 
 
-def _push_scan_status(throttle: float = 0.0) -> None:
+def _push_health_status(throttle: float = 0.0) -> None:
     """
     Tells connected admin sessions to re read scan status
     (but throttled while a scan is underway)
@@ -46,7 +46,7 @@ def _push_scan_status(throttle: float = 0.0) -> None:
     admin_events.publish('health-scan', '')
 
 
-def is_scanning() -> bool:
+def is_health_scanning() -> bool:
     return _scanning
 
 
@@ -192,7 +192,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
         return counts
 
     _scanning = True
-    _push_scan_status()
+    _push_health_status()
     root_directory = app.config['root_directory']
 
     try:
@@ -216,7 +216,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
             seen_song_ids: set[str] = set()
 
             for beets_id, mb_trackid, mb_releasetrackid, raw_path, samplerate in item_rows:
-                _push_scan_status(throttle=1.0)
+                _push_health_status(throttle=1.0)
                 path = os.fsdecode(raw_path or b'')
                 if not path:
                     continue
@@ -305,7 +305,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
     finally:
         _scanning = False
         _scan_lock.release()
-        _push_scan_status()
+        _push_health_status()
 
     return counts
 
@@ -398,11 +398,11 @@ def detect_beets_drift(db_path: str | Path) -> dict[str, dict]:
     return result
 
 
-def start_scan(full: bool = False) -> tuple[bool, str]:
+def start_health_scan(full: bool = False) -> tuple[bool, str]:
     """
     Starts a health scan on a background thread. Returns (started, message).
     """
-    if is_scanning():
+    if is_health_scanning():
         return False, 'A health scan is already running.'
 
     def _run():

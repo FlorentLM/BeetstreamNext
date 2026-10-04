@@ -8,7 +8,7 @@ from typing import Dict, FrozenSet, Optional, Tuple
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import AUDIO_EXTENSIONS, IMPORTWATCH_POLL_TIME
-from beetsplug.beetstreamnext.core.beets_interaction import enqueue_scan, import_running
+from beetsplug.beetstreamnext.core.beets_interaction import enqueue_pinned_import, is_import_running
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths, mark_pinned_triggered
 from beetsplug.beetstreamnext.core.logging import bsn_logger
@@ -84,10 +84,10 @@ class ImportWatcher(threading.Thread):
                 if not state.dirty or now - state.changed_at < settle:
                     continue
 
-                if import_running():
+                if is_import_running():
                     continue
 
-                ok, message = enqueue_scan(entry)
+                ok, message = enqueue_pinned_import(entry)
                 if ok:
                     state.dirty = False
                     state.last_error = ''

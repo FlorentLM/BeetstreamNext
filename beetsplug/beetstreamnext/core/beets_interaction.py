@@ -63,7 +63,7 @@ def import_status() -> dict:
         return {'state': _state, 'path': _current_path, 'exit_code': _exit_code}
 
 
-def import_running() -> bool:
+def is_import_running() -> bool:
     """Import session is running or waiting on input."""
     return import_status()['state'] in ('running', 'needs_input')
 
@@ -85,7 +85,7 @@ def start_import(path: str, quiet: bool = False, incremental: bool = False, rese
     global _proc, _master_fd, _state, _current_path, _exit_code
 
     with _lock:
-        if import_running():
+        if is_import_running():
             return False, 'An import is already running.'
 
         candidate = Path(path).expanduser() if path else None
@@ -180,7 +180,7 @@ def start_import(path: str, quiet: bool = False, incremental: bool = False, rese
         return True, 'Import started.'
 
 
-def start_scan(entries: List[dict]) -> Tuple[bool, str]:
+def start_pinned_imports(entries: List[dict]) -> Tuple[bool, str]:
     """
     Non-interactively import pinned paths.
     """
@@ -190,7 +190,7 @@ def start_scan(entries: List[dict]) -> Tuple[bool, str]:
         return False, 'No pinned import paths are configured.'
 
     with _lock:
-        if import_running():
+        if is_import_running():
             return False, 'An import is already running.'
 
         ok, message = start_import(entries[0]['path'], quiet=True, incremental=entries[0]['incremental'])
@@ -203,7 +203,7 @@ def start_scan(entries: List[dict]) -> Tuple[bool, str]:
         return ok, message
 
 
-def enqueue_scan(entry: dict) -> Tuple[bool, str]:
+def enqueue_pinned_import(entry: dict) -> Tuple[bool, str]:
     """
     Add a pinned path to the non-interactive queue.
     (starts immediately if no other is in the queue)
@@ -211,7 +211,7 @@ def enqueue_scan(entry: dict) -> Tuple[bool, str]:
     global _queue
 
     with _lock:
-        if import_running():
+        if is_import_running():
             if not any(q['path'] == entry['path'] for q in _queue):
                 _queue.append({**entry, 'incremental': True})
             return True, 'Queued.'

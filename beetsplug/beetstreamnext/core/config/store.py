@@ -4,6 +4,7 @@ import threading
 from typing import Any, Dict, Optional, Callable
 
 from beetsplug.beetstreamnext.utils.text import split_list
+from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -15,7 +16,6 @@ from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 def coerce_setting(value: Any, type_str: str) -> Any:
     """Cast a raw value to the type defined in the settings schema."""
     if type_str == 'bool':
-        from beetsplug.beetstreamnext.utils.general import api_bool     # TODO: should avoid local imports, need to reorganise stuff again :(
         return api_bool(value)
     if type_str == 'int':
         return int(value)

@@ -16,6 +16,7 @@ from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
 from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.system import get_env
 
 
@@ -61,8 +62,6 @@ def ensure_secret(db_path: str | Path) -> None:
     """
     Resolves BEETSTREAMNEXT_KEY. Called once at startup, before initialise_db().
     """
-
-    from beetsplug.beetstreamnext.utils.general import api_bool
 
     db_path = Path(db_path)
     env_path = db_path.parent / '.env'

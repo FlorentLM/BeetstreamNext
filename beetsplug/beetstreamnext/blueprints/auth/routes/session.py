@@ -6,7 +6,7 @@ from .. import auth_bp
 
 from beetsplug.beetstreamnext.blueprints.auth import can_login, home_for, session_roles
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.general import start_session
+from beetsplug.beetstreamnext.core.accounts.credentials import start_session
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.accounts.credentials import webui_login
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles

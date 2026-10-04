@@ -7,7 +7,7 @@ from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.blueprints.admin.routes.chat import chat_page_context
 from beetsplug.beetstreamnext.blueprints.admin.routes.security import IP_LIST_META
-from beetsplug.beetstreamnext.utils.general import get_server_info
+from beetsplug.beetstreamnext.core.library.health import get_server_info
 from beetsplug.beetstreamnext.utils.text import format_bytes
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.library.maintenance import cache_breakdown

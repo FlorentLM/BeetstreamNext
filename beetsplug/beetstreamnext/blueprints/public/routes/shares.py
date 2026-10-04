@@ -15,7 +15,7 @@ from .. import public_bp
 from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.general import send_file
+from beetsplug.beetstreamnext.core.runtime.web import send_file
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise

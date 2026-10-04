@@ -4,9 +4,10 @@ import hashlib
 import hmac
 import secrets
 from typing import Optional, Tuple
+import flask
 
 from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
-from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata
+from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata, session_stamp
 
 
 # Dummy strings comparison when username not found
@@ -77,3 +78,12 @@ def webui_login(username: str, password: str) -> Tuple[bool, Optional[str]]:
     """
     success, _, matched_username = check_password(username, clearpass=password)
     return success, matched_username
+
+
+def start_session(username: str, **extra) -> None:
+    """Login `username` in the WebUI."""
+    flask.session.clear()   # prevent session fixation
+    flask.session.permanent = True
+    flask.session['username'] = username
+    flask.session['pv'] = session_stamp(username)
+    flask.session.update(extra)

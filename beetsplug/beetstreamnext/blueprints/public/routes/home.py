@@ -8,7 +8,8 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
 from beetsplug.beetstreamnext.core.config.store import settings_store
-from beetsplug.beetstreamnext.utils.general import get_server_info, request_url
+from beetsplug.beetstreamnext.core.library.health import get_server_info
+from beetsplug.beetstreamnext.core.runtime.web import request_url
 
 
 @public_bp.route('/')

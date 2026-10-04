@@ -18,7 +18,8 @@ from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict, get_artist_metadata
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
-from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter, external_url
+from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
+from beetsplug.beetstreamnext.core.runtime.web import external_url
 from beetsplug.beetstreamnext.utils.system import get_mimetype
 
 if TYPE_CHECKING:

@@ -12,7 +12,7 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import request_url, read_upload
+from beetsplug.beetstreamnext.core.runtime.web import request_url, read_upload
 from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.constants import (

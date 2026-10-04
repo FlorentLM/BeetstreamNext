@@ -4,7 +4,7 @@ from typing import Optional
 import flask
 
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.utils.general import external_url
+from beetsplug.beetstreamnext.core.runtime.web import external_url
 
 
 def list_shares(username: Optional[str] = None) -> list[dict]:

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import os
+import platform
 import re
 import sqlite3
 import subprocess
 import threading
 import time
 from pathlib import Path
+import beets
 from beets.library import Album, Item, Library as BeetsLibrary
 
 from beetsplug.beetstreamnext.application import app, with_app_context
@@ -14,8 +16,10 @@ from beetsplug.beetstreamnext.core.storage.connection import database, dual_data
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.utils.system import find_binary, resolve_path
-from beetsplug.beetstreamnext.utils.text import format_duration
+from beetsplug.beetstreamnext.constants import START_TIME, SERVER_VERSION
+from beetsplug.beetstreamnext.core.library.beets_interaction import config_path
+from beetsplug.beetstreamnext.utils.system import find_binary, binary_version, resolve_path
+from beetsplug.beetstreamnext.utils.text import format_duration, format_elapsed
 
 DECODE_ERRORS_CHECK = 'decode_errors'
 MISSING_FILE_CHECK = 'missing_file'
@@ -415,3 +419,40 @@ def start_health_scan(full: bool = False) -> tuple[bool, str]:
 
     threading.Thread(target=_run, daemon=True).start()
     return True, 'Health scan started.'
+
+
+def get_server_info(extended: bool = False) -> Dict[str, str]:
+    lib = app.config['lib']
+    stats = {}
+    with lib.transaction() as tx:
+        stats['artists'] = tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0]
+        stats['albums'] = tx.query("SELECT COUNT(*) FROM albums")[0][0]
+        stats['songs'] = tx.query("SELECT COUNT(*) FROM items")[0][0]
+
+    if extended:
+        ffmpeg_path = find_binary('ffmpeg')
+        mpv_path = find_binary('mpv')
+
+        try:
+            cfg_path = str(config_path())
+        except Exception:
+            cfg_path = 'default location'
+
+        additional_info = {
+            'version': SERVER_VERSION,
+            'beets_version': beets.__version__,
+            'python_version': platform.python_version(),
+            'os': platform.system(),
+            'uptime': format_elapsed(time.time() - START_TIME),
+            'db_path': str(app.config.get('BSN_DB_PATH')),
+            'library_path': str(app.config.get('BEETS_DB_PATH')),
+            'config_path': cfg_path,
+            'ffmpeg_path': ffmpeg_path or 'not found',
+            'ffmpeg_version': (binary_version(ffmpeg_path, '-version') or 'unknown') if ffmpeg_path else None,
+            'mpv_path': mpv_path or 'not found',
+            'mpv_version': (binary_version(mpv_path, '--version') or 'unknown') if mpv_path else None,
+            'stats': stats,
+        }
+        stats.update(additional_info)
+
+    return stats

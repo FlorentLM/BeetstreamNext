@@ -13,7 +13,7 @@ import flask
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, TRANSCODE_TMP_DIR
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import send_file
+from beetsplug.beetstreamnext.core.runtime.web import send_file
 from beetsplug.beetstreamnext.utils.system import find_binary
 
 

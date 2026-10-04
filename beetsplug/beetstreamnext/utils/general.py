@@ -11,7 +11,7 @@ import re
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_ffmpeg, find_mpv, binary_version
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, customstrip, standard_ascii, safe_str
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, customstrip, standard_ascii, safe_str, format_elapsed
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import (
     GENRE_MAP, GENRES_REGEX, GENRE_TOKEN_MAP, COLLAPSE_SPACES, DOT_TRANS, DECADE_APOSTROPHE,
@@ -71,30 +71,6 @@ def external_url(path_part: str) -> str:
     return f'{scheme}://{external_host}{path_part}'
 
 
-def human_bytes(n: int) -> str:
-    size = float(n)
-    for unit in ('B', 'KB', 'MB', 'GB'):
-        if size < 1024:
-            return f'{size:.0f} {unit}' if unit == 'B' else f'{size:.1f} {unit}'
-        size /= 1024
-    return f'{size:.1f} TB'
-
-
-def human_time(seconds: float) -> str:
-    total = max(0, int(seconds))
-    days, rem = divmod(total, 86400)
-    hours, rem = divmod(rem, 3600)
-    minutes, secs = divmod(rem, 60)
-
-    if days:
-        return f'{days}d {hours}h {minutes}m'
-    if hours:
-        return f'{hours}h {minutes}m'
-    if minutes:
-        return f'{minutes}m {secs}s'
-    return f'{secs}s'
-
-
 def get_server_info(extended: bool = False) -> Dict[str, str]:
     lib = app.config['lib']
     stats = {}
@@ -119,7 +95,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
             'beets_version': beets.__version__,
             'python_version': platform.python_version(),
             'os': platform.system(),
-            'uptime': human_time(time.time() - START_TIME),
+            'uptime': format_elapsed(time.time() - START_TIME),
             'db_path': str(app.config.get('BSN_DB_PATH')),
             'library_path': str(app.config.get('BEETS_DB_PATH')),
             'config_path': cfg_path,

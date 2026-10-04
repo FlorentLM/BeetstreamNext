@@ -112,6 +112,30 @@ def format_duration(seconds: Any, force_hms: bool = False) -> str:
     return f'{minutes}:{secs:02d}'
 
 
+def format_bytes(n: int) -> str:
+    size = float(n)
+    for unit in ('B', 'KB', 'MB', 'GB'):
+        if size < 1024:
+            return f'{size:.0f} {unit}' if unit == 'B' else f'{size:.1f} {unit}'
+        size /= 1024
+    return f'{size:.1f} TB'
+
+
+def format_elapsed(seconds: float) -> str:
+    total = max(0, int(seconds))
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, secs = divmod(rem, 60)
+
+    if days:
+        return f'{days}d {hours}h {minutes}m'
+    if hours:
+        return f'{hours}h {minutes}m'
+    if minutes:
+        return f'{minutes}m {secs}s'
+    return f'{secs}s'
+
+
 def parse_duration(raw: Any) -> float:
     """Parse a duration string (plain seconds, or M:SS / H:MM:SS) into seconds."""
     if not raw:

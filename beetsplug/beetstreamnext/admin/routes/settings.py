@@ -7,7 +7,8 @@ from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.admin.routes.chat import chat_page_context
 from beetsplug.beetstreamnext.admin.routes.security import IP_LIST_META
-from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
+from beetsplug.beetstreamnext.utils.general import get_server_info
+from beetsplug.beetstreamnext.utils.text import format_bytes
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
@@ -182,8 +183,8 @@ def route_settings() -> flask.Response:
         flask.current_app.config['THUMBNAIL_CACHE_PATH'],
         flask.current_app.config['HTTP_CACHE_PATH']
     )
-    cache_sizes = {label: human_bytes(n) for label, n in cache_bytes.items() if n > 0}
-    cache_size = human_bytes(sum(cache_bytes.values()))
+    cache_sizes = {label: format_bytes(n) for label, n in cache_bytes.items() if n > 0}
+    cache_size = format_bytes(sum(cache_bytes.values()))
 
     users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
 

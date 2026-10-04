@@ -10,8 +10,7 @@ from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art, r
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, list_radios, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser
 from beetsplug.beetstreamnext.forms import RadioStationForm, form_error_messages
-from beetsplug.beetstreamnext.utils.text import safe_str, format_duration
-from beetsplug.beetstreamnext.utils.general import human_bytes
+from beetsplug.beetstreamnext.utils.text import safe_str, format_duration, format_bytes
 
 
 ##
@@ -346,7 +345,7 @@ def route_podcast_episodes(channel_id: int) -> str:
         {
             **dict(r),
             'duration_display': format_duration(r['duration']),
-            'size_display': human_bytes(r['file_size']) if r['file_size'] else None,
+            'size_display': format_bytes(r['file_size']) if r['file_size'] else None,
         }
         for r in rows
     ]

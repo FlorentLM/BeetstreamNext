@@ -22,9 +22,9 @@ from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.utils.general import human_bytes, read_upload
+from beetsplug.beetstreamnext.utils.general import read_upload
 from beetsplug.beetstreamnext.utils.system import purge
-from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
+from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes
 
 
 ##
@@ -180,7 +180,7 @@ class PodcastManager:
                 str(r['id']): {
                     'status': r['status'],
                     'error_message': r['error_message'],
-                    'storage_size': human_bytes(r['bytes_on_disk']),
+                    'storage_size': format_bytes(r['bytes_on_disk']),
                 }
                 for r in channel_rows
             },
@@ -730,11 +730,11 @@ class PodcastManager:
             subscribers.setdefault(row['channel_id'], []).append(row['username'])
 
         channels = [
-            {**dict(r), 'subscribers': subscribers.get(r['id'], []), 'storage_size': human_bytes(r['bytes_on_disk'])}
+            {**dict(r), 'subscribers': subscribers.get(r['id'], []), 'storage_size': format_bytes(r['bytes_on_disk'])}
             for r in channel_rows
         ]
 
-        return channels, human_bytes(sum(r['bytes_on_disk'] for r in channel_rows))
+        return channels, format_bytes(sum(r['bytes_on_disk'] for r in channel_rows))
 
     def send_opml(self, username: Optional[str] = None):
         """OPML export as a file download."""

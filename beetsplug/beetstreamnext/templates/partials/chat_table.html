@@ -1,0 +1,62 @@
+{% import '_macros.html' as macros %}
+
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+{% endif %}
+
+<div class="table-container">
+    <table>
+        <thead>
+        <tr>
+            <th>User</th>
+            <th>Time</th>
+            <th>Message</th>
+            <th class="cell-right">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for m in chat_messages %}
+            <tr>
+                <td class="username-cell"><strong>{{ m.username }}</strong></td>
+                <td>
+                    <span class="chat-time" data-timestamp="{{ m.time | int }}">Loading...</span>
+                </td>
+                <td><span id="msg-text-{{ m.id }}">{{ m.message }}</span></td>
+                <td class="actions-cell">
+                    <button class="icon-btn"
+                            data-action="edit-chat"
+                            data-id="{{ m.id }}"
+                            data-text="{{ m.message | e }}"
+                            title="Edit"
+                            aria-label="Edit message from {{ m.username }}">{{ macros.icon('edit') }}</button>
+
+                    <button class="icon-btn icon-btn-delete" title="Delete"
+                            aria-label="Delete message from {{ m.username }}"
+                            hx-post="{{ url_for('admin.route_delete_chat_message', msg_id=m.id, chat_page=chat_page) }}"
+                            hx-target="#chatModeration" hx-swap="innerHTML"
+                            hx-confirm="Delete this message? This action is permanent.">{{ macros.icon('delete') }}</button>
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="4" class="empty-state">No chat messages found.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if chat_pages > 1 %}
+    <div class="table-footer pagination">
+        {% if chat_page > 1 %}
+            <a class="btn btn-outline"
+               href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page - 1 }}#chat">&laquo;
+                Prev</a>
+        {% endif %}
+        <span class="pagination-status">Page {{ chat_page }} of {{ chat_pages }}</span>
+        {% if chat_page < chat_pages %}
+            <a class="btn btn-outline"
+               href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page + 1 }}#chat">Next
+                &raquo;</a>
+        {% endif %}
+    </div>
+{% endif %}

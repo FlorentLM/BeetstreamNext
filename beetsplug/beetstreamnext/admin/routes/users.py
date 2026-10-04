@@ -7,7 +7,7 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, set_user_avatar, session_stamp
+from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, load_all_users, set_user_avatar, session_stamp
 from beetsplug.beetstreamnext.core.images import read_uploaded_image
 from beetsplug.beetstreamnext.forms import UserForm, EditUserForm, collect_form_data, flash_form_errors
 from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS
@@ -110,18 +110,34 @@ def route_update_user(username) -> flask.Response:
     return flask.redirect(flask.url_for('admin.route_settings'))
 
 
+def _users_partial(message: str | None = None, ok: bool = True) -> str:
+
+    return flask.render_template(
+        'partials/users_table.html',
+        users=load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged']),
+        current_username=flask.session.get('username'),
+        message=message,
+        ok=ok,
+    )
+
+
+@admin_bp.route('/users', methods=['GET'])
+@admin_required
+def route_users() -> str:
+    return _users_partial()
+
+
 @admin_bp.route('/users/delete/<username>', methods=['POST'])
 @admin_required
-def route_delete_user(username) -> flask.Response:
+def route_delete_user(username) -> str:
 
     if username == flask.session.get('username'):
-        flask.flash("You can't delete your own account.", 'error')
-    elif delete_user(username):
-        flask.flash(f"User '{username}' deleted.", 'info')
-    else:
-        flask.flash(f"User '{username}' not found.", 'info')
+        return _users_partial("You can't delete your own account.", ok=False)
 
-    return flask.redirect(flask.url_for('admin.route_settings'))
+    if delete_user(username):
+        return _users_partial(f"User '{username}' deleted.")
+
+    return _users_partial(f"User '{username}' not found.", ok=False)
 
 
 @admin_bp.route('/users/apikey/<username>', methods=['POST'])

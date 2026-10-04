@@ -1,0 +1,73 @@
+{% import '_macros.html' as macros %}
+
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+{% endif %}
+
+<div class="table-container">
+    <table>
+        <thead>
+        <tr>
+            <th>User</th>
+            <th>Active Roles</th>
+            <th class="cell-right">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td>
+                    <div class="avatar-cell">
+                        {% if u.avatarLastChanged %}
+                            <img class="user-avatar"
+                                 src="{{ url_for('admin.route_serve_avatar', username=u.username) }}?v={{ (u.avatarLastChanged or 0)|int }}"
+                                 alt="">
+                        {% else %}
+                            <span class="user-avatar user-avatar-placeholder">{{ u.username[0]|upper }}</span>
+                        {% endif %}
+                        <div>
+                            <div class="username-name">
+                                {{ u.username }}
+                                {% if u.username == current_username %}
+                                    <span class="badge badge-you">You</span>{% endif %}
+                            </div>
+                            {% if u.email %}
+                                <div class="email-cell">{{ u.email }}</div>{% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="roles-cell">
+                        {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
+                        {% for name, label, _ in USER_ROLES_SCHEMA %}
+                            {% if name != 'adminRole' and u[name] %}
+                                <span class="badge">{{ label }}</span>{% endif %}
+                        {% endfor %}
+                        {% if u.maxBitRate %}
+                            <span class="badge badge-limit">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
+                    </div>
+                </td>
+                <td class="actions-cell">
+                    <button class="icon-btn"
+                            hx-get="{{ url_for('admin.route_edit_user', username=u.username) }}"
+                            hx-target="#editModalBody"
+                            hx-swap="innerHTML"
+                            title="Edit"
+                            aria-label="Edit {{ u.username }}">{{ macros.icon('edit') }}</button>
+
+                    {% if u.username != current_username %}
+                        <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete {{ u.username }}"
+                                hx-post="{{ url_for('admin.route_delete_user', username=u.username) }}"
+                                hx-target="#usersTable" hx-swap="innerHTML"
+                                hx-confirm="Delete user {{ u.username | e }}? This also removes their stars, ratings, bookmarks and play history.">{{ macros.icon('delete') }}</button>
+                    {% endif %}
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="3" class="empty-state">No users yet. Add the first one to get started.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

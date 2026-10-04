@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 from typing import Any
 import flask
 
 from .. import admin_bp, admin_required, back_to
 
+from beetsplug.beetstreamnext.admin.routes.chat import chat_page_context
+from beetsplug.beetstreamnext.admin.routes.security import IP_LIST_META
 from beetsplug.beetstreamnext.utils.general import get_server_info, human_bytes
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
-from beetsplug.beetstreamnext.core.health import flagged_songs
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.radio import list_radios
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
@@ -21,7 +23,6 @@ from beetsplug.beetstreamnext.settings import settings_store
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
-_CHAT_PAGE_SIZE = 50
 
 
 ##
@@ -190,46 +191,17 @@ def route_settings() -> flask.Response:
 
     users = load_all_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
 
-    # Load chat messages for moderation
-    chat_page = max(1, flask.request.args.get('chat_page', default=1, type=int))
-    with database() as db:
-        chat_total = db.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
-        chat_pages = max(1, -(-chat_total // _CHAT_PAGE_SIZE))
-        chat_page = min(chat_page, chat_pages)
-        chat_messages = db.execute(
-            """
-            SELECT id, username, time, message
-            FROM chat_messages
-            ORDER BY time DESC
-            LIMIT ? OFFSET ?
-            """, (_CHAT_PAGE_SIZE, (chat_page - 1) * _CHAT_PAGE_SIZE)
-        ).fetchall()
-
-    # Load radio stations
-    with database() as db:
-        radio_rows = db.execute(
-            """
-            SELECT id, name, stream_url, homepage_url, (image IS NOT NULL) AS has_image
-            FROM internet_radio_stations
-            ORDER BY name COLLATE NOCASE
-            """
-        ).fetchall()
-
-    radios = [dict(r) for r in radio_rows]
-
     resp = flask.make_response(
         flask.render_template(
             'settings.html',
             users=users,
-            chat_messages=chat_messages,
-            chat_page=chat_page,
-            chat_pages=chat_pages,
+            **chat_page_context(flask.request.args.get('chat_page', default=1, type=int)),
             cache_size=cache_size,
             cache_sizes=cache_sizes,
-            radios=radios,
+            radios=list_radios(),
+            IP_LIST_META=IP_LIST_META,
             radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
             podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,
-            flagged_songs=flagged_songs(),
             beets_schema_drift=flask.current_app.config.get('BEETS_SCHEMA_DRIFT', {}),
             beets_config=read_config(),
             create_form=UserForm(formdata=None),

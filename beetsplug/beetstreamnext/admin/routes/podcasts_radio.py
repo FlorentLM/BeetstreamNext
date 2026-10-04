@@ -6,7 +6,7 @@ from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art, read_uploaded_image
-from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
+from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, list_radios, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser
 from beetsplug.beetstreamnext.forms import RadioStationForm, flash_form_errors
 from beetsplug.beetstreamnext.utils.text import safe_str, format_duration
@@ -113,13 +113,22 @@ def route_edit_radio(station_id: int) -> str:
     )
 
 
+def _radios_partial(message: str | None = None) -> str:
+    return flask.render_template('partials/radio_list.html', radios=list_radios(), message=message, ok=True)
+
+
+@admin_bp.route('/radios', methods=['GET'])
+@admin_required
+def route_radios() -> str:
+    return _radios_partial()
+
+
 @admin_bp.route('/radios/delete/<int:station_id>', methods=['POST'])
 @admin_required
-def route_delete_radio(station_id: int) -> flask.Response:
+def route_delete_radio(station_id: int) -> str:
     delete_station(station_id)
-    flask.flash('Radio station deleted.', 'info')
 
-    return back_to('radios')
+    return _radios_partial('Radio station deleted.')
 
 
 @admin_bp.route('/radios/discover', methods=['GET'])

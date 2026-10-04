@@ -1,0 +1,42 @@
+{% from '_macros.html' import icon %}
+
+<div class="card">
+    <div class="table-header"><h2>{{ ip_list.title }}</h2></div>
+    <p class="card-hint">{{ ip_list.hint }}</p>
+    {% if message %}
+        <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+    {% endif %}
+    {% if pinned %}
+        <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
+            {{ pinned|length }} pinned via a CLI flag, env var, or config file.</p>
+    {% endif %}
+    <form method="POST"
+          action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
+          class="ip-add-form"
+          data-list-type="{{ list_type }}"
+          data-first-entry="{{ 'true' if not ips else 'false' }}"
+          data-client-ip="{{ request.remote_addr }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="ip" placeholder="{{ ip_list.placeholder }}" required>
+        <button type="submit" class="btn btn-primary">Add</button>
+    </form>
+    <ul class="ip-list">
+        {% for ip in ips %}
+            <li>
+                <code>{{ ip }}</code>
+                {% if ip in pinned %}
+                    <span class="setting-meta-badge" title="Explicitly set via a CLI flag, env var, or config file">pinned</span>
+                {% else %}
+                    <button type="button" class="action-link action-link-delete"
+                            hx-post="{{ url_for('admin.route_ip_remove', list_type=list_type) }}"
+                            hx-vals='{{ {"ip": ip} | tojson | forceescape }}'
+                            hx-target="closest .card" hx-swap="outerHTML"
+                            hx-confirm="Remove {{ ip | e }} from {{ list_type }}?">Remove
+                    </button>
+                {% endif %}
+            </li>
+        {% else %}
+            <li class="empty-state">{{ ip_list.title }} is empty.</li>
+        {% endfor %}
+    </ul>
+</div>

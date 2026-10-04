@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import time
 import flask
 
@@ -8,8 +9,41 @@ from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
-_ANNOUNCEMENT_USERNAME = 'Server'
-_CHAT_MESSAGE_MAX_LEN = 1000
+ANNOUNCEMENT_USERNAME = 'Server'
+CHAT_MESSAGE_MAX_LEN = 1000
+CHAT_PAGE_SIZE = 50
+
+
+def chat_page_context(page: int = 1) -> dict:
+    """Template variables for one page of chat moderation (page is clamped to valid range)."""
+
+    with database() as db:
+        total = db.execute("SELECT COUNT(*) FROM chat_messages").fetchone()[0]
+
+        pages = max(1, -(-total // CHAT_PAGE_SIZE))
+        page = min(max(1, page), pages)
+
+        messages = db.execute(
+            """
+            SELECT id, username, time, message
+            FROM chat_messages
+            ORDER BY time DESC
+            LIMIT ? OFFSET ?
+            """, (CHAT_PAGE_SIZE, (page - 1) * CHAT_PAGE_SIZE)
+        ).fetchall()
+
+    return {'chat_messages': messages, 'chat_page': page, 'chat_pages': pages}
+
+
+def _chat_partial(message: str | None = None) -> str:
+    page = flask.request.args.get('chat_page', default=1, type=int)
+    return flask.render_template('partials/chat_table.html', message=message, ok=True, **chat_page_context(page))
+
+
+@admin_bp.route('/chat', methods=['GET'])
+@admin_required
+def route_chat() -> str:
+    return _chat_partial()
 
 
 @admin_bp.route('/chat/announce', methods=['POST'])
@@ -21,8 +55,8 @@ def route_add_announcement() -> flask.Response:
         flask.flash('Announcement cannot be empty.', 'error')
         return back_to('chat')
 
-    if len(message) > _CHAT_MESSAGE_MAX_LEN:
-        flask.flash(f'Announcement exceeds maximum length ({_CHAT_MESSAGE_MAX_LEN} characters).', 'error')
+    if len(message) > CHAT_MESSAGE_MAX_LEN:
+        flask.flash(f'Announcement exceeds maximum length ({CHAT_MESSAGE_MAX_LEN} characters).', 'error')
         return back_to('chat')
 
     with database() as db:
@@ -30,7 +64,7 @@ def route_add_announcement() -> flask.Response:
             """
             INSERT INTO chat_messages (username, time, message)
             VALUES (?, ?, ?)
-            """, (_ANNOUNCEMENT_USERNAME, int(time.time() * 1000), message)
+            """, (ANNOUNCEMENT_USERNAME, int(time.time() * 1000), message)
         )
     flask.flash('Announcement posted.', 'success')
     return back_to('chat')
@@ -38,7 +72,7 @@ def route_add_announcement() -> flask.Response:
 
 @admin_bp.route('/chat/delete/<int:msg_id>', methods=['POST'])
 @admin_required
-def route_delete_chat_message(msg_id: int) -> flask.Response:
+def route_delete_chat_message(msg_id: int) -> str:
     with database() as db:
         db.execute(
             """
@@ -46,8 +80,8 @@ def route_delete_chat_message(msg_id: int) -> flask.Response:
             WHERE id = ?
             """, (msg_id,)
         )
-    flask.flash('Chat message deleted.', 'success')
-    return back_to('chat')
+
+    return _chat_partial('Chat message deleted.')
 
 
 @admin_bp.route('/chat/edit/<int:msg_id>', methods=['POST'])

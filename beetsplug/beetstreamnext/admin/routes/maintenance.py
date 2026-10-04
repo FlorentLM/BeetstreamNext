@@ -6,7 +6,7 @@ from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
-from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats
+from beetsplug.beetstreamnext.core.health import start_scan, is_scanning, health_stats, flagged_songs
 from beetsplug.beetstreamnext.core.external import start_audiomuse_analysis
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, write_config
 from beetsplug.beetstreamnext.core.startup import restart_server
@@ -104,6 +104,12 @@ def route_health_scan() -> flask.Response:
 @admin_required
 def route_health_scan_status() -> str:
     return flask.render_template('partials/health_scan_status.html', scanning=is_scanning(), **health_stats())
+
+
+@admin_bp.route('/maintenance/flagged-songs', methods=['GET'])
+@admin_required
+def route_flagged_songs() -> str:
+    return flask.render_template('partials/flagged_songs.html', flagged_songs=flagged_songs())
 
 
 @admin_bp.route('/maintenance/logs', methods=['GET'])

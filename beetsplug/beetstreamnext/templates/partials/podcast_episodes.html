@@ -58,8 +58,7 @@
                     <form id="podcast-episode-del-{{ e.id }}" method="POST" class="form-inline" hx-swap="none"
                           action="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
                           hx-post="{{ url_for('admin.route_delete_podcast_episode', episode_id=e.id) }}"
-                          hx-trigger="confirmed"
-                          data-confirm="Remove this episode's downloaded file for all subscribers?"
+                          hx-confirm="Remove this episode's downloaded file for all subscribers?"
                             {{ '' if e.status == 'completed' else 'hidden' }}>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="icon-btn icon-btn-delete" title="Delete file"

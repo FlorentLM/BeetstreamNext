@@ -1,6 +1,6 @@
 from __future__ import annotations
 import time
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
@@ -43,7 +43,7 @@ def create_station(
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None,
         favicon_url: Optional[str] = None,
-    ) -> tuple[Optional[int], Optional[str]]:
+    ) -> Tuple[int | None, str | None]:
     """
     Returns (station_id, error_message).
     station_id is None if the stream URL is already registered
@@ -85,7 +85,7 @@ def update_station(
         stream_url: str,
         homepage_url: Optional[str] = None,
         image: Optional[bytes] = None
-    ) -> Optional[str]:
+    ) -> str | None:
     """Updates a station. Returns an error if the new stream URL collides with another station."""
 
     stream_url = normalize_url(stream_url, probe_https=True)
@@ -113,6 +113,20 @@ def update_station(
         )
 
     return None
+
+
+def list_radios() -> List[dict]:
+
+    with database() as db:
+        rows = db.execute(
+            """
+            SELECT id, name, stream_url, homepage_url, (image IS NOT NULL) AS has_image
+            FROM internet_radio_stations
+            ORDER BY name COLLATE NOCASE
+            """
+        ).fetchall()
+
+    return [dict(r) for r in rows]
 
 
 def delete_station(station_id: int) -> None:

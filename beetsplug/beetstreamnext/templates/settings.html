@@ -231,48 +231,6 @@
     {% endfor %}
 {% endmacro %}
 
-{% macro render_ip_list(list_type, title, hint, placeholder, ips, pinned=[]) %}
-    <div class="card">
-        <div class="table-header"><h2>{{ title }}</h2></div>
-        <p class="card-hint">{{ hint }}</p>
-        {% if pinned %}
-            <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
-                {{ pinned|length }} pinned via a CLI flag, env var, or config file.</p>
-        {% endif %}
-        <form method="POST"
-              action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
-              class="ip-add-form"
-              data-list-type="{{ list_type }}"
-              data-first-entry="{{ 'true' if not ips else 'false' }}"
-              data-client-ip="{{ request.remote_addr }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" name="ip" placeholder="{{ placeholder }}" required>
-            <button type="submit" class="btn btn-primary">Add</button>
-        </form>
-        <ul class="ip-list">
-            {% for ip in ips %}
-                <li>
-                    <code>{{ ip }}</code>
-                    {% if ip in pinned %}
-                        <span class="setting-meta-badge" title="Explicitly set via a CLI flag, env var, or config file">pinned</span>
-                    {% else %}
-                        <form method="POST"
-                              action="{{ url_for('admin.route_ip_remove', list_type=list_type) }}"
-                              class="form-inline"
-                              data-confirm="Remove {{ ip }} from {{ list_type }}?">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="ip" value="{{ ip }}">
-                            <button type="submit" class="action-link action-link-delete">Remove</button>
-                        </form>
-                    {% endif %}
-                </li>
-            {% else %}
-                <li class="empty-state">{{ title }} is empty.</li>
-            {% endfor %}
-        </ul>
-    </div>
-{% endmacro %}
-
 {% block body %}
     <div id="adminDashboard" class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()"
          hx-sse:connect="{{ url_for('admin.route_admin_events') }}">
@@ -370,76 +328,8 @@
                     </button>
                 </div>
 
-                <div class="table-container">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Active Roles</th>
-                            <th class="cell-right">Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for u in users %}
-                            <tr>
-                                <td>
-                                    <div class="avatar-cell">
-                                        {% if u.avatarLastChanged %}
-                                            <img class="user-avatar"
-                                                 src="{{ url_for('admin.route_serve_avatar', username=u.username) }}?v={{ (u.avatarLastChanged or 0)|int }}"
-                                                 alt="">
-                                        {% else %}
-                                            <span class="user-avatar user-avatar-placeholder">{{ u.username[0]|upper }}</span>
-                                        {% endif %}
-                                        <div>
-                                            <div class="username-name">
-                                                {{ u.username }}
-                                                {% if u.username == current_username %}
-                                                    <span class="badge badge-you">You</span>{% endif %}
-                                            </div>
-                                            {% if u.email %}
-                                                <div class="email-cell">{{ u.email }}</div>{% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="roles-cell">
-                                        {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
-                                        {% for name, label, _ in USER_ROLES_SCHEMA %}
-                                            {% if name != 'adminRole' and u[name] %}
-                                                <span class="badge">{{ label }}</span>{% endif %}
-                                        {% endfor %}
-                                        {% if u.maxBitRate %}
-                                            <span class="badge badge-limit">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
-                                    </div>
-                                </td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn"
-                                            hx-get="{{ url_for('admin.route_edit_user', username=u.username) }}"
-                                            hx-target="#editModalBody"
-                                            hx-swap="innerHTML"
-                                            title="Edit"
-                                            aria-label="Edit {{ u.username }}">{{ macros.icon('edit') }}</button>
-
-                                    {% if u.username != current_username %}
-                                        <form action="{{ url_for('admin.route_delete_user', username=u.username) }}"
-                                              method="POST"
-                                              class="form-inline"
-                                              data-confirm="Delete user {{ u.username | e }}? This also removes their stars, ratings, bookmarks and play history.">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
-                                                    aria-label="Delete {{ u.username }}">{{ macros.icon('delete') }}</button>
-                                        </form>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="3" class="empty-state">No users yet. Add the first one to get started.</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                <div id="usersTable">
+                    {% include 'partials/users_table.html' %}
                 </div>
             </div>
         </section>
@@ -463,65 +353,9 @@
                 <div class="table-header">
                     <h2>Chat moderation</h2>
                 </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Time</th>
-                            <th>Message</th>
-                            <th class="cell-right">Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for m in chat_messages %}
-                            <tr>
-                                <td class="username-cell"><strong>{{ m.username }}</strong></td>
-                                <td>
-                                    <span class="chat-time" data-timestamp="{{ m.time | int }}">Loading...</span>
-                                </td>
-                                <td><span id="msg-text-{{ m.id }}">{{ m.message }}</span></td>
-                                <td class="actions-cell">
-                                    <button class="icon-btn"
-                                            data-action="edit-chat"
-                                            data-id="{{ m.id }}"
-                                            data-text="{{ m.message | e }}"
-                                            title="Edit"
-                                            aria-label="Edit message from {{ m.username }}">{{ macros.icon('edit') }}</button>
-
-                                    <form action="{{ url_for('admin.route_delete_chat_message', msg_id=m.id) }}"
-                                          method="POST"
-                                          class="form-inline"
-                                          data-confirm="Delete this message? This action is permanent.">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
-                                                aria-label="Delete message from {{ m.username }}">{{ macros.icon('delete') }}</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="4" class="empty-state">No chat messages found.</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                <div id="chatModeration">
+                    {% include 'partials/chat_table.html' %}
                 </div>
-                {% if chat_pages > 1 %}
-                    <div class="table-footer pagination">
-                        {% if chat_page > 1 %}
-                            <a class="btn btn-outline"
-                               href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page - 1 }}#chat">&laquo;
-                                Prev</a>
-                        {% endif %}
-                        <span class="pagination-status">Page {{ chat_page }} of {{ chat_pages }}</span>
-                        {% if chat_page < chat_pages %}
-                            <a class="btn btn-outline"
-                               href="{{ url_for('admin.route_settings') }}?chat_page={{ chat_page + 1 }}#chat">Next
-                                &raquo;</a>
-                        {% endif %}
-                    </div>
-                {% endif %}
             </div>
         </section>
 
@@ -545,14 +379,12 @@
                 </div>
 
                 {% if cat == 'security' %}
-                    {{ render_ip_list('whitelist', 'IP Whitelist',
-                              'If non-empty, only listed IPs can reach the server. Loopback IPs always pass.',
-                              'e.g. 192.168.1.42', settings_by_category.security['ip_whitelist'].value,
-                              settings_by_category.security['ip_whitelist'].pinned) }}
-                    {{ render_ip_list('blacklist', 'IP Blacklist',
-                              'Listed IPs are denied access regardless of whitelist.',
-                              'e.g. 203.0.113.5', settings_by_category.security['ip_blacklist'].value,
-                              settings_by_category.security['ip_blacklist'].pinned) }}
+                    {% for list_type, key in (('whitelist', 'ip_whitelist'), ('blacklist', 'ip_blacklist')) %}
+                        {% set ip_list = IP_LIST_META[list_type] %}
+                        {% set ips = settings_by_category.security[key].value %}
+                        {% set pinned = settings_by_category.security[key].pinned %}
+                        {% include 'partials/ip_list.html' %}
+                    {% endfor %}
                     <div class="card">
                         <div class="table-header">
                             <h2>Rate Limits</h2>
@@ -641,43 +473,9 @@
                     </button>
                 </div>
 
-                {% for s in radios %}
-                    <div class="channel-row">
-                        <div class="channel-row-header">
-                            {% if s.has_image %}
-                                <img class="cover-thumb"
-                                     src="{{ url_for('admin.route_serve_radio_image', station_id=s.id) }}" alt="">
-                            {% else %}
-                                <span class="cover-thumb cover-thumb-placeholder">{{ s.name[0]|upper }}</span>
-                            {% endif %}
-                            <div class="channel-row-info">
-                                <div class="username-name">{{ s.name }}</div>
-                                <div class="email-cell"><code>{{ s.stream_url }}</code></div>
-                                {% if s.homepage_url %}
-                                    <div class="email-cell"><a href="{{ s.homepage_url }}" target="_blank"
-                                                               rel="noopener">{{ s.homepage_url }}</a></div>
-                                {% endif %}
-                            </div>
-                            <div class="actions-cell">
-                                <button class="icon-btn"
-                                        hx-get="{{ url_for('admin.route_edit_radio', station_id=s.id) }}"
-                                        hx-target="#editRadioModalBody"
-                                        hx-swap="innerHTML"
-                                        title="Edit" aria-label="Edit {{ s.name }}">{{ macros.icon('edit') }}</button>
-                                <form action="{{ url_for('admin.route_delete_radio', station_id=s.id) }}"
-                                      method="POST"
-                                      class="form-inline"
-                                      data-confirm="Delete radio station '{{ s.name | e }}'?">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="icon-btn icon-btn-delete" title="Delete"
-                                            aria-label="Delete {{ s.name }}">{{ macros.icon('delete') }}</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                {% else %}
-                    <p class="empty-state">No radio stations yet. Add the first one to get started.</p>
-                {% endfor %}
+                <div id="radioList">
+                    {% include 'partials/radio_list.html' %}
+                </div>
             </div>
         </section>
 
@@ -797,41 +595,14 @@
                     <dt>Flagged songs</dt>
                     <dd>&mdash;</dd>
                 </dl>
-                {% if flagged_songs %}
-                    <details class="podcast-episodes card-section">
-                        <summary>{{ flagged_songs|length }} flagged song{{ 's' if flagged_songs|length != 1 }}</summary>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                <tr>
-                                    <th></th>
-                                    <th>Title</th>
-                                    <th>Artist</th>
-                                    <th>Album</th>
-                                    <th>Issue</th>
-                                    <th>Checked</th>
-                                </tr>
-                                </thead>
-                                {% for s in flagged_songs %}
-                                    <tbody x-data="{ open: false }">
-                                    <tr class="expand-row" :class="{ expanded: open }" @click="open = !open">
-                                        <td class="expand-cell">{{ macros.icon('chevron-down') }}</td>
-                                        <td>{{ s.title or '(untitled)' }}</td>
-                                        <td>{{ s.artist or '—' }}</td>
-                                        <td>{{ s.album or '—' }}</td>
-                                        <td><span class="badge badge-admin">{{ s.label }}</span></td>
-                                        <td><span class="chat-time" data-timestamp="{{ (s.checked_at * 1000) | int }}">Loading...</span>
-                                        </td>
-                                    </tr>
-                                    <tr class="row-detail" hidden :hidden="!open">
-                                        <td colspan="6">{{ s.detail or 'No further detail available.' }}</td>
-                                    </tr>
-                                    </tbody>
-                                {% endfor %}
-                            </table>
-                        </div>
-                    </details>
-                {% endif %}
+
+                <details class="podcast-episodes card-section">
+                    <summary><span id="flagged-songs-summary">Flagged songs</span></summary>
+                    <div class="table-container" id="flagged-songs"
+                         hx-get="{{ url_for('admin.route_flagged_songs') }}"
+                         hx-trigger="load, health-scan from:#adminDashboard throttle:1s"
+                         hx-swap="innerHTML"></div>
+                </details>
                 <div class="button-row">
                     <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
                           hx-post="{{ url_for('admin.route_health_scan') }}"

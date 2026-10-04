@@ -11,7 +11,7 @@ Only the current release version is supported
 | Version | Supported          |
 |---------|--------------------|
 | latest  | :white_check_mark: |
-| < 2.0.0 | :x:                |
+| < 2.0.5 | :x:                |
 
 ## Reporting a Vulnerability
 

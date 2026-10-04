@@ -100,7 +100,7 @@ Port to listen on.
 
 ### `threads`
 
-Worker threads for serving requests.
+Worker threads for serving requests. Each open admin panel tab holds one thread for its live updates, so raise this if several admins are expected.
 
 <span style="color:#fab915">**requires restart**</span>
 

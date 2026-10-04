@@ -4,7 +4,7 @@ import hmac
 import secrets
 import time
 from io import BytesIO
-from typing import TYPE_CHECKING, Sequence, Optional, Dict, Tuple, List
+from typing import Sequence, Optional, Dict, Tuple, List
 import sqlite3
 
 from beetsplug.beetstreamnext.application import app
@@ -12,28 +12,6 @@ from beetsplug.beetstreamnext.schemas import ALL_USER_FIELDS, PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.core.database import get_cipher, database
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
-
-if TYPE_CHECKING:
-    from werkzeug.datastructures import CombinedMultiDict
-
-
-# Dummy strings comparison when username not found
-_DUMMY_PASSWORD = secrets.token_urlsafe(24)
-_DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
-
-
-def _dummy_stored_password() -> str:
-    """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
-    global _DUMMY_TOKEN
-    cipher = get_cipher()
-    if cipher is None:
-        return _DUMMY_PASSWORD
-    if _DUMMY_TOKEN is None:
-        _DUMMY_TOKEN = cipher.encrypt(_DUMMY_PASSWORD.encode('utf-8'))
-    try:
-        return cipher.decrypt(_DUMMY_TOKEN).decode('utf-8')
-    except Exception:
-        return _DUMMY_PASSWORD
 
 
 def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, include_password: bool = False) -> dict:
@@ -329,96 +307,3 @@ def get_user_avatar(username: str) -> Tuple[Optional[bytes], Optional[float]]:
     if row and row['avatar']:
         return row['avatar'], row['avatarLastChanged']
     return None, None
-
-
-##
-
-def _check_password(
-        username: str,
-        token: Optional[str] = None,
-        salt: Optional[str] = None,
-        clearpass: Optional[str] = None
-    ) -> Tuple[bool, int, Optional[str]]:
-
-    stored_password = get_userdata(username, fields=['password'], include_password=True).get('password')
-    if not stored_password:
-        stored_password = _dummy_stored_password()
-        user_found = False
-    else:
-        user_found = True
-
-    stored_password_b = stored_password.encode('utf-8')
-
-    ok = False
-    if token and salt:
-        expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
-        ok = hmac.compare_digest(token.encode('utf-8'), expected.encode('utf-8'))
-
-    elif clearpass:
-        if clearpass.startswith('enc:'):
-            try:
-                decoded = bytes.fromhex(clearpass.removeprefix('enc:')).decode('utf-8')
-                ok = hmac.compare_digest(decoded.encode('utf-8'), stored_password_b)
-            except ValueError:
-                ok = hmac.compare_digest(clearpass.encode('utf-8'), stored_password_b)
-        else:
-            ok = hmac.compare_digest(clearpass.encode('utf-8'), stored_password_b)
-
-    if ok and user_found:
-        return True, 0, username
-
-    # 40: "Wrong username or password."
-    return False, 40, None
-
-
-def webui_login(username: str, password: str) -> Tuple[bool, Optional[str]]:
-    """
-    Password check for the WebUI's login form.
-    """
-    success, _, matched_username = _check_password(username, clearpass=password)
-    return success, matched_username
-
-
-def authenticate(flask_req_values: 'CombinedMultiDict'):
-    r = flask_req_values
-    api_key = r.get('apiKey', default='', type=str)
-    user = r.get('u', default='', type=safe_str)
-    token = r.get('t', default='', type=str)
-    salt = r.get('s', default='', type=str)
-    clearpass = r.get('p', default='', type=str)
-
-    if token:
-        token = token.lower()  # some clients send uppercase hex
-        if len(token) < 32:
-            token = token.zfill(32)  # some clients strip leading zeros...
-
-    # API Key (modern)
-    if api_key:
-        if user or token or salt or clearpass:
-            # 43: "Multiple conflicting authentication mechanisms provided."
-            return False, 43, None
-
-        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
-        found_user = load_username(api_key_hash)
-        if found_user:
-            return True, 0, found_user
-
-        # 40: "Wrong username or password."
-        return False, 40, None
-
-    # Legacy (MD5 / password)
-    else:
-        if clearpass and (token or salt):
-            # 43: "Multiple conflicting authentication mechanisms provided."
-            return False, 43, None
-
-        if not app.config.get('legacy_auth', True):
-            # 42: "Provided authentication mechanism not supported."
-            return False, 42, None
-
-        if not user:
-            # 10: "Required parameter is missing."
-            return False, 10, None
-        
-        success, code, username = _check_password(user, token, salt, clearpass)
-        return success, code, username

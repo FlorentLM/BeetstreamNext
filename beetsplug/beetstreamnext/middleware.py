@@ -9,7 +9,8 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import rate_limiter, ip_filter
 from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.core.maintenance import run_periodic
-from beetsplug.beetstreamnext.core.users_crud import list_users, get_user_roles, authenticate
+from beetsplug.beetstreamnext.core.users_crud import list_users, get_user_roles
+from beetsplug.beetstreamnext.auth.subsonic_auth import authenticate_subsonic
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
 from beetsplug.beetstreamnext.api.responses import subsonic_error
 
@@ -97,7 +98,7 @@ def _before_request() -> flask.Response | None:
         return
 
     # Attempt authentication
-    ok, error_code, username = authenticate(r)
+    ok, error_code, username = authenticate_subsonic(r)
     if not ok:
         rate_limiter.record(client_ip, attempted_user)
         if is_api:

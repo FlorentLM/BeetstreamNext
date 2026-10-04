@@ -27,6 +27,12 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
 
+# Settings rendered together in a single row: {primary key: secondary key}
+_PAIRED_WITH = {
+    'audiomuse_url': 'audiomuse_api_token',
+    'podcastindex_api_key': 'podcastindex_api_secret',
+}
+
 
 ##
 # Settings-updating routes
@@ -102,7 +108,7 @@ def route_update_settings(category: str) -> flask.Response:
 
 @admin_bp.route('/settings/<category>/clear/<key>', methods=['POST'])
 @admin_required
-def route_clear_setting(category: str, key: str) -> flask.Response:
+def route_clear_setting(category: str, key: str) -> str:
     if category not in SETTINGS_CATEGORIES:
         flask.abort(404)
     spec = SETTINGS_SCHEMA.get(key)
@@ -111,11 +117,26 @@ def route_clear_setting(category: str, key: str) -> flask.Response:
 
     try:
         settings_store.reset(key)
-        flask.flash(f"Reset '{key}' to default.", 'success')
+        message, ok = f"'{key}' reset.", True
     except PermissionError as e:
-        flask.flash(str(e), 'error')
+        message, ok = str(e), False
 
-    return back_to(category)
+
+    row_key = next((primary for primary, secondary in _PAIRED_WITH.items() if secondary == key), key)
+
+    settings, setting_pills = _settings_ui(category)
+    return flask.render_template(
+        'partials/setting_row.html',
+        category=category,
+        key=row_key,
+        settings=settings[category],
+        paired_with=_PAIRED_WITH,
+        users=list_users(fields=['username']),
+        host_suggestions=flask.current_app.config.get('HOST_LIST', []),
+        setting_pills=setting_pills,
+        message=message,
+        ok=ok,
+    )
 
 
 ##
@@ -146,12 +167,12 @@ def route_test_podcastindex() -> flask.Response:
     return test_result('test-result-podcastindex', ok, message)
 
 
-@admin_bp.route('/')
-@admin_required
-def route_settings() -> flask.Response:
-    settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
-    host_suggestions = flask.current_app.config.get('HOST_LIST', [])
-
+def _settings_ui(only: str | None = None) -> tuple[dict[str, dict[str, dict]], dict[str, tuple[str, str]]]:
+    """
+    Settings for rendering in the UI with the contextual pills.
+    """
+    categories = [only] if only else SETTINGS_CATEGORIES
+    settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in categories}
     # Small contextual pills next to a setting
     setting_pills: dict[str, tuple[str, str]] = {}
 
@@ -171,16 +192,26 @@ def route_settings() -> flask.Response:
 
     if is_import_safe():
         setting_pills['allow_disk_writes'] = ('move/copy/write are all off', 'info')
-        settings_by_category['library']['allow_disk_writes']['locked'] = True
-        settings_by_category['library']['allow_disk_writes']['lock_reason'] = (
-            "This setting has no effect, Beets already avoids modifying files."
-        )
+        if 'allow_disk_writes' in settings_by_category.get('library', {}):
+            settings_by_category['library']['allow_disk_writes']['locked'] = True
+            settings_by_category['library']['allow_disk_writes']['lock_reason'] = (
+                "This setting has no effect, Beets already avoids modifying files."
+            )
     elif music_ro and library_ro:
         setting_pills['allow_disk_writes'] = ('music folder & library are read-only', 'danger')
     elif music_ro:
         setting_pills['allow_disk_writes'] = ('music folder is read-only', 'danger')
     elif library_ro:
         setting_pills['allow_disk_writes'] = ('beets library is read-only', 'danger')
+
+    return settings_by_category, setting_pills
+
+
+@admin_bp.route('/')
+@admin_required
+def route_settings() -> flask.Response:
+    settings_by_category, setting_pills = _settings_ui()
+    host_suggestions = flask.current_app.config.get('HOST_LIST', [])
 
     cache_bytes = cache_breakdown(
         flask.current_app.config['THUMBNAIL_CACHE_PATH'],
@@ -210,6 +241,7 @@ def route_settings() -> flask.Response:
             current_username=flask.session.get('username'),
             settings_categories=SETTINGS_CATEGORIES,
             settings_by_category=settings_by_category,
+            paired_with=_PAIRED_WITH,
             setting_pills=setting_pills,
             host_suggestions=host_suggestions,
             log_lines=mem_log.recents,

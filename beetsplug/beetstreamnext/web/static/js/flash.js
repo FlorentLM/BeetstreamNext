@@ -34,8 +34,8 @@
     document.querySelectorAll('.flash').forEach(dismissLater);
 
     // Messages rendered by htmx partials
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        if (target) target.querySelectorAll('.flash').forEach(dismissLater);
+    // (scans the whole document: with outerHTML swaps the event's target is the old, detached element)
+    document.body.addEventListener('htmx:after:swap', () => {
+        document.querySelectorAll('.flash').forEach(dismissLater);
     });
 })();

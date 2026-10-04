@@ -1,0 +1,206 @@
+{# Settings page field/row macros #}
+
+{% set PAIRED_DESCRIPTIONS = {
+    'audiomuse_url': 'URL and API token for your self-hosted <a href="https://github.com/NeptuneHub/AudioMuse-AI" target="_blank" rel="noopener">AudioMuse-AI</a> instance, to enable sonic similarity endpoints.',
+    'podcastindex_api_key': (
+        'API key and secret for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, '
+        'used for podcast channel discovery.'
+    ),
+} %}
+
+{% macro render_setting_pill(key, setting_pills) -%}
+    {%- set pill = (setting_pills or {}).get(key) -%}
+    {%- if pill -%}
+        <span class="setting-meta-badge{{ ' setting-meta-badge-danger' if pill[1] == 'danger' else '' }}">{{ pill[0] }}</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro render_setting_field(key, info, category, users=None, host_suggestions=None, setting_pills=None) -%}
+    {%- set dis = 'disabled' if info.locked else '' -%}
+    {%- if key == 'ratings_writeback_user' -%}
+        <label class="setting-row-label" for="set-{{ key }}">
+            {{ key }}
+            {{ render_setting_pill(key, setting_pills) }}
+        </label>
+        <select id="set-{{ key }}" name="{{ key }}" {{ dis }}>
+            <option value="" {% if not info.value %}selected{% endif %}>Disabled</option>
+            {% for u in (users or []) %}
+                <option value="{{ u.username }}"
+                        {% if info.value == u.username %}selected{% endif %}>{{ u.username }}</option>
+            {% endfor %}
+        </select>
+    {%- elif key == 'external_playlists_editors' -%}
+        <div x-data="checkboxGroup">
+            <div class="roles-header">
+                <label class="setting-row-label">{{ key }}</label>
+                <div class="roles-actions">
+                    <button type="button" class="text-btn text-btn-icon" title="Select all" aria-label="Select all" @click="setAll(true)" {{ dis }}><span class="material-symbols-outlined">select_all</span></button>
+                    <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection" aria-label="Clear selection" @click="setAll(false)" {{ dis }}><span class="material-symbols-outlined">deselect</span></button>
+                </div>
+            </div>
+            <div class="roles-grid">
+                <label class="role-item">
+                    <input type="checkbox" name="{{ key }}" value="*"
+                           {% if '*' in info.value %}checked{% endif %} {{ dis }}>
+                    Everyone
+                </label>
+                {% for u in (users or []) %}
+                    <label class="role-item">
+                        <input type="checkbox" name="{{ key }}" value="{{ u.username }}"
+                               {% if u.username in info.value %}checked{% endif %} {{ dis }}>
+                        {{ u.username }}
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="label-hint">Empty selection = read-only.</p>
+    {%- elif key == 'jukebox_hardware_device' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
+               list="jukebox-devices-list" placeholder="mpv audio device, Sonos IP, Chromecast UUID" {{ dis }}>
+        <datalist id="jukebox-devices-list"></datalist>
+    {%- elif key == 'external_hostname' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
+               list="external-hostname-suggestions" placeholder="music.example.com" {{ dis }}>
+        <datalist id="external-hostname-suggestions">
+            {% for h in (host_suggestions or []) %}
+                <option value="{{ h }}"></option>
+            {% endfor %}
+        </datalist>
+    {%- elif info.choices -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <select id="set-{{ key }}" name="{{ key }}" {{ dis }}>
+            {% for c in info.choices %}
+                <option value="{{ c }}" {% if info.value == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+    {%- elif info.type == 'bool' -%}
+        <label class="setting-toggle">
+            <input type="checkbox" name="{{ key }}" {% if info.value %}checked{% endif %} {{ dis }}>
+            <span class="setting-toggle-text">
+                <span class="setting-toggle-key">{{ key }}</span>
+                {{ render_setting_pill(key, setting_pills) }}
+            </span>
+        </label>
+    {%- elif info.type == 'int' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="number" name="{{ key }}" value="{{ info.value }}" {{ dis }}>
+    {%- elif info.type == 'str' and info.sensitive -%}
+        <label class="setting-row-label" for="set-{{ key }}">
+            {{ key }}
+            {% if info.is_set %}<span class="setting-meta-badge">currently set</span>{% endif %}
+        </label>
+        <div class="setting-input-row">
+            <input id="set-{{ key }}" type="password" name="{{ key }}" autocomplete="new-password"
+                   placeholder="{% if info.is_set %}••••••••••••{% else %}Not set{% endif %}" {{ dis }}>
+            {% if info.overridden and not info.locked %}
+                <button type="button" class="action-link action-link-delete"
+                        hx-post="{{ url_for('admin.route_clear_setting', category=category, key=key) }}"
+                        hx-target="closest .setting-row" hx-swap="outerHTML"
+                        hx-confirm="Reset '{{ key }}' to its default?">Clear
+                </button>
+            {% endif %}
+        </div>
+    {%- elif info.type == 'str' -%}
+        <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
+        <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
+               {% if info.placeholder %}placeholder="{{ info.placeholder }}"{% endif %} {{ dis }}>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro render_field_actions(key, settings) -%}
+    {%- if key == 'lastfm_api_key' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_test_lastfm') }}"
+                    hx-target="#test-result-lastfm"
+                    hx-swap="outerHTML"
+                    hx-disable="this"
+                    hx-indicator="#test-indicator-lastfm"
+                    {{ 'disabled' if not settings['lastfm_api_key'].is_set else '' }}>Test connection
+            </button>
+            <span id="test-indicator-lastfm" class="htmx-indicator test-result">Testing&hellip;</span>
+        </p>
+        <p class="test-result" id="test-result-lastfm"></p>
+    {%- elif key == 'audiomuse_url' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_test_audiomuse') }}"
+                    hx-target="#test-result-audiomuse"
+                    hx-swap="outerHTML"
+                    hx-disable="this"
+                    hx-indicator="#test-indicator-audiomuse"
+                    {{ 'disabled' if not settings['audiomuse_url'].value else '' }}>Test connection
+            </button>
+            <span id="test-indicator-audiomuse" class="htmx-indicator test-result">Testing&hellip;</span>
+        </p>
+        <p class="test-result" id="test-result-audiomuse"></p>
+    {%- elif key == 'podcastindex_api_key' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_test_podcastindex') }}"
+                    hx-target="#test-result-podcastindex"
+                    hx-swap="outerHTML"
+                    hx-disable="this"
+                    hx-indicator="#test-indicator-podcastindex"
+                    {{ 'disabled' if not (settings['podcastindex_api_key'].is_set and settings['podcastindex_api_secret'].is_set) else '' }}>
+                Test connection
+            </button>
+            <span id="test-indicator-podcastindex" class="htmx-indicator test-result">Testing&hellip;</span>
+        </p>
+        <p class="test-result" id="test-result-podcastindex"></p>
+    {%- elif key == 'jukebox_hardware_device' -%}
+        <p class="setting-row-actions">
+            <button type="button" class="btn btn-outline"
+                    hx-get="{{ url_for('admin.route_discover_devices') }}"
+                    hx-include="#set-jukebox_backend"
+                    hx-target="#jukebox-devices-list"
+                    hx-swap="innerHTML"
+                    hx-disable="this"
+                    hx-indicator="#jukebox-discovery-spinner">Discover devices
+            </button>
+            <span id="jukebox-discovery-spinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</span>
+        </p>
+        <p class="test-result" id="test-result-{{ key }}"></p>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro render_setting_row(category, key, settings, paired_with, users=None, host_suggestions=None, setting_pills=None, message=None, ok=True) -%}
+    {%- set info = settings[key] -%}
+    {%- set pair_key = paired_with.get(key) -%}
+    <div class="setting-row" id="setting-row-{{ key }}">
+        <div class="setting-row-control">
+            {{ render_setting_field(key, info, category, users, host_suggestions, setting_pills) }}
+            {% if pair_key %}
+                {{ render_setting_field(pair_key, settings[pair_key], category, users, host_suggestions, setting_pills) }}
+            {% endif %}
+        </div>
+        <div class="setting-row-meta">
+            {% if message %}
+                <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+            {% endif %}
+            <p class="setting-description">{{ (PAIRED_DESCRIPTIONS[key] if key in PAIRED_DESCRIPTIONS else info.description) | safe }}</p>
+            {% if info.requires_restart %}
+                <p class="setting-restart-note"><span class="material-symbols-outlined">restart_alt</span> Requires server restart</p>
+            {% endif %}
+            {% if info.locked %}
+                <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
+                    {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file' }}
+                </p>
+            {% elif info.overridden and not info.sensitive %}
+                <p class="setting-row-actions">
+                    <button type="button" class="action-link-reset"
+                            hx-post="{{ url_for('admin.route_clear_setting', category=category, key=key) }}"
+                            hx-target="closest .setting-row" hx-swap="outerHTML"
+                            hx-confirm="Reset '{{ key }}' to its default?">Reset to default
+                    </button>
+                </p>
+            {% endif %}
+            {% if info.help %}
+                <pre class="setting-help"><code>{{ info.help | safe }}</code></pre>
+            {% endif %}
+            {{ render_field_actions(key, settings) }}
+        </div>
+    </div>
+{%- endmacro %}

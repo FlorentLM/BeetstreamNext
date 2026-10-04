@@ -32,7 +32,9 @@
 {% macro icon_picker(name, input_id, label, aria_label, hint, round=false, overlay=true, remove_name=none, remove_id=none, remove_label=none, large=false) -%}
 
 <div class="icon-picker-row{% if large %} icon-picker-row-large{% endif %}">
-    <button type="button" class="icon-picker-frame{% if round %} icon-picker-frame-round{% endif %}" @click="pick()" aria-label="{{ aria_label }}">
+    <button type="button" class="icon-picker-frame{% if round %} icon-picker-frame-round{% endif %}" @click="pick()" aria-label="{{ aria_label }}"
+            :class="{ 'icon-picker-dragging': dragging }"
+            @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop($event)">
         <img x-show="previewSrc" :src="previewSrc" alt="">
         {% if overlay %}<span class="icon-picker-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
         {% else %}<span class="material-symbols-outlined">edit</span>{% endif %}

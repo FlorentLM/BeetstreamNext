@@ -21,7 +21,8 @@
                 <button class="icon-btn icon-btn-delete" title="Remove" aria-label="Remove image of {{ a.name }}"
                         hx-post="{{ url_for('admin.route_delete_artist_image') }}"
                         hx-vals='{"key": {{ a.artist_key|tojson|forceescape }}}'
-                        hx-target="#artistImageList" hx-swap="innerHTML"
+                        hx-target="#artistImageList"
+                        hx-swap="innerHTML"
                         hx-confirm="Remove the custom image of '{{ a.name | e }}'?">{{ icon('delete') }}</button>
             </div>
         </div>

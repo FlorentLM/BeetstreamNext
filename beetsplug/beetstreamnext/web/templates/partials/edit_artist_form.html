@@ -23,10 +23,10 @@
 
     <div class="form-group">
         <label>Image</label>
-        {{ macros.icon_picker('image', 'artistImageFile', 'Artist image', 'Choose artist image', 'Click the image to choose a file.', large=true) }}
+        {{ macros.icon_picker('image', 'artistImageFile', 'Artist image', 'Choose artist image', 'Click the image to choose a file, or drop one onto it.', large=true) }}
     </div>
 
-    <div class="form-group artist-image-sources" x-data="artistImageLinks">
+    <div class="form-group artist-image-sources" x-data="artistImageLinks"{% if is_joint %} data-joint{% endif %}>
         <span class="label-hint">Find an image yourself:</span>
         <br/>
         <span x-show="hasName">

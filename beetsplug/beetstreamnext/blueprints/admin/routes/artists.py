@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.blueprints.forms import ArtistImageForm, form_erro
 from beetsplug.beetstreamnext.blueprints.views import modal_error
 from beetsplug.beetstreamnext.core.media.artist_images import (
     list_images, set_image, delete_image, get_image,
-    find_artist, suggest_artists,
+    find_artist, suggest_artists, credit_keys,
 )
 from beetsplug.beetstreamnext.core.media.images import read_uploaded_image, sniff_image
 from beetsplug.beetstreamnext.utils.text import strip_text
@@ -38,6 +38,7 @@ def route_artist_image_form() -> str:
 
     return flask.render_template('partials/edit_artist_form.html',
                                  artist=entry,
+                                 is_joint=bool(entry and credit_keys(entry['name'])),
                                  artist_form=form)
 
 
@@ -45,7 +46,7 @@ def route_artist_image_form() -> str:
 @admin_required
 def route_artist_suggest() -> str:
     return flask.render_template('partials/artist_suggestions.html',
-                                 names=suggest_artists(flask.request.args.get('name', '')))
+                                 suggestions=suggest_artists(flask.request.args.get('name', '')))
 
 
 @admin_bp.route('/artists/save', methods=['POST'])

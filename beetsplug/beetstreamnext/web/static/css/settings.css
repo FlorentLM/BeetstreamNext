@@ -644,6 +644,15 @@ input:focus, select:focus {
     cursor: pointer;
 }
 
+.icon-picker-frame.icon-picker-dragging {
+    border-color: var(--primary);
+    border-style: dashed;
+}
+
+.icon-picker-dragging .icon-picker-edit-overlay {
+    opacity: 0.5;
+}
+
 /* Large variant (artist images) */
 .icon-picker-row-large {
     flex-direction: column;

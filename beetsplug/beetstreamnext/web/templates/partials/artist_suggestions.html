@@ -1,1 +1,1 @@
-{% for n in names %}<option value="{{ n }}"></option>{% endfor %}
+{% for name, joint in suggestions %}<option value="{{ name }}"{% if joint %} data-joint{% endif %}></option>{% endfor %}

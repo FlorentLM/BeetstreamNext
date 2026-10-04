@@ -176,7 +176,8 @@ def find_artist(name: str) -> Tuple[str, str] | None:
 
 
 @with_app_context
-def suggest_artists(query: str, limit: int = 15) -> List[str]:
+def suggest_artists(query: str, limit: int = 15) -> List[Tuple[str, bool]]:
+    """(name, is_joint_credit) pairs of library album artists matching the query."""
 
     query = (query or '').strip()
     if len(query) < 2:
@@ -187,12 +188,13 @@ def suggest_artists(query: str, limit: int = 15) -> List[str]:
     with flask.g.lib.transaction() as tx:
         rows = tx.query(
             """
-            SELECT DISTINCT albumartist FROM albums
+            SELECT albumartist, MAX(albumartists) FROM albums
             WHERE albumartist LIKE ? ESCAPE '\\'
+            GROUP BY albumartist
             ORDER BY albumartist COLLATE NOCASE LIMIT ?
             """, (f'%{escaped}%', limit)
         )
-    return [r[0] for r in rows if r[0]]
+    return [(r[0], IDs.is_joint_credit(r[1], r[0])) for r in rows if r[0]]
 
 
 @with_app_context

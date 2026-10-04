@@ -144,6 +144,7 @@
         Alpine.data('iconPicker', () => ({
             previewSrc: '',
             blobUrl: '',
+            dragging: false,
 
             init() {
                 this.previewSrc = this.$el.dataset.src || '';
@@ -175,6 +176,17 @@
                 }
             },
 
+            onDrop(event) {
+                this.dragging = false;
+                const file = Array.from(event.dataTransfer.files)
+                    .find(f => this.$refs.file.accept.split(',').includes(f.type));
+                if (!file) return;
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                this.$refs.file.files = dt.files;
+                this.onFileChange();
+            },
+
             clear() {
                 this.revokeBlob();
                 this.previewSrc = '';
@@ -200,14 +212,20 @@
         // "Find an image yourself" links
         Alpine.data('artistImageLinks', () => ({
             name: '',
+            joint: false,
 
             init() {
                 const input = document.getElementById('artistImageName');
                 if (!input) return;
-                this.name = input.value;
-                input.addEventListener('input', () => {
+                const preset = this.$el.hasAttribute('data-joint');
+                const sync = () => {
                     this.name = input.value;
-                });
+                    const list = input.list;
+                    const option = list && Array.from(list.options).find(o => o.value === input.value);
+                    this.joint = option ? option.hasAttribute('data-joint') : preset;
+                };
+                sync();
+                input.addEventListener('input', sync);
             },
 
             get query() {
@@ -223,7 +241,10 @@
             },
 
             get lastfmUrl() {
-                return 'https://www.last.fm/music/' + this.query + '/+images';
+                // Joint credits often have a gazillion user-created duplicates -> so search instead
+                return this.joint
+                    ? 'https://www.last.fm/search/artists?q=' + this.query
+                    : 'https://www.last.fm/music/' + this.query + '/+images';
             },
 
             get commonsUrl() {

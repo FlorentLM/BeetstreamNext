@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.utils.system import get_env
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.console import print_box
+from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, list_users, get_user_roles, update_user

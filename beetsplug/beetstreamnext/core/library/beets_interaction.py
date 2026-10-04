@@ -20,7 +20,7 @@ from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.library.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
 

@@ -47,7 +47,7 @@ def read_upload(field: str, max_bytes: int) -> bytes | None:
 
 def request_url(path_part: str) -> str:
     """Build an absolute URL for 'path_part', mirroring the current request's scheme+host."""
-    from beetsplug.beetstreamnext.config.store import settings_store
+    from beetsplug.beetstreamnext.core.config.store import settings_store
 
     scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
     return f'{scheme}://{flask.request.host}{path_part}'
@@ -55,7 +55,7 @@ def request_url(path_part: str) -> str:
 
 def external_url(path_part: str) -> str:
     """Build an absolute URL for 'path_part' on the configured public share hostname."""
-    from beetsplug.beetstreamnext.config.store import settings_store
+    from beetsplug.beetstreamnext.core.config.store import settings_store
     from beetsplug.beetstreamnext.utils.net import parse_host
 
     external_host = settings_store.get('external_hostname')
@@ -178,7 +178,7 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optio
     Hand the file off to the reverse proxy (Nginx/Apache) instead of streaming it through
     Python (if configured). Returns None if offloading isn't enabled/possible.
     """
-    from beetsplug.beetstreamnext.config.store import settings_store
+    from beetsplug.beetstreamnext.core.config.store import settings_store
 
     if not settings_store.get('reverse_proxy'):
         return None

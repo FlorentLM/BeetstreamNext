@@ -157,7 +157,7 @@ def _remap_mount(path_obj: Path, root_directory: bytes | str | Path) -> Path:
     Substitute root_directory for 'library_remote_path' when another container
     and this one mount the music volume at different paths.
     """
-    from beetsplug.beetstreamnext.config.store import settings_store
+    from beetsplug.beetstreamnext.core.config.store import settings_store
 
     remote = settings_store.get('library_remote_path')
     if not remote:
@@ -234,7 +234,7 @@ _last_logged_binary: Dict[str, str] = {}
 
 def find_binary(name: str) -> Optional[str]:
 
-    from beetsplug.beetstreamnext.config.store import settings_store
+    from beetsplug.beetstreamnext.core.config.store import settings_store
 
     custom = settings_store.get(f'{name}_path')
     found = shutil.which(custom) if custom else shutil.which(name)

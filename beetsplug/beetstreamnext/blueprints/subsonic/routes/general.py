@@ -1,0 +1,332 @@
+from __future__ import annotations
+import hashlib
+import flask
+
+from .. import subsonic_bp
+
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.utils.general import genres_formatter
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.db import get_beets_schema
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.core.library.ids import IDs
+
+from beetsplug.beetstreamnext.blueprints.subsonic.routes.albums import album_payload
+from beetsplug.beetstreamnext.blueprints.subsonic.routes.artists import artist_payload
+from beetsplug.beetstreamnext.blueprints.subsonic.routes.songs import song_payload
+from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
+from beetsplug.beetstreamnext.core.library.beets_interaction import is_import_running, start_pinned_imports
+from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.config.store import settings_store
+
+
+def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
+
+    # Only one possible root directory in beets (?), so just return its name
+    directory_name = app.config['root_directory'].name
+
+    payload = {
+        'musicFolders': {
+            'musicFolder': [{
+                'id': subsonic_musicdirectory_id,
+                'name': directory_name
+            }]
+        }
+    }
+    return payload
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getOpenSubsonicExtensions/
+@subsonic_bp.route('/getOpenSubsonicExtensions', methods=['GET', 'POST'])
+@subsonic_bp.route('/getOpenSubsonicExtensions.view', methods=['GET', 'POST'])
+def endpoint_get_open_subsonic_extensions() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    extensions = [
+        {
+            'name': 'apiKeyAuthentication',     # https://opensubsonic.netlify.app/docs/extensions/apikeyauth/
+            'versions': [1]
+        },
+        {
+            'name': 'getPodcastEpisode',    # https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
+            'versions': [1]
+        },
+        {
+            'name': 'formPost',    # https://opensubsonic.netlify.app/docs/extensions/formpost/
+            'versions': [1]
+        },
+        {
+            'name': 'indexBasedQueue',    # https://opensubsonic.netlify.app/docs/extensions/indexbasedqueue/
+            'versions': [1]
+        },
+        {
+            'name': 'playbackReport',    # https://opensubsonic.netlify.app/docs/extensions/playbackreport/
+            'versions': [1]
+        },
+        {
+            'name': 'songLyrics',   # https://opensubsonic.netlify.app/docs/extensions/songlyrics/
+            'versions': [1]
+        },
+        {
+            'name': 'topSongsByArtistId',  # https://opensubsonic.netlify.app/docs/extensions/topsongsbyartistid/
+            'versions': [1]
+        },
+        {
+            'name': 'transcodeOffset',  # https://opensubsonic.netlify.app/docs/extensions/transcodeoffset/
+            'versions': [1]
+        },
+        {
+            'name': 'transcoding',  # https://opensubsonic.netlify.app/docs/extensions/transcoding/
+            'versions': [1]
+        },
+    ]
+
+    if settings_store.get('audiomuse_url'):
+        extensions.append({
+            'name': 'sonicSimilarity',    # https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/
+            'versions': [1]
+        })
+
+    payload = {'openSubsonicExtensions': extensions}
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getGenres/
+@subsonic_bp.route('/getGenres', methods=['GET', 'POST'])
+@subsonic_bp.route('/getGenres.view', methods=['GET', 'POST'])
+def endpoint_get_genres() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    queries = []
+
+    item_cols = get_beets_schema('items')
+    if 'genres' in item_cols:
+        queries.append("""SELECT genres AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genres""")
+    if 'genre' in item_cols:
+        queries.append("""SELECT genre AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genre""")
+
+    alb_cols = get_beets_schema('albums')
+    if 'genres' in alb_cols:
+        queries.append("""SELECT genres AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genres""")
+    if 'genre' in alb_cols:
+        queries.append("""SELECT genre AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genre""")
+
+    if not queries:
+        payload = {
+            "genres": {
+                "genre": []
+            }
+        }
+        return subsonic_response(payload, resp_fmt=resp_fmt)
+
+    with flask.g.lib.transaction() as tx:
+        mixed_genres = list(tx.query(" UNION ALL ".join(queries)))
+
+    g_dict = {}
+    for row in mixed_genres:
+        genre_field, n_song, n_album = row
+        if not genre_field:
+            continue
+
+        for key in genres_formatter(genre_field):
+            if key not in g_dict:
+                g_dict[key] = [0, 0]
+            g_dict[key][0] += int(n_song or 0)
+            g_dict[key][1] += int(n_album or 0)
+
+    # And convert to list of tuples, remove empty genres, and sort by songCount
+    g_list = [(k, *v) for k, v in g_dict.items() if k]
+    g_list.sort(key=lambda g: g[1], reverse=True)
+
+    payload = {
+        "genres": {
+            "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list]
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getLicense/
+@subsonic_bp.route('/getLicense', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLicense.view', methods=['GET', 'POST'])
+def endpoint_get_license() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    payload = {
+        'license': {
+            'valid': True
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicFolders/
+@subsonic_bp.route('/getMusicFolders', methods=['GET', 'POST'])
+@subsonic_bp.route('/getMusicFolders.view', methods=['GET', 'POST'])
+def endpoint_get_music_folders() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    payload = musicdirectory_payload(subsonic_musicdirectory_id='m-0')
+
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicDirectory/
+@subsonic_bp.route('/getMusicDirectory', methods=['GET', 'POST'])
+@subsonic_bp.route('/getMusicDirectory.view', methods=['GET', 'POST'])
+def endpoint_get_music_directory() -> flask.Response:
+    # Works pretty much like a file system
+    # Usually Artist first, then Album, then Songs
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
+
+    if not req_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    if IDs.decode_type(req_id) == 'artist':
+        payload = artist_payload(req_id, with_albums=True)
+        payload['directory'] = payload.pop('artist')
+        payload['directory']['child'] = payload['directory'].pop('album')
+
+    elif IDs.decode_type(req_id) == 'album':
+        payload = album_payload(req_id, include_songs=True)
+        payload['directory'] = payload.pop('album')
+        payload['directory']['child'] = payload['directory'].pop('song')
+
+    elif IDs.decode_type(req_id) == 'song':
+        payload = song_payload(req_id)
+        payload['directory'] = payload.pop('song')
+
+    else:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartist, mb_albumartistid, albumartists
+                FROM albums
+                WHERE albumartist IS NOT NULL
+                GROUP BY albumartist
+                """
+            )
+
+        payload = musicdirectory_payload('m-0')
+        payload['directory'] = payload.pop('musicFolders')['musicFolder'][0]
+
+        children = []
+        for row in rows:
+            artist_name, artist_mbid, albumartists_raw = row
+            if IDs.is_joint_credit(albumartists_raw, artist_name):
+                artist_id = IDs.encode_artist(artist_name, joint_credit=True)
+            else:
+                artist_id = IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+
+            children.append({
+                'id': artist_id,
+                'title': artist_name,
+                'isDir': True,
+                'artist': artist_name,
+                'coverArt': artist_id,
+            })
+        payload['directory']['child'] = children
+
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/ping/
+@subsonic_bp.route('/ping', methods=['GET', 'POST'])
+@subsonic_bp.route('/ping.view', methods=['GET', 'POST'])
+def endpoint_ping() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    return subsonic_response({}, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/startScan/
+@subsonic_bp.route('/startScan', methods=['GET', 'POST'])
+@subsonic_bp.route('/startScan.view', methods=['GET', 'POST'])
+def endpoint_start_scan() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    if not flask.g.user_data.get('adminRole'):
+        return subsonic_error(40, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
+
+    ok, message = start_pinned_imports(list_pinned_paths())
+    if not ok:
+        return subsonic_error(0, message=message, resp_fmt=resp_fmt)
+
+    return subsonic_response({'scanStatus': {'scanning': is_import_running()}}, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/
+@subsonic_bp.route('/getScanStatus', methods=['GET', 'POST'])
+@subsonic_bp.route('/getScanStatus.view', methods=['GET', 'POST'])
+def endpoint_get_scan_status() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    try:
+        with flask.g.lib.transaction() as tx:
+            items_count = tx.query("SELECT COUNT(*) FROM items")[0][0]
+    except Exception as e:
+        bsn_logger.warning(f'Could not read item count while a scan is running: {e}')
+        items_count = 0
+
+    payload = {
+        'scanStatus': {
+            "scanning": is_import_running(),
+            "count": items_count
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/tokenInfo/
+@subsonic_bp.route('/tokenInfo', methods=['GET', 'POST'])
+@subsonic_bp.route('/tokenInfo.view', methods=['GET', 'POST'])
+def endpoint_token_info() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    api_key = r.get('apiKey', default='', type=str)
+
+    if not api_key:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+    username = load_username(api_key_hash)
+
+    if not username:
+        return subsonic_error(40, resp_fmt=resp_fmt)
+
+    payload = {
+        'tokenInfo': {
+            'username': username
+        }
+    }
+    return subsonic_response(payload, resp_fmt=resp_fmt)
+
+
+##
+# Stubs for unsupported features
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getCaptions/
+@subsonic_bp.route('/getCaptions', methods=['GET', 'POST'])
+@subsonic_bp.route('/getCaptions.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideoInfo/
+@subsonic_bp.route('/getVideoInfo', methods=['GET', 'POST'])
+@subsonic_bp.route('/getVideoInfo.view', methods=['GET', 'POST'])
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideos/
+@subsonic_bp.route('/getVideos', methods=['GET', 'POST'])
+@subsonic_bp.route('/getVideos.view', methods=['GET', 'POST'])
+def endpoint_unsupported() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    return subsonic_error(0, message='Feature is not supported.', resp_fmt=resp_fmt)

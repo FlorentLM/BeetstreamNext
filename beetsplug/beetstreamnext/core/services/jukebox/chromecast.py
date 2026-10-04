@@ -5,7 +5,7 @@ import time
 from typing import TYPE_CHECKING, List, Optional
 
 from beetsplug.beetstreamnext.constants import PYCHROMECAST
-from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
+from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, JukeboxUnavailableException
 
@@ -80,7 +80,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
         if not PYCHROMECAST:
             raise JukeboxUnavailableException("The 'pychromecast' package isn't installed. Install the 'chromecast' extra to use this backend.")
 
-        from beetsplug.beetstreamnext.config.store import settings_store
+        from beetsplug.beetstreamnext.core.config.store import settings_store
 
         target = settings_store.get('jukebox_hardware_device')
         if not target:

@@ -10,9 +10,9 @@ from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_fil
 from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.core.library.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users, get_user_roles
-from beetsplug.beetstreamnext.auth.subsonic_auth import authenticate_subsonic
+from beetsplug.beetstreamnext.blueprints.subsonic.auth import authenticate_subsonic
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
-from beetsplug.beetstreamnext.subsonic.responses import subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_error
 
 
 WEBUI_PREFIXES = ('/admin', '/account', '/login', '/logout')

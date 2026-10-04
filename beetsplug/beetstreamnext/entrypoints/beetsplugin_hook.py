@@ -23,8 +23,8 @@ import beets
 import confuse
 from beets.plugins import BeetsPlugin
 
-from beetsplug.beetstreamnext.config.settings_schema import SETTINGS_SCHEMA
-from beetsplug.beetstreamnext.config.store import coerce_setting, settings_store
+from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.startup import run_server, prestartup_config
 from beetsplug.beetstreamnext.core.storage.schema import initialise_db

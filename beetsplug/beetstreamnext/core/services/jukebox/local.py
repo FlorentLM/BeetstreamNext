@@ -77,7 +77,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
         if not mpv_bin:
             raise JukeboxUnavailableException("mpv wasn't found. Install it, or update the 'mpv_path' setting.")
 
-        from beetsplug.beetstreamnext.config.store import settings_store
+        from beetsplug.beetstreamnext.core.config.store import settings_store
 
         JUKEBOX_SOCK_DIR.mkdir(parents=True, exist_ok=True)
         sock_path = JUKEBOX_SOCK_DIR / f'mpv-{os.getpid()}.sock'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import requests
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
 def audiomuse_get(path: str, params: dict, timeout: float = 10.0):

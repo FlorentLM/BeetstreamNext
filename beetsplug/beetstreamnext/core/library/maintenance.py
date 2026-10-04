@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.health import scan_library
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
-from beetsplug.beetstreamnext.config.settings_schema import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.utils.system import purge, dir_size
 
 _cleanup_lock = threading.Lock()

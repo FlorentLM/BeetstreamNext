@@ -9,13 +9,13 @@ import confuse
 import yaml
 from beets.library import Library
 
-from beetsplug.beetstreamnext.console import print_box, drift_lines
+from beetsplug.beetstreamnext.core.runtime.console import print_box, drift_lines
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import DEFAULT_CONFIG_PATH, DEFAULT_DB_TIMEOUT
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.health import detect_beets_drift
-from beetsplug.beetstreamnext.config.settings_schema import SETTINGS_SCHEMA
-from beetsplug.beetstreamnext.config.store import coerce_setting, settings_store
+from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
 from beetsplug.beetstreamnext.core.runtime.startup import prestartup_config, run_server
 from beetsplug.beetstreamnext.core.accounts.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd

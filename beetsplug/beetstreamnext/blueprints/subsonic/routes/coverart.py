@@ -1,0 +1,122 @@
+from __future__ import annotations
+import os
+from io import BytesIO
+import flask
+
+from .. import subsonic_bp
+
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.system import make_hidden, find_binary, resolve_path
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_error
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.media.images import (
+    round_image_size, send_album_art, thumbnail_path, playlist_mosaic, image_from_song,
+    resize_image, send_artist_image, send_stored_art
+)
+
+
+# Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
+@subsonic_bp.route('/getCoverArt', methods=['GET', 'POST'])
+@subsonic_bp.route('/getCoverArt.view', methods=['GET', 'POST'])
+def endpoint_get_cover_art() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    req_id = r.get('id', default='', type=safe_str)      # Required
+    req_size = r.get('size', default=0, type=int)
+
+    # TODO: Return placeholder images
+
+    if not req_id:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    size = round_image_size(req_size)
+
+    # root folder ID or name: serve BeetstreamNext's logo
+    if req_id == app.config['root_directory'].name or req_id == 'm-0':
+        return flask.send_file(app.config['IMAGES_PATH'] / 'logo.png', mimetype='image/png')
+
+    entry_type, entry = Resolve.any(req_id)
+
+    # album requests
+    if entry_type == 'album':
+        response = send_album_art(entry.id, size) if entry else None
+        if response is not None:
+            return response
+
+    # song requests
+    elif entry_type == 'song':
+        item = entry
+        if not item:
+            return subsonic_error(70, resp_fmt=resp_fmt)
+
+        album_id = item.get('album_id')
+        if album_id:
+            response = send_album_art(album_id, size)
+            if response is not None:
+                return response
+
+        # Fallback: try to extract cover from the song file
+        if FFMPEG_PYTHON or find_binary('ffmpeg'):
+            song_path = str(resolve_path(item.path, app.config['root_directory']))
+            try:
+                song_mtime = os.path.getmtime(song_path)
+            except OSError:
+                song_mtime = 0.0
+
+            thumb_path = thumbnail_path(song_path, size or 0, mtime=song_mtime)
+            if thumb_path.is_file():
+                return flask.send_file(thumb_path, mimetype='image/jpeg')
+
+            image_bytes = image_from_song(song_path)
+            if image_bytes is not None:
+                if size:
+                    image_bytes = resize_image(image_bytes, size).getvalue()
+
+                # Save for next time
+                try:
+                    with open(thumb_path, 'wb') as f:
+                        f.write(image_bytes)
+                    make_hidden(thumb_path)
+                    return flask.send_file(thumb_path, mimetype='image/jpeg')
+
+                except Exception as e:
+                    bsn_logger.warning(f"Failed to cache extracted ffmpeg art: {e}")
+                    # can still serve from memory if disk write failed
+                    return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
+
+    elif entry_type == 'radio':
+        if entry:
+            response = send_stored_art('radio', entry['id'])
+            if response is not None:
+                return response
+
+    elif entry_type == 'podcast_channel':
+        if entry:
+            response = send_stored_art('podcast', entry['id'], size)
+            if response is not None:
+                return response
+
+    elif entry_type == 'podcast_episode':
+        if entry:
+            response = send_stored_art('podcast', entry['channel_id'], size)
+            if response is not None:
+                return response
+
+    elif entry_type == 'playlist':
+        playlist = flask.g.playlist_provider.get(req_id)
+        if playlist:
+            mosaic = playlist_mosaic(playlist, size or 500)
+            if mosaic is not None:
+                return flask.send_file(mosaic, mimetype='image/jpeg')
+
+    # artist requests
+    else:  # some clients ask with artist ID, others ask with artist name, so this catches both
+        response = send_artist_image(req_id, size=size)
+        if response is not None:
+            return response
+
+    return subsonic_error(70, resp_fmt=resp_fmt)

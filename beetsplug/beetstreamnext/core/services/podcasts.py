@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext.core.media.images import resize_image, ImageTooLar
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.accounts.security import is_public_url
 from beetsplug.beetstreamnext.utils.net import https_variant
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.general import read_upload
 from beetsplug.beetstreamnext.utils.system import purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from beetsplug.beetstreamnext.constants import SOCO
-from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
+from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.text import parse_duration, format_duration
 from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, JukeboxUnavailableException
 
@@ -61,7 +61,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
         if not SOCO:
             raise JukeboxUnavailableException("The 'soco' package isn't installed. Install the 'sonos' extra to use this backend.")
 
-        from beetsplug.beetstreamnext.config.store import settings_store
+        from beetsplug.beetstreamnext.core.config.store import settings_store
 
         ip = settings_store.get('jukebox_hardware_device')
         if not ip:

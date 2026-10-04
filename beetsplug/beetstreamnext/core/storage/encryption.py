@@ -12,7 +12,7 @@ from cryptography.fernet import Fernet
 from pathlib import Path
 from functools import lru_cache
 
-from beetsplug.beetstreamnext.console import print_box
+from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
 from beetsplug.beetstreamnext.core.storage.connection import database

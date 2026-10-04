@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.core.library.beets_interaction import enqueue_pinn
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths, mark_pinned_triggered
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
 Snapshot = FrozenSet[Tuple[str, int, int]]

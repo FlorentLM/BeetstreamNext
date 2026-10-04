@@ -12,7 +12,7 @@ from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.console import print_box
+from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS
 from beetsplug.beetstreamnext.core.accounts.commands import check_onboarding
@@ -23,7 +23,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL, RedactingTr
 from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.services.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.system import is_docker
 from beetsplug.beetstreamnext.utils.text import split_list
 

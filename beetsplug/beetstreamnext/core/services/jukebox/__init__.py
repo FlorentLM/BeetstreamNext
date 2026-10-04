@@ -21,7 +21,7 @@ def get_jukebox_player() -> JukeboxBackend | None:
 
     global _jukebox_player, _jukebox_backend
 
-    from beetsplug.beetstreamnext.config.store import settings_store
+    from beetsplug.beetstreamnext.core.config.store import settings_store
     backend = settings_store.get('jukebox_backend')
 
     if _jukebox_player is None or _jukebox_backend != backend:

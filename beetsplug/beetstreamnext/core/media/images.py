@@ -75,7 +75,7 @@ def tokenised_image_url(subsonic_id: str, size: Optional[int] = None) -> str:
     if not subsonic_id:
         return ''
 
-    from beetsplug.beetstreamnext.public.tokeniser import image_tokeniser
+    from beetsplug.beetstreamnext.core.media.tokeniser import image_tokeniser
 
     token = image_tokeniser.register(f'{subsonic_id}|{size or ""}')
     return request_url(flask.url_for('public.tokenised_image', token=token))

@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from beetsplug.beetstreamnext.config.settings_schema import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 
 OUT_PATH = Path(__file__).resolve().parent / 'src' / 'configuration.md'
 

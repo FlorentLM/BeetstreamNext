@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import List, Tuple
 
-from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser
+from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.system import get_mimetype, AUDIO_MIMETYPES
 from beetsplug.beetstreamnext.utils.general import request_url
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from beetsplug.beetstreamnext.constants import PODCASTINDEX
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
 def test_podcastindex_connection() -> tuple[bool, str]:

@@ -5,7 +5,7 @@ import requests
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.services.external.session import http_session
 
 

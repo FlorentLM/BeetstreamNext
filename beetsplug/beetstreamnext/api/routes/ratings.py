@@ -4,7 +4,7 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error

@@ -6,7 +6,7 @@ from .. import public_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import SERVER_VERSION, START_TIME
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 
 
 @public_bp.route('/healthz')

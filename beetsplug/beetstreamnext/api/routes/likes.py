@@ -3,7 +3,7 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.database import database, dual_database
+from beetsplug.beetstreamnext.core.connection import database, dual_database
 from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str

@@ -20,7 +20,7 @@ from beetsplug.beetstreamnext.core.startup import prestartup_config, run_server
 from beetsplug.beetstreamnext.core.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd
 )
-from beetsplug.beetstreamnext.core.database import initialise_db
+from beetsplug.beetstreamnext.core.schema import initialise_db
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.system import get_env, is_docker

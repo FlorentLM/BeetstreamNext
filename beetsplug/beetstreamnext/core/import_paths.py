@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 
 
 def list_pinned_paths() -> list[dict]:

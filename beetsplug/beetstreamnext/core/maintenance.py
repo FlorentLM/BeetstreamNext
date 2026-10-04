@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.constants import (
 )
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.health import scan_library
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA

@@ -5,7 +5,7 @@ from io import BytesIO
 from beetsplug.beetstreamnext.utils.htmx import modal_error
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art, read_uploaded_image
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, list_radios, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser

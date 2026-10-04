@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.core.serialise import Serialise
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.images import tokenised_image_url
-from beetsplug.beetstreamnext.core.database import dual_database
+from beetsplug.beetstreamnext.core.connection import dual_database
 from beetsplug.beetstreamnext.core.cache import preload_albums, get_song_counts
 
 

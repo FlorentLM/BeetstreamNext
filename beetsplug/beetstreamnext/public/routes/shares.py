@@ -13,7 +13,7 @@ from flask import render_template
 from .. import public_bp
 
 from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import send_file
 from beetsplug.beetstreamnext.core.ids import IDs

@@ -6,7 +6,7 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.external import query_lastfm
 from beetsplug.beetstreamnext.core.cache import preload_songs
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid

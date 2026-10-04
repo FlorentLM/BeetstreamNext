@@ -27,7 +27,7 @@ from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.settings import coerce_setting, settings_store
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.startup import run_server, prestartup_config
-from beetsplug.beetstreamnext.core.database import initialise_db
+from beetsplug.beetstreamnext.core.schema import initialise_db
 from beetsplug.beetstreamnext.core.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd
 )

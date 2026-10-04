@@ -9,7 +9,7 @@ from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.ids import IDs, TYPES_PLAYABLE
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import path_hash, resolve_path

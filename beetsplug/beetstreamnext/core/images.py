@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, fin
 from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
 
 if TYPE_CHECKING:

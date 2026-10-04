@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional, Callable
 from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.core.database import database, get_cipher
+from beetsplug.beetstreamnext.core.connection import database
+from beetsplug.beetstreamnext.core.encryption import get_cipher
 from beetsplug.beetstreamnext.core.security import ip_filter, rate_limiter
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
 

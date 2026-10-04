@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
     DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.external import (
     http_session, capped_image_fetch, normalize_url, query_podcastindex

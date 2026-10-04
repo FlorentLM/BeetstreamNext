@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS
 from beetsplug.beetstreamnext.core.commands import check_onboarding
-from beetsplug.beetstreamnext.core.database import ensure_secret, rotate_session_key
+from beetsplug.beetstreamnext.core.encryption import ensure_secret, rotate_session_key
 from beetsplug.beetstreamnext.core.import_watcher import ImportWatcher
 from beetsplug.beetstreamnext.core.health import startup_path_check
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL, RedactingTransLogger, apply_logs_redaction, bsn_logger

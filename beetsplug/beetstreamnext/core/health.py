@@ -10,7 +10,7 @@ from pathlib import Path
 from beets.library import Album, Item, Library as BeetsLibrary
 
 from beetsplug.beetstreamnext.application import app, with_app_context
-from beetsplug.beetstreamnext.core.database import database, dual_database
+from beetsplug.beetstreamnext.core.connection import database, dual_database
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.ids import IDs

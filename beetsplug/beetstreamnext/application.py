@@ -7,7 +7,7 @@ from flask_wtf.csrf import CSRFProtect
 
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION
 from beetsplug.beetstreamnext.core.logging import LOG_LEVEL
-from beetsplug.beetstreamnext.core.database import close_database
+from beetsplug.beetstreamnext.core.connection import close_database
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.text import format_duration
 

@@ -5,7 +5,7 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 

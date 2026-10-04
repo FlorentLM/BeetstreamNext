@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 import flask
 
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.utils.general import external_url
 
 

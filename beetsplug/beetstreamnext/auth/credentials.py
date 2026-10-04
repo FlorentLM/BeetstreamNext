@@ -5,7 +5,7 @@ import hmac
 import secrets
 from typing import Optional, Tuple
 
-from beetsplug.beetstreamnext.core.database import get_cipher
+from beetsplug.beetstreamnext.core.encryption import get_cipher
 from beetsplug.beetstreamnext.core.users_crud import get_userdata
 
 

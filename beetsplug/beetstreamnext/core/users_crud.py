@@ -9,7 +9,8 @@ import sqlite3
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.schemas import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.core.database import get_cipher, database
+from beetsplug.beetstreamnext.core.encryption import get_cipher
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 

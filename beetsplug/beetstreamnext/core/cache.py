@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Tuple
 import flask
 
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.utils.text import validate_mbid, split_beets_multi
 

@@ -14,8 +14,9 @@ import confuse
 import yaml
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH
-from beetsplug.beetstreamnext.core.database import write_beets_field
+from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH, ALPHANUM_CHARS
+from beetsplug.beetstreamnext.core.connection import dual_database
+from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.logging import bsn_logger
@@ -407,3 +408,59 @@ def write_config(content: str) -> Tuple[bool, str]:
         return False, f'Failed to write file: {e}'
 
     return True, 'Saved.'
+
+
+def write_beets_field(
+    entity_type: str,
+    entity_id: int,
+    key: str,
+    value: Any,
+    allow_flex: bool = False,
+) -> None:
+    """
+    Writes a field in the beets database.
+    """
+
+    if entity_type not in ('item', 'album'):
+        raise ValueError("entity_type must be 'item' or 'album'")
+
+    if not isinstance(key, str) or not ALPHANUM_CHARS.match(key):
+        raise ValueError(f'Invalid field name: {key!r}')
+
+    entity_id = int(entity_id)
+
+    core_table = 'items' if entity_type == 'item' else 'albums'
+    attr_table = f'{entity_type}_attributes'
+
+    db = dual_database()
+
+    if key in get_beets_schema(core_table):
+        cur = db.execute(
+            f"""
+            UPDATE beets.{core_table} 
+            SET {key} = ? 
+            WHERE id = ?
+            """, (value, entity_id),
+        )
+        db.commit()
+
+        # If that worked but changed 0 rows (wrong ID), user should know
+        if cur.rowcount == 0:
+            bsn_logger.warning(f'No beets {entity_type} found with ID {entity_id}')
+        return
+
+    if not allow_flex:
+        raise ValueError(
+            f"'{key}' is not a column of beets.{core_table}. "
+            f"Pass allow_flex=True to write it as a flexible attribute."
+        )
+
+    db.execute(
+        f"""
+        INSERT INTO beets.{attr_table} (entity_id, key, value)
+        VALUES (?, ?, ?)
+        ON CONFLICT(entity_id, key) DO UPDATE SET value = excluded.value
+        """,
+        (entity_id, key, str(value)),
+    )
+    db.commit()

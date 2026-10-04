@@ -3,7 +3,7 @@ import time
 from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.connection import database
 from beetsplug.beetstreamnext.core.external import (
     query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url
 )

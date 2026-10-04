@@ -11,7 +11,7 @@
 Imports use your Beets config and library database (i.e. the same one that **BeetstreamNext** serves), so it includes all your preferred import settings, other plugins, etc.
 
 > [!TIP]
-> I recommend using my [**beets-cataloghint**](https://github.com/FlorentLM/beets-cataloghint) plugin for better MusicBrainz matches :)
+> I recommend using my [**beets-cataloghint**](https://pypi.org/project/beets-cataloghint/) plugin for better MusicBrainz matches :)
 
 ## Manually selected folders
 

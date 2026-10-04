@@ -5,19 +5,28 @@ A lot of what shows up in your Subsonic client (artist photos, biographies, comm
 ## Metadata enrichment
 
 - **Artist biographies**: From [Last.fm](https://www.last.fm/api) if `lastfm_api_key` is set, otherwise from [Wikipedia](https://www.wikipedia.org/) if `fetch_artists_biographies` is enabled.
+
 - **Artist top tracks and similar artists/songs**: From Last.fm, using `lastfm_api_key`.
+
 - **Album/artist ratings**: Either your local users' ratings, or [Discogs](https://www.discogs.com/developers)' public community rating via `discogs_ratings` (`off` / `fallback` / `prefer`).
+
 - **Lyrics**: Served from Beets' stored lyrics if present, or fetched on-the-fly using Beets' `lyrics` plugin (`fetch_lyrics`), optionally written back into Beets with `save_lyrics`.
+
 - **Album version/edition info** (e.g. "Deluxe Edition", "Japanese Expanded Edition"): From [MusicBrainz](https://musicbrainz.org/), via `fetch_album_version`, optionally saved with `save_album_version`.
 
 ## Artwork
 
 - **Album art / artist images** are served from your Beets library's local art path when available.
+
 - When missing:
   - Album art from [Cover Art Archive](https://coverartarchive.org/).
+
   - Artist images from [Deezer](https://developers.deezer.com/api)'s public search API.
+
   - Controlled by `fetch_artists_images`.
+
   - `save_artists_images`/`save_album_art` optionally persist what was fetched to disk.
+
   - `follow_playlist_embedded_urls` lets cover art be pulled from a foreign playlist's `#EXTALBUMARTURL` lines, for albums that have no local art. (_only enable for playlist sources you trust!)_
 
 ## Sonic similarity

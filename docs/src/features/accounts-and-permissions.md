@@ -5,6 +5,7 @@
 Both authentication schemes from the Subsonic/OpenSubsonic spec are supported:
 
 - **API-key authentication**: This scheme is always supported and is the recommended one.
+
 - **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](../configuration.md#server--network) if you need it.
 
 ## Multi-user system

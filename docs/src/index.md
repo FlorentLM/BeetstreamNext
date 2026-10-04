@@ -18,7 +18,7 @@ See [Features](./features/index.md) for the full detailed view.
 - **[Installation](./installation.md)**: Installation instructions, as a Beets plugin or as a standalone server.
 - **[Usage](./usage/cli.md)**: The [CLI](./usage/cli.md) commands (plugin mode and standalone mode) and a quick tour of the [Web UI](usage/webui.md).
 - **[Configuration reference](./configuration.md)**: Every setting by category, and instructions on [reverse proxy & CORS](./reverse-proxy.md) setup.
-- **[Reference](./api-coverage.md)**: Details of [implemented endpoints](./api-coverage.md) and [tested clients](./clients.md).
+- **[Reference](./api-coverage.md)**: Details of [implemented endpoints](./api-coverage.md), [planned features](./planned.md) and [tested clients](./clients.md).
 
 ## Project history
 

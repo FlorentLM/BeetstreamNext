@@ -3,6 +3,7 @@
 **BeetstreamNext** can run in two modes:
 
 - **Plugin mode**: Attaches to an existing [Beets](https://beets.io) install and reuses its `config.yaml`.
+
 - **Standalone mode**: Runs in its own process, pointed directly at a `library.db` (still `beets`-managed, just not invoked _as_ a Beets plugin). Useful when Beets lives in a different container or host than **BeetstreamNext**.
 
 Both existing modes share the same [feature set](./features/index.md) and [settings](./configuration.md), only how you configure and launch the server differ slightly.
@@ -10,10 +11,14 @@ Both existing modes share the same [feature set](./features/index.md) and [setti
 ## Requirements
 
 - Python 3.13+
+
 - [**Beets**](https://beets.readthedocs.io/en/stable/guides/main.html) installed
   - **Plugin mode** needs a working Beets install with a library you already import music into.
+
   - **Standalone mode** needs `beets` available as a Python package (for its query engine and file-path handling).
+
 - [`ffmpeg`](https://ffmpeg.org/) installed and available on `PATH`
+
 - Optionally, [`mpv`](https://mpv.io/) installed and available on `PATH` for jukebox mode using the server's own audio hardware (not needed for the `sonos`/`chromecast` jukebox backends, or if you don't use jukebox mode. See [Jukebox](./features/jukebox.md) info).
 
 > [!NOTE]
@@ -239,7 +244,7 @@ Build-time options (`--build-arg`):
 Third-party beets plugins can be added without rebuilding the image. Set `BSN_BEETS_PLUGINS` to a whitespace-separated list of `pip`-friendly entries (PyPI packages names or git repositories):
 
 ```bash
--e BSN_BEETS_PLUGINS="beets-follow git+https://github.com/FlorentLM/beets-cataloghint.git git+https://github.com/someone/beets-otherplugin.git@v1.2.0"
+-e BSN_BEETS_PLUGINS="beets-cataloghint git+https://github.com/FlorentLM/beets-unskipper.git git+https://github.com/someone/beets-otherplugin.git@v1.2.0"
 ```
 
 Or in docker-compose:
@@ -247,12 +252,13 @@ Or in docker-compose:
 ```yaml
 environment:
   BSN_BEETS_PLUGINS: >-
-    beets-follow
-    git+https://github.com/FlorentLM/beets-cataloghint.git
+    beets-cataloghint
     git+https://github.com/FlorentLM/beets-unskipper.git
 ```
 
-> Check em out! → [beets-cataloghint](https://github.com/FlorentLM/beets-cataloghint) and [beets-unskipper](https://github.com/FlorentLM/beets-unskipper) ← 😃
+> [!TIP]
+>
+> Check em out! → [beets-cataloghint](https://pypi.org/project/beets-cataloghint/) and [beets-unskipper](https://pypi.org/project/beets-unskipper/) ← 😃
 
 Then enable the plugin in your beets config (`/config/beets/config.yaml`) as usual, and restart the container:
 

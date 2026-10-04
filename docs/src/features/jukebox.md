@@ -21,7 +21,9 @@ Jukebox mode must be enabled with the server-wide `jukebox_allowed` setting, and
 For any of the three backends, you can set _which_ device will play the audio with `jukebox_hardware_device`:
 
 - for **`server_hardware`**: an mpv `--audio-device` value (e.g. `alsa/hw:0,0` on Linux, `coreaudio/BuiltInSpeakerDevice` on macOS, etc). Empty for the system default.
+
 - for **`sonos`**: the Sonos speaker's IP address.
+
 - for **`chromecast`**: the Chromecast device's UUID, or its IP address/hostname.
 
 > [!NOTE]

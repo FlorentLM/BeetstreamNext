@@ -431,6 +431,42 @@
         }
     });
 
+    // Clear feed URL box after successful subscribe
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        if (target?.id !== 'podcastChannels') return;
+        if (target.querySelector('.flash-success')) document.getElementById('addPodcastForm')?.reset();
+    });
+
+    // Modal forms swap the list behind them on success
+    const MODAL_FORMS = {
+        usersTable: [['createModal', 'createForm'], ['editModal', null]],
+        radioList: [['createRadioModal', 'createRadioForm'], ['editRadioModal', null]],
+    };
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        const modals = MODAL_FORMS[target?.id];
+        if (!modals || !target.querySelector('.flash-success')) return;
+        const store = Alpine.store('modal');
+        for (const [modalId, formId] of modals) {
+            if (store.current !== modalId) continue;
+            const form = formId && document.getElementById(formId);
+            if (form) {
+                form.reset();
+                form.querySelector('.modal-result').innerHTML = '';
+                form.querySelector('#createRadioIconPreview')?.classList.add('hidden');
+            }
+            store.hide(modalId);
+        }
+    });
+
+    // Clear announcement box after successful post
+    document.body.addEventListener('htmx:after:swap', event => {
+        const target = event.detail.ctx.target;
+        if (target?.id !== 'chatModeration') return;
+        if (target.querySelector('.flash-success')) document.getElementById('announceForm')?.reset();
+    });
+
     // Edit user/radio forms, lazy-loaded
     document.body.addEventListener('htmx:after:swap', event => {
         const id = event.detail.ctx.target?.id;
@@ -581,28 +617,14 @@
                 if (iconInput) iconInput.click();
                 break;
             case 'edit-chat':
-                const msgId = target.dataset.id;
                 const oldText = target.dataset.text;
                 Alpine.store('modal').prompt("Edit user's chat message:", oldText).then(newText => {
                     if (newText !== null && newText.trim() !== "") {
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = `/admin/chat/edit/${msgId}`;
-
-                        const csrfInput = document.createElement('input');
-                        csrfInput.type = 'hidden';
-                        csrfInput.name = 'csrf_token';
-                        csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
-                        form.appendChild(csrfInput);
-
-                        const msgInput = document.createElement('input');
-                        msgInput.type = 'hidden';
-                        msgInput.name = 'message';
-                        msgInput.value = newText;
-                        form.appendChild(msgInput);
-
-                        document.body.appendChild(form);
-                        form.submit();
+                        htmx.ajax('post', target.dataset.url, {
+                            target: '#chatModeration',
+                            swap: 'innerHTML',
+                            values: {message: newText},
+                        });
                     }
                 });
                 break;
@@ -707,16 +729,15 @@
         if (entries.includes(clientIp)) return;    // current IP is one of the entries: no problemo
 
         event.preventDefault();
+        event.stopPropagation();   // Keep htmx from sending the unconfirmed submit
         const listed = entries.map(e => `'${e}'`).join(', ');
         Alpine.store('modal').confirm(
             `Warning: Your current IP (${clientIp || 'unknown'}) is NOT ${entries.length === 1 ? "" : "listed in"} ${listed}. ` +
             `\n\nAccess will be restricted to ${entries.length === 1 ? "that IP" : "these IPs"} and the current IP will lose access immediately.\n\nContinue?`
         ).then(ok => {
-            if (!ok) return;
-            if (form.hasAttribute('hx-post')) htmx.trigger(form, 'confirmed');
-            else form.submit();
+            if (ok) htmx.trigger(form, 'confirmed');
         });
-    });
+    }, true);
 
     // Init
 

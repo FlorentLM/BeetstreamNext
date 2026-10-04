@@ -25,6 +25,7 @@
                 <td class="actions-cell">
                     <button class="icon-btn"
                             data-action="edit-chat"
+                            data-url="{{ url_for('admin.route_edit_chat_message', msg_id=m.id, chat_page=chat_page) }}"
                             data-id="{{ m.id }}"
                             data-text="{{ m.message | e }}"
                             title="Edit"

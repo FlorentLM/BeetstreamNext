@@ -20,9 +20,10 @@ def podcast_role_required(f):
     return decorated
 
 
-def _podcasts_partial(username: str, message: str | None = None, ok: bool = True) -> str:
+def _podcasts_partial(username: str, message: str | None = None, ok: bool = True, notices: list | None = None) -> str:
     return flask.render_template('partials/account_podcasts.html',
-                                 podcasts=flask.current_app.config['podcast_manager'].subscribed_channels(username), message=message, ok=ok)
+                                 podcasts=flask.current_app.config['podcast_manager'].subscribed_channels(username),
+                                 message=message, ok=ok, notices=notices)
 
 
 def _shares_partial(username: str) -> str:
@@ -76,11 +77,12 @@ def route_add_podcast() -> str:
 
 @account_bp.route('/podcasts/import-opml', methods=['POST'])
 @podcast_role_required
-def route_import_podcast_opml() -> flask.Response:
+def route_import_podcast_opml() -> str:
 
-    flask.current_app.config['podcast_manager'].import_opml_upload(flask.g.account_user)
+    username = flask.g.account_user
+    notices = flask.current_app.config['podcast_manager'].import_opml_upload(username)
 
-    return flask.redirect(flask.url_for('account.route_account'))
+    return _podcasts_partial(username, notices=notices)
 
 
 @account_bp.route('/podcasts/export-opml', methods=['GET'])

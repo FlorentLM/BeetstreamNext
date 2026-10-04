@@ -1,0 +1,28 @@
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+{% endif %}
+<div class="avatar-cell">
+    {% if user.avatarLastChanged %}
+        <img class="user-avatar" alt=""
+             src="{{ url_for('account.route_serve_avatar') }}?v={{ (user.avatarLastChanged or 0)|int }}">
+    {% else %}
+        <span class="user-avatar user-avatar-placeholder">{{ user.username[0]|upper }}</span>
+    {% endif %}
+
+    <form hx-post="{{ url_for('account.route_upload_avatar') }}" hx-encoding="multipart/form-data"
+          hx-target="#avatarBlock" hx-swap="innerHTML"
+          enctype="multipart/form-data" class="form-inline" id="avatarForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file" id="avatarInput" name="avatar" accept="image/jpeg,image/png,image/webp"
+               class="hidden">
+        <button type="button" class="btn btn-outline" data-action="pick-file" data-target="avatarInput">Change avatar</button>
+    </form>
+
+    {% if user.avatarLastChanged %}
+        <form hx-post="{{ url_for('account.route_delete_avatar') }}"
+              hx-target="#avatarBlock" hx-swap="innerHTML" class="form-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline">Remove</button>
+        </form>
+    {% endif %}
+</div>

@@ -26,78 +26,66 @@ def route_save_beets_config() -> str:
 
 @admin_bp.route('/maintenance/clear-cache', methods=['POST'])
 @admin_required
-def route_clear_cache() -> flask.Response:
+def route_clear_cache() -> str:
     try:
         cleared = clear_requests_caches(
             flask.current_app.config['THUMBNAIL_CACHE_PATH'],
             flask.current_app.config['HTTP_CACHE_PATH']
         )
-        if cleared:
-            flask.flash(f"Cleared: {', '.join(cleared)}.", 'success')
-        else:
-            flask.flash('Nothing to clear.', 'info')
     except RuntimeError as e:
-        flask.flash(str(e), 'error')
+        return flask.render_template('partials/action_result.html', message=str(e), ok=False)
 
-    return back_to('maintenance')
+    if cleared:
+        return flask.render_template('partials/action_result.html', message=f"Cleared: {', '.join(cleared)}.", ok=True)
+    return flask.render_template('partials/action_result.html', message='Nothing to clear.', ok=None)
 
 
 @admin_bp.route('/maintenance/database-cleanup', methods=['POST'])
 @admin_required
-def route_database_cleanup() -> flask.Response:
+def route_database_cleanup() -> str:
     try:
         purged = sweep_stale_references()
-        if purged:
-            details = ', '.join(f'{n} {label}' for label, n in purged.items())
-            flask.flash(f'Purged stale references: {details}.', 'success')
-        else:
-            flask.flash('No stale references found.', 'info')
-
     except Exception as e:
         err = f'{SERVER_NAME} database cleanup failed: {e}'
         bsn_logger.error(err)
-        flask.flash(err, 'error')
+        return flask.render_template('partials/action_result.html', message=err, ok=False)
 
-    return back_to('maintenance')
+    if purged:
+        details = ', '.join(f'{n} {label}' for label, n in purged.items())
+        return flask.render_template('partials/action_result.html', message=f'Purged stale references: {details}.', ok=True)
+    return flask.render_template('partials/action_result.html', message='No stale references found.', ok=None)
 
 
 @admin_bp.route('/maintenance/cleanup-offline-files', methods=['POST'])
 @admin_required
-def route_cleanup_offlines() -> flask.Response:
+def route_cleanup_offlines() -> str:
     try:
         purged = clear_offline_files()
-        if purged:
-            details = ', '.join(f'{n} {label}' for label, n in purged.items())
-            flask.flash(f'Swept: {details}.', 'success')
-        else:
-            flask.flash('Nothing to sweep.', 'info')
     except Exception as e:
         err = f'{SERVER_NAME} cache sweep failed: {e}'
         bsn_logger.error(err)
-        flask.flash(err, 'error')
+        return flask.render_template('partials/action_result.html', message=err, ok=False)
 
-    return back_to('maintenance')
+    if purged:
+        details = ', '.join(f'{n} {label}' for label, n in purged.items())
+        return flask.render_template('partials/action_result.html', message=f'Swept: {details}.', ok=True)
+    return flask.render_template('partials/action_result.html', message='Nothing to sweep.', ok=None)
 
 
 @admin_bp.route('/maintenance/audiomuse-fingerprint', methods=['POST'])
 @admin_required
-def route_audiomuse_fingerprint() -> flask.Response:
+def route_audiomuse_fingerprint() -> str:
     ok, message = start_audiomuse_analysis()
-    flask.flash(message, 'success' if ok else 'error')
-    return back_to('maintenance')
+    return flask.render_template('partials/action_result.html', message=message, ok=ok)
 
 
 @admin_bp.route('/maintenance/health-scan', methods=['POST'])
 @admin_required
-def route_health_scan() -> flask.Response:
+def route_health_scan() -> str:
     full = flask.request.form.get('full', type=safe_str) == '1'
-    started, message = start_scan(full=full)
+    start_scan(full=full)
 
-    if flask.request.headers.get('HX-Request'):
-        return route_health_scan_status()
-
-    flask.flash(message, 'success' if started else 'info')
-    return back_to('maintenance')
+    return route_health_scan_status()
 
 
 @admin_bp.route('/maintenance/health-scan-status', methods=['GET'])

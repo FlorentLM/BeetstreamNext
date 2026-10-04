@@ -1,0 +1,3 @@
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' if ok is sameas false else 'info' }}">{{ message }}</div>
+{% endif %}

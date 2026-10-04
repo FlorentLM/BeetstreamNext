@@ -1,8 +1,12 @@
 <p class="modal-username">{{ user.username }}</p>
 
-<form id="editUserForm" method="POST" enctype="multipart/form-data"
-      action="{{ url_for('admin.route_update_user', username=user.username) }}">
+<form id="editUserForm" enctype="multipart/form-data"
+      hx-post="{{ url_for('admin.route_update_user', username=user.username) }}"
+      hx-encoding="multipart/form-data"
+      hx-target="#usersTable"
+      hx-swap="innerHTML">
     {{ edit_form.csrf_token }}
+    <div class="modal-result" id="editUserResult"></div>
 
     <div class="form-group">
         <label>Avatar <span class="label-hint">(optional)</span></label>
@@ -63,9 +67,12 @@
 <hr class="modal-separator">
 
 <div class="form-group">
-    <form method="POST" class="form-inline"
-          data-confirm="Generate a new API key for {{ user.username | e }}? The current key will stop working immediately."
-          action="{{ url_for('admin.route_regenerate_api_key', username=user.username) }}">
+    <form class="form-inline"
+          hx-trigger="confirmed"
+          hx-post="{{ url_for('admin.route_regenerate_api_key', username=user.username) }}"
+          hx-target="#usersTable"
+          hx-swap="innerHTML"
+          data-confirm="Generate a new API key for {{ user.username | e }}? The current key will stop working immediately.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-warning btn-small">Update API key</button>
     </form>

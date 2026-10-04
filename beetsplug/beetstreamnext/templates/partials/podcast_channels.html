@@ -5,6 +5,9 @@
 {% if message %}
     <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
 {% endif %}
+{% for text, category in notices or [] %}
+    <div class="flash flash-{{ category }}">{{ text }}</div>
+{% endfor %}
 {% for ch in channels %}
     <div class="channel-row">
         <div class="channel-row-header">

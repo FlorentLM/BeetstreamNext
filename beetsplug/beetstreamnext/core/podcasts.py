@@ -788,20 +788,17 @@ class PodcastManager:
         ET.indent(root)
         return ET.tostring(root, encoding='utf-8', xml_declaration=True)
 
-    def import_opml_upload(self, username: str) -> None:
-        """Import the OPML file from the current request and flash the outcome."""
-        import flask
+    def import_opml_upload(self, username: str) -> List[Tuple[str, str]]:
+        """Import the OPML file from the current request. Returns (message, flash category) for the outcome."""
 
         try:
             data = read_upload('opml_file', MAX_OPML_BYTES)
             if data is None:
-                flask.flash('Choose an OPML file to import.', 'error')
-            else:
-                for message, category in self.import_opml(username, data):
-                    flask.flash(message, category)
+                return [('Choose an OPML file to import.', 'error')]
+            return self.import_opml(username, data)
 
         except ValueError as e:
-            flask.flash(f'Could not import OPML file: {e}', 'error')
+            return [(f'Could not import OPML file: {e}', 'error')]
 
     def import_opml(self, username: str, data: bytes) -> List[Tuple[str, str]]:
         """

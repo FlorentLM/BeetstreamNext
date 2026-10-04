@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import admin_bp, admin_required, back_to
+from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -35,9 +35,9 @@ def chat_page_context(page: int = 1) -> dict:
     return {'chat_messages': messages, 'chat_page': page, 'chat_pages': pages}
 
 
-def _chat_partial(message: str | None = None) -> str:
+def _chat_partial(message: str | None = None, ok: bool = True) -> str:
     page = flask.request.args.get('chat_page', default=1, type=int)
-    return flask.render_template('partials/chat_table.html', message=message, ok=True, **chat_page_context(page))
+    return flask.render_template('partials/chat_table.html', message=message, ok=ok, **chat_page_context(page))
 
 
 @admin_bp.route('/chat', methods=['GET'])
@@ -48,16 +48,14 @@ def route_chat() -> str:
 
 @admin_bp.route('/chat/announce', methods=['POST'])
 @admin_required
-def route_add_announcement() -> flask.Response:
+def route_add_announcement() -> str:
     message = safe_str(flask.request.form.get('message', '').strip())
 
     if not message:
-        flask.flash('Announcement cannot be empty.', 'error')
-        return back_to('chat')
+        return _chat_partial('Announcement cannot be empty.', ok=False)
 
     if len(message) > CHAT_MESSAGE_MAX_LEN:
-        flask.flash(f'Announcement exceeds maximum length ({CHAT_MESSAGE_MAX_LEN} characters).', 'error')
-        return back_to('chat')
+        return _chat_partial(f'Announcement exceeds maximum length ({CHAT_MESSAGE_MAX_LEN} characters).', ok=False)
 
     with database() as db:
         db.execute(
@@ -66,8 +64,8 @@ def route_add_announcement() -> flask.Response:
             VALUES (?, ?, ?)
             """, (ANNOUNCEMENT_USERNAME, int(time.time() * 1000), message)
         )
-    flask.flash('Announcement posted.', 'success')
-    return back_to('chat')
+
+    return _chat_partial('Announcement posted.')
 
 
 @admin_bp.route('/chat/delete/<int:msg_id>', methods=['POST'])
@@ -86,12 +84,11 @@ def route_delete_chat_message(msg_id: int) -> str:
 
 @admin_bp.route('/chat/edit/<int:msg_id>', methods=['POST'])
 @admin_required
-def route_edit_chat_message(msg_id: int) -> flask.Response:
+def route_edit_chat_message(msg_id: int) -> str:
     new_message = safe_str(flask.request.form.get('message', '').strip())
 
     if not new_message:
-        flask.flash('Message cannot be empty.', 'error')
-        return back_to('chat')
+        return _chat_partial('Message cannot be empty.', ok=False)
 
     with database() as db:
         db.execute(
@@ -101,5 +98,5 @@ def route_edit_chat_message(msg_id: int) -> flask.Response:
             WHERE id = ?
             """, (new_message, msg_id)
         )
-    flask.flash('Chat message updated.', 'success')
-    return back_to('chat')
+
+    return _chat_partial('Chat message updated.')

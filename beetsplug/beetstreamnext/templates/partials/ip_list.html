@@ -10,8 +10,11 @@
         <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
             {{ pinned|length }} pinned via a CLI flag, env var, or config file.</p>
     {% endif %}
-    <form method="POST"
-          action="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
+    <form hx-post="{{ url_for('admin.route_ip_add', list_type=list_type) }}"
+          hx-trigger="submit, confirmed"
+          hx-target="closest .card"
+          hx-swap="outerHTML"
+          hx-disable="find button"
           class="ip-add-form"
           data-list-type="{{ list_type }}"
           data-first-entry="{{ 'true' if not ips else 'false' }}"

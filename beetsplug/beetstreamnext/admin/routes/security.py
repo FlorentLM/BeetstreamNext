@@ -1,7 +1,7 @@
 from __future__ import annotations
 import flask
 
-from .. import admin_bp, admin_required, back_to
+from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.settings import settings_store
@@ -50,27 +50,25 @@ def route_ip_list(list_type: str) -> str:
 
 @admin_bp.route('/settings/security/ip/<list_type>/add', methods=['POST'])
 @admin_required
-def route_ip_add(list_type: str) -> flask.Response:
+def route_ip_add(list_type: str) -> str:
     key = IP_LIST_SETTINGS.get(list_type)
     if key is None:
         flask.abort(404)
 
     ip = (flask.request.form.get('ip') or '').strip()
     if not ip:
-        flask.flash('IP address is required.', 'error')
-        return back_to('security')
+        return _ip_list_partial(list_type, 'IP address is required.', ok=False)
 
     current = list(settings_store.get(key))
     if ip in current:
-        flask.flash(f'{ip} is already in the {list_type}.', 'info')
-    else:
-        try:
-            settings_store.set(key, current + [ip])
-            flask.flash(f'Added {ip} to {list_type}.', 'success')
-        except (ValueError, PermissionError) as e:
-            flask.flash(str(e), 'error')
+        return _ip_list_partial(list_type, f'{ip} is already in the {list_type}.', ok=False)
 
-    return back_to('security')
+    try:
+        settings_store.set(key, current + [ip])
+    except (ValueError, PermissionError) as e:
+        return _ip_list_partial(list_type, str(e), ok=False)
+
+    return _ip_list_partial(list_type, f'Added {ip} to {list_type}.')
 
 
 @admin_bp.route('/settings/security/ip/<list_type>/remove', methods=['POST'])
@@ -112,7 +110,11 @@ def route_rate_limits() -> str:
 
 @admin_bp.route('/maintenance/clear-rate-limits', methods=['POST'])
 @admin_required
-def route_clear_rate_limits() -> flask.Response:
+def route_clear_rate_limits() -> str:
     n = rate_limiter.purge()
-    flask.flash(f'Cleared rate-limit state for {n} entr{"y" if n == 1 else "ies"}.', 'success')
-    return back_to('maintenance')
+    return flask.render_template(
+        'partials/rate_limit.html',
+        report=rate_limiter.report(),
+        message=f'Cleared rate-limit state for {n} entr{"y" if n == 1 else "ies"}.',
+        ok=True,
+    )

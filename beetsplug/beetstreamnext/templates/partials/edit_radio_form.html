@@ -1,6 +1,10 @@
-<form id="editRadioForm" method="POST" enctype="multipart/form-data"
-      action="{{ url_for('admin.route_update_radio', station_id=station.id) }}">
+<form id="editRadioForm" enctype="multipart/form-data"
+      hx-post="{{ url_for('admin.route_update_radio', station_id=station.id) }}"
+      hx-encoding="multipart/form-data"
+      hx-target="#radioList"
+      hx-swap="innerHTML">
     {{ radio_form.csrf_token }}
+    <div class="modal-result" id="editRadioResult"></div>
 
     <div class="form-group">
         <label>Name</label>

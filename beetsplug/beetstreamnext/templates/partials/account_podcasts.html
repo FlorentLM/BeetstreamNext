@@ -1,7 +1,13 @@
 {% from '_macros.html' import podcast_title %}
+
 {% if message %}
     <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
 {% endif %}
+
+{% for text, category in notices or [] %}
+    <div class="flash flash-{{ category }}">{{ text }}</div>
+{% endfor %}
+
 <div class="table-container">
     <table>
         <thead>

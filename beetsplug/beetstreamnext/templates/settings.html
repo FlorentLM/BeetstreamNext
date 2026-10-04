@@ -341,7 +341,11 @@
                     <h2>Post Announcement</h2>
                 </div>
                 <p class="card-hint">Posted to chat as &ldquo;Server&rdquo;, visible to every connected client.</p>
-                <form method="POST" action="{{ url_for('admin.route_add_announcement') }}" class="announce-form">
+                <form class="announce-form" id="announceForm"
+                      hx-post="{{ url_for('admin.route_add_announcement') }}"
+                      hx-target="#chatModeration"
+                      hx-swap="innerHTML"
+                      hx-disable="find button">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="text" name="message" placeholder="e.g. Server restarting for maintenance at 22:00 UTC"
                            maxlength="1000" required>
@@ -398,7 +402,10 @@
                         <div id="rate-limit-state" class="rate-limit-state">
                             <p class="empty-state">Loading...</p>
                         </div>
-                        <form method="POST" action="{{ url_for('admin.route_clear_rate_limits') }}"
+                        <form hx-post="{{ url_for('admin.route_clear_rate_limits') }}"
+                              hx-trigger="confirmed"
+                              hx-target="#rate-limit-state"
+                              hx-swap="innerHTML"
                               data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
                               class="rate-limit-clear">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -409,7 +416,9 @@
                     <div class="card">
                         <div class="table-header">
                             <h2>Podcast Channels</h2>
-                            <form method="POST" action="{{ url_for('admin.route_refresh_all_podcasts') }}"
+                            <form hx-post="{{ url_for('admin.route_refresh_all_podcasts') }}"
+                                  hx-target="#podcastChannels"
+                                  hx-swap="innerHTML"
                                   class="form-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-outline">Refresh all</button>
@@ -438,15 +447,21 @@
                             </div>
                         {% endif %}
 
-                        <form method="POST" action="{{ url_for('admin.route_add_podcast') }}" class="ip-add-form"
-                              id="addPodcastForm">
+                        <form class="ip-add-form" id="addPodcastForm"
+                              hx-post="{{ url_for('admin.route_add_podcast') }}"
+                              hx-target="#podcastChannels"
+                              hx-swap="innerHTML"
+                              hx-disable="find button">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
                                    required>
                             <button type="submit" class="btn btn-primary">Subscribe</button>
                         </form>
 
-                        <form method="POST" action="{{ url_for('admin.route_import_podcast_opml') }}"
+                        <form hx-post="{{ url_for('admin.route_import_podcast_opml') }}"
+                              hx-encoding="multipart/form-data"
+                              hx-target="#podcastChannels"
+                              hx-swap="innerHTML"
                               enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="file" name="opml_file" id="podcastOpmlFile"
@@ -550,18 +565,25 @@
                     {% endfor %}
                 </dl>
                 <div class="button-row">
-                    <form method="POST" action="{{ url_for('admin.route_clear_cache') }}"
+                    <form hx-post="{{ url_for('admin.route_clear_cache') }}"
+                          hx-trigger="confirmed"
+                          hx-target="#cache-result"
+                          hx-swap="innerHTML"
                           data-confirm="Clear all cached HTTP requests and thumbnails?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline">Clear thumbnails &amp; HTTP cache</button>
                     </form>
 
-                    <form method="POST" action="{{ url_for('admin.route_cleanup_offlines') }}"
+                    <form hx-post="{{ url_for('admin.route_cleanup_offlines') }}"
+                          hx-trigger="confirmed"
+                          hx-target="#cache-result"
+                          hx-swap="innerHTML"
                           data-confirm="Clear old offline files?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline">Cleanup leftover files</button>
                     </form>
                 </div>
+                <div id="cache-result"></div>
             </div>
 
             <div class="card">
@@ -571,10 +593,15 @@
                     shares that
                     point at a song or podcast episode that no longer exists). Also runs periodically in the background.
                 </p>
-                <form method="POST" action="{{ url_for('admin.route_database_cleanup') }}" class="card-body-form">
+                <form hx-post="{{ url_for('admin.route_database_cleanup') }}"
+                      hx-target="#db-cleanup-result"
+                      hx-swap="innerHTML"
+                      hx-disable="find button"
+                      class="card-body-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline">Run cleanup</button>
                 </form>
+                <div id="db-cleanup-result"></div>
             </div>
 
             <div class="card">
@@ -604,15 +631,16 @@
                          hx-swap="innerHTML"></div>
                 </details>
                 <div class="button-row">
-                    <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
-                          hx-post="{{ url_for('admin.route_health_scan') }}"
-                          hx-target="#health-scan-status" hx-swap="innerHTML">
+                    <form hx-post="{{ url_for('admin.route_health_scan') }}"
+                          hx-target="#health-scan-status"
+                          hx-swap="innerHTML">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-primary">Scan for changes</button>
                     </form>
-                    <form method="POST" action="{{ url_for('admin.route_health_scan') }}"
-                          hx-post="{{ url_for('admin.route_health_scan') }}" hx-trigger="confirmed"
-                          hx-target="#health-scan-status" hx-swap="innerHTML"
+                    <form hx-post="{{ url_for('admin.route_health_scan') }}"
+                          hx-trigger="confirmed"
+                          hx-target="#health-scan-status"
+                          hx-swap="innerHTML"
                           data-confirm="Re-check every song in the library, including ones already checked? This can take a while on large libraries.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="full" value="1">
@@ -633,11 +661,15 @@
                     <code>acoustid_id</code>
                     / <code>acoustid_fingerprint</code> fields isn't currently possible.
                 </p>
-                <form method="POST" action="{{ url_for('admin.route_audiomuse_fingerprint') }}" class="card-body-form"
+                <form hx-post="{{ url_for('admin.route_audiomuse_fingerprint') }}"
+                      hx-trigger="confirmed"
+                      hx-target="#fingerprint-result"
+                      hx-swap="innerHTML" class="card-body-form"
                       data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline">Fingerprint library</button>
                 </form>
+                <div id="fingerprint-result"></div>
             </div>
 
             <div class="card">
@@ -755,8 +787,11 @@
             <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
             <h2>Add New User</h2>
             <form id="createForm" aria-label="Create BeetstreamNext user"
-                  action="{{ url_for('admin.route_create_user') }}" method="POST">
+                  hx-post="{{ url_for('admin.route_create_user') }}"
+                  hx-target="#usersTable"
+                  hx-swap="innerHTML">
                 {{ create_form.csrf_token }}
+                <div class="modal-result" id="createUserResult"></div>
                 <div class="form-group">
                     <label for="createUsername">Username</label>
                     {{ create_form.username(placeholder="Enter username", autocomplete="username") }}
@@ -832,8 +867,13 @@
                     <div class="suggestion-list" id="radioDiscoveryResults"></div>
                 </div>
             {% endif %}
-            <form action="{{ url_for('admin.route_create_radio') }}" method="POST" enctype="multipart/form-data">
+            <form id="createRadioForm"
+                  hx-post="{{ url_for('admin.route_create_radio') }}"
+                  hx-encoding="multipart/form-data"
+                  hx-target="#radioList"
+                  hx-swap="innerHTML" enctype="multipart/form-data">
                 {{ radio_form.csrf_token }}
+                <div class="modal-result" id="createRadioResult"></div>
                 <div class="form-group">
                     <label>Name</label>
                     {{ radio_form.name(id="createRadioName", placeholder="My Favorite Station") }}
@@ -875,26 +915,8 @@
         </div>
     </div>
 
-    {% if new_api_key %}
-        <!-- One-time API key display: rendered on this page load only. -->
-        <div class="modal-overlay" id="apiKeyModal" x-data="modalPanel('apiKeyModal')"
-             :class="{ active: isOpen }" x-init="open()">
-            <div class="modal-content">
-                <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
-                <h2>API key for {{ new_api_key.username }}</h2>
-                <p class="api-key-hint">
-                    Please copy your API key and store it safely. It will <strong>not</strong> be shown again.
-                </p>
-                <div class="api-key-box">
-                    <code id="apiKeyValue">{{ new_api_key.key }}</code>
-                    <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
-                </div>
-                <button type="button" class="btn btn-primary btn-full" @click="close()">
-                    I've saved the key
-                </button>
-            </div>
-        </div>
-    {% endif %}
+    {# One-time API key display #}
+    <div id="apiKeySlot"></div>
 {% endblock %}
 
 {% block scripts %}

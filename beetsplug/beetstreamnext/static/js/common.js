@@ -106,8 +106,16 @@
 
     document.addEventListener('change', event => {
         if (event.target.id === 'podcastOpmlFile' && event.target.files.length) {
-            event.target.form.submit();
+            event.target.form.requestSubmit();
         }
+    });
+
+    // Let the OPML file be picked again after an import
+    document.body.addEventListener('htmx:after:swap', event => {
+        const id = event.detail.ctx.target?.id;
+        if (id !== 'podcastChannels' && id !== 'accountPodcasts') return;
+        const input = document.getElementById('podcastOpmlFile');
+        if (input) input.value = '';
     });
 
     document.addEventListener('click', event => {

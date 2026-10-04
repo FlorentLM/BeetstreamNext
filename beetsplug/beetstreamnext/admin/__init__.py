@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from functools import wraps
 from typing import Callable
 import flask
@@ -39,7 +40,6 @@ def back_to(anchor: str) -> flask.Response:
 
 from .routes import (
     auth,
-    avatars,
     beets,
     chat,
     events,

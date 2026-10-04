@@ -91,12 +91,19 @@ for _name, _label, _default in USER_ROLES_SCHEMA:
     setattr(EditUserForm, _name, BooleanField(_label))
 
 
+def form_error_messages(form: FlaskForm) -> list[str]:
+    """Every WTForms validation error on form, as display strings."""
+    return [
+        error if field_name == 'confirm_password' else f'{field_name}: {error}'
+        for field_name, errors in form.errors.items()
+        for error in errors
+    ]
+
+
 def flash_form_errors(form: FlaskForm) -> None:
     """Flash every WTForms validation error on form (one flash message per error)."""
-    for field_name, errors in form.errors.items():
-        for error in errors:
-            msg = error if field_name == 'confirm_password' else f'{field_name}: {error}'
-            flask.flash(msg, 'error')
+    for msg in form_error_messages(form):
+        flask.flash(msg, 'error')
 
 
 def collect_form_data(form: FlaskForm) -> dict:

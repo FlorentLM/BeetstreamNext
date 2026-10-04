@@ -2,53 +2,52 @@ from __future__ import annotations
 
 import flask
 
+from beetsplug.beetstreamnext.utils.htmx import modal_error
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, load_all_users, set_user_avatar, session_stamp
-from beetsplug.beetstreamnext.core.images import read_uploaded_image
-from beetsplug.beetstreamnext.forms import UserForm, EditUserForm, collect_form_data, flash_form_errors
+from beetsplug.beetstreamnext.core.images import read_uploaded_image, avatar_response
+from beetsplug.beetstreamnext.forms import UserForm, EditUserForm, collect_form_data, form_error_messages
 from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS
+
+
+def _api_key_modal(username: str, raw_api_key: str) -> str:
+    modal = flask.render_template('partials/api_key_modal.html', new_api_key={'username': username, 'key': raw_api_key})
+    return f'<div id="apiKeySlot" hx-swap-oob="innerHTML">{modal}</div>'
 
 
 @admin_bp.route('/users/create', methods=['POST'])
 @admin_required
-def route_create_user() -> flask.Response:
+def route_create_user() -> str | flask.Response:
     form = UserForm()
 
-    if form.validate_on_submit():
-        try:
-            data = collect_form_data(form)
-            is_admin = data.pop('adminRole', False)
-            # username/password are passed positionally and csrf_token isn't a user field
-            # they are dropped them so they don't collide inside **data
-            data.pop('username', None)
-            data.pop('password', None)
-            data.pop('csrf_token', None)
-            raw_api_key = create_user(
-                form.username.data,
-                form.password.data,
-                admin=is_admin,
-                **data
-            )
+    if not form.validate_on_submit():
+        return modal_error(' '.join(form_error_messages(form)), 'createUserResult')
 
-            token = temporary_store.put({'username': safe_str(form.username.data), 'key': raw_api_key})
-            flask.session['_api_key_token'] = token
+    try:
+        data = collect_form_data(form)
+        is_admin = data.pop('adminRole', False)
+        # username/password are passed positionally and csrf_token isn't a user field
+        data.pop('username', None)
+        data.pop('password', None)
+        data.pop('csrf_token', None)
+        raw_api_key = create_user(
+            form.username.data,
+            form.password.data,
+            admin=is_admin,
+            **data
+        )
+    except ValueError as e:
+        return modal_error(str(e), 'createUserResult')
 
-            flask.flash(f"User '{form.username.data}' created successfully.", 'success')
+    except Exception as e:
+        bsn_logger.error(f'Unexpected error creating user: {e}')
+        return modal_error('An unexpected error occurred while creating the user.', 'createUserResult')
 
-        except ValueError as e:
-            flask.flash(str(e), 'error')
-
-        except Exception as e:
-            bsn_logger.error(f'Unexpected error creating user: {e}')
-            flask.flash('An unexpected error occurred while creating the user.', 'error')
-    else:
-        flash_form_errors(form)
-
-    return flask.redirect(flask.url_for('admin.route_settings'))
+    return _users_partial(f"User '{form.username.data}' created successfully.") + \
+        _api_key_modal(safe_str(form.username.data), raw_api_key)
 
 
 @admin_bp.route('/users/edit/<username>', methods=['GET'])
@@ -69,45 +68,42 @@ def route_edit_user(username) -> str:
 
 @admin_bp.route('/users/update/<username>', methods=['POST'])
 @admin_required
-def route_update_user(username) -> flask.Response:
+def route_update_user(username) -> str | flask.Response:
     form = EditUserForm()
 
-    if form.validate_on_submit():
-        try:
-            updates = collect_form_data(form)
+    if not form.validate_on_submit():
+        return modal_error(' '.join(form_error_messages(form)), 'editUserResult')
 
-            if username == flask.session.get('username') and not updates.get('adminRole'):
-                flask.flash("You can't remove your own admin role.", 'error')
-                return flask.redirect(flask.url_for('admin.route_settings'))
+    try:
+        updates = collect_form_data(form)
 
-            if form.password.data:
-                updates['password'] = form.password.data
+        if username == flask.session.get('username') and not updates.get('adminRole'):
+            return modal_error("You can't remove your own admin role.", 'editUserResult')
 
-            avatar = read_uploaded_image()
+        if form.password.data:
+            updates['password'] = form.password.data
 
-            update_user(username, **updates)
+        avatar = read_uploaded_image()
 
-            if 'password' in updates and username == flask.session.get('username'):
-                flask.session['pv'] = session_stamp(username)   # Keep session alive
+        update_user(username, **updates)
 
-            if avatar is not None:
-                set_user_avatar(username, avatar)
+        if 'password' in updates and username == flask.session.get('username'):
+            flask.session['pv'] = session_stamp(username)   # Keep session alive
 
-            elif flask.request.form.get('remove_avatar'):
-                set_user_avatar(username, None)
+        if avatar is not None:
+            set_user_avatar(username, avatar)
 
-            flask.flash(f"User '{username}' updated successfully.", 'success')
+        elif flask.request.form.get('remove_avatar'):
+            set_user_avatar(username, None)
 
-        except ValueError as e:
-            flask.flash(str(e), 'error')
+    except ValueError as e:
+        return modal_error(str(e), 'editUserResult')
 
-        except Exception as e:
-            bsn_logger.error(f"Unexpected error updating user '{username}': {e}")
-            flask.flash('An unexpected error occurred while updating the user.', 'error')
-    else:
-        flash_form_errors(form)
+    except Exception as e:
+        bsn_logger.error(f"Unexpected error updating user '{username}': {e}")
+        return modal_error('An unexpected error occurred while updating the user.', 'editUserResult')
 
-    return flask.redirect(flask.url_for('admin.route_settings'))
+    return _users_partial(f"User '{username}' updated successfully.")
 
 
 def _users_partial(message: str | None = None, ok: bool = True) -> str:
@@ -142,16 +138,17 @@ def route_delete_user(username) -> str:
 
 @admin_bp.route('/users/apikey/<username>', methods=['POST'])
 @admin_required
-def route_regenerate_api_key(username) -> flask.Response:
+def route_regenerate_api_key(username) -> str | flask.Response:
     try:
         raw_api_key = regenerate_api_key(username)
-
-        token = temporary_store.put({'username': username, 'key': raw_api_key})
-        flask.session['_api_key_token'] = token
-
-        flask.flash(f"API key for '{username}' regenerated. The old key no longer works.", 'success')
     except ValueError as e:
-        flask.flash(str(e), 'error')
+        return modal_error(str(e), 'editUserResult')
 
-    return flask.redirect(flask.url_for('admin.route_settings'))
+    return _users_partial(f"API key for '{username}' regenerated. The old key no longer works.") + \
+        _api_key_modal(username, raw_api_key)
 
+
+@admin_bp.route('/users/<username>/avatar', methods=['GET'])
+@admin_required
+def route_serve_avatar(username: str) -> flask.Response:
+    return avatar_response(username)

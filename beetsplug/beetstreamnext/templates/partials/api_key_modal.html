@@ -1,0 +1,17 @@
+<div class="modal-overlay" id="apiKeyModal" x-data="modalPanel('apiKeyModal')"
+     :class="{ active: isOpen }" x-init="open()">
+    <div class="modal-content">
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+        <h2>API key for {{ new_api_key.username }}</h2>
+        <p class="api-key-hint">
+            Please copy your API key and store it safely. It will <strong>not</strong> be shown again.
+        </p>
+        <div class="api-key-box">
+            <code id="apiKeyValue">{{ new_api_key.key }}</code>
+            <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
+        </div>
+        <button type="button" class="btn btn-primary btn-full" @click="close()">
+            I've saved the key
+        </button>
+    </div>
+</div>

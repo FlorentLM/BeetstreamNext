@@ -2,13 +2,14 @@ from __future__ import annotations
 import flask
 from io import BytesIO
 
-from .. import admin_bp, admin_required, back_to
+from beetsplug.beetstreamnext.utils.htmx import modal_error
+from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art, read_uploaded_image
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, list_radios, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser
-from beetsplug.beetstreamnext.forms import RadioStationForm, flash_form_errors
+from beetsplug.beetstreamnext.forms import RadioStationForm, form_error_messages
 from beetsplug.beetstreamnext.utils.text import safe_str, format_duration
 from beetsplug.beetstreamnext.utils.general import human_bytes
 
@@ -18,18 +19,16 @@ from beetsplug.beetstreamnext.utils.general import human_bytes
 
 @admin_bp.route('/radios/create', methods=['POST'])
 @admin_required
-def route_create_radio() -> flask.Response:
+def route_create_radio() -> str | flask.Response:
     form = RadioStationForm()
 
     if not form.validate_on_submit():
-        flash_form_errors(form)
-        return back_to('radios')
+        return modal_error(' '.join(form_error_messages(form)), 'createRadioResult')
 
     try:
         image = read_uploaded_image('image')
     except ValueError as e:
-        flask.flash(str(e), 'error')
-        return back_to('radios')
+        return modal_error(str(e), 'createRadioResult')
 
     favicon_url = (flask.request.form.get('favicon_url') or '').strip() or None
     station_id, error = create_station(
@@ -37,28 +36,24 @@ def route_create_radio() -> flask.Response:
     )
 
     if station_id is None:
-        flask.flash(f'Could not create radio station: {error}', 'error')
-    else:
-        flask.flash(f"Radio station '{form.name.data}' created.", 'success')
+        return modal_error(f'Could not create radio station: {error}', 'createRadioResult')
 
-    return back_to('radios')
+    return _radios_partial(f"Radio station '{form.name.data}' created.")
 
 
 @admin_bp.route('/radios/update/<int:station_id>', methods=['POST'])
 @admin_required
-def route_update_radio(station_id: int) -> flask.Response:
+def route_update_radio(station_id: int) -> str | flask.Response:
 
     form = RadioStationForm()
 
     if not form.validate_on_submit():
-        flash_form_errors(form)
-        return back_to('radios')
+        return modal_error(' '.join(form_error_messages(form)), 'editRadioResult')
 
     try:
         image = read_uploaded_image('image')
     except ValueError as e:
-        flask.flash(str(e), 'error')
-        return back_to('radios')
+        return modal_error(str(e), 'editRadioResult')
 
     if image is None and not flask.request.form.get('remove_image'):
 
@@ -76,11 +71,9 @@ def route_update_radio(station_id: int) -> flask.Response:
     error = update_station(station_id, safe_str(form.name.data), form.streamUrl.data, form.homepageUrl.data or None, image)
 
     if error:
-        flask.flash(f'Could not update radio station: {error}', 'error')
-    else:
-        flask.flash(f"Radio station '{form.name.data}' updated.", 'success')
+        return modal_error(f'Could not update radio station: {error}', 'editRadioResult')
 
-    return back_to('radios')
+    return _radios_partial(f"Radio station '{form.name.data}' updated.")
 
 
 @admin_bp.route('/radios/<int:station_id>/edit', methods=['GET'])
@@ -195,10 +188,16 @@ def route_serve_radio_image(station_id: int) -> flask.Response:
 ##
 # Podcasts
 
-def _channels_partial(message: str | None = None) -> str:
+def _channels_partial(message: str | None = None, ok: bool = True, notices: list | None = None) -> str:
     channels, total_size = flask.current_app.config['podcast_manager'].channels_overview()
-    return flask.render_template('partials/podcast_channels.html', channels=channels, total_size=total_size,
-                                 message=message, ok=True)
+    return flask.render_template(
+        'partials/podcast_channels.html',
+        channels=channels,
+        total_size=total_size,
+        message=message,
+        ok=ok,
+        notices=notices
+    )
 
 
 @admin_bp.route('/podcasts/channels', methods=['GET'])
@@ -209,26 +208,24 @@ def route_podcast_channels() -> str:
 
 @admin_bp.route('/podcasts/add', methods=['POST'])
 @admin_required
-def route_add_podcast() -> flask.Response:
+def route_add_podcast() -> str:
 
     url = (flask.request.form.get('url') or '').strip()
     channel_id, error = flask.current_app.config['podcast_manager'].create_channel(flask.session.get('username'), url)
 
     if channel_id is None:
-        flask.flash(f"Could not subscribe to podcast feed '{url}': {error}", 'error')
-    else:
-        flask.flash('Podcast channel added.', 'success')
+        return _channels_partial(f"Could not subscribe to podcast feed '{url}': {error}", ok=False)
 
-    return back_to('podcasts')
+    return _channels_partial('Podcast channel added.')
 
 
 @admin_bp.route('/podcasts/import-opml', methods=['POST'])
 @admin_required
-def route_import_podcast_opml() -> flask.Response:
+def route_import_podcast_opml() -> str:
 
-    flask.current_app.config['podcast_manager'].import_opml_upload(flask.session.get('username'))
+    notices = flask.current_app.config['podcast_manager'].import_opml_upload(flask.session.get('username'))
 
-    return back_to('podcasts')
+    return _channels_partial(notices=notices)
 
 
 @admin_bp.route('/podcasts/export-opml', methods=['GET'])
@@ -245,13 +242,12 @@ def route_discover_podcasts() -> str:
 
 @admin_bp.route('/podcasts/refresh', methods=['POST'])
 @admin_required
-def route_refresh_all_podcasts() -> flask.Response:
+def route_refresh_all_podcasts() -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.background_refresh()
-    flask.flash('Refreshing all podcast channels in the background.', 'info')
 
-    return back_to('podcasts')
+    return _channels_partial('Refreshing all podcast channels in the background.')
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/refresh', methods=['POST'])
@@ -299,52 +295,36 @@ def route_serve_podcast_image(channel_id: int) -> flask.Response:
     return response
 
 
-def _episode_action_done(message: str, category: str = 'info') -> flask.Response:
-    """
-    Success is silent (SSE status push updates the row), failures flash and force a refresh to display the message.
-    """
-    if flask.request.headers.get('HX-Request'):
-        if category == 'info':
-            return flask.Response(status=204)
-        flask.flash(message, category)
-        response = flask.Response(status=204)
-        response.headers['HX-Refresh'] = 'true'
-        return response
-
-    flask.flash(message, category)
-    return back_to('podcasts')
-
-
 @admin_bp.route('/podcasts/episode/<int:episode_id>/download', methods=['POST'])
 @admin_required
-def route_download_podcast_episode(episode_id: int) -> flask.Response:
+def route_download_podcast_episode(episode_id: int) -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     if podcast_manager.background_download(episode_id):
-        return _episode_action_done('Episode download started.')
+        return ''
 
-    return _episode_action_done('This episode has no known audio source.', 'error')
+    return flask.render_template('partials/action_result.html', message='This episode has no known audio source.', ok=False)
 
 
 @admin_bp.route('/podcasts/episode/<int:episode_id>/cancel-download', methods=['POST'])
 @admin_required
-def route_cancel_podcast_episode_download(episode_id: int) -> flask.Response:
+def route_cancel_podcast_episode_download(episode_id: int) -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     if podcast_manager.cancel_download(episode_id):
-        return _episode_action_done('Download cancelled.')
+        return ''
 
-    return _episode_action_done('This episode is not currently downloading.', 'error')
+    return flask.render_template('partials/action_result.html', message='This episode is not currently downloading.', ok=False)
 
 
 @admin_bp.route('/podcasts/episode/<int:episode_id>/delete', methods=['POST'])
 @admin_required
-def route_delete_podcast_episode(episode_id: int) -> flask.Response:
+def route_delete_podcast_episode(episode_id: int) -> str:
 
     podcast_manager = flask.current_app.config['podcast_manager']
     podcast_manager.delete_episode(episode_id)
 
-    return _episode_action_done('Episode file removed for all subscribers.')
+    return ''
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/episodes', methods=['GET'])
@@ -377,6 +357,5 @@ def route_podcast_episodes(channel_id: int) -> str:
 @admin_bp.route('/podcasts/status', methods=['GET'])
 @admin_required
 def route_podcast_status() -> flask.Response:
-    """Initial read of channel/episode status (live updates done over SSE)."""
-
+    """Initial read of channel/episode status."""
     return flask.jsonify(flask.current_app.config['podcast_manager'].status_snapshot())

@@ -1,3 +1,7 @@
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+{% endif %}
+
 {% if not report.entries %}
     <p class="empty-state">No active rate-limit failures.
         Blocking at {{ report.max_failures }} failures within {{ report.block_window_sec }}s.</p>

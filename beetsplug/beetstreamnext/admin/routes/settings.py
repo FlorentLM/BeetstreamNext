@@ -12,7 +12,6 @@ from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.users_crud import load_all_users
-from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.radio import list_radios
 from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_audiomuse_connection, test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
@@ -146,9 +145,6 @@ def route_test_podcastindex() -> flask.Response:
 @admin_bp.route('/')
 @admin_required
 def route_settings() -> flask.Response:
-    token = flask.session.pop('_api_key_token', None)
-    new_api_key = temporary_store.claim(token)
-
     settings_by_category = {cat: settings_store.get_for_ui(cat) for cat in SETTINGS_CATEGORIES}
     host_suggestions = flask.current_app.config.get('HOST_LIST', [])
 
@@ -208,7 +204,6 @@ def route_settings() -> flask.Response:
             radio_form=RadioStationForm(formdata=None),
             server_info=get_server_info(extended=True),
             current_username=flask.session.get('username'),
-            new_api_key=new_api_key,
             settings_categories=SETTINGS_CATEGORIES,
             settings_by_category=settings_by_category,
             setting_pills=setting_pills,

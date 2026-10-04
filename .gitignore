@@ -44,3 +44,10 @@ $RECYCLE.BIN/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Dev todos and any dotfiles
+TODOs.md
+.*
+
+# temporarily ignoring tests
+tests/

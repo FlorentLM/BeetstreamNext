@@ -10,7 +10,7 @@
             <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, v=a.uploaded_at|int) }}" alt="">
             <div class="channel-row-info">
                 <div class="username-name">{{ a.name }}</div>
-                <div class="email-cell">{% if a.has_mbid %}Linked to MusicBrainz ID{% else %}No MusicBrainz ID (will be lost if artist is renamed){% endif %}</div>
+                <div class="email-cell">{% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all credited artists{% else %}No MusicBrainz ID (will be lost if artist is renamed){% endif %}</div>
             </div>
             <div class="actions-cell">
                 <button class="icon-btn"

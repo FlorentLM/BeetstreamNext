@@ -12,14 +12,64 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 
 
 
+def joint_keys(name: str, names_raw: Optional[str], mbids_raw: Optional[str]) -> List[str]:
+    """
+    Keys of a joint credit, best first: the set of all members' mbids (survives renames) then the credit text.
+    """
+
+    keys = [IDs.encode_artist(name, joint_credit=True)]
+
+    mbids = [validate_mbid(m) for m in split_beets_multi(mbids_raw or '')]
+    if mbids and all(mbids) and len(mbids) == len(split_beets_multi(names_raw or '')):
+        keys.insert(0, IDs.encode_artist('+'.join(sorted(mbids)), joint_credit=True))
+
+    return keys
+
+
+@with_app_context
+def credit_keys(name: str) -> List[str]:
+    """Keys of a joint credit, or [] if name isn't a multi-artist credit."""
+
+    with flask.g.lib.transaction() as tx:
+        rows = tx.query(
+            """
+            SELECT albumartists, mb_albumartistids FROM albums
+            WHERE albumartist = ? COLLATE NOCASE LIMIT 1
+            """, (name,)
+        )
+        if not rows:
+            rows = tx.query(
+                """
+                SELECT artists, mb_artistids FROM items
+                WHERE artist = ? COLLATE NOCASE LIMIT 1
+                """, (name,)
+            )
+
+    if not rows or not IDs.is_joint_credit(rows[0][0], name):
+        return []
+
+    return joint_keys(name, rows[0][0], rows[0][1])
+
+
+def artist_keys(name: str, mbid: Optional[str] = None) -> List[str]:
+    """Keys an image can be stored under for this artist, best first."""
+
+    joint = credit_keys(name)
+    if joint:       # Never fall back to the first member's solo mbid
+        return joint
+
+    keys = [IDs.encode_artist(name, is_mbid=False)]     # image uploaded before the artist had an mbid
+    if mbid:
+        keys.insert(0, IDs.encode_artist(mbid))
+    return keys
+
+
 def find_uploaded_image(name: str, mbid: Optional[str] = None) -> bytes | None:
     """
     Manually uploaded image for this artist.
     """
 
-    keys = [IDs.encode_artist(name, is_mbid=False)]     # image uploaded before the artist had an mbid
-    if mbid:
-        keys.insert(0, IDs.encode_artist(mbid))
+    keys = artist_keys(name, mbid)
 
     with database() as db:
         rows = db.execute(
@@ -59,7 +109,7 @@ def set_image(name: str, mbid: Optional[str], image: bytes) -> None:
             ON CONFLICT(artist_key) DO UPDATE SET
                 name = excluded.name, image = excluded.image,
                 source = excluded.source, uploaded_at = excluded.uploaded_at
-            """, (IDs.encode_artist(mbid or name, is_mbid=bool(mbid)), name, image, 'manual', time.time())
+            """, (artist_keys(name, mbid)[0], name, image, 'manual', time.time())
         )
 
 
@@ -86,7 +136,14 @@ def list_images() -> List[dict]:
             """
         ).fetchall()
 
-    return [dict(r) | {'has_mbid': IDs.decode_artist(r['artist_key'])[1] == 'mbid'} for r in rows]
+    result = []
+    for r in rows:
+        kind = IDs.decode_artist(r['artist_key'])[1]
+        if kind == 'hash':
+            keys = credit_keys(r['name'])
+            kind = 'mbids' if len(keys) > 1 and keys[0] == r['artist_key'] else 'name'
+        result.append(dict(r) | {'link': kind})
+    return result
 
 
 @with_app_context
@@ -159,6 +216,11 @@ def library_keys() -> set[str]:
         ('items', (('artist', 'mb_artistid'), ('artists', 'mb_artistids'))),
     )
 
+    joint_cols = {
+        'albums': ('albumartist', 'albumartists', 'mb_albumartistids'),
+        'items': ('artist', 'artists', 'mb_artistids'),
+    }
+
     with flask.g.lib.transaction() as tx:
 
         for table, column_pairs in sources:
@@ -175,6 +237,12 @@ def library_keys() -> set[str]:
                     )
                     for row in rows:
                         add(row[0], row[1])
+
+            name_col, names_col, mbids_col = joint_cols[table]
+            if {name_col, names_col, mbids_col} <= cols:
+                for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):
+                    if name and IDs.is_joint_credit(names, name):
+                        keys.update(joint_keys(name, names, mbids))
     return keys
 
 

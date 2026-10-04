@@ -24,9 +24,11 @@ from beetsplug.beetstreamnext.constants import (
 
 def start_session(username: str, **extra) -> None:
     """Login `username` in the WebUI."""
+    from beetsplug.beetstreamnext.core.users_crud import session_stamp
     flask.session.clear()   # prevent session fixation
     flask.session.permanent = True
     flask.session['username'] = username
+    flask.session['pv'] = session_stamp(username)
     flask.session.update(extra)
 
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import hmac
 import flask
 from flask import Blueprint
 
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles
+from beetsplug.beetstreamnext.core.users_crud import load_user_roles, session_stamp
 from beetsplug.beetstreamnext.core.security import admin_host_allowed
 
 auth_bp = Blueprint('auth', __name__)
@@ -27,14 +28,16 @@ def home_for(roles: dict) -> str:
 def session_roles() -> dict | None:
     """
     Roles of the logged-in WebUI user, or None (clearing a stale session) if they may not be here.
-    Re-checked on every request, so a user who lost their role (or was deleted) is immediately blocked.
+    Re-checked on every request, so a user who lost their role (or was deleted), or whose password
+    changed since this session started, is immediately blocked.
     """
     username = flask.session.get('username')
     if not username:
         return None
 
     roles = load_user_roles(username)
-    if not can_login(roles):
+    stamp = flask.session.get('pv')
+    if not can_login(roles) or not stamp or not hmac.compare_digest(stamp, session_stamp(username) or ''):
         flask.session.clear()
         return None
 

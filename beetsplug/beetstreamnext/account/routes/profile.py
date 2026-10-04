@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.security import rate_limiter
 from beetsplug.beetstreamnext.core.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.users_crud import (
-    get_userdata, update_user, webui_login, regenerate_api_key, set_user_avatar
+    get_userdata, update_user, webui_login, session_stamp, regenerate_api_key, set_user_avatar
 )
 from beetsplug.beetstreamnext.forms import AccountProfileForm, ChangePasswordForm, flash_form_errors
 from beetsplug.beetstreamnext.core.images import save_uploaded_avatar, avatar_response
@@ -87,6 +87,11 @@ def route_change_password() -> flask.Response:
 
     form = ChangePasswordForm()
 
+    # Middleware only knows (ip, username) pair for Subsonic params so check it here
+    if rate_limiter.is_blocked(client_ip, username):
+        flask.flash('Too many failed attempts. Try again later.', 'error')
+        return flask.redirect(flask.url_for('account.route_account'))
+
     if form.validate_on_submit():
         ok, _ = webui_login(username, form.current_password.data)
         if not ok:
@@ -95,6 +100,9 @@ def route_change_password() -> flask.Response:
         else:
             try:
                 update_user(username, password=form.password.data)
+                rate_limiter.reset(client_ip, username)
+                # Other sessions now invalid, current one stays because it has the new stamp
+                flask.session['pv'] = session_stamp(username)
                 flask.flash('Password changed.', 'success')
             except ValueError as e:
                 flask.flash(str(e), 'error')

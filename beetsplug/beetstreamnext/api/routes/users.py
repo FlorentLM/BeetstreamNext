@@ -198,7 +198,7 @@ def endpoint_change_password() -> flask.Response:
     is_self = (target_user == flask.g.username)
     is_admin = flask.g.user_data.get('adminRole', False)
 
-    if not is_self and not is_admin:
+    if not is_admin and not (is_self and flask.g.user_data.get('settingsRole', False)):
         return subsonic_error(50, resp_fmt=resp_fmt)
 
     if not new_password:

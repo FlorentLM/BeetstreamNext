@@ -282,6 +282,17 @@ def load_all_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
     return [dict(zip(column_names, row)) for row in rows]
 
 
+def session_stamp(username: str) -> Optional[str]:
+    """
+    Stamp of a user's current password: a session ith non-matching stamp is rejected.
+    """
+    password = get_userdata(username, fields='password', include_password=True).get('password')
+    if password is None:
+        return None
+    key = str(app.config['SECRET_KEY']).encode('utf-8')   # Keyed with the session secret so the cookie reveals nothing
+    return hmac.new(key, password.encode('utf-8'), hashlib.sha256).hexdigest()[:32]
+
+
 def load_user_roles(username: str) -> dict:
     """Load all user fields except password, safe to cache in g."""
     return get_userdata(username)

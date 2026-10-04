@@ -337,7 +337,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
         conn.execute("""ALTER TABLE play_stats_new RENAME TO play_stats""")
 
         # likes/ratings: item_id is already TEXT, but may hold the old 'sg-<row id>' form
-        for table, ts_col in (('likes', 'starred_at'), ('ratings', 'rated_at')):
+        for table in ('likes', 'ratings'):
             legacy_rows = conn.execute(
                 f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'sg-[0-9]*'"""
             ).fetchall()

@@ -63,14 +63,14 @@ def validate_jukebox_device(x: Any) -> str:
         try:
             ipaddress.ip_address(s)
         except ValueError:
-            raise ValueError("Must be the Sonos speaker's IP address.")
+            raise ValueError("Must be the Sonos speaker's IP address.") from None
     elif backend == 'chromecast':
         try:
             UUID(s)
         except ValueError:
             parsed = parse_host(s)
             if not parsed.host or parsed.scheme or parsed.port:
-                raise ValueError("Must be the Chromecast's UUID, IP address, or hostname.")
+                raise ValueError("Must be the Chromecast's UUID, IP address, or hostname.") from None
 
     return s
 

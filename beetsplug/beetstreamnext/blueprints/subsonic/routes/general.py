@@ -143,7 +143,7 @@ def endpoint_get_genres() -> flask.Response:
 
     payload = {
         "genres": {
-            "genre": [dict(zip(["value", "songCount", "albumCount"], g)) for g in g_list]
+            "genre": [dict(zip(["value", "songCount", "albumCount"], g, strict=True)) for g in g_list]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

@@ -154,7 +154,7 @@ class Playlist:
 
             path_map = {row['path']: row for row in rows}
 
-            for (idx, entry), literal_bytes, decoded_bytes in zip(path_entries, literal_paths_bytes, decoded_paths_bytes):
+            for (idx, _entry), literal_bytes, decoded_bytes in zip(path_entries, literal_paths_bytes, decoded_paths_bytes, strict=True):
                 row = path_map.get(literal_bytes)
                 if not row and decoded_bytes is not None:
                     row = path_map.get(decoded_bytes)
@@ -579,9 +579,9 @@ class PlaylistProvider:
             path = Path(playlist.path)
             try:
                 os.remove(path)
-            except FileNotFoundError:
+            except FileNotFoundError as e:
                 err = f"Playlist {path.name} does not exist in {path.parent}."
                 bsn_logger.warning(err)
-                raise FileNotFoundError(err)
+                raise FileNotFoundError(err) from e
             finally:
                 self.deregister(playlist_id) # always remove from cache

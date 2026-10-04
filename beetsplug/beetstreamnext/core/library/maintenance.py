@@ -58,7 +58,7 @@ def clear_requests_caches(thumb_dir: str | Path, http_cache: str | Path) -> List
                 cleared.append(f'{n} thumbnail(s)')
         except Exception as e:
             bsn_logger.error(f'Thumbnail cache clear failed: {e}')
-            raise RuntimeError(f'Error clearing thumbnail cache: {e}')
+            raise RuntimeError(f'Error clearing thumbnail cache: {e}') from e
 
     # HTTP cache
     if http_cache.exists():
@@ -67,7 +67,7 @@ def clear_requests_caches(thumb_dir: str | Path, http_cache: str | Path) -> List
             cleared.append('HTTP cache')
         except Exception as e:
             bsn_logger.error(f'HTTP cache clear failed: {e}')
-            raise RuntimeError(f"Error clearing HTTP cache: {e}")
+            raise RuntimeError(f"Error clearing HTTP cache: {e}") from e
 
     return cleared
 

@@ -90,7 +90,7 @@ def _parse_opml(data: bytes) -> List[str]:
     try:
         root = ET.fromstring(data)
     except ET.ParseError as e:
-        raise ValueError(f'Not a valid OPML/XML file: {e}')
+        raise ValueError(f'Not a valid OPML/XML file: {e}') from e
 
     seen: set = set()
     urls: List[str] = []

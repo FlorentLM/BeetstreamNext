@@ -69,6 +69,10 @@ branch = true
 target-version = "py313"
 extend-exclude = ["docs", "things"]
 
+[tool.ruff.lint]
+# pyflakes + pycodestyle errors/warnings + import sanity + likely-bug checks
+select = ["F", "E4", "E7", "E9", "W6", "B"]
+
 [tool.ruff.lint.per-file-ignores]
 # blueprint packages import their route modules for the side effect of registering them
 "**/__init__.py" = ["F401", "E402"]

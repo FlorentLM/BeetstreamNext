@@ -91,7 +91,7 @@ def parse_host(raw: str) -> ParsedHost:
         try:
             end = raw.index(']')
         except ValueError:
-            raise ValueError(f'Invalid host: {raw}')
+            raise ValueError(f'Invalid host: {raw}') from None
         host_part = raw[1:end]
         rest = raw[end + 1:]
         port = _parse_port(rest[1:]) if rest.startswith(':') else None
@@ -113,7 +113,7 @@ def parse_host(raw: str) -> ParsedHost:
     except ValueError:
         normalized = host_part.rstrip('.').lower()
         if not _HOSTNAME_RE.match(normalized):
-            raise ValueError(f'Invalid host: {raw}')
+            raise ValueError(f'Invalid host: {raw}') from None
         host_part = normalized
 
     return ParsedHost(host=host_part, scheme=scheme, port=port)
@@ -125,7 +125,7 @@ def strip_host_port(raw_host: str) -> str:
         try:
             return raw_host[1:raw_host.index(']')]
         except ValueError:
-            raise ValueError(f'Invalid Host header: {raw_host}')
+            raise ValueError(f'Invalid Host header: {raw_host}') from None
     return raw_host.split(':')[0]
 
 

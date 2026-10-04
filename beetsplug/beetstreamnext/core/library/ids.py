@@ -52,6 +52,17 @@ class IDs:
     _PCH_ID_PREF = 'pc-'        # podcast channel: pc-<db id>
     _PEP_ID_PREF = 'pe-'        # podcast episode: pe-<db id>
 
+    _TYPE_BY_PREFIX = (
+        # (prefixes, type) pairs for decode_type()
+        ((_ART_MBID_PREF, _ART_NAME_PREF, _ART_HASH_PREF), 'artist'),
+        (_ALB_ID_PREF, 'album'),
+        (_SNG_ID_PREF, 'song'),
+        (_PLY_ID_PREF, 'playlist'),
+        (_RAD_ID_PREF, 'radio'),
+        (_PCH_ID_PREF, 'podcast_channel'),
+        (_PEP_ID_PREF, 'podcast_episode'),
+    )
+
     @staticmethod
     def decode_int(subsonic_id: str, prefix: str) -> int | None:
         """
@@ -69,13 +80,9 @@ class IDs:
     def decode_type(cls, subsonic_id: str) -> str | None:
         """Returns the type of object this ID represents."""
         sid = str(subsonic_id)
-        if sid.startswith((cls._ART_MBID_PREF, cls._ART_NAME_PREF, cls._ART_HASH_PREF)): return 'artist'
-        if sid.startswith(cls._ALB_ID_PREF): return 'album'
-        if sid.startswith(cls._SNG_ID_PREF): return 'song'
-        if sid.startswith(cls._PLY_ID_PREF): return 'playlist'
-        if sid.startswith(cls._RAD_ID_PREF): return 'radio'
-        if sid.startswith(cls._PCH_ID_PREF): return 'podcast_channel'
-        if sid.startswith(cls._PEP_ID_PREF): return 'podcast_episode'
+        for prefixes, id_type in cls._TYPE_BY_PREFIX:
+            if sid.startswith(prefixes):
+                return id_type
         return None
 
     @classmethod

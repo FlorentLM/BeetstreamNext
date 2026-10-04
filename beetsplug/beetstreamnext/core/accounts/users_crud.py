@@ -45,7 +45,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
     if not row:
         return {}
 
-    user_dict = dict(zip(column_names, row))
+    user_dict = dict(zip(column_names, row, strict=True))
 
     cipher = get_cipher()
 
@@ -259,7 +259,7 @@ def list_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
             f"""SELECT {columns_str} FROM users"""
         ).fetchall()
 
-    return [dict(zip(column_names, row)) for row in rows]
+    return [dict(zip(column_names, row, strict=True)) for row in rows]
 
 
 def session_stamp(username: str) -> Optional[str]:

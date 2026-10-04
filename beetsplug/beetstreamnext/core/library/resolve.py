@@ -81,9 +81,12 @@ def get_artist_metadata(name: str) -> dict:
         )
         if album_rows:
             roles.append('albumartist')
+
             row = album_rows[0]
-            if row[0]: mbid = validate_mbid(row[0])
-            if row[1]: sort_name = row[1]
+            if row[0]:
+                mbid = validate_mbid(row[0])
+            if row[1]:
+                sort_name = row[1]
 
         item_rows = tx.query(
             """
@@ -94,9 +97,12 @@ def get_artist_metadata(name: str) -> dict:
         )
         if item_rows:
             roles.append('artist')
+
             row = item_rows[0]
-            if not mbid and row[0]: mbid = validate_mbid(row[0])
-            if not sort_name and row[1]: sort_name = row[1]
+            if not mbid and row[0]:
+                mbid = validate_mbid(row[0])
+            if not sort_name and row[1]:
+                sort_name = row[1]
 
         # Check for secondary roles
         if not roles:

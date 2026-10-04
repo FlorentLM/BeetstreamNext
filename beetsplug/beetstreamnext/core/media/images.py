@@ -618,5 +618,5 @@ def read_uploaded_image(field: str = 'avatar') -> bytes | None:
 
     try:
         return resize_image(data, size=MAX_AVATAR_DIM, crop=True).getvalue()
-    except (ImageTooLarge, OSError):
-        raise ValueError('Unsupported, corrupt, or oversized image.')
+    except (ImageTooLarge, OSError) as e:
+        raise ValueError('Unsupported, corrupt, or oversized image.') from e

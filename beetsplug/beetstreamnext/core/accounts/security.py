@@ -247,9 +247,9 @@ class IPFilter:
                 else:
                     ip = ipaddress.ip_address(item)
                     final_ips.add(str(ip))
-            except ValueError:
+            except ValueError as e:
                 bsn_logger.warning(f'Ignoring invalid IP/CIDR range: {item}')
-                raise ValueError(f"'{item}' is not a valid IP address or CIDR range.")
+                raise ValueError(f"'{item}' is not a valid IP address or CIDR range.") from e
         return final_ips
 
     @staticmethod

@@ -479,7 +479,8 @@ def endpoint_hls() -> flask.Response | None:
         try:
             # Handle standard (bitRate=128) and Video format (bitRate=1000@480x360)
             br = int(br_raw.split('@')[0])
-            if br > 0: bitrates.append(br)
+            if br > 0:
+                bitrates.append(br)
         except ValueError:
             pass
 

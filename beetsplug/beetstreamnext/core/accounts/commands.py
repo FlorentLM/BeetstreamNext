@@ -64,7 +64,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
             api_key = create_user(env_user, env_password, admin=True)
         except ValueError as e:
             print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
         print_box([
             '',

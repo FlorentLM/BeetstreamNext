@@ -22,4 +22,4 @@ app.register_blueprint(account_bp)
 app.register_blueprint(auth_bp)
 
 # And import the beets hook
-from .beetsplugin_hook import BeetstreamNextPlugin
+from .entrypoints.beetsplugin_hook import BeetstreamNextPlugin

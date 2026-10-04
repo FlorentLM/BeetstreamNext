@@ -7,8 +7,8 @@ from .. import admin_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import start_session
-from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.users_crud import create_user, list_users
+from beetsplug.beetstreamnext.core.storage.tempstore import temporary_store
+from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, list_users
 from beetsplug.beetstreamnext.forms import OnboardingForm, flash_form_errors
 
 

@@ -6,13 +6,13 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.connection import database
+from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.ids import IDs
-from beetsplug.beetstreamnext.core.resolve import Resolve, standardise_datadict
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @api_bp.route('/scrobble', methods=['GET', 'POST'])

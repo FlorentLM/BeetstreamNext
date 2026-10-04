@@ -10,16 +10,16 @@ from .. import api_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import api_bool
-from beetsplug.beetstreamnext.core.external.lastfm import query_lastfm
-from beetsplug.beetstreamnext.core.external.wikipedia import query_wikipedia
-from beetsplug.beetstreamnext.core.external.musicbrainz import query_wikidata_title
-from beetsplug.beetstreamnext.core.cache import preload_artists
-from beetsplug.beetstreamnext.core.images import tokenised_image_url
+from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
+from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
+from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_wikidata_title
+from beetsplug.beetstreamnext.core.storage.cache import preload_artists
+from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.ids import IDs
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
-from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
+from beetsplug.beetstreamnext.config.settings_schema import SETTINGS_SCHEMA
 
 
 def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:

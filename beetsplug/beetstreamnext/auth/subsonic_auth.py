@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.auth.credentials import check_password
-from beetsplug.beetstreamnext.core.users_crud import load_username
+from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 if TYPE_CHECKING:

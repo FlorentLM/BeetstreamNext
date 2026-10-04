@@ -5,13 +5,13 @@ import flask
 from beetsplug.beetstreamnext.utils.htmx import modal_error
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, list_users, set_user_avatar, session_stamp
-from beetsplug.beetstreamnext.core.images import read_uploaded_image
-from beetsplug.beetstreamnext.core.avatars import avatar_response
+from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, list_users, set_user_avatar, session_stamp
+from beetsplug.beetstreamnext.core.media.images import read_uploaded_image
+from beetsplug.beetstreamnext.core.media.avatars import avatar_response
 from beetsplug.beetstreamnext.forms import UserForm, EditUserForm, collect_form_data, form_error_messages
-from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS
+from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
 
 
 def _api_key_modal(username: str, raw_api_key: str) -> str:

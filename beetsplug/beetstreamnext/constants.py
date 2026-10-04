@@ -217,3 +217,16 @@ MAX_OPML_BYTES: int = 2 * 1024 * 1024            # 2 MB cap on an uploaded OPML 
 ## Other stuff
 
 MAX_CHAT_CHAR: int = 1000
+
+
+## Allowed image formats
+
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.bmp'}
+
+
+## Allowed bitrates and sizes
+
+ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
+ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
+
+BITRATE_CHOICES_STR = [(0, 'No limit')] + [(b, f'{b} kbps') for b in sorted(ALLOWED_BITRATES) if b > 0]

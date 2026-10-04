@@ -9,19 +9,20 @@ from beetsplug.beetstreamnext.admin.routes.chat import chat_page_context
 from beetsplug.beetstreamnext.admin.routes.security import IP_LIST_META
 from beetsplug.beetstreamnext.utils.general import get_server_info
 from beetsplug.beetstreamnext.utils.text import format_bytes
-from beetsplug.beetstreamnext.core.logging import bsn_logger, mem_log
-from beetsplug.beetstreamnext.core.maintenance import cache_breakdown
-from beetsplug.beetstreamnext.core.beets_interaction import read_config, is_import_safe
-from beetsplug.beetstreamnext.core.users_crud import list_users
-from beetsplug.beetstreamnext.core.radio import list_radios
-from beetsplug.beetstreamnext.core.external.lastfm import test_lastfm_connection
-from beetsplug.beetstreamnext.core.external.audiomuse import test_audiomuse_connection
-from beetsplug.beetstreamnext.core.external.podcastindex import test_podcastindex_connection
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
+from beetsplug.beetstreamnext.core.library.maintenance import cache_breakdown
+from beetsplug.beetstreamnext.core.library.beets_interaction import read_config, is_import_safe
+from beetsplug.beetstreamnext.core.accounts.users_crud import list_users
+from beetsplug.beetstreamnext.core.services.radio import list_radios
+from beetsplug.beetstreamnext.core.services.external.lastfm import test_lastfm_connection
+from beetsplug.beetstreamnext.core.services.external.audiomuse import test_audiomuse_connection
+from beetsplug.beetstreamnext.core.services.external.podcastindex import test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
-from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS
+from beetsplug.beetstreamnext.config.settings_schema import SETTINGS_SCHEMA, SETTINGS_CATEGORIES
+from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.forms import UserForm, RadioStationForm
-from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.config.store import settings_store
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}

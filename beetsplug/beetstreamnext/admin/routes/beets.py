@@ -6,8 +6,8 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.beets_interaction import htmlify_log, start_import, import_status, is_import_running, send_import_input, read_config, start_pinned_imports
-from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths, add_pinned_path, remove_pinned_path, set_pinned_incremental, set_pinned_watch
+from beetsplug.beetstreamnext.core.library.beets_interaction import htmlify_log, start_import, import_status, is_import_running, send_import_input, read_config, start_pinned_imports
+from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths, add_pinned_path, remove_pinned_path, set_pinned_incremental, set_pinned_watch
 
 
 @admin_bp.route('/beets/import-log', methods=['GET'])

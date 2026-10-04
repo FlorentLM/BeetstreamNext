@@ -9,7 +9,7 @@ import beets
 import flask
 import re
 
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, binary_version
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, strip_text, standard_ascii, safe_str, format_elapsed
 from beetsplug.beetstreamnext.application import app
@@ -24,7 +24,7 @@ from beetsplug.beetstreamnext.constants import (
 
 def start_session(username: str, **extra) -> None:
     """Login `username` in the WebUI."""
-    from beetsplug.beetstreamnext.core.users_crud import session_stamp
+    from beetsplug.beetstreamnext.core.accounts.users_crud import session_stamp
     flask.session.clear()   # prevent session fixation
     flask.session.permanent = True
     flask.session['username'] = username
@@ -47,7 +47,7 @@ def read_upload(field: str, max_bytes: int) -> bytes | None:
 
 def request_url(path_part: str) -> str:
     """Build an absolute URL for 'path_part', mirroring the current request's scheme+host."""
-    from beetsplug.beetstreamnext.settings import settings_store
+    from beetsplug.beetstreamnext.config.store import settings_store
 
     scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
     return f'{scheme}://{flask.request.host}{path_part}'
@@ -55,7 +55,7 @@ def request_url(path_part: str) -> str:
 
 def external_url(path_part: str) -> str:
     """Build an absolute URL for 'path_part' on the configured public share hostname."""
-    from beetsplug.beetstreamnext.settings import settings_store
+    from beetsplug.beetstreamnext.config.store import settings_store
     from beetsplug.beetstreamnext.utils.net import parse_host
 
     external_host = settings_store.get('external_hostname')
@@ -83,7 +83,7 @@ def get_server_info(extended: bool = False) -> Dict[str, str]:
         ffmpeg_path = find_binary('ffmpeg')
         mpv_path = find_binary('mpv')
 
-        from beetsplug.beetstreamnext.core.beets_interaction import config_path
+        from beetsplug.beetstreamnext.core.library.beets_interaction import config_path
 
         try:
             cfg_path = str(config_path())
@@ -178,7 +178,7 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optio
     Hand the file off to the reverse proxy (Nginx/Apache) instead of streaming it through
     Python (if configured). Returns None if offloading isn't enabled/possible.
     """
-    from beetsplug.beetstreamnext.settings import settings_store
+    from beetsplug.beetstreamnext.config.store import settings_store
 
     if not settings_store.get('reverse_proxy'):
         return None

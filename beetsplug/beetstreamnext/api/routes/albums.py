@@ -6,14 +6,14 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
-from beetsplug.beetstreamnext.core.ids import IDs
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.images import tokenised_image_url
-from beetsplug.beetstreamnext.core.connection import dual_database
-from beetsplug.beetstreamnext.core.cache import preload_albums, get_song_counts
+from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
+from beetsplug.beetstreamnext.core.storage.connection import dual_database
+from beetsplug.beetstreamnext.core.storage.cache import preload_albums, get_song_counts
 
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:

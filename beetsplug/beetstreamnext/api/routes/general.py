@@ -9,16 +9,16 @@ from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.ids import IDs
+from beetsplug.beetstreamnext.core.library.ids import IDs
 
 from beetsplug.beetstreamnext.api.routes.albums import album_payload
 from beetsplug.beetstreamnext.api.routes.artists import artist_payload
 from beetsplug.beetstreamnext.api.routes.songs import song_payload
-from beetsplug.beetstreamnext.core.users_crud import load_username
-from beetsplug.beetstreamnext.core.beets_interaction import is_import_running, start_pinned_imports
-from beetsplug.beetstreamnext.core.import_paths import list_pinned_paths
-from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
+from beetsplug.beetstreamnext.core.library.beets_interaction import is_import_running, start_pinned_imports
+from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.config.store import settings_store
 
 
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:

@@ -6,7 +6,7 @@ import flask
 from flask import Blueprint
 
 from beetsplug.beetstreamnext.auth import session_roles
-from beetsplug.beetstreamnext.core.security import admin_host_allowed
+from beetsplug.beetstreamnext.core.accounts.security import admin_host_allowed
 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')

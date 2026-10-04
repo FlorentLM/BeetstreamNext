@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.schemas import ALLOWED_BITRATES, USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
+from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.avatars import avatar_response
-from beetsplug.beetstreamnext.core.users_crud import (
+from beetsplug.beetstreamnext.core.media.avatars import avatar_response
+from beetsplug.beetstreamnext.core.accounts.users_crud import (
     create_user, update_user, delete_user, get_userdata, list_users
 )
 

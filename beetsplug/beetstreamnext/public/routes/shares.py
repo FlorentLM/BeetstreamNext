@@ -13,14 +13,14 @@ from flask import render_template
 from .. import public_bp
 
 from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
-from beetsplug.beetstreamnext.core.connection import database
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import send_file
-from beetsplug.beetstreamnext.core.ids import IDs
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
-from beetsplug.beetstreamnext.core.resolve import beets_abspath
+from beetsplug.beetstreamnext.core.library.resolve import beets_abspath
 
 
 def _safe_filename(name: Any) -> str:
@@ -221,7 +221,7 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
     if not _is_shared(share_id, entry_id):
         flask.abort(403)
 
-    from beetsplug.beetstreamnext.core.images import send_album_art, round_image_size
+    from beetsplug.beetstreamnext.core.media.images import send_album_art, round_image_size
 
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)

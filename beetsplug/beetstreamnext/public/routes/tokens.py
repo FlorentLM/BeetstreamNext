@@ -4,11 +4,11 @@ import requests
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.public.tokeniser import stream_tokeniser, image_tokeniser
 from beetsplug.beetstreamnext.utils.general import send_file
-from beetsplug.beetstreamnext.core.images import send_album_art, send_artist_image
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.media.images import send_album_art, send_artist_image
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.constants import USER_AGENT
 
 

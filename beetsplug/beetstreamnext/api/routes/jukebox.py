@@ -5,13 +5,13 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.core.connection import database
-from beetsplug.beetstreamnext.core.jukebox import get_jukebox_player
-from beetsplug.beetstreamnext.core.jukebox.base import JukeboxBackend, JukeboxUnavailableException
+from beetsplug.beetstreamnext.config.store import settings_store
+from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.services.jukebox import get_jukebox_player
+from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, JukeboxUnavailableException
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 
 def _sync_now_playing(player: JukeboxBackend, username: str, status: dict) -> None:

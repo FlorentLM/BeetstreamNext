@@ -5,8 +5,8 @@ import time
 import flask
 
 from .. import admin_bp, admin_required
-from beetsplug.beetstreamnext.core.events import admin_events
-from beetsplug.beetstreamnext.core.users_crud import get_user_roles
+from beetsplug.beetstreamnext.core.services.events import admin_events
+from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles
 from beetsplug.beetstreamnext.constants import EVENT_BUS_INTERVAL
 
 

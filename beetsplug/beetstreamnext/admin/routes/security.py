@@ -3,8 +3,8 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.security import rate_limiter
-from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
+from beetsplug.beetstreamnext.config.store import settings_store
 
 
 IP_LIST_SETTINGS = {'whitelist': 'ip_whitelist', 'blacklist': 'ip_blacklist'}

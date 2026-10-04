@@ -10,10 +10,10 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.api.responses import subsonic_error
-from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
-from beetsplug.beetstreamnext.core.logging import bsn_logger
-from beetsplug.beetstreamnext.core.images import (
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.media.images import (
     round_image_size, send_album_art, thumbnail_path, playlist_mosaic, image_from_song,
     resize_image, send_artist_image, send_stored_art
 )

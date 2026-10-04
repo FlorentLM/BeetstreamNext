@@ -4,9 +4,9 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.connection import database
+from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 

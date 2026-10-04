@@ -4,12 +4,12 @@ import flask
 from .. import api_bp
 
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.cache import preload_songs
-from beetsplug.beetstreamnext.core.external.audiomuse import audiomuse_get
+from beetsplug.beetstreamnext.core.storage.cache import preload_songs
+from beetsplug.beetstreamnext.core.services.external.audiomuse import audiomuse_get
 
 
 def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:

@@ -35,7 +35,7 @@ dependencies = [
 Repository = "https://github.com/FlorentLM/BeetstreamNext"
 
 [project.scripts]
-beetstreamnext = "beetsplug.beetstreamnext.standalone_mode:main"
+beetstreamnext = "beetsplug.beetstreamnext.entrypoints.standalone_mode:main"
 
 [project.optional-dependencies]
 wiki = ["wikipedia-api>=0.15.0"]

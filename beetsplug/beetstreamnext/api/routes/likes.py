@@ -3,16 +3,16 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.connection import database, dual_database
-from beetsplug.beetstreamnext.core.cache import preload_songs, preload_albums, preload_artists, get_song_counts
-from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
+from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_albums, preload_artists, get_song_counts
+from beetsplug.beetstreamnext.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.ids import IDs
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
-from beetsplug.beetstreamnext.core.beets_interaction import commit_likes
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.beets_interaction import commit_likes
 
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:

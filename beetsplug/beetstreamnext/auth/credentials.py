@@ -5,8 +5,8 @@ import hmac
 import secrets
 from typing import Optional, Tuple
 
-from beetsplug.beetstreamnext.core.encryption import get_cipher
-from beetsplug.beetstreamnext.core.users_crud import get_userdata
+from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata
 
 
 # Dummy strings comparison when username not found

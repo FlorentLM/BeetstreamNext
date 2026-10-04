@@ -3,15 +3,15 @@ import flask
 
 from .. import api_bp
 
-from beetsplug.beetstreamnext.core.playlists import Playlist, PlaylistProvider
-from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.core.media.playlists import Playlist, PlaylistProvider
+from beetsplug.beetstreamnext.config.store import settings_store
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
 
 def _can_read(playlist: Playlist, username: str, is_admin: bool) -> bool:

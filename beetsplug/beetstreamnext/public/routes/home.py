@@ -4,10 +4,10 @@ from flask import render_template
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.core.connection import database
-from beetsplug.beetstreamnext.core.resolve import Resolve
+from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
-from beetsplug.beetstreamnext.settings import settings_store
+from beetsplug.beetstreamnext.config.store import settings_store
 from beetsplug.beetstreamnext.utils.general import get_server_info, request_url
 
 

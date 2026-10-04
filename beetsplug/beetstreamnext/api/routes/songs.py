@@ -6,15 +6,15 @@ from .. import api_bp
 
 from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.connection import database
-from beetsplug.beetstreamnext.core.external.lastfm import query_lastfm
-from beetsplug.beetstreamnext.core.cache import preload_songs
+from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
+from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.ids import IDs
-from beetsplug.beetstreamnext.core.resolve import Resolve
-from beetsplug.beetstreamnext.core.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 def song_payload(subsonic_song_id: str) -> dict:
     song_item = Resolve.song(subsonic_song_id)

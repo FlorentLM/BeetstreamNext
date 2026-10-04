@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+import getpass
+import sys
+from typing import Sequence
+
+from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.system import get_env
+from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
+from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.console import print_box
+from beetsplug.beetstreamnext.utils.ansi import TermColors
+from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches
+from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, list_users, get_user_roles, update_user
+
+
+def _prompt_password(label: str) -> str:
+    """Prompt for a password twice"""
+    pw_hint = f'{label}: '
+
+    while True:
+        password = getpass.getpass(pw_hint)
+        if len(password) < MIN_PASSWORD_LEN:
+            pw_hint = f'{label} (at least {MIN_PASSWORD_LEN} chars): '
+            continue
+
+        confirm = getpass.getpass(f'Confirm {label.lower()}: ')
+        if confirm != password:
+            print('Passwords did not match, try again.')
+            pw_hint = f'{label}: '
+            continue
+
+        return password
+
+
+def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
+    """
+    CLI command: Create a new user.
+    """
+    if noinput:
+        if list_users():
+            print_box([
+                '',
+                "[ERROR] Can't use --noinput: user account(s) already present.",
+                '',
+                "Use the Admin panel, or 'create-user' interactively, to add more users.",
+                '',
+            ], color=TermColors.FAIL)
+            raise SystemExit(1)
+
+        env_user = get_env('BSN_ADMIN_USER')
+        env_password = get_env('BSN_ADMIN_PASSWORD')
+
+        if not (env_user and env_password):
+            print_box([
+                '',
+                '[ERROR] --noinput requires both BSN_ADMIN_USER and BSN_ADMIN_PASSWORD to be set.',
+                '',
+            ], color=TermColors.FAIL)
+            raise SystemExit(1)
+
+        try:
+            api_key = create_user(env_user, env_password, admin=True)
+        except ValueError as e:
+            print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
+            raise SystemExit(1)
+
+        print_box([
+            '',
+            f"{TermColors.OKGREEN + TermColors.BOLD}Admin user '{safe_str(env_user)}' created "
+            f"from BSN_ADMIN_USER/BSN_ADMIN_PASSWORD.{TermColors.ENDC}",
+            '',
+            f'USER API KEY: {api_key}',
+            '',
+            '  ▶  You can use this in your Subsonic client instead of a password.',
+            "  ▶  It won't be shown again. Store it safely.",
+            '',
+        ])
+        return
+
+    username_ok = False
+
+    while not username_ok:
+        username = input('Username: ')
+        username_cleaned = safe_str(username)
+
+        if username_cleaned != username:
+            invalid_chars = {c for c in username if c not in username_cleaned}
+            message = 'invalid characters' if len(invalid_chars) > 1 else 'an invalid character'
+            chars_print = "'" + "".join(invalid_chars) + "'"
+            username_ok = input(f"Username starts or ends with {message}: {chars_print}\n"
+                                 f"Use '{username_cleaned}' instead? [y/n]: ").lower() == 'y'
+        else:
+            username_ok = True
+
+    password = _prompt_password('Password')
+
+    is_admin = True if force_admin else input('Admin? [y/n]: ').lower() == 'y'
+
+    try:
+        api_key = create_user(username, password, admin=is_admin)
+    except ValueError as e:
+        print(f'\n[ERROR] {e}')
+        return
+
+    print_box([
+        '',
+        f"{TermColors.OKGREEN + TermColors.BOLD}User '{username_cleaned}' created successfully.{TermColors.ENDC}",
+        '',
+        f'USER API KEY: {api_key}',
+        '',
+        '  ▶  Enter this key in your Subsonic client instead of a password.',
+        "  ▶  It won't be shown again. Store it safely.",
+        '',
+    ])
+
+
+def check_onboarding(standalone: bool, host: Sequence[str] = (), port: int = 0) -> None:
+    """
+    First-run onboarding?
+
+    If a TTY is attached it prompts there. Otherwise it directs to WebUI setup page.
+    """
+
+    if list_users():    # users exist, nothing to do
+        return
+
+    if sys.stdin.isatty():
+        print_box(['', 'Welcome to BeetstreamNext! Please create your admin account.', ''])
+        cmd_create_user(force_admin=True)
+        return
+
+    create_user_cmd = 'beetstreamnext create-user --noinput' if standalone else 'beet beetstreamnext --create-user --noinput'
+    setup_url = f'http://{host[0]}:{port}/admin/setup' if host else '.../admin/setup'
+    print_box([
+        '',
+        f'{TermColors.WARNING + TermColors.BOLD}No users exist yet, and no TTY detected.{TermColors.ENDC}',
+        '',
+        'Finish setup from a browser:',
+        '',
+        f'  ▶  {setup_url}',
+        '',
+        'Or, before starting the server, run this once with BSN_ADMIN_USER/BSN_ADMIN_PASSWORD set:',
+        '',
+        f'  ▶  {create_user_cmd}',
+        '',
+    ], color=TermColors.WARNING)
+
+
+def cmd_update_user(username: str) -> None:
+    """
+    CLI command: Update an existing user's roles
+    """
+
+    current_data = get_user_roles(username)
+    if not current_data:
+        print(f"User '{username}' not found.")
+        return
+
+    print(f'Updating roles for user: {username}')
+    print('(Press Enter to keep current value)')
+
+    updates = {}
+    for role_name, label, _ in USER_ROLES_SCHEMA:
+        curr_status = 'Enabled' if current_data.get(role_name) else 'Disabled'
+        val = input(f'{label} (currently {curr_status}) [y/n]: ').lower()
+        if val == 'y':
+            updates[role_name] = True
+        elif val == 'n':
+            updates[role_name] = False
+
+    if updates:
+        try:
+            update_user(username, **updates)
+            print(f"Successfully updated roles for '{username}'.")
+        except ValueError as e:
+            print(f'Error: {e}')
+    else:
+        print('No roles changed.')
+
+
+def cmd_delete_user(username: str) -> None:
+    """
+    CLI command: Delete a user
+    """
+
+    confirm = input(f"Are you sure you want to delete '{username}'? [y/N]: ")
+    if confirm.lower() == 'y':
+        if delete_user(username):
+            print(f"User '{username}' deleted.")
+        else:
+            print('User not found.')
+
+
+def cmd_list_users() -> None:
+    """
+    CLI command: List all users
+    """
+
+    all_users = list_users()
+    header = f"{'Username':<15} | {'Admin':<12} | {'Can stream':<12} | {'Can download':<12}"
+    print(header)
+    print('-' * len(header))
+
+    for u in all_users:
+        print(
+            f"{u['username']:<15} |"
+            f" {bool(u['adminRole']):<12} |"
+            f" {bool(u['streamRole']):<12} |"
+            f" {bool(u['downloadRole']):<12}"
+        )
+
+
+def cmd_change_passwd(username: str) -> None:
+    """
+    CLI command: Change a user's password
+    """
+
+    new_pw = _prompt_password(f"New password for '{username}'")
+
+    try:
+        update_user(username, password=new_pw)
+        print('Password updated successfully.')
+
+    except ValueError as e:
+        print(f'Error: {e}')
+
+
+def cmd_clear_cache() -> None:
+    """
+    CLI command: Clear the cache
+    """
+
+    try:
+        cleared = clear_requests_caches(
+            app.config['THUMBNAIL_CACHE_PATH'],
+            app.config['HTTP_CACHE_PATH']
+        )
+        if cleared:
+            print(f"Cleared: {', '.join(cleared)}.")
+        else:
+            print('Nothing to clear.')
+
+    except RuntimeError as e:
+        print(str(e))

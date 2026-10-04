@@ -4,17 +4,17 @@ import flask
 
 from .. import account_bp, account_required
 
-from beetsplug.beetstreamnext.core.logging import bsn_logger
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.security import rate_limiter
-from beetsplug.beetstreamnext.core.tempstore import temporary_store
-from beetsplug.beetstreamnext.core.users_crud import (
+from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
+from beetsplug.beetstreamnext.core.storage.tempstore import temporary_store
+from beetsplug.beetstreamnext.core.accounts.users_crud import (
     get_userdata, update_user, session_stamp, regenerate_api_key, set_user_avatar
 )
 from beetsplug.beetstreamnext.auth.credentials import webui_login
 from beetsplug.beetstreamnext.forms import AccountProfileForm, ChangePasswordForm, form_error_messages
-from beetsplug.beetstreamnext.core.avatars import save_uploaded_avatar, avatar_response
-from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, allowed_bitrates
+from beetsplug.beetstreamnext.core.media.avatars import save_uploaded_avatar, avatar_response
+from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, allowed_bitrates
 
 
 @account_bp.route('/', methods=['GET'])

@@ -5,8 +5,8 @@ import flask
 
 from .. import account_bp, account_required
 
-from beetsplug.beetstreamnext.core.users_crud import get_user_roles
-from beetsplug.beetstreamnext.core.shares import list_shares, delete_share
+from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles
+from beetsplug.beetstreamnext.core.media.shares import list_shares, delete_share
 
 
 def podcast_role_required(f):

@@ -4,7 +4,8 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SelectField, StringField
 from wtforms.validators import DataRequired, EqualTo, Length, Optional, Email
 
-from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, BITRATE_CHOICES_STR
+from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.constants import BITRATE_CHOICES_STR
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.utils.text import safe_str
 

@@ -3,7 +3,7 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.shares import list_shares, delete_share
+from beetsplug.beetstreamnext.core.media.shares import list_shares, delete_share
 
 
 def _shares_partial() -> str:

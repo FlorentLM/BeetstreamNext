@@ -4,8 +4,8 @@ import hmac
 import flask
 from flask import Blueprint
 
-from beetsplug.beetstreamnext.core.users_crud import get_user_roles, session_stamp
-from beetsplug.beetstreamnext.core.security import admin_host_allowed
+from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles, session_stamp
+from beetsplug.beetstreamnext.core.accounts.security import admin_host_allowed
 
 auth_bp = Blueprint('auth', __name__)
 

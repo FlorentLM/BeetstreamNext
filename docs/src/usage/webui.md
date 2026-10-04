@@ -89,7 +89,8 @@ Pin the folders you regularly import from (a _downloads_ directory for instance)
 
 See [`startScan`](../api-coverage.md) endpoint.
 
-> **Note:** Imports that modify files on disk (writing tags, copying or moving files) need [`allow_disk_writes`](../configuration.md#library--metadata) to be enabled, unless your Beets config has `write`, `copy` and `move` all disabled.
+> [!IMPORTANT]
+> Imports that modify files on disk (writing tags, copying or moving files) need [`allow_disk_writes`](../configuration.md#library--metadata) to be enabled, unless your Beets config has `write`, `copy` and `move` all disabled.
 
 #### Watched folders (auto-import)
 

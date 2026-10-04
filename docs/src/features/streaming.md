@@ -17,21 +17,26 @@ For clients that request it, BeetstreamNext supports OpenSubsonic's [HLS](https:
 BeetstreamNext can apply ReplayGain normalization server-side during transcoding, independent of whether the client itself supports ReplayGain or not:
 
 - `replaygain_enabled` turns this on.
+
 - `replaygain_preamp` adds extra gain (dB) on top of the tag value.
+
 - `replaygain_fallback` is the gain applied to tracks that have no ReplayGain tag in Beets.
+
 - `audio_peak_limit` prevents the result from clipping (peaks capped at 0 dB) regardless of the gain applied.
 
-## Encoding errors detection & self-healing streams
+## Error detection & healed streams
 
 A background scan probes files for decode errors. If a track is flagged, it is automatically routed through a transcode pass instead of direct play, so a corrupt/broken file doesn't just fail to play.
 
-This healing pass keeps the original container/codec (when the client doesn't ask for something else). A healed lossless file is re-encoded _losslessly_ rather than streamed byte-for-byte.
+This healing pass keeps the original container/codec (when the client doesn't ask for something else).
+
+A healed lossless file is re-encoded _losslessly_ rather than streamed byte-for-byte.
 
 ## Reverse-proxy file offloading
 
 Direct (non-transcoded) file serving can be offloaded to the reverse proxy instead of streaming bytes through the Python process, via `X-Accel-Redirect` (Nginx) or `X-Sendfile` (Apache).
 
-See [Reverse proxy & CORS](../reverse-proxy.md)) for how to setup.
+See [Reverse proxy & CORS](../reverse-proxy.md) for how to setup.
 
 ---
 

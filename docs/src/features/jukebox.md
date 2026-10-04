@@ -24,7 +24,8 @@ For any of the three backends, you can set _which_ device will play the audio wi
 - for **`sonos`**: the Sonos speaker's IP address.
 - for **`chromecast`**: the Chromecast device's UUID, or its IP address/hostname.
 
-> **Note:** The admin panel also allows to scan for what devices are available on the current selected backend.
+> [!NOTE]
+> The admin panel also allows to scan for what devices are available on the current selected backend.
 
 ## Running in Docker
 

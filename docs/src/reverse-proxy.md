@@ -123,7 +123,8 @@ beetstreamnext:
     sendfile_internal_prefix: /_bsn_internal
 ```
 
-> **Note:** For `proxy_hops`, use `1` if the Nginx container is the only proxy, more if Nginx is itself behind a reverse proxy (Traefik, Cloudflare, etc)
+> [!IMPORTANT]
+> For `proxy_hops`, use `1` if the Nginx container is the only proxy, more if Nginx is itself behind a reverse proxy (Traefik, Cloudflare, etc)
 
 ## Web clients and CORS
 

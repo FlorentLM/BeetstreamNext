@@ -29,4 +29,5 @@ I specifically tested it with:
 - [Feishin](https://github.com/jeffvli/feishin)
 - [Aonsoku](https://github.com/victoralvesf/aonsoku)
 
-> **Note:** Not seeing a client here doesn't mean it won't work, this is just what I have manually verified. If you confirm another client works well, consider opening a [PR or an Issue](https://github.com/FlorentLM/BeetstreamNext/) to let me know :)
+> [!NOTE]
+> Not seeing a client here doesn't mean it won't work, this is just what I have manually verified. If you confirm another client works well, consider opening a [PR or an Issue](https://github.com/FlorentLM/BeetstreamNext/) to let me know :)

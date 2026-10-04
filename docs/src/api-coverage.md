@@ -1,6 +1,7 @@
 # API coverage
 
-> See [Features](./features/index.md) for what BeetstreamNext adds on top of the spec itself :)
+> [!TIP]
+> See [Features](./features/index.md) for what **BeetstreamNext** adds on top of the spec itself :)
 
 **BeetstreamNext** implements essentially the entire Subsonic/OpenSubsonic REST API. The only unsupported endpoints are video-related:
 
@@ -101,11 +102,12 @@
 
 </details>
 
-> **Note:** Following the reference Subsonic specification, error responses are returned with an _HTTP 200_ status. The real outcome is in the response body's `status` field (`"ok"` or `"failed"`, with an error `code`/`message` on failure).
+> [!IMPORTANT]
+> Following the reference Subsonic specification, error responses are returned with an _HTTP 200_ status. The real outcome is in the response body's `status` field (`"ok"` or `"failed"`, with an error `code`/`message` on failure).
 
 ## Extensions
 
-Alongside the base spec, BeetstreamNext implements all the [OpenSubsonic extensions](https://opensubsonic.netlify.app/docs/extensions/).
+Alongside the base spec, **BeetstreamNext** implements all the [OpenSubsonic extensions](https://opensubsonic.netlify.app/docs/extensions/).
 
 | Extension                                                                                    | Description                                                                                                  |
 |----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
@@ -120,7 +122,8 @@ Alongside the base spec, BeetstreamNext implements all the [OpenSubsonic extensi
 | [`transcoding`](https://opensubsonic.netlify.app/docs/extensions/transcoding/)               | Clients making their own transcoding decisions and requesting transcoded streams directly                    |
 | [`sonicSimilarity`](https://opensubsonic.netlify.app/docs/extensions/sonicsimilarity/)       | Acoustic similarity and playlist path-finding (see [Library augmentation](features/library-augmentation.md)) |
 
-> **Note:** These extensions are always advertised by the server except for `sonicSimilarity` which only appears if an [**AudioMuse-AI** instance is configured](./configuration.md#audiomuse_url).
+> [!NOTE]
+> These extensions are always advertised by the server except for `sonicSimilarity` which only appears if an [**AudioMuse-AI** instance is configured](./configuration.md#audiomuse_url).
 
 ## Authentication
 

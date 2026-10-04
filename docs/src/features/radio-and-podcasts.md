@@ -8,7 +8,8 @@ Internet radios and Podcasts do not come from your Beets library, and are manage
 
 Each user has their own radio station list from their [account page](./accounts-and-permissions.md#user-account-page) or any Subsonic client that supports them. No specific role is required.
 
-> **Note:** When upgrading _from_ **BeetstreamNext** v2.0.7 (where stations were shared server-wide), existing stations are automatically copied to every existing user.
+> [!NOTE]
+> When upgrading _from_ **BeetstreamNext** v2.0.7 (where stations were shared server-wide), existing stations are automatically copied to every existing user.
 
 - **Station discovery**: Set `enable_radio_discovery` to search **[Radio Browser](https://www.radio-browser.info/)**, a community-maintained directory of internet radio streams.
 - **Icons**: BeetstreamNext tries to scrape icons from the station homepage's `<link rel="icon">`/`apple-touch-icon` tags, or falls back to [**DuckDuckGo**'s icon proxy](https://duckduckgo.com/duckduckgo-help-pages/privacy/favicons).
@@ -24,7 +25,10 @@ Each user has their own radio station list from their [account page](./accounts-
   - `podcast_auto_download_count`: how many of a channel's most recent episodes are automatically downloaded when a new channel is added. Set it to `0` to disable auto-download and only fetch episodes on request (see **Note** below).
 - **OPML Import/Export**: Supports importing/exporting existing podcast subscriptions.
 
-> **Note:** Many clients do not expose any "Download" button for individual episodes. Because of this, **BeetstreamNext** triggers a download automatically when it receives an episode streaming request: the audio is written to disk _and_ forwarded to the client at the same time.
+> [!NOTE]
+> Many clients do not expose any "Download" button for individual episodes.
+>
+> Because of that, **BeetstreamNext** triggers a download automatically when it receives an episode streaming request: the audio is written to disk _and_ forwarded to the client at the same time.
 
 ---
 

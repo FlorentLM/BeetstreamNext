@@ -16,9 +16,11 @@ Both existing modes share the same [feature set](./features/index.md) and [setti
 - [`ffmpeg`](https://ffmpeg.org/) installed and available on `PATH`
 - Optionally, [`mpv`](https://mpv.io/) installed and available on `PATH` for jukebox mode using the server's own audio hardware (not needed for the `sonos`/`chromecast` jukebox backends, or if you don't use jukebox mode. See [Jukebox](./features/jukebox.md) info).
 
-> **Note:** Both `ffmpeg` and `mpv` binaries can be pointed to explicitly via the `ffmpeg_path`/`mpv_path` settings if they aren't on your `PATH`.
+> [!NOTE]
+> Both `ffmpeg` and `mpv` binaries can be pointed to explicitly via the `ffmpeg_path`/`mpv_path` settings if they aren't on your `PATH`.
 
-> **Note:** These requirements are for running from source. If you run **BeetstreamNext** via the [Docker image](#docker) instead, everything is already bundled with it.
+> [!NOTE]
+> These requirements are for running from source. If you run **BeetstreamNext** via the [Docker image](#docker) instead, everything is already bundled with it.
 
 ## Running from source
 
@@ -117,7 +119,8 @@ style F fill:#f8d7da44,stroke:#dc3545,stroke-width:3px
 
 Every other setting follows the (roughly similar) order defined in [Configuration](./configuration.md), and can also be set from the Admin panel (except `library_path`, see **Note** below).
 
-> **Note:** Since `--library-db`/`BEETS_LIBRARY_DB`/`library_db` (in the YAML) is required on every run just to locate BeetstreamNext's database, there's no scenario where it isn't explicitly set, so it is currently never editable in the WebUI (I might revise this).
+> [!NOTE]
+> Since `--library-db`/`BEETS_LIBRARY_DB`/`library_db` (in the YAML) is required at every run just to locate **BeetstreamNext**'s database, there's no scenario where it isn't explicitly set, so it is currently never editable in the WebUI (I might revise this).
 
 At minimum, you should point **BeetstreamNext** to your `library.db` and music root:
 
@@ -156,7 +159,10 @@ Standalone subcommands:
 
 See [CLI usage](./usage/cli.md#standalone-mode) for the full flag list (`--bsn-db`, `--beets-config`, `--host`, `--port`, `--threads`, `--debug`, `--force-trust-host`).
 
-> **Note:** If a Beets config file passed via `--beets-config` contains a `beetstreamnext:` section, it will be _ignored_ in standalone mode. Put those settings in a dedicated BeetstreamNext `--config` YAML file, or `BSN_*` environment variables, or set them via the Admin WebUI.
+> [!IMPORTANT]
+> If a Beets config file passed via `--beets-config` contains a `beetstreamnext:` section, it will be _ignored_ in standalone mode.
+> 
+> Put these settings in a dedicated BeetstreamNext `--config` YAML file, or use `BSN_*` environment variables, or set them via the Admin WebUI.
 
 ## Run via Docker
 
@@ -211,15 +217,22 @@ Build-time options (`--build-arg`):
   - `data`: thumbnails, HTTP cache, session key
   - `tmp`: transcode tempfiles, HLS sessions, zip downloads, SQLite/Python tempfiles
 
-> **Note:** The `data` cache subfolder is worth bind-mounting to keep the data across containers restarts. The `tmp` subfolder is fine to discard, but you can bind-mount it if you want the cache to survive restarts. Mounting them separately is useful if you want different backing storage for each (see [hardening the container](#advanced-hardening-the-container) below).
+> [!TIP]
+> The `data` cache subfolder is worth bind-mounting to keep the data across containers restarts.
+> 
+> The `tmp` subfolder is fine to discard, but you can bind-mount it if you want the cache to survive restarts.
+> 
+> Mounting them separately is useful if you want different backing storage for each (see [hardening the container](#advanced-hardening-the-container) below).
 
 ### Other image options
 
 `PUID`/`PGID` (default `1000`/`1000`): these should match the user that owns your library/music files on the host.
 
-> **Note:** BeetstreamNext never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to that `PUID`/`PGID` before dropping to it for the rest of the process's life.
+> [!IMPORTANT]
+> **BeetstreamNext** never runs as root. The root user is only used at container start, to `chown` `/config` and `/cache` to `PUID`/`PGID` before dropping to it for the rest of the process's life.
 
-> **Note:** If you want to control the folders' ownership yourself, you can also run the container as a specific user directly (use `docker run --user UID:GID`, in which case also make sure `/config` is already owned by that user), and the entrypoint will notice and won't try to switch users itself.
+> [!TIP]
+> If you want to control the folders' ownership yourself, you can also run the container as a specific user directly (use `docker run --user UID:GID`, in which case also make sure `/config` is already owned by that user), and the entrypoint will notice and won't try to switch users itself.
 
 ### Adding beets plugins
 
@@ -251,9 +264,13 @@ At startup, the container installs the list into `/config/plugins/installed` (so
 
 You can also use `/config/plugins/requirements.txt` file to list your wanted plugins. If present, its content is merged with `BSN_BEETS_PLUGINS`.
 
-> **Note:** Plugins can't replace packages shipped with the image (`beets` itself, or **BeetstreamNext**'s dependencies). A plugin requiring an incompatible version fails to install, and the container starts without the change.
+> [!IMPORTANT]
+> Custom plugins can't replace packages shipped with the image (`beets` itself, or **BeetstreamNext**'s dependencies). A plugin requiring an incompatible version fails to install, and the container starts without the change.
 
-> **Note:** Plugins with system-level dependencies (a command-line tool, a C library) can't be installed this way. The image only includes `git`, `ffmpeg` (and `mpv` unless disabled). Use a custom image `FROM` the published one if you need that.
+> [!IMPORTANT]
+> Plugins with system-level dependencies (a command-line tool, a C library) can't be installed this way. The image only includes `git`, `ffmpeg` (and `mpv`, unless disabled).
+>
+> Use a custom image `FROM` the published one if you need that.
 
 ## Run via docker-compose
 
@@ -276,7 +293,10 @@ The two containers need to share:
 - The beets home directory (`config.yaml` + `library.db`): needs to be read-write for **Betanin**, but can be read-only for **BeetstreamNext**
 - The music directory: can be read-only for both
 
-> **Note:** Concurrent SQLite access to `library.db` is only reliable _on a real shared filesystem or bind-mount_ (same host, sharing a named volume). If Betanin and BeetstreamNext are on different hosts, do _not_ mount `library.db` over NFS/SMB, SQLite's file locking isn't reliable over most network filesystem protocols.
+> [!CAUTION]
+> Concurrent SQLite access to `library.db` is only reliable _on a real shared filesystem or bind-mount_ (same host, sharing a named volume).
+> 
+> If Betanin and BeetstreamNext are on different hosts, do **_not_** mount `library.db` over NFS/SMB, SQLite's file locking isn't reliable over most network filesystem protocols.
 
 This example assumes it is saved as `docker-compose.yml` at the root of a BeetstreamNext checkout (`build: .` needs the `Dockerfile` there).
 
@@ -327,13 +347,15 @@ volumes:
   beetstreamnext-config:
 ```
 
-> **Note:** You can run `docker exec betanin beet version` (or whatever your Betanin container is called) to see which version of beets it is using.
+> [!TIP]
+> You can run `docker exec betanin beet version` (or whatever your Betanin container is called) to see which version of beets it is using.
 
 Edit the two `/path/to/...` host paths, then `docker compose up -d`.
 
 Open **Betanin** at `:9393` to configure/run imports, and **BeetstreamNext** at `:8080`.
 
-> **Note:** Because the music folder and library are mounted `:ro` for BeetstreamNext here, the admin panel will show a red "read-only" pill next to any setting that would otherwise write to them (see [Configuration reference](./configuration.md)).
+> [!NOTE]
+> Because the music folder and the library are mounted `:ro` for **BeetstreamNext** in this example, the admin panel will show a red "read-only" pill next to any setting that would otherwise write to them (see [Configuration reference](./configuration.md)).
 
 ### Remapping paths
 
@@ -403,9 +425,11 @@ docker run --rm \
   beetstreamnext create-user --noinput
 ```
 
-> **Note:** here `-v /path/to/config:/config` must point at the _same host path_ as what you'll use in the main `run` command (the encryption key and the user this creates both get stored under `/config`, so the two runs need to share it to see the same user/key).
+> [!IMPORTANT]
+> Here `-v /path/to/config:/config` must point at the **_same host path_** as what you'll use in the main `run` command (the encryption key and the user this creates both get stored under `/config`, so the two runs need to share it to see the same user/key).
 
-> **Note:** When using Docker, you probably want to use Docker secrets. You can add the `BSN_NO_KEY_FILE=1` to that command to prevent it from writing the `.env` file (see [unattended first run](#unattended-first-run)).
+> [!TIP]
+> When using Docker, you probably want to use Docker secrets. You can add the `BSN_NO_KEY_FILE=1` to that command to prevent it from writing the `.env` file (see [unattended first run](#unattended-first-run)).
 
 #### Advanced: hardening the container
 
@@ -421,7 +445,12 @@ tmpfs:
   - /cache:mode=1777
 ```
 
-> **Note:** a `tmpfs` mount lives in RAM and is counted against the container's memory limit (`deploy.resources.limits.memory`), and can't be reclaimed under memory pressure. If you have a big library, a full scan can make SQLite write sizeable temp files into `/cache`, which may trigger SQLite disk I/O errors. Either give the tmpfs an explicit size (`/cache:mode=1777,size=256m`) _and_ raise the container's memory limit, or mount `/cache` as a normal volume instead.
+> [!CAUTION]
+> A `tmpfs` mount lives in RAM and is counted against the container's memory limit (`deploy.resources.limits.memory`), and can't be reclaimed under memory pressure.
+>
+> If you have a big library, a full scan can make SQLite write sizeable temp files into `/cache`, which may trigger SQLite disk I/O errors.
+>
+> Either give the tmpfs an explicit size (`/cache:mode=1777,size=256m`) _and_ raise the container's memory limit, or mount `/cache` as a normal volume instead.
 
 Since `/cache` is split into `/cache/data` and `/cache/tmp`, you can also mount just the `tmp` half as `tmpfs` and leave `data` as a normal volume, so the cache survives restarts but the write-heavy half still gets RAM speed:
 
@@ -464,7 +493,8 @@ cap_drop:
   - ALL
 ```
 
-> **Note:** The `/config` and `/cache` mounts need to already be owned by that same UID/GID on the host *before* the container starts.
+> [!IMPORTANT]
+> The `/config` and `/cache` mounts need to already be owned by that same UID/GID on the host **_before_** the container starts.
 
 - **`security_opt: [no-new-privileges:true]`**
 
@@ -509,7 +539,8 @@ Given that, how the server key is provisioned matters:
 
 If the key is lost, stored passwords become unrecoverable and you will need to delete the **BeetstreamNext** database and set up again (of course your Beets library stays perfectly fine).
 
-> **Note:** You also need this server key during the first-run admin account creation if using the Web UI (see below).
+> [!IMPORTANT]
+> You also need this server key during the first-run admin account creation if using the Web UI (see below).
 
 ## First run
 
@@ -541,7 +572,8 @@ BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=hunter2 beet beetstreamnext --create-use
 
 (obviously replace `admin` and `hunter2` by your chosen admin username and password)
 
-> **Note:** This is a _one-time_ step. It will refuse to run if any user account already exists.
+> [!NOTE]
+> This is a _one-time_ step. It will refuse to run if any user account already exists.
 
 ## Startup
 

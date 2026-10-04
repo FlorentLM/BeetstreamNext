@@ -28,7 +28,8 @@ beet beetstreamnext [options]
 | `--list-users`                 | List all registered users and their roles                                                                  |
 | `--clear-cache`                | Clear the thumbnail and HTTP caches                                                                        |
 
-> **Note:** User-management or cache flags do not start the server.
+> [!NOTE]
+> User-management or cache flags perform the action and exit immediately. They do _not_ start the server.
 
 Settings not overridden by a flag come from Beets' `config.yaml` (under the `beetstreamnext:` key), see the [configuration reference](../configuration.md).
 
@@ -48,7 +49,8 @@ beetstreamnext [command] [username] [options]
 | `list-users`             | List all registered users and their key roles         |
 | `clear-cache`            | Clear the thumbnail and HTTP caches                   |
 
-> **Note:** `command` defaults to `run` if omitted
+> [!NOTE]
+> `command` defaults to `run` if omitted
 
 <br>
 <br>

@@ -45,7 +45,8 @@ Additional data and library augmentation comes from third-party services (they a
 | Podcast channel discovery                          | [Podcast Index](https://podcastindex.org/)                                                                  | `enable_podcast_discovery`                |
 | Song Lyrics                                        | Uses Beets' `lyrics` plugin's configured external sources                                                   | `fetch_lyrics`/`save_lyrics`              |
 
-> **Note:** None of these ever get written into Beets or your files, unless the matching `save_*` setting is also enabled. See [Library augmentation](library-augmentation.md) for more detail.
+> [!IMPORTANT]
+> None of these ever get written into Beets or your files, unless the matching `save_*` setting is also enabled. See [Library augmentation](library-augmentation.md) for more detail.
 
 ---
 

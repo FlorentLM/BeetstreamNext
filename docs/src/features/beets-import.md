@@ -10,7 +10,8 @@
 
 Imports use your Beets config and library database (i.e. the same one that **BeetstreamNext** serves), so it includes all your preferred import settings, other plugins, etc.
 
-> **Note:** I recommend using my [**beets-cataloghint**](https://github.com/FlorentLM/beets-cataloghint) plugin for better MusicBrainz matches :)
+> [!TIP]
+> I recommend using my [**beets-cataloghint**](https://github.com/FlorentLM/beets-cataloghint) plugin for better MusicBrainz matches :)
 
 ## Manually selected folders
 
@@ -28,7 +29,8 @@ This is _non-interactive_: it runs in [quiet](https://beets.readthedocs.io/en/st
 
 Pinned folders also have an **incremental** toggle that controls Beets' [`--incremental`](https://beets.readthedocs.io/en/stable/reference/config.html#incremental) / [`--noincremental`](https://beets.readthedocs.io/en/stable/reference/config.html#incremental) modes.
 
-> **Note:** Beets import recursively, so a pinned folder must not overlap your output music library directory (it can't be inside it or contain it).
+> [!NOTE]
+> Beets imports recursively, so a pinned folder must not overlap your output music library directory (it can't be inside it or contain it).
 
 ## Watched folders (auto-import)
 

@@ -93,13 +93,12 @@ def endpoint_get_starred() -> flask.Response:
             """, (username,)
         ).fetchall()
 
-        album_rows = db.execute(
+        album_id_rows = db.execute(
             """
-            SELECT a.* 
-            FROM likes l
-            JOIN beets.albums a ON l.item_id = 'al-' || a.id
-            WHERE l.username = ?
-            ORDER BY l.starred_at DESC
+            SELECT item_id
+            FROM likes
+            WHERE username = ? AND item_id LIKE 'al-%'
+            ORDER BY starred_at DESC
             """, (username,)
         ).fetchall()
 
@@ -119,7 +118,11 @@ def endpoint_get_starred() -> flask.Response:
     preload_songs(song_items)
 
     songs = [Serialise.song(item) for item in song_items]
-    album_dicts = [dict(row) for row in album_rows]
+    album_dicts = []
+    for row in album_id_rows:
+        album = Resolve.album(row['item_id'])       # current ids (mbid / hash) as well as legacy ones
+        if album is not None:
+            album_dicts.append(dict(album))
 
     preload_albums(album_dicts)
 

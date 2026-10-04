@@ -217,8 +217,11 @@ def endpoint_change_password() -> flask.Response:
 @subsonic_bp.route('/getAvatar', methods=['GET', 'POST'])
 @subsonic_bp.route('/getAvatar.view', methods=['GET', 'POST'])
 def endpoint_get_avatar() -> flask.Response:
-    username = flask.request.values.get('username', default='', type=safe_str)    # Required
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    username = r.get('username', default='', type=safe_str)    # Required
+
     if not username:
-        return subsonic_error(10)
+        return subsonic_error(10, resp_fmt=resp_fmt)
 
     return avatar_response(username)

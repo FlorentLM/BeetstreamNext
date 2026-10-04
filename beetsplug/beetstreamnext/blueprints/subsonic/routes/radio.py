@@ -46,11 +46,12 @@ def endpoint_get_radio_stations() -> flask.Response:
 @subsonic_bp.route('/createInternetRadioStation.view', methods=['GET', 'POST'])
 def endpoint_create_radio_station() -> flask.Response:
 
-    if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(50, message='Only admins can manage radio stations.')
-
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    if not flask.g.user_data.get('adminRole'):
+        return subsonic_error(50, message='Only admins can manage radio stations.', resp_fmt=resp_fmt)
+
     stream_url = r.get('streamUrl', type=str)           # Required
     name = r.get('name', type=safe_str)                 # Required
     homepage_url = r.get('homepageUrl', type=str)
@@ -70,11 +71,12 @@ def endpoint_create_radio_station() -> flask.Response:
 @subsonic_bp.route('/updateInternetRadioStation.view', methods=['GET', 'POST'])
 def endpoint_update_radio_station() -> flask.Response:
 
-    if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(50, message='Only admins can manage radio stations.')
-
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    if not flask.g.user_data.get('adminRole'):
+        return subsonic_error(50, message='Only admins can manage radio stations.', resp_fmt=resp_fmt)
+
     raw_id = r.get('id', default='', type=safe_str)     # Required
     stream_url = r.get('streamUrl', type=str)           # Required
     name = r.get('name', type=safe_str)                 # Required
@@ -99,11 +101,12 @@ def endpoint_update_radio_station() -> flask.Response:
 @subsonic_bp.route('/deleteInternetRadioStation.view', methods=['GET', 'POST'])
 def endpoint_delete_radio_station() -> flask.Response:
 
-    if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(50, message='Only admins can manage radio stations.')
-
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
+
+    if not flask.g.user_data.get('adminRole'):
+        return subsonic_error(50, message='Only admins can manage radio stations.', resp_fmt=resp_fmt)
+
     raw_id = r.get('id', default='', type=safe_str)          # Required
 
     if not raw_id:

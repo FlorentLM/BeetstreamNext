@@ -87,7 +87,7 @@ def dict_to_xml(tag: str, data) -> ET.Element:
     Simple values are mapped as attributes unless the attribute name already exists
     or the key is "value", in which case they become text or child elements.
     """
-    elem = ET.Element(tag)
+    elem = ET.Element(_clean_xml_key(tag))
 
     def _fmt(v):
         return str(v).lower() if isinstance(v, bool) else str(v)

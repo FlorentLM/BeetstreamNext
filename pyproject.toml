@@ -49,7 +49,26 @@ all = ["beetstreamnext[wiki,podcasts,podcast-discovery,radio-discovery,sonos,chr
 [dependency-groups]
 dev = [
     "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.10",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["beetsplug"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["beetsplug"]
+branch = true
+
+[tool.ruff]
+target-version = "py313"
+extend-exclude = ["docs", "things"]
+
+[tool.ruff.lint.per-file-ignores]
+# blueprint packages import their route modules for the side effect of registering them
+"**/__init__.py" = ["F401", "E402"]

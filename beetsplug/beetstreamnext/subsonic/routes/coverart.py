@@ -3,13 +3,13 @@ import os
 from io import BytesIO
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden, find_binary, resolve_path
-from beetsplug.beetstreamnext.api.responses import subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_error
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -20,8 +20,8 @@ from beetsplug.beetstreamnext.core.media.images import (
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCoverArt/
-@api_bp.route('/getCoverArt', methods=['GET', 'POST'])
-@api_bp.route('/getCoverArt.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getCoverArt', methods=['GET', 'POST'])
+@subsonic_bp.route('/getCoverArt.view', methods=['GET', 'POST'])
 def endpoint_get_cover_art() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

@@ -2,20 +2,20 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
-@api_bp.route('/getBookmarks', methods=['GET', 'POST'])
-@api_bp.route('/getBookmarks.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getBookmarks', methods=['GET', 'POST'])
+@subsonic_bp.route('/getBookmarks.view', methods=['GET', 'POST'])
 def endpoint_get_bookmarks() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -58,8 +58,8 @@ def endpoint_get_bookmarks() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createBookmark/
-@api_bp.route('/createBookmark', methods=['GET', 'POST'])
-@api_bp.route('/createBookmark.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/createBookmark', methods=['GET', 'POST'])
+@subsonic_bp.route('/createBookmark.view', methods=['GET', 'POST'])
 def endpoint_create_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -103,8 +103,8 @@ def endpoint_create_bookmark() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteBookmark/
-@api_bp.route('/deleteBookmark', methods=['GET', 'POST'])
-@api_bp.route('/deleteBookmark.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteBookmark', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteBookmark.view', methods=['GET', 'POST'])
 def endpoint_delete_bookmark() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

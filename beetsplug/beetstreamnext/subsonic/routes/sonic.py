@@ -1,9 +1,9 @@
 from __future__ import annotations
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -39,8 +39,8 @@ def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSonicSimilarTracks/
-@api_bp.route('/getSonicSimilarTracks', methods=['GET', 'POST'])
-@api_bp.route('/getSonicSimilarTracks.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSonicSimilarTracks', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSonicSimilarTracks.view', methods=['GET', 'POST'])
 def endpoint_get_sonic_similar_tracks() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -62,8 +62,8 @@ def endpoint_get_sonic_similar_tracks() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/findSonicPath/
-@api_bp.route('/findSonicPath', methods=['GET', 'POST'])
-@api_bp.route('/findSonicPath.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/findSonicPath', methods=['GET', 'POST'])
+@subsonic_bp.route('/findSonicPath.view', methods=['GET', 'POST'])
 def endpoint_find_sonic_path() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

@@ -2,17 +2,17 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import MAX_CHAT_CHAR
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/
-@api_bp.route('/addChatMessage', methods=['GET', 'POST'])
-@api_bp.route('/addChatMessage.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/addChatMessage', methods=['GET', 'POST'])
+@subsonic_bp.route('/addChatMessage.view', methods=['GET', 'POST'])
 def endpoint_add_chat_message() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -39,8 +39,8 @@ def endpoint_add_chat_message() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getchatmessages/
-@api_bp.route('/getChatMessages', methods=['GET', 'POST'])
-@api_bp.route('/getChatMessages.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getChatMessages', methods=['GET', 'POST'])
+@subsonic_bp.route('/getChatMessages.view', methods=['GET', 'POST'])
 def endpoint_get_chat_messages() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

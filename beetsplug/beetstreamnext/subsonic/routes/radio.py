@@ -1,12 +1,12 @@
 from __future__ import annotations
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.radio import create_station, update_station, delete_station
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -30,8 +30,8 @@ def radios_payload() -> dict:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getInternetRadioStations/
-@api_bp.route('/getInternetRadioStations', methods=['GET', 'POST'])
-@api_bp.route('/getInternetRadioStations.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getInternetRadioStations', methods=['GET', 'POST'])
+@subsonic_bp.route('/getInternetRadioStations.view', methods=['GET', 'POST'])
 def endpoint_get_radio_stations() -> flask.Response:
 
     r = flask.request.values
@@ -42,8 +42,8 @@ def endpoint_get_radio_stations() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createInternetRadioStation/
-@api_bp.route('/createInternetRadioStation', methods=['GET', 'POST'])
-@api_bp.route('/createInternetRadioStation.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/createInternetRadioStation', methods=['GET', 'POST'])
+@subsonic_bp.route('/createInternetRadioStation.view', methods=['GET', 'POST'])
 def endpoint_create_radio_station() -> flask.Response:
 
     if not flask.g.user_data.get('adminRole'):
@@ -66,8 +66,8 @@ def endpoint_create_radio_station() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/updateInternetRadioStation/
-@api_bp.route('/updateInternetRadioStation', methods=['GET', 'POST'])
-@api_bp.route('/updateInternetRadioStation.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/updateInternetRadioStation', methods=['GET', 'POST'])
+@subsonic_bp.route('/updateInternetRadioStation.view', methods=['GET', 'POST'])
 def endpoint_update_radio_station() -> flask.Response:
 
     if not flask.g.user_data.get('adminRole'):
@@ -95,8 +95,8 @@ def endpoint_update_radio_station() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteInternetRadioStation/
-@api_bp.route('/deleteInternetRadioStation', methods=['GET', 'POST'])
-@api_bp.route('/deleteInternetRadioStation.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteInternetRadioStation', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteInternetRadioStation.view', methods=['GET', 'POST'])
 def endpoint_delete_radio_station() -> flask.Response:
 
     if not flask.g.user_data.get('adminRole'):

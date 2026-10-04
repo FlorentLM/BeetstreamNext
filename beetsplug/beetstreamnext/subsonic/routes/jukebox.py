@@ -2,14 +2,14 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.config.store import settings_store
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.jukebox import get_jukebox_player
 from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, JukeboxUnavailableException
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -42,8 +42,8 @@ def _sync_now_playing(player: JukeboxBackend, username: str, status: dict) -> No
 # Endpoint
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/jukeboxControl/
-@api_bp.route('/jukeboxControl', methods=['GET', 'POST'])
-@api_bp.route('/jukeboxControl.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/jukeboxControl', methods=['GET', 'POST'])
+@subsonic_bp.route('/jukeboxControl.view', methods=['GET', 'POST'])
 def endpoint_jukebox_control() -> flask.Response:
 
     r = flask.request.values

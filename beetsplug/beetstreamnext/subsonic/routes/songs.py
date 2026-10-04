@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Tuple, Dict
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -64,8 +64,8 @@ def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[s
 # Endpoints
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSong/
-@api_bp.route('/getSong', methods=['GET', 'POST'])
-@api_bp.route('/getSong.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSong', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSong.view', methods=['GET', 'POST'])
 def endpoint_get_song() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -82,8 +82,8 @@ def endpoint_get_song() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSongsByGenre/
-@api_bp.route('/getSongsByGenre', methods=['GET', 'POST'])
-@api_bp.route('/getSongsByGenre.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSongsByGenre', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSongsByGenre.view', methods=['GET', 'POST'])
 def endpoint_songs_by_genre() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -130,8 +130,8 @@ def endpoint_songs_by_genre() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getRandomSongs/
-@api_bp.route('/getRandomSongs', methods=['GET', 'POST'])
-@api_bp.route('/getRandomSongs.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getRandomSongs', methods=['GET', 'POST'])
+@subsonic_bp.route('/getRandomSongs.view', methods=['GET', 'POST'])
 def endpoint_get_random_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -182,8 +182,8 @@ def endpoint_get_random_songs() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getTopSongs/
-@api_bp.route('/getTopSongs', methods=['GET', 'POST'])
-@api_bp.route('/getTopSongs.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getTopSongs', methods=['GET', 'POST'])
+@subsonic_bp.route('/getTopSongs.view', methods=['GET', 'POST'])
 def endpoint_get_top_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -311,12 +311,12 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs/
-@api_bp.route('/getSimilarSongs', methods=['GET', 'POST'])
-@api_bp.route('/getSimilarSongs.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSimilarSongs', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSimilarSongs.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs2/
-@api_bp.route('/getSimilarSongs2', methods=['GET', 'POST'])
-@api_bp.route('/getSimilarSongs2.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSimilarSongs2', methods=['GET', 'POST'])
+@subsonic_bp.route('/getSimilarSongs2.view', methods=['GET', 'POST'])
 def endpoint_get_similar_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

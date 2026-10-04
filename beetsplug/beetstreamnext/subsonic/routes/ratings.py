@@ -2,18 +2,18 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.beets_interaction import commit_likes
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/
-@api_bp.route('/setRating', methods=['GET', 'POST'])
-@api_bp.route('/setRating.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/setRating', methods=['GET', 'POST'])
+@subsonic_bp.route('/setRating.view', methods=['GET', 'POST'])
 def endpoint_set_rating() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

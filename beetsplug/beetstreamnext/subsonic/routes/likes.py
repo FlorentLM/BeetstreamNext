@@ -1,14 +1,14 @@
 from __future__ import annotations
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -39,12 +39,12 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/star/
-@api_bp.route('/star', methods=['GET', 'POST'])
-@api_bp.route('/star.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/star', methods=['GET', 'POST'])
+@subsonic_bp.route('/star.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/unstar/
-@api_bp.route('/unstar', methods=['GET', 'POST'])
-@api_bp.route('/unstar.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/unstar', methods=['GET', 'POST'])
+@subsonic_bp.route('/unstar.view', methods=['GET', 'POST'])
 def endpoint_star_or_unstar() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -71,12 +71,12 @@ def endpoint_star_or_unstar() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred/
-@api_bp.route('/getStarred', methods=['GET', 'POST'])
-@api_bp.route('/getStarred.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getStarred', methods=['GET', 'POST'])
+@subsonic_bp.route('/getStarred.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getStarred2/
-@api_bp.route('/getStarred2', methods=['GET', 'POST'])
-@api_bp.route('/getStarred2.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getStarred2', methods=['GET', 'POST'])
+@subsonic_bp.route('/getStarred2.view', methods=['GET', 'POST'])
 def endpoint_get_starred() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

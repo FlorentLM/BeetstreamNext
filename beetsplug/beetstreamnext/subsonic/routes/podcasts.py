@@ -2,13 +2,13 @@ from __future__ import annotations
 from typing import List
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import FEEDPARSER
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -63,8 +63,8 @@ def _newest_episodes(username: str, count: int) -> List[dict]:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getpodcasts/
-@api_bp.route('/getPodcasts', methods=['GET', 'POST'])
-@api_bp.route('/getPodcasts.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPodcasts', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPodcasts.view', methods=['GET', 'POST'])
 def endpoint_get_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -97,8 +97,8 @@ def endpoint_get_podcasts() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getnewestpodcasts/
-@api_bp.route('/getNewestPodcasts', methods=['GET', 'POST'])
-@api_bp.route('/getNewestPodcasts.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getNewestPodcasts', methods=['GET', 'POST'])
+@subsonic_bp.route('/getNewestPodcasts.view', methods=['GET', 'POST'])
 def endpoint_get_newest_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -118,8 +118,8 @@ def endpoint_get_newest_podcasts() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createpodcastchannel/
-@api_bp.route('/createPodcastChannel', methods=['GET', 'POST'])
-@api_bp.route('/createPodcastChannel.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/createPodcastChannel', methods=['GET', 'POST'])
+@subsonic_bp.route('/createPodcastChannel.view', methods=['GET', 'POST'])
 def endpoint_create_podcast_channel() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -146,8 +146,8 @@ def endpoint_create_podcast_channel() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deletepodcastchannel/
-@api_bp.route('/deletePodcastChannel', methods=['GET', 'POST'])
-@api_bp.route('/deletePodcastChannel.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/deletePodcastChannel', methods=['GET', 'POST'])
+@subsonic_bp.route('/deletePodcastChannel.view', methods=['GET', 'POST'])
 def endpoint_delete_podcast_channel() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -175,8 +175,8 @@ def endpoint_delete_podcast_channel() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/refreshpodcasts/
-@api_bp.route('/refreshPodcasts', methods=['GET', 'POST'])
-@api_bp.route('/refreshPodcasts.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/refreshPodcasts', methods=['GET', 'POST'])
+@subsonic_bp.route('/refreshPodcasts.view', methods=['GET', 'POST'])
 def endpoint_refresh_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -201,8 +201,8 @@ def endpoint_refresh_podcasts() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/downloadpodcastepisode/
-@api_bp.route('/downloadPodcastEpisode', methods=['GET', 'POST'])
-@api_bp.route('/downloadPodcastEpisode.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/downloadPodcastEpisode', methods=['GET', 'POST'])
+@subsonic_bp.route('/downloadPodcastEpisode.view', methods=['GET', 'POST'])
 def endpoint_download_podcast_episode() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -233,8 +233,8 @@ def endpoint_download_podcast_episode() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deletepodcastepisode/
-@api_bp.route('/deletePodcastEpisode', methods=['GET', 'POST'])
-@api_bp.route('/deletePodcastEpisode.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/deletePodcastEpisode', methods=['GET', 'POST'])
+@subsonic_bp.route('/deletePodcastEpisode.view', methods=['GET', 'POST'])
 def endpoint_delete_podcast_episode() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -262,8 +262,8 @@ def endpoint_delete_podcast_episode() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/extensions/getpodcastepisode/
-@api_bp.route('/getPodcastEpisode', methods=['GET', 'POST'])
-@api_bp.route('/getPodcastEpisode.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPodcastEpisode', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPodcastEpisode.view', methods=['GET', 'POST'])
 def endpoint_get_podcast_episode() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

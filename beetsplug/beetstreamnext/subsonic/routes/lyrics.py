@@ -3,11 +3,11 @@ import re
 from typing import TYPE_CHECKING, Tuple, Union
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
@@ -100,8 +100,8 @@ def _fetch_lyrics_data(item) -> dict | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyrics/
-@api_bp.route('/getLyrics', methods=['GET', 'POST'])
-@api_bp.route('/getLyrics.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLyrics', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLyrics.view', methods=['GET', 'POST'])
 def endpoint_get_lyrics() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -140,8 +140,8 @@ def endpoint_get_lyrics() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLyricsBySongId/
-@api_bp.route('/getLyricsBySongId', methods=['GET', 'POST'])
-@api_bp.route('/getLyricsBySongId.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLyricsBySongId', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLyricsBySongId.view', methods=['GET', 'POST'])
 def endpoint_get_lyrics_by_song_id() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

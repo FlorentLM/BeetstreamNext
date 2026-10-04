@@ -2,20 +2,20 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
-@api_bp.route('/getPlayQueue', methods=['GET', 'POST'])
-@api_bp.route('/getPlayQueue.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPlayQueue', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPlayQueue.view', methods=['GET', 'POST'])
 def endpoint_get_play_queue() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -69,8 +69,8 @@ def endpoint_get_play_queue() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/savePlayQueue/
-@api_bp.route('/savePlayQueue', methods=['GET', 'POST'])
-@api_bp.route('/savePlayQueue.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/savePlayQueue', methods=['GET', 'POST'])
+@subsonic_bp.route('/savePlayQueue.view', methods=['GET', 'POST'])
 def endpoint_save_play_queue() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -123,8 +123,8 @@ def endpoint_save_play_queue() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueueByIndex/
-@api_bp.route('/getPlayQueueByIndex', methods=['GET', 'POST'])
-@api_bp.route('/getPlayQueueByIndex.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPlayQueueByIndex', methods=['GET', 'POST'])
+@subsonic_bp.route('/getPlayQueueByIndex.view', methods=['GET', 'POST'])
 def endpoint_get_play_queue_by_index() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -184,8 +184,8 @@ def endpoint_get_play_queue_by_index() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/savePlayQueueByIndex/
-@api_bp.route('/savePlayQueueByIndex', methods=['GET', 'POST'])
-@api_bp.route('/savePlayQueueByIndex.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/savePlayQueueByIndex', methods=['GET', 'POST'])
+@subsonic_bp.route('/savePlayQueueByIndex.view', methods=['GET', 'POST'])
 def endpoint_save_play_queue_by_index() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

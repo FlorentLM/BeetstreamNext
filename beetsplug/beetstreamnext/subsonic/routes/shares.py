@@ -2,18 +2,18 @@ from __future__ import annotations
 import secrets
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getshares/
-@api_bp.route('/getShares', methods=['GET', 'POST'])
-@api_bp.route('/getShares.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getShares', methods=['GET', 'POST'])
+@subsonic_bp.route('/getShares.view', methods=['GET', 'POST'])
 def endpoint_get_shares() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -52,8 +52,8 @@ def endpoint_get_shares() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createshare/
-@api_bp.route('/createShare', methods=['GET', 'POST'])
-@api_bp.route('/createShare.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/createShare', methods=['GET', 'POST'])
+@subsonic_bp.route('/createShare.view', methods=['GET', 'POST'])
 def endpoint_create_share() -> flask.Response:
     r = flask.request.values
 
@@ -105,8 +105,8 @@ def endpoint_create_share() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/updateshare/
-@api_bp.route('/updateShare', methods=['GET', 'POST'])
-@api_bp.route('/updateShare.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/updateShare', methods=['GET', 'POST'])
+@subsonic_bp.route('/updateShare.view', methods=['GET', 'POST'])
 def endpoint_update_share() -> flask.Response:
     r = flask.request.values
 
@@ -157,8 +157,8 @@ def endpoint_update_share() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteshare/
-@api_bp.route('/deleteShare', methods=['GET', 'POST'])
-@api_bp.route('/deleteShare.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteShare', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteShare.view', methods=['GET', 'POST'])
 def endpoint_delete_share() -> flask.Response:
     r = flask.request.values
 

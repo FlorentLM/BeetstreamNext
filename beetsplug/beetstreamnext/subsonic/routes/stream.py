@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Generator, Optional, Any, Tuple
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -15,7 +15,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, send_file
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.health import needs_healing
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, is_lossless, evaluate_limitation, get_normalization_filter, try_transcode
@@ -140,8 +140,8 @@ def _streamdownload_podcast(req_values, required_role: str) -> flask.Response | 
 # Endpoints
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/stream/
-@api_bp.route('/stream', methods=['GET', 'POST'])
-@api_bp.route('/stream.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/stream', methods=['GET', 'POST'])
+@subsonic_bp.route('/stream.view', methods=['GET', 'POST'])
 def endpoint_stream_song() -> flask.Response | None:
     r = flask.request.values
 
@@ -234,8 +234,8 @@ def endpoint_stream_song() -> flask.Response | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/download/
-@api_bp.route('/download', methods=['GET', 'POST'])
-@api_bp.route('/download.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/download', methods=['GET', 'POST'])
+@subsonic_bp.route('/download.view', methods=['GET', 'POST'])
 def endpoint_download_song() -> flask.Response | None:
     r = flask.request.values
 
@@ -257,8 +257,8 @@ def endpoint_download_song() -> flask.Response | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/gettranscodedecision/
-@api_bp.route('/getTranscodeDecision', methods=['POST'])
-@api_bp.route('/getTranscodeDecision.view', methods=['POST'])
+@subsonic_bp.route('/getTranscodeDecision', methods=['POST'])
+@subsonic_bp.route('/getTranscodeDecision.view', methods=['POST'])
 def endpoint_get_transcode_decision() -> flask.Response:
     r = flask.request.values
 
@@ -410,8 +410,8 @@ def endpoint_get_transcode_decision() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/gettranscodestream/
-@api_bp.route('/getTranscodeStream', methods=['GET', 'POST'])
-@api_bp.route('/getTranscodeStream.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getTranscodeStream', methods=['GET', 'POST'])
+@subsonic_bp.route('/getTranscodeStream.view', methods=['GET', 'POST'])
 def endpoint_get_transcode_stream() -> flask.Response | None:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -460,9 +460,9 @@ def endpoint_get_transcode_stream() -> flask.Response | None:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/hls/
-@api_bp.route('/hls', methods=['GET', 'POST'])
-@api_bp.route('/hls.view', methods=['GET', 'POST'])
-@api_bp.route('/hls.m3u8', methods=['GET', 'POST'])
+@subsonic_bp.route('/hls', methods=['GET', 'POST'])
+@subsonic_bp.route('/hls.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/hls.m3u8', methods=['GET', 'POST'])
 def endpoint_hls() -> flask.Response | None:
     r = flask.request.values
 
@@ -550,7 +550,7 @@ def endpoint_hls() -> flask.Response | None:
     return flask.Response(master_playlist_str, mimetype='application/vnd.apple.mpegurl')
 
 
-@api_bp.route('/hls_data/<stream_id>/<bitrate>/<filename>')
+@subsonic_bp.route('/hls_data/<stream_id>/<bitrate>/<filename>')
 def endpoint_hls_data(stream_id: str, bitrate: str, filename: str) -> flask.Response:
 
     if not flask.g.user_data.get('streamRole'):

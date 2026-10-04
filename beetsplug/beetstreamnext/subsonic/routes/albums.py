@@ -2,7 +2,7 @@ from __future__ import annotations
 import urllib.parse
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.storage.connection import dual_database
 from beetsplug.beetstreamnext.core.storage.cache import preload_albums, get_song_counts
@@ -31,8 +31,8 @@ def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbum/
-@api_bp.route('/getAlbum', methods=['GET', 'POST'])
-@api_bp.route('/getAlbum.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbum', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbum.view', methods=['GET', 'POST'])
 def endpoint_get_album() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -46,12 +46,12 @@ def endpoint_get_album() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo/
-@api_bp.route('/getAlbumInfo', methods=['GET', 'POST'])
-@api_bp.route('/getAlbumInfo.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumInfo', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumInfo.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumInfo2/
-@api_bp.route('/getAlbumInfo2', methods=['GET', 'POST'])
-@api_bp.route('/getAlbumInfo2.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumInfo2', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumInfo2.view', methods=['GET', 'POST'])
 def endpoint_get_album_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -99,12 +99,12 @@ def endpoint_get_album_info() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList/
-@api_bp.route('/getAlbumList', methods=['GET', 'POST'])
-@api_bp.route('/getAlbumList.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumList', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumList.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAlbumList2/
-@api_bp.route('/getAlbumList2', methods=['GET', 'POST'])
-@api_bp.route('/getAlbumList2.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumList2', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAlbumList2.view', methods=['GET', 'POST'])
 def endpoint_get_album_list() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

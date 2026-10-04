@@ -2,21 +2,21 @@ from __future__ import annotations
 import time
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
-@api_bp.route('/scrobble', methods=['GET', 'POST'])
-@api_bp.route('/scrobble.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/scrobble', methods=['GET', 'POST'])
+@subsonic_bp.route('/scrobble.view', methods=['GET', 'POST'])
 def endpoint_scrobble() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -91,8 +91,8 @@ def endpoint_scrobble() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getNowPlaying/
-@api_bp.route('/getNowPlaying', methods=['GET', 'POST'])
-@api_bp.route('/getNowPlaying.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getNowPlaying', methods=['GET', 'POST'])
+@subsonic_bp.route('/getNowPlaying.view', methods=['GET', 'POST'])
 def endpoint_get_now_playing() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -138,8 +138,8 @@ def endpoint_get_now_playing() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/reportplayback/
-@api_bp.route('/reportPlayback', methods=['GET', 'POST'])
-@api_bp.route('/reportPlayback.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/reportPlayback', methods=['GET', 'POST'])
+@subsonic_bp.route('/reportPlayback.view', methods=['GET', 'POST'])
 def endpoint_report_playback() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

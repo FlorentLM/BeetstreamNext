@@ -9,13 +9,13 @@ from .application import app, csrf
 from . import middleware  # noqa: F401
 
 # Register the blueprints
-from .api import api_bp
+from .subsonic import subsonic_bp
 from .public import public_bp
 from .admin import admin_bp
 from .account import account_bp
 from .auth import auth_bp
-app.register_blueprint(api_bp)
-csrf.exempt(api_bp)
+app.register_blueprint(subsonic_bp)
+csrf.exempt(subsonic_bp)
 app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(account_bp)

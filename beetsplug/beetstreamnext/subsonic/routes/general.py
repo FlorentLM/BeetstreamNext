@@ -2,18 +2,18 @@ from __future__ import annotations
 import hashlib
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import genres_formatter
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 
-from beetsplug.beetstreamnext.api.routes.albums import album_payload
-from beetsplug.beetstreamnext.api.routes.artists import artist_payload
-from beetsplug.beetstreamnext.api.routes.songs import song_payload
+from beetsplug.beetstreamnext.subsonic.routes.albums import album_payload
+from beetsplug.beetstreamnext.subsonic.routes.artists import artist_payload
+from beetsplug.beetstreamnext.subsonic.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
 from beetsplug.beetstreamnext.core.library.beets_interaction import is_import_running, start_pinned_imports
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths
@@ -38,8 +38,8 @@ def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getOpenSubsonicExtensions/
-@api_bp.route('/getOpenSubsonicExtensions', methods=['GET', 'POST'])
-@api_bp.route('/getOpenSubsonicExtensions.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getOpenSubsonicExtensions', methods=['GET', 'POST'])
+@subsonic_bp.route('/getOpenSubsonicExtensions.view', methods=['GET', 'POST'])
 def endpoint_get_open_subsonic_extensions() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -94,8 +94,8 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getGenres/
-@api_bp.route('/getGenres', methods=['GET', 'POST'])
-@api_bp.route('/getGenres.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getGenres', methods=['GET', 'POST'])
+@subsonic_bp.route('/getGenres.view', methods=['GET', 'POST'])
 def endpoint_get_genres() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -150,8 +150,8 @@ def endpoint_get_genres() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getLicense/
-@api_bp.route('/getLicense', methods=['GET', 'POST'])
-@api_bp.route('/getLicense.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLicense', methods=['GET', 'POST'])
+@subsonic_bp.route('/getLicense.view', methods=['GET', 'POST'])
 def endpoint_get_license() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -165,8 +165,8 @@ def endpoint_get_license() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicFolders/
-@api_bp.route('/getMusicFolders', methods=['GET', 'POST'])
-@api_bp.route('/getMusicFolders.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getMusicFolders', methods=['GET', 'POST'])
+@subsonic_bp.route('/getMusicFolders.view', methods=['GET', 'POST'])
 def endpoint_get_music_folders() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -177,8 +177,8 @@ def endpoint_get_music_folders() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getMusicDirectory/
-@api_bp.route('/getMusicDirectory', methods=['GET', 'POST'])
-@api_bp.route('/getMusicDirectory.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getMusicDirectory', methods=['GET', 'POST'])
+@subsonic_bp.route('/getMusicDirectory.view', methods=['GET', 'POST'])
 def endpoint_get_music_directory() -> flask.Response:
     # Works pretty much like a file system
     # Usually Artist first, then Album, then Songs
@@ -238,8 +238,8 @@ def endpoint_get_music_directory() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/ping/
-@api_bp.route('/ping', methods=['GET', 'POST'])
-@api_bp.route('/ping.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/ping', methods=['GET', 'POST'])
+@subsonic_bp.route('/ping.view', methods=['GET', 'POST'])
 def endpoint_ping() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -247,8 +247,8 @@ def endpoint_ping() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/startScan/
-@api_bp.route('/startScan', methods=['GET', 'POST'])
-@api_bp.route('/startScan.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/startScan', methods=['GET', 'POST'])
+@subsonic_bp.route('/startScan.view', methods=['GET', 'POST'])
 def endpoint_start_scan() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -264,8 +264,8 @@ def endpoint_start_scan() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/
-@api_bp.route('/getScanStatus', methods=['GET', 'POST'])
-@api_bp.route('/getScanStatus.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getScanStatus', methods=['GET', 'POST'])
+@subsonic_bp.route('/getScanStatus.view', methods=['GET', 'POST'])
 def endpoint_get_scan_status() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -287,8 +287,8 @@ def endpoint_get_scan_status() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/tokenInfo/
-@api_bp.route('/tokenInfo', methods=['GET', 'POST'])
-@api_bp.route('/tokenInfo.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/tokenInfo', methods=['GET', 'POST'])
+@subsonic_bp.route('/tokenInfo.view', methods=['GET', 'POST'])
 def endpoint_token_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -316,16 +316,16 @@ def endpoint_token_info() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getCaptions/
-@api_bp.route('/getCaptions', methods=['GET', 'POST'])
-@api_bp.route('/getCaptions.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getCaptions', methods=['GET', 'POST'])
+@subsonic_bp.route('/getCaptions.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideoInfo/
-@api_bp.route('/getVideoInfo', methods=['GET', 'POST'])
-@api_bp.route('/getVideoInfo.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getVideoInfo', methods=['GET', 'POST'])
+@subsonic_bp.route('/getVideoInfo.view', methods=['GET', 'POST'])
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getVideos/
-@api_bp.route('/getVideos', methods=['GET', 'POST'])
-@api_bp.route('/getVideos.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getVideos', methods=['GET', 'POST'])
+@subsonic_bp.route('/getVideos.view', methods=['GET', 'POST'])
 def endpoint_unsupported() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)

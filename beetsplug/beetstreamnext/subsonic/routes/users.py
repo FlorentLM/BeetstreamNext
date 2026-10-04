@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import flask
 
-from .. import api_bp
+from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.media.avatars import avatar_response
 from beetsplug.beetstreamnext.core.accounts.users_crud import (
     create_user, update_user, delete_user, get_userdata, list_users
@@ -36,8 +36,8 @@ def user_payload(user_data: dict) -> dict:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getUser/
-@api_bp.route('/getUser', methods=['GET', 'POST'])
-@api_bp.route('/getUser.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getUser', methods=['GET', 'POST'])
+@subsonic_bp.route('/getUser.view', methods=['GET', 'POST'])
 def endpoint_get_user() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -65,8 +65,8 @@ def endpoint_get_user() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getUsers/
-@api_bp.route('/getUsers', methods=['GET', 'POST'])
-@api_bp.route('/getUsers.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getUsers', methods=['GET', 'POST'])
+@subsonic_bp.route('/getUsers.view', methods=['GET', 'POST'])
 def endpoint_get_users() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -83,8 +83,8 @@ def endpoint_get_users() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/createUser/
-@api_bp.route('/createUser', methods=['GET', 'POST'])
-@api_bp.route('/createUser.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/createUser', methods=['GET', 'POST'])
+@subsonic_bp.route('/createUser.view', methods=['GET', 'POST'])
 def endpoint_create_user() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -121,8 +121,8 @@ def endpoint_create_user() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/updateUser/
-@api_bp.route('/updateUser', methods=['GET', 'POST'])
-@api_bp.route('/updateUser.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/updateUser', methods=['GET', 'POST'])
+@subsonic_bp.route('/updateUser.view', methods=['GET', 'POST'])
 def endpoint_update_user() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -165,8 +165,8 @@ def endpoint_update_user() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/deleteUser/
-@api_bp.route('/deleteUser', methods=['GET', 'POST'])
-@api_bp.route('/deleteUser.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteUser', methods=['GET', 'POST'])
+@subsonic_bp.route('/deleteUser.view', methods=['GET', 'POST'])
 def endpoint_delete_user() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -188,8 +188,8 @@ def endpoint_delete_user() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/changePassword/
-@api_bp.route('/changePassword', methods=['GET', 'POST'])
-@api_bp.route('/changePassword.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/changePassword', methods=['GET', 'POST'])
+@subsonic_bp.route('/changePassword.view', methods=['GET', 'POST'])
 def endpoint_change_password() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
@@ -214,8 +214,8 @@ def endpoint_change_password() -> flask.Response:
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getAvatar/
-@api_bp.route('/getAvatar', methods=['GET', 'POST'])
-@api_bp.route('/getAvatar.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAvatar', methods=['GET', 'POST'])
+@subsonic_bp.route('/getAvatar.view', methods=['GET', 'POST'])
 def endpoint_get_avatar() -> flask.Response:
     username = flask.request.values.get('username', default='', type=safe_str)    # Required
     if not username:

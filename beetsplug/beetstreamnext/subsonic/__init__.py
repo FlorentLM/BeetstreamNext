@@ -1,7 +1,7 @@
 from __future__ import annotations
 from flask import Blueprint
 
-api_bp = Blueprint('api', __name__, url_prefix='/rest')
+subsonic_bp = Blueprint('subsonic', __name__, url_prefix='/rest')
 
 from .routes import (
     albums,

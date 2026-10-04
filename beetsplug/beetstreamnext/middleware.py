@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.core.library.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users, get_user_roles
 from beetsplug.beetstreamnext.auth.subsonic_auth import authenticate_subsonic
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
-from beetsplug.beetstreamnext.api.responses import subsonic_error
+from beetsplug.beetstreamnext.subsonic.responses import subsonic_error
 
 
 WEBUI_PREFIXES = ('/admin', '/account', '/login', '/logout')

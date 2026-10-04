@@ -6,7 +6,9 @@ Internet radios and Podcasts do not come from your Beets library, and are manage
 
 **BeetstreamNext** implements the Subsonic internet radio endpoints (`getInternetRadioStations`, `createInternetRadioStation`, `updateInternetRadioStation`, `deleteInternetRadioStation`).
 
-Radio stations can be managed from the admin panel or any client that supports them.
+Each user has their own radio station list from their [account page](./accounts-and-permissions.md#user-account-page) or any Subsonic client that supports them. No specific role is required.
+
+> **Note:** When upgrading _from_ **BeetstreamNext** v2.0.7 (where stations were shared server-wide), existing stations are automatically copied to every existing user.
 
 - **Station discovery**: Set `enable_radio_discovery` to search **[Radio Browser](https://www.radio-browser.info/)**, a community-maintained directory of internet radio streams.
 - **Icons**: BeetstreamNext tries to scrape icons from the station homepage's `<link rel="icon">`/`apple-touch-icon` tags, or falls back to [**DuckDuckGo**'s icon proxy](https://duckduckgo.com/duckduckgo-help-pages/privacy/favicons).

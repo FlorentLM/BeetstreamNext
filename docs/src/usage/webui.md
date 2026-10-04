@@ -55,7 +55,9 @@ Live view of the current _IP allow/deny_ lists and _rate-limit_ state (see [Secu
 
 ### Podcasts & radio
 
-Add/refresh/delete podcast subscriptions and internet radio stations server-wide including radio [station discovery](../features/radio-and-podcasts.md#internet-radio) when `enable_radio_discovery` is on.
+Add/refresh/delete podcast subscriptions and internet radio stations.
+
+[Radio discovery](../features/radio-and-podcasts.md#internet-radio) (when `enable_radio_discovery` is on) allows you to find new stations.
 
 <img class="screenshot" src="../images/light/screenshot_radios.png" alt="Radio stations">
 

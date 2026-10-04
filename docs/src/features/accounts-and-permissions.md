@@ -9,7 +9,7 @@ Both authentication schemes from the Subsonic/OpenSubsonic spec are supported:
 
 ## Multi-user system
 
-Every user account has their own bookmarks, ratings, favorites, play statistics, and play queues, all synced across whatever devices/clients they use.
+Every user account has their own bookmarks, ratings, favorites, play statistics, play queues, and internet radio stations, all synced across whatever devices/clients they use.
 
 **BeetstreamNext** stores this data separately from your Beets library, since Beets itself has no concept of multi-user data.
 
@@ -38,7 +38,7 @@ A new user account starts with the defaults above unless overridden at creation.
 
 ## User account page
 
-Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, API key, and (if they are allowed) their public shares and podcast subscriptions.
+Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, API key, and internet radio stations, and (if they are allowed) their public shares and podcast subscriptions.
 
 > **Note:** Unlike the admin panel, this is **not** restrictable by host (see [`admin_hostname`](../configuration.md#admin_hostname)). Admins who sign in from a hostname other than `admin_hostname` will see the non-admin view of their account.
 

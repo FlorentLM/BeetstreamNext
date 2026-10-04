@@ -1,6 +1,7 @@
 <p class="modal-username">{{ user.username }}</p>
 
-<form id="editUserForm" enctype="multipart/form-data"
+<form id="editUserForm" enctype="multipart/form-data" x-data="iconPicker"
+      data-src="{% if user.avatarLastChanged %}{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}{% endif %}"
       hx-post="{{ url_for('admin.route_update_user', username=user.username) }}"
       hx-encoding="multipart/form-data"
       hx-target="#usersTable"
@@ -12,19 +13,17 @@
         <label>Avatar <span class="label-hint">(optional)</span></label>
 
         <div class="radio-icon-row">
-            <button type="button" class="radio-icon-frame radio-icon-frame-round" data-action="pick-radio-icon"
-                    data-target="editUserAvatar" aria-label="Choose avatar">
-                <img id="editUserAvatarPreview" class="{{ '' if user.avatarLastChanged else 'hidden' }}" alt=""
-                     {% if user.avatarLastChanged %}src="{{ url_for('admin.route_serve_avatar', username=user.username) }}?v={{ user.avatarLastChanged | int }}"{% endif %}>
+            <button type="button" class="radio-icon-frame radio-icon-frame-round" @click="pick()" aria-label="Choose avatar">
+                <img x-show="previewSrc" :src="previewSrc" alt="">
                 <span class="radio-icon-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
             </button>
             <span class="label-hint">Click to change the avatar</span>
         </div>
 
         <input type="file" id="editUserAvatar" name="avatar" accept="image/jpeg,image/png,image/webp"
-               class="hidden">
+               class="hidden" x-ref="file" @change="onFileChange()">
         <label class="role-item role-item-standalone">
-            <input type="checkbox" name="remove_avatar" id="editUserRemoveAvatar"> Remove current avatar
+            <input type="checkbox" name="remove_avatar" id="editUserRemoveAvatar" x-ref="remove"> Remove current avatar
         </label>
     </div>
 

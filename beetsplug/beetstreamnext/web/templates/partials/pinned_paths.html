@@ -52,6 +52,6 @@
           hx-target="#pinnedPaths"
           hx-swap="innerHTML">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-primary" data-pinned-scan {{ 'disabled' if running }}>Scan pinned paths now</button>
+        <button type="submit" class="btn btn-primary" :disabled="live" {{ 'disabled' if running }}>Scan pinned paths now</button>
     </form>
 {% endif %}

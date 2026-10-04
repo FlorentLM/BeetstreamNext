@@ -230,13 +230,14 @@
         </details>
     </div>
 
-    <div class="modal-overlay modal-confirm" id="confirmModal">
+    <div class="modal-overlay modal-confirm" id="confirmModal" x-data="modalPanel('confirmModal')"
+         :class="{ active: isOpen }" @click.self="close()" @keydown.escape.window="close()">
         <div class="modal-content modal-content-small">
             <h2>Confirm Action</h2>
-            <p class="confirm-text" id="confirmText"></p>
+            <p class="confirm-text" x-text="message"></p>
             <div class="confirm-actions">
-                <button type="button" class="btn btn-outline" id="confirmCancel">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmOk">Confirm</button>
+                <button type="button" class="btn btn-outline" @click="close()">Cancel</button>
+                <button type="button" class="btn btn-primary" @click="confirmProceed()">Confirm</button>
             </div>
         </div>
     </div>
@@ -247,4 +248,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}"
+            src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>
 {% endblock %}

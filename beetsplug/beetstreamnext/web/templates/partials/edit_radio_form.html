@@ -1,4 +1,5 @@
-<form id="editRadioForm" enctype="multipart/form-data"
+<form id="editRadioForm" enctype="multipart/form-data" x-data="iconPicker"
+      data-src="{{ url_for('admin.route_serve_radio_image', station_id=station.id) if station.has_image else '' }}"
       hx-post="{{ url_for('admin.route_update_radio', station_id=station.id) }}"
       hx-encoding="multipart/form-data"
       hx-target="#radioList"
@@ -25,19 +26,17 @@
         <label>Icon <span class="label-hint">(optional)</span></label>
 
         <div class="radio-icon-row">
-            <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
-                    data-target="editRadioImage" aria-label="Choose station icon">
-                <img id="editRadioImagePreview" class="{{ '' if station.has_image else 'hidden' }}" alt=""
-                     {% if station.has_image %}src="{{ url_for('admin.route_serve_radio_image', station_id=station.id) }}"{% endif %}>
+            <button type="button" class="radio-icon-frame" @click="pick()" aria-label="Choose station icon">
+                <img x-show="previewSrc" :src="previewSrc" alt="">
                 <span class="radio-icon-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
             </button>
             <span class="label-hint">Click to change the icon.</span>
         </div>
 
         <input type="file" id="editRadioImage" name="image" accept="image/jpeg,image/png,image/webp"
-               class="hidden">
+               class="hidden" x-ref="file" @change="onFileChange()">
         <label class="role-item role-item-standalone">
-            <input type="checkbox" name="remove_image" id="editRadioRemoveImage"> Remove current icon
+            <input type="checkbox" name="remove_image" id="editRadioRemoveImage" x-ref="remove"> Remove current icon
         </label>
     </div>
 

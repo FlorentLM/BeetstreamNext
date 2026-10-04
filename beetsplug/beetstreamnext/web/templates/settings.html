@@ -296,7 +296,11 @@
                 {% include 'partials/beets_config.html' %}
             </div>
 
-            <div class="card">
+            <div class="card" x-data="beetsImport"
+                 data-start-url="{{ url_for('admin.route_beets_import_start') }}"
+                 data-input-url="{{ url_for('admin.route_beets_import_input') }}"
+                 data-status-url="{{ url_for('admin.route_beets_import_status') }}"
+                 data-log-url="{{ url_for('admin.route_beets_import_log') }}">
                 <div class="table-header">
                     <h2>Beets Import</h2>
                 </div>
@@ -305,7 +309,7 @@
                     <div class="setting-input-row">
                         <div class="beets-path-field">
                             <input type="text" id="beetsImportPath" name="path" placeholder="e.g. /downloads/music/Radiohead - In Rainbows (2007)"
-                                   autocomplete="off"
+                                   autocomplete="off" x-ref="path" @keydown.enter.prevent="start()"
                                    hx-get="{{ url_for('admin.route_beets_import_browse') }}"
                                    hx-trigger="input changed delay:300ms, focus once"
                                    hx-target="#beetsImportPathResults"
@@ -317,13 +321,10 @@
                                     hx-vals='{"csrf_token": "{{ csrf_token() }}", "incremental": "1"}'
                                     hx-target="#pinnedPaths" hx-swap="innerHTML"><span class="material-symbols-outlined">keep</span></button>
                         </div>
-                        <button type="button" class="btn btn-primary" data-action="start-beets-import"
-                                data-url="{{ url_for('admin.route_beets_import_start') }}"
-                                data-status-url="{{ url_for('admin.route_beets_import_status') }}"
-                                data-log-url="{{ url_for('admin.route_beets_import_log') }}">Start import
+                        <button type="button" class="btn btn-primary" @click="start()" :disabled="startDisabled">Start import
                         </button>
                     </div>
-                    <p class="test-result" id="beetsImportStartResult"></p>
+                    <p class="test-result" :class="startResultClass" x-text="startMessage"></p>
                 </form>
                 <div id="pinnedPaths"
                      hx-get="{{ url_for('admin.route_pinned_paths') }}"
@@ -331,15 +332,15 @@
                      hx-swap="innerHTML"></div>
                 <dl class="kv-grid">
                     <dt>Status</dt>
-                    <dd id="beetsImportStatusValue">Idle</dd>
+                    <dd x-text="label">Idle</dd>
                 </dl>
-                <pre class="log-view" id="beetsImportLogText">(no import run yet)</pre>
+                <pre class="log-view" id="beetsImportLogText" x-ref="log">(no import run yet)</pre>
                 <form class="card-body-form">
                     <div class="setting-input-row">
                         <input type="text" id="beetsImportStdin" placeholder="beets is idle" autocomplete="off"
-                               disabled>
-                        <button type="button" class="btn btn-outline" data-action="send-beets-import-input"
-                                data-url="{{ url_for('admin.route_beets_import_input') }}" disabled>Send
+                               x-ref="stdin" :placeholder="stdinPlaceholder" :disabled="!live"
+                               @keydown.enter.prevent="sendInput()">
+                        <button type="button" class="btn btn-outline" @click="sendInput()" :disabled="!live">Send
                         </button>
                     </div>
                 </form>
@@ -661,7 +662,7 @@
                     <div class="suggestion-list" id="radioDiscoveryResults"></div>
                 </div>
             {% endif %}
-            <form id="createRadioForm"
+            <form id="createRadioForm" x-data="iconPicker" @radio-icon.window="applyRemote($event)" @reset="clear()"
                   hx-post="{{ url_for('admin.route_create_radio') }}"
                   hx-encoding="multipart/form-data"
                   hx-target="#radioList"
@@ -683,16 +684,15 @@
                 <div class="form-group">
                     <label>Icon <span class="label-hint">(optional)</span></label>
                     <div class="radio-icon-row">
-                        <button type="button" class="radio-icon-frame" data-action="pick-radio-icon"
-                                data-target="createRadioImage" aria-label="Choose station icon">
-                            <img id="createRadioIconPreview" class="hidden" alt="">
+                        <button type="button" class="radio-icon-frame" @click="pick()" aria-label="Choose station icon">
+                            <img x-show="previewSrc" :src="previewSrc" alt="">
                             <span class="material-symbols-outlined">edit</span>
                         </button>
                         <span class="label-hint">Click to upload, or pick a search result above.</span>
                     </div>
                     <input type="file" id="createRadioImage" name="image" accept="image/jpeg,image/png,image/webp"
-                           class="hidden">
-                    <input type="hidden" id="createRadioFavicon" name="favicon_url">
+                           class="hidden" x-ref="file" @change="onFileChange()">
+                    <input type="hidden" id="createRadioFavicon" name="favicon_url" x-ref="favicon">
                 </div>
                 <button type="submit" class="btn btn-primary btn-full">Add station</button>
             </form>
@@ -719,6 +719,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"
             src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>
 {% endblock %}

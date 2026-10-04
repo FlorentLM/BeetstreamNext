@@ -1,77 +1,10 @@
 (function () {
     'use strict';
 
-    // Alpine components (tabs, modals, checkbox-group toggles)
+    // Alpine components (tabs, checkbox-group toggles)
     // (registered on 'alpine:init' so they exist before CSP build parses x-data)
 
     document.addEventListener('alpine:init', () => {
-        Alpine.store('modal', {
-            current: null,
-            message: '',
-            promptValue: '',
-            confirmResolve: null,
-            promptResolve: null,
-
-            show(id) {
-                this.current = id;
-            },
-
-            hide(id) {
-                if (id && this.current !== id) return;
-                this.current = null;
-                this.settleConfirm(false);
-                this.settlePrompt(null);
-            },
-
-            settleConfirm(result) {
-                if (!this.confirmResolve) return;
-                const resolve = this.confirmResolve;
-                this.confirmResolve = null;
-                resolve(result);
-            },
-
-            settlePrompt(result) {
-                if (!this.promptResolve) return;
-                const resolve = this.promptResolve;
-                this.promptResolve = null;
-                resolve(result);
-            },
-
-            confirm(message) {
-                return new Promise(resolve => {
-                    this.confirmResolve = resolve;
-                    this.message = message;
-                    this.show('confirmModal');
-                });
-            },
-
-            prompt(message, defaultValue) {
-                return new Promise(resolve => {
-                    this.promptResolve = resolve;
-                    this.message = message;
-                    this.promptValue = defaultValue || '';
-                    this.show('promptModal');
-                    setTimeout(() => {
-                        const input = document.getElementById('promptInput');
-                        if (input) {
-                            input.focus();
-                            input.select();
-                        }
-                    }, 50);
-                });
-            },
-
-            confirmProceed() {
-                this.settleConfirm(true);
-                this.hide('confirmModal');
-            },
-
-            promptProceed() {
-                this.settlePrompt(this.promptValue);
-                this.hide('promptModal');
-            }
-        });
-
         Alpine.data('tabs', () => ({
             active: 'users',
             validTabs: [],
@@ -97,33 +30,184 @@
             }
         }));
 
-        // Routing modal state via getters bcause the CSP build doesn't resolve the nested $store
-        Alpine.data('modalPanel', (id) => ({
-            get isOpen() {
-                return Alpine.store('modal').current === id;
+        // Icon/avatar upload frame: preview of the chosen (or current) image
+        // Root is <form>, so form.reset() clears the preview
+        Alpine.data('iconPicker', () => ({
+            previewSrc: '',
+            blobUrl: '',
+
+            init() {
+                this.previewSrc = this.$el.dataset.src || '';
             },
-            get message() {
-                return Alpine.store('modal').message;
+
+            revokeBlob() {
+                if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
+                this.blobUrl = '';
             },
-            get promptValue() {
-                return Alpine.store('modal').promptValue;
+
+            showBlob(blob) {
+                this.revokeBlob();
+                this.blobUrl = URL.createObjectURL(blob);
+                this.previewSrc = this.blobUrl;
             },
-            set promptValue(v) {
-                Alpine.store('modal').promptValue = v;
+
+            pick() {
+                this.$refs.file.click();
             },
-            open() {
-                Alpine.store('modal').show(id);
+
+            onFileChange() {
+                const file = this.$refs.file.files[0];
+                if (this.$refs.favicon) this.$refs.favicon.value = '';
+                if (file) {
+                    this.showBlob(file);
+                    if (this.$refs.remove) this.$refs.remove.checked = false;
+                } else {
+                    this.clear();
+                }
             },
-            close() {
-                Alpine.store('modal').hide(id);
+
+            clear() {
+                this.revokeBlob();
+                this.previewSrc = '';
             },
-            confirmProceed() {
-                Alpine.store('modal').confirmProceed();
-            },
-            promptProceed() {
-                Alpine.store('modal').promptProceed();
+
+            // Icon from a Radio Browser result
+            applyRemote(event) {
+                const blob = event.detail.blob;
+                this.$refs.file.value = '';
+                if (!blob) {
+                    this.clear();
+                    return;
+                }
+                this.showBlob(blob);
+                if (typeof DataTransfer !== 'undefined') {
+                    const dt = new DataTransfer();
+                    dt.items.add(new File([blob], 'icon', {type: blob.type || 'application/octet-stream'}));
+                    this.$refs.file.files = dt.files;
+                }
             }
         }));
+
+        // Beets import panel: status/log pushed over the admin SSE stream (with one initial poll on page load)
+        Alpine.data('beetsImport', () => {
+            const LABELS = {
+                idle: 'Idle', running: 'Running…', needs_input: 'Waiting for input',
+                completed: 'Completed', failed: 'Failed'
+            };
+
+            async function post(url, body) {
+                const csrfInput = document.querySelector('input[name="csrf_token"]');
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                    },
+                    body: new URLSearchParams(body)
+                });
+                return resp.json();
+            }
+
+            return {
+                state: 'idle',
+                statusPath: '',
+                starting: false,
+                startMessage: '',
+                startOk: true,
+
+                get live() {
+                    return this.state === 'running' || this.state === 'needs_input';
+                },
+                get label() {
+                    if (this.live && this.statusPath) {
+                        return (this.state === 'running' ? 'Importing ' : 'Waiting for input on ') + this.statusPath;
+                    }
+                    return LABELS[this.state] || this.state;
+                },
+                get stdinPlaceholder() {
+                    return this.live ? 'reply to beets…' : 'beets is idle';
+                },
+                get startDisabled() {
+                    return this.starting;
+                },
+                get startResultClass() {
+                    if (!this.startMessage) return 'test-result';
+                    return 'test-result ' + (this.startOk ? 'test-result-ok' : 'test-result-fail');
+                },
+
+                init() {
+                    const dash = document.getElementById('adminDashboard');
+                    if (dash) dash.addEventListener('beets-import', event => this.onSse(event));
+
+                    const d = this.$el.dataset;
+                    if (d.statusUrl) {
+                        fetch(d.statusUrl, {credentials: 'same-origin'})
+                            .then(resp => resp.ok ? resp.json() : null)
+                            .then(status => { if (status) this.applyStatus(status); })
+                            .catch(() => {});
+                    }
+                    if (d.logUrl) {
+                        refreshLogs({dataset: {url: d.logUrl, target: 'beetsImportLogText'}});
+                    }
+                },
+
+                applyStatus(status) {
+                    this.state = status.state;
+                    this.statusPath = status.path || '';
+                },
+
+                applyLines(lines) {
+                    const target = this.$refs.log;
+                    const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+                    target.innerHTML = lines.length ? lines.join('\n') : '(no import run yet)';
+                    if (wasAtBottom) target.scrollTop = target.scrollHeight;
+                },
+
+                onSse(event) {
+                    try {
+                        const payload = JSON.parse(event.detail.data);
+                        this.applyStatus(payload);
+                        this.applyLines(payload.lines || []);
+                    } catch (err) {
+                        // Malformed payload, next event will hopefully replace
+                    }
+                },
+
+                async start() {
+                    const input = this.$refs.path;
+                    const path = input.value.trim();
+                    if (!path || this.starting) return;
+
+                    this.starting = true;
+                    try {
+                        const payload = await post(this.$el.dataset.startUrl, {path});
+                        this.startOk = !!payload.ok;
+                        this.startMessage = payload.ok ? '' : payload.message;
+                        this.applyStatus(payload);
+                        if (this.live) input.value = '';
+                    } catch (err) {
+                        this.startOk = false;
+                        this.startMessage = 'Failed to start: ' + err.message;
+                    } finally {
+                        this.starting = false;
+                    }
+                },
+
+                async sendInput() {
+                    const input = this.$refs.stdin;
+                    if (!this.live) return;
+                    const text = input.value;
+                    input.value = '';
+                    try {
+                        this.applyStatus(await post(this.$el.dataset.inputUrl, {text}));
+                    } catch (err) {
+                        // next SSE push will hopefully correct the view
+                    }
+                    input.focus();
+                }
+            };
+        });
 
         Alpine.data('checkboxGroup', () => ({
             setAll(checked, skip = []) {
@@ -200,125 +284,6 @@
         }
         target.dataset.lines = count + batch.length;
         if (wasAtBottom) target.scrollTop = target.scrollHeight;
-    }
-
-    // Beets import
-
-    const IMPORT_STATE_LABELS = {
-        idle: 'Idle', running: 'Running…', needs_input: 'Waiting for input',
-        completed: 'Completed', failed: 'Failed'
-    };
-
-    function applyImportStatus(status) {
-        const statusEl = document.getElementById('beetsImportStatusValue');
-        const stdinInput = document.getElementById('beetsImportStdin');
-        const sendBtn = document.querySelector('[data-action="send-beets-import-input"]');
-        if (!statusEl) return false;
-
-        const live = status.state === 'running' || status.state === 'needs_input';
-
-        let label = IMPORT_STATE_LABELS[status.state] || status.state;
-        if (live && status.path) {
-            label = (status.state === 'running' ? 'Importing ' : 'Waiting for input on ') + status.path;
-        }
-        statusEl.textContent = label;
-        if (stdinInput) {
-            stdinInput.disabled = !live;
-            stdinInput.placeholder = live ? 'reply to beets…' : 'beets is idle';
-        }
-        if (sendBtn) sendBtn.disabled = !live;
-        document.querySelectorAll('[data-pinned-scan]').forEach(btn => { btn.disabled = live; });
-
-        return live;
-    }
-
-    function applyImportLines(lines) {
-        const target = document.getElementById('beetsImportLogText');
-        if (!target) return;
-        const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-        target.innerHTML = lines.length ? lines.join('\n') : '(no import run yet)';
-        if (wasAtBottom) target.scrollTop = target.scrollHeight;
-    }
-
-    function handleBeetsImportSse(event) {
-        try {
-            const payload = JSON.parse(event.detail.data);
-            applyImportStatus(payload);
-            applyImportLines(payload.lines || []);
-        } catch (err) {
-            // Malformed payload, next event will hopefully replace
-        }
-    }
-
-
-    const adminSseSource = document.getElementById('adminDashboard');
-    if (adminSseSource) adminSseSource.addEventListener('beets-import', handleBeetsImportSse);
-
-    async function startBeetsImport(button) {
-        const url = button.dataset.url;
-        const pathInput = document.getElementById('beetsImportPath');
-        const result = document.getElementById('beetsImportStartResult');
-
-        if (!url || !pathInput) return;
-        const path = pathInput.value.trim();
-        if (!path) return;
-
-        button.disabled = true;
-        try {
-            const csrfInput = document.querySelector('input[name="csrf_token"]');
-            const resp = await fetch(url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
-                },
-                body: new URLSearchParams({path})
-            });
-
-            const payload = await resp.json();
-            if (result) {
-                result.className = 'test-result ' + (payload.ok ? 'test-result-ok' : 'test-result-fail');
-                result.textContent = payload.ok ? '' : payload.message;
-            }
-
-            const live = applyImportStatus(payload);
-            if (live) pathInput.value = '';
-
-        } catch (err) {
-            if (result) {
-                result.className = 'test-result test-result-fail';
-                result.textContent = 'Failed to start: ' + err.message;
-            }
-        } finally {
-            button.disabled = false;
-        }
-    }
-
-    async function sendBeetsImportInput(button) {
-        const url = button.dataset.url;
-        const input = document.getElementById('beetsImportStdin');
-
-        if (!url || !input || input.disabled) return;
-        const text = input.value;
-        input.value = '';
-
-        const csrfInput = document.querySelector('input[name="csrf_token"]');
-        try {
-            const resp = await fetch(url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
-                },
-                body: new URLSearchParams({text})
-            });
-            applyImportStatus(await resp.json());
-        } catch (err) {
-            // next SSE push will hopefully correct the view
-        }
-        input.focus();
     }
 
     // Podcast channel/episode status
@@ -458,7 +423,6 @@
             if (form) {
                 form.reset();
                 form.querySelector('.modal-result').innerHTML = '';
-                form.querySelector('#createRadioIconPreview')?.classList.add('hidden');
             }
             store.hide(modalId);
         }
@@ -517,21 +481,11 @@
         // Kept for create_station() in case the icon fetch here fails client-side
         if (faviconInput) faviconInput.value = favicon;
 
-        const imageInput = document.getElementById('createRadioImage');
-        if (imageInput) imageInput.value = '';
-
         const results = document.getElementById('radioDiscoveryResults');
         if (results) results.innerHTML = '';
 
-        const preview = document.getElementById('createRadioIconPreview');
-        if (!preview) return;
-
-        if (preview.dataset.blobUrl) {
-            URL.revokeObjectURL(preview.dataset.blobUrl);
-            delete preview.dataset.blobUrl;
-        }
-        preview.removeAttribute('src');
-        preview.classList.add('hidden');
+        const sendIcon = blob => window.dispatchEvent(new CustomEvent('radio-icon', {detail: {blob}}));
+        sendIcon(null);
 
         const searchButton = document.querySelector('[data-action="discover-radios"]');
         const proxyBase = searchButton ? searchButton.dataset.faviconProxy : '';
@@ -547,47 +501,9 @@
         try {
             const resp = await fetch(`${proxyBase}?${params.toString()}`, {credentials: 'same-origin'});
             if (!resp.ok) return;
-            const blob = await resp.blob();
-
-            const blobUrl = URL.createObjectURL(blob);
-            preview.dataset.blobUrl = blobUrl;
-            preview.src = blobUrl;
-            preview.classList.remove('hidden');
-
-            if (imageInput && typeof DataTransfer !== 'undefined') {
-                const file = new File([blob], 'icon', {type: blob.type || 'application/octet-stream'});
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                imageInput.files = dt.files;
-            }
+            sendIcon(await resp.blob());
         } catch (err) {
             // Left empty, favicon_url still lets create_station() try server-side
-        }
-    }
-
-    function previewLocalRadioIcon(fileInput, previewId, faviconInputId) {
-        const file = fileInput.files[0];
-        const preview = document.getElementById(previewId);
-        if (faviconInputId) {
-            const faviconInput = document.getElementById(faviconInputId);
-            if (faviconInput) faviconInput.value = '';
-        }
-
-        if (preview && preview.dataset.blobUrl) {
-            URL.revokeObjectURL(preview.dataset.blobUrl);
-            delete preview.dataset.blobUrl;
-        }
-
-        if (file && preview) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                preview.src = reader.result;
-                preview.classList.remove('hidden');
-            };
-            reader.readAsDataURL(file);
-        } else if (preview) {
-            preview.removeAttribute('src');
-            preview.classList.add('hidden');
         }
     }
 
@@ -601,12 +517,6 @@
             case 'copy-log':
                 copyLogs(target);
                 break;
-            case 'start-beets-import':
-                startBeetsImport(target);
-                break;
-            case 'send-beets-import-input':
-                sendBeetsImportInput(target);
-                break;
             case 'use-radio-result':
                 useRadioResult(target);
                 break;
@@ -615,10 +525,6 @@
                 break;
             case 'use-beets-path-result':
                 useBeetsPathResult(target);
-                break;
-            case 'pick-radio-icon':
-                const iconInput = document.getElementById(target.dataset.target);
-                if (iconInput) iconInput.click();
                 break;
             case 'edit-chat':
                 const oldText = target.dataset.text;
@@ -635,21 +541,6 @@
         }
     });
 
-    // Enter to submit
-    document.addEventListener('keydown', event => {
-        if (event.key !== 'Enter') return;
-
-        if (event.target.id === 'beetsImportPath') {
-            event.preventDefault();
-            const button = document.querySelector('[data-action="start-beets-import"]');
-            if (button) button.click();
-        } else if (event.target.id === 'beetsImportStdin') {
-            event.preventDefault();
-            const button = document.querySelector('[data-action="send-beets-import-input"]');
-            if (button && !button.disabled) button.click();
-        }
-    });
-
     const beetsPathResults = document.getElementById('beetsImportPathResults');
     if (beetsPathResults) {
         beetsPathResults.addEventListener('mouseleave', () => {
@@ -658,22 +549,6 @@
     }
 
     document.addEventListener('change', event => {
-        if (event.target.id === 'createRadioImage') {
-            previewLocalRadioIcon(event.target, 'createRadioIconPreview', 'createRadioFavicon');
-        }
-
-        if (event.target.id === 'editRadioImage') {
-            previewLocalRadioIcon(event.target, 'editRadioImagePreview', null);
-            const removeCheckbox = document.getElementById('editRadioRemoveImage');
-            if (removeCheckbox && event.target.files.length) removeCheckbox.checked = false;
-        }
-
-        if (event.target.id === 'editUserAvatar') {
-            previewLocalRadioIcon(event.target, 'editUserAvatarPreview', null);
-            const removeCheckbox = document.getElementById('editUserRemoveAvatar');
-            if (removeCheckbox && event.target.files.length) removeCheckbox.checked = false;
-        }
-
         if (event.target.id === 'set-jukebox_backend') {
             const deviceInput = document.getElementById('set-jukebox_hardware_device');
             if (deviceInput && deviceInput.value) deviceInput.value = '';
@@ -689,26 +564,6 @@
         }
     });
 
-    // Confirm dialogs
-    document.addEventListener('submit', event => {
-        const form = event.target.closest('form[data-confirm]');
-        if (!form) return;
-        event.preventDefault();
-        Alpine.store('modal').confirm(form.dataset.confirm).then(ok => {
-            if (!ok) return;
-            if (form.hasAttribute('hx-post')) htmx.trigger(form, 'confirmed');
-            else form.submit();
-        });
-    });
-
-    // hx-confirm use the modal
-    document.body.addEventListener('htmx:confirm', event => {
-        event.preventDefault();
-        Alpine.store('modal').confirm(event.detail.ctx.confirm).then(ok => {
-            if (ok) event.detail.issueRequest();
-            else event.detail.dropRequest();
-        });
-    });
 
     // Roughly same input validation as the server does, just to know "this'll get rejected" or not
     function looksLikeIpOrCidr(s) {
@@ -744,19 +599,6 @@
     }, true);
 
     // Init
-
-
-    // One initial poll, then live updates on SSE connection
-    const startImportBtn = document.querySelector('[data-action="start-beets-import"]');
-    if (startImportBtn && startImportBtn.dataset.statusUrl) {
-        fetch(startImportBtn.dataset.statusUrl, {credentials: 'same-origin'})
-            .then(resp => resp.ok ? resp.json() : null)
-            .then(status => { if (status) applyImportStatus(status); })
-            .catch(() => {});
-        if (startImportBtn.dataset.logUrl) {
-            refreshLogs({dataset: {url: startImportBtn.dataset.logUrl, target: 'beetsImportLogText'}});
-        }
-    }
 
 
     document.querySelectorAll('.config-time').forEach(formatConfigTime);

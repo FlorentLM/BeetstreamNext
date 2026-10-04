@@ -1,15 +1,14 @@
 from __future__ import annotations
+
 import time
 import os
 import re
 import mediafile
 from pathlib import Path
 from typing import Dict
-
 from importlib.metadata import version, PackageNotFoundError
 
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location, data_location
-
 
 
 START_TIME = time.time()    # not a constant but...yeah
@@ -155,6 +154,7 @@ DECADE_APOSTROPHE = re.compile(r"(\d)'([A-Za-z])\b")
 
 AUDIO_EXTENSIONS = frozenset(f'.{ext}' for ext in mediafile.TYPES)
 
+
 ## Security
 
 LOOPBACK_IPS: frozenset[str] = frozenset({'127.0.0.1', 'localhost', '::1'})
@@ -217,6 +217,22 @@ MAX_OPML_BYTES: int = 2 * 1024 * 1024            # 2 MB cap on an uploaded OPML 
 ## Other stuff
 
 MAX_CHAT_CHAR: int = 1000
+
+HTTP_ERROR_LABELS = {
+    400: 'bad request',
+    401: 'login required',
+    403: 'forbidden',
+    404: 'not found',
+    405: 'not allowed',
+    406: 'not acceptable',
+    410: 'permanently removed',
+    429: 'rate limited',
+    451: 'unavailable (legal)',
+    500: 'server error',
+    502: 'bad gateway',
+    503: 'unavailable',
+    504: 'gateway timeout',
+}
 
 
 ## Allowed image formats

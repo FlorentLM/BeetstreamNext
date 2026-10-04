@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import html
 import re
 import string
@@ -6,7 +7,9 @@ import unicodedata
 from html.parser import HTMLParser
 from typing import Any, Optional, Sequence, List
 
-from beetsplug.beetstreamnext.constants import MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE
+from beetsplug.beetstreamnext.constants import (
+    MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE, HTTP_ERROR_LABELS
+)
 
 
 ##
@@ -120,6 +123,41 @@ def format_bytes(n: int) -> str:
             return f'{size:.0f} {unit}' if unit == 'B' else f'{size:.1f} {unit}'
         size /= 1024
     return f'{size:.1f} TB'
+
+
+def short_error(message: str | None) -> str:
+    """
+    Short label for an error message (e.g. '410 Client Error: Gone for url...' -> 'error: permanently removed (410)').
+    """
+
+    if not message:
+        return 'error'
+
+    msg = message.lower()
+    match = re.search(r'\b([45]\d\d) (?:client|server) error', msg)
+    if match:
+        code = int(match.group(1))
+        label = HTTP_ERROR_LABELS.get(code) or ('client error' if code < 500 else 'server error')
+        return f'error: {label} ({code})'
+
+    for needle, label in (
+        ('timed out', 'timed out'),
+        ('timeout', 'timed out'),
+        ('ssl', 'SSL error'),
+        ('certificate', 'SSL error'),
+        ('name or service not known', 'host not found'),
+        ('nodename nor servname', 'host not found'),
+        ('failed to resolve', 'host not found'),
+        ('connection refused', 'connection refused'),
+        ('connection', 'connection failed'),
+        ('no space left', 'disk full'),
+        ('permission denied', 'disk permission'),
+        ('too many redirects', 'redirect loop'),
+    ):
+        if needle in msg:
+            return f'error: {label}'
+
+    return 'error'
 
 
 def format_elapsed(seconds: float) -> str:

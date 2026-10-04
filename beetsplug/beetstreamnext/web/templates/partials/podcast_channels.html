@@ -1,7 +1,10 @@
 {% import '_macros.html' as macros %}
 {% from '_macros.html' import podcast_title %}
+{% set target = '#podcastChannels' if scope == 'admin' else '#accountPodcasts' %}
+{% if scope == 'admin' %}
 <p class="card-hint" id="podcastTotalSize" hx-swap-oob="true">Total storage used by downloaded episodes:
     <strong>{{ total_size }}</strong>.</p>
+{% endif %}
 {% if message %}
     <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
 {% endif %}
@@ -11,9 +14,9 @@
 {% for ch in channels %}
     <div class="channel-row">
         <div class="channel-row-header">
-            {% if ch.has_image %}
+            {% if scope == 'admin' and ch.has_image %}
                 <img class="cover-thumb"
-                     src="{{ url_for('admin.route_serve_podcast_image', channel_id=ch.id) }}"
+                     src="{{ url_for(scope ~ '.route_serve_podcast_image', channel_id=ch.id) }}"
                      alt="">
             {% else %}
                 <span class="cover-thumb cover-thumb-placeholder">{{ (ch.title or ch.url)[0]|upper }}</span>
@@ -24,40 +27,52 @@
                 {% if ch.status == 'error' and ch.error_message %}
                     <div class="email-cell text-error">{{ ch.error_message }}</div>
                 {% endif %}
-                <div class="email-cell">
+                {% if scope == 'admin' %}<div class="email-cell">
                     {% if ch.subscribers %}
                         Subscribers: {{ ch.subscribers|join(', ') }}
                     {% else %}
                         No subscribers
                     {% endif %}
-                </div>
+                </div>{% endif %}
             </div>
             <div class="roles-cell">
     <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}"
           id="podcast-channel-status-{{ ch.id }}"
-          data-status="{{ ch.status }}">{{ ch.status }}</span>
+          data-status="{{ ch.status }}"
+          data-label="{{ ch.status_label }}"{% if ch.error_message %} title="{{ ch.error_message }}"{% endif %}>{{ ch.status_label }}</span>
                 <span class="badge">{{ ch.downloaded_count }}/{{ ch.episode_count }} downloaded</span>
-                <span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>
+                {% if scope == 'admin' %}<span class="badge">{{ ch.subscribers|length }} subscriber{{ 's' if ch.subscribers|length != 1 }}</span>{% endif %}
                 <span class="badge badge-limit"
                       id="podcast-channel-size-{{ ch.id }}">{{ ch.storage_size }}</span>
             </div>
             <div class="actions-cell">
                 <button class="icon-btn" title="Refresh now" aria-label="Refresh {{ (ch.title or ch.url) | e }}"
-            hx-post="{{ url_for('admin.route_refresh_podcast', channel_id=ch.id) }}"
-            hx-target="#podcastChannels" hx-swap="innerHTML">{{ macros.icon('refresh') }}</button>
+            hx-post="{{ url_for(scope ~ '.route_refresh_podcast', channel_id=ch.id) }}"
+            hx-target="{{ target }}" hx-swap="innerHTML">{{ macros.icon('refresh') }}</button>
                 <button class="icon-btn" title="Download recent episodes" aria-label="Download recent episodes for {{ (ch.title or ch.url) | e }}"
-            hx-post="{{ url_for('admin.route_download_recent_podcast_episodes', channel_id=ch.id) }}"
-            hx-target="#podcastChannels" hx-swap="innerHTML">{{ macros.icon('download') }}</button>
+            hx-post="{{ url_for(scope ~ '.route_download_recent_podcast_episodes', channel_id=ch.id) }}"
+            hx-target="{{ target }}" hx-swap="innerHTML">{{ macros.icon('download') }}</button>
+                <button class="icon-btn icon-btn-delete" title="{{ 'Delete all downloaded episodes' if scope == 'admin' else 'Delete my downloaded episodes' }}" aria-label="Delete downloaded episodes of {{ (ch.title or ch.url) | e }}"
+            hx-post="{{ url_for(scope ~ '.route_delete_podcast_downloads', channel_id=ch.id) }}"
+            hx-target="{{ target }}" hx-swap="innerHTML"
+            hx-confirm="Delete {{ 'all' if scope == 'admin' else 'your' }} downloaded episodes of '{{ (ch.title or ch.url) | e }}'? {{ 'The files are removed for all subscribers.' if scope == 'admin' else 'Files other subscribers still want are kept.' }}">{{ macros.icon('delete-files') }}</button>
+{% if scope == 'admin' %}
                 <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete channel {{ (ch.title or ch.url) | e }}"
             hx-post="{{ url_for('admin.route_delete_podcast', channel_id=ch.id) }}"
-            hx-target="#podcastChannels" hx-swap="innerHTML"
+            hx-target="{{ target }}" hx-swap="innerHTML"
             hx-confirm="Delete podcast channel '{{ (ch.title or ch.url) | e }}'? This removes it and its downloaded episodes for all subscribers.">{{ macros.icon('delete') }}</button>
+                {% else %}
+                <button class="icon-btn icon-btn-delete" title="Unsubscribe" aria-label="Unsubscribe from {{ (ch.title or ch.url) | e }}"
+            hx-post="{{ url_for('account.route_unsubscribe_podcast', channel_id=ch.id) }}"
+            hx-target="{{ target }}" hx-swap="innerHTML"
+            hx-confirm="Unsubscribe from this podcast?">{{ macros.icon('delete') }}</button>
+                {% endif %}
             </div>
         </div>
 
         {% if ch.episode_count %}
             <details class="podcast-episodes" data-channel-id="{{ ch.id }}"
-                     hx-get="{{ url_for('admin.route_podcast_episodes', channel_id=ch.id) }}"
+                     hx-get="{{ url_for(scope ~ '.route_podcast_episodes', channel_id=ch.id) }}"
                      hx-trigger="toggle once"
                      hx-target="find .table-container"
                      hx-swap="innerHTML">
@@ -70,12 +85,12 @@
         {% endif %}
     </div>
 {% else %}
-    <p class="empty-state">No podcast channels yet. Subscribe to a feed above to get
-        started.</p>
+    <p class="empty-state">{% if scope == 'admin' %}No podcast channels yet. Subscribe to a feed above to get
+        started.{% else %}You're not subscribed to any podcasts.{% endif %}</p>
 {% endfor %}
-{% if channels %}
+{% if channels and scope == 'admin' %}
     <div class="card-footer">
-        <a href="{{ url_for('admin.route_export_podcast_opml') }}" class="btn btn-outline">Export
+        <a href="{{ url_for(scope ~ '.route_export_podcast_opml') }}" class="btn btn-outline">Export
             to OPML</a>
     </div>
 {% endif %}

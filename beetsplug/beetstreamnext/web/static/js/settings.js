@@ -331,9 +331,11 @@
     function applyPodcastStatus(data) {
         for (const [id, info] of Object.entries(data.channels || {})) {
             const badge = document.getElementById(`podcast-channel-status-${id}`);
-            if (badge && badge.dataset.status !== info.status) {
-                badge.textContent = info.status;
+            if (badge && (badge.dataset.status !== info.status || badge.dataset.label !== info.status_label)) {
+                badge.textContent = info.status_label || info.status;
                 badge.dataset.status = info.status;
+                badge.dataset.label = info.status_label || info.status;
+                badge.title = info.error_message || '';
                 badge.classList.toggle('badge-admin', info.status === 'error');
             }
 
@@ -346,8 +348,10 @@
         for (const [id, info] of Object.entries(data.episodes || {})) {
             const badge = document.getElementById(`podcast-episode-status-${id}`);
             if (badge && badge.dataset.status !== info.status) {
-                badge.textContent = info.status;
+                badge.textContent = info.status_label || info.status;
                 badge.dataset.status = info.status;
+                badge.dataset.label = info.status_label || info.status;
+                badge.title = info.error_message || '';
                 badge.classList.toggle('badge-admin', info.status === 'error');
 
                 const dl = document.getElementById(`podcast-episode-dl-${id}`);

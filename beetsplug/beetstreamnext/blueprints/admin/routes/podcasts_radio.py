@@ -2,15 +2,15 @@ from __future__ import annotations
 import flask
 from io import BytesIO
 
-from beetsplug.beetstreamnext.utils.htmx import modal_error
+from beetsplug.beetstreamnext.blueprints import views
+from beetsplug.beetstreamnext.blueprints.views import modal_error
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.media.images import sniff_image, send_stored_art, read_uploaded_image
-from beetsplug.beetstreamnext.core.services.radio import create_station, update_station, delete_station, list_radios, resolve_station_icon
-from beetsplug.beetstreamnext.core.services.external.radio_browser import query_radio_browser
+from beetsplug.beetstreamnext.core.services.radio import create_station, update_station, delete_station, resolve_station_icon
 from beetsplug.beetstreamnext.blueprints.forms import RadioStationForm, form_error_messages
-from beetsplug.beetstreamnext.utils.text import safe_str, format_duration, format_bytes
+from beetsplug.beetstreamnext.utils.text import safe_str
 
 
 ##
@@ -37,7 +37,7 @@ def route_create_radio() -> str | flask.Response:
     if station_id is None:
         return modal_error(f'Could not create radio station: {error}', 'createRadioResult')
 
-    return _radios_partial(f"Radio station '{form.name.data}' created.")
+    return views.render_radios(f"Radio station '{form.name.data}' created.")
 
 
 @admin_bp.route('/radios/update/<int:station_id>', methods=['POST'])
@@ -72,7 +72,7 @@ def route_update_radio(station_id: int) -> str | flask.Response:
     if error:
         return modal_error(f'Could not update radio station: {error}', 'editRadioResult')
 
-    return _radios_partial(f"Radio station '{form.name.data}' updated.")
+    return views.render_radios(f"Radio station '{form.name.data}' updated.")
 
 
 @admin_bp.route('/radios/<int:station_id>/edit', methods=['GET'])
@@ -105,14 +105,10 @@ def route_edit_radio(station_id: int) -> str:
     )
 
 
-def _radios_partial(message: str | None = None) -> str:
-    return flask.render_template('partials/radio_list.html', radios=list_radios(), message=message, ok=True)
-
-
 @admin_bp.route('/radios', methods=['GET'])
 @admin_required
 def route_radios() -> str:
-    return _radios_partial()
+    return views.render_radios()
 
 
 @admin_bp.route('/radios/delete/<int:station_id>', methods=['POST'])
@@ -120,37 +116,13 @@ def route_radios() -> str:
 def route_delete_radio(station_id: int) -> str:
     delete_station(station_id)
 
-    return _radios_partial('Radio station deleted.')
+    return views.render_radios('Radio station deleted.')
 
 
 @admin_bp.route('/radios/discover', methods=['GET'])
 @admin_required
 def route_discover_radios() -> str:
-
-    if not flask.current_app.config.get('enable_radio_discovery'):
-        return flask.render_template('partials/radio_search.html', stations=[], message='Radio discovery is disabled.')
-
-    q = (flask.request.args.get('q') or '').strip()
-    if not q:
-        return flask.render_template('partials/radio_search.html', stations=[], message='Enter a station name to search.')
-
-    stations = query_radio_browser(q, limit=15)
-    if not stations:
-        return flask.render_template('partials/radio_search.html', stations=[], message='No stations found.')
-
-    return flask.render_template(
-        'partials/radio_search.html',
-        stations=[
-            {
-                'name': s['name'],
-                'stream_url': s['stream_url'],
-                'homepage_url': s['homepage_url'],
-                'favicon': s.get('favicon') or '',
-            }
-            for s in stations
-        ],
-        message=None,
-    )
+    return views.render_radio_discovery(flask.request.args.get('q'))
 
 
 @admin_bp.route('/radios/favicon-proxy', methods=['GET'])
@@ -188,15 +160,7 @@ def route_serve_radio_image(station_id: int) -> flask.Response:
 # Podcasts
 
 def _channels_partial(message: str | None = None, ok: bool = True, notices: list | None = None) -> str:
-    channels, total_size = flask.current_app.config['podcast_manager'].channels_overview()
-    return flask.render_template(
-        'partials/podcast_channels.html',
-        channels=channels,
-        total_size=total_size,
-        message=message,
-        ok=ok,
-        notices=notices
-    )
+    return views.render_channels('admin', message=message, ok=ok, notices=notices)
 
 
 @admin_bp.route('/podcasts/channels', methods=['GET'])
@@ -230,13 +194,13 @@ def route_import_podcast_opml() -> str:
 @admin_bp.route('/podcasts/export-opml', methods=['GET'])
 @admin_required
 def route_export_podcast_opml() -> flask.Response:
-    return flask.current_app.config['podcast_manager'].send_opml()
+    return views.opml_response()
 
 
 @admin_bp.route('/podcasts/discover', methods=['GET'])
 @admin_required
 def route_discover_podcasts() -> str:
-    return flask.current_app.config['podcast_manager'].render_discovery(flask.request.args.get('q'))
+    return views.render_discovery(flask.request.args.get('q'))
 
 
 @admin_bp.route('/podcasts/refresh', methods=['POST'])
@@ -266,13 +230,17 @@ def route_download_recent_podcast_episodes(channel_id: int) -> str:
     podcast_manager = flask.current_app.config['podcast_manager']
     count = podcast_manager.download_recent_episodes(channel_id, username=flask.session.get('username'))
 
-    if count:
-        message = f"Downloading {count} recent episode{'s' if count != 1 else ''}."
-    else:
-        message = ("No episodes to download (already downloaded/downloading, or "
-                   "'podcast_auto_download_count' is set to 0).")
+    return _channels_partial(views.download_recents_message(count))
 
-    return _channels_partial(message)
+
+@admin_bp.route('/podcasts/<int:channel_id>/delete-downloads', methods=['POST'])
+@admin_required
+def route_delete_podcast_downloads(channel_id: int) -> str:
+
+    podcast_manager = flask.current_app.config['podcast_manager']
+    count = podcast_manager.delete_downloaded_episodes(channel_id)
+
+    return _channels_partial(views.delete_downloads_message(count))
 
 
 @admin_bp.route('/podcasts/<int:channel_id>/delete', methods=['POST'])
@@ -331,26 +299,7 @@ def route_delete_podcast_episode(episode_id: int) -> str:
 def route_podcast_episodes(channel_id: int) -> str:
     """Episodes table for a channel, lazy-loaded."""
 
-    with database() as db:
-        rows = db.execute(
-            """
-            SELECT id, title, publish_date, duration, status, file_size, error_message
-            FROM podcast_episodes
-            WHERE channel_id = ?
-            ORDER BY publish_date DESC
-            """, (channel_id,)
-        ).fetchall()
-
-    episodes = [
-        {
-            **dict(r),
-            'duration_display': format_duration(r['duration']),
-            'size_display': format_bytes(r['file_size']) if r['file_size'] else None,
-        }
-        for r in rows
-    ]
-
-    return flask.render_template('partials/podcast_episodes.html', episodes=episodes)
+    return views.render_episodes('admin', channel_id)
 
 
 @admin_bp.route('/podcasts/status', methods=['GET'])

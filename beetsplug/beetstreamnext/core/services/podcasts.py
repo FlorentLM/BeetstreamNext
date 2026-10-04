@@ -25,7 +25,7 @@ from beetsplug.beetstreamnext.utils.net import https_variant
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import read_upload
 from beetsplug.beetstreamnext.utils.system import purge
-from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes
+from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes, format_duration, short_error
 
 
 ##
@@ -180,6 +180,7 @@ class PodcastManager:
             'channels': {
                 str(r['id']): {
                     'status': r['status'],
+                    'status_label': short_error(r['error_message']) if r['status'] == 'error' else r['status'],
                     'error_message': r['error_message'],
                     'storage_size': format_bytes(r['bytes_on_disk']),
                 }
@@ -188,6 +189,7 @@ class PodcastManager:
             'episodes': {
                 str(r['id']): {
                     'status': r['status'],
+                    'status_label': short_error(r['error_message']) if r['status'] == 'error' else r['status'],
                     'file_size': r['file_size'],
                     'error_message': r['error_message'],
                     'bytes_downloaded': self.download_progress(r['id']) if r['status'] == 'downloading' else None,
@@ -677,13 +679,6 @@ class PodcastManager:
         feeds = query_podcastindex(query, limit=15)
         return (feeds, None) if feeds else ([], 'No podcasts found.')
 
-    def render_discovery(self, query: Optional[str]) -> str:
-        """Discovery results partial."""
-        import flask
-
-        feeds, message = self.discover(query)
-        return flask.render_template('partials/podcast_search.html', feeds=feeds, message=message)
-
     def subscribed_channels(self, username: str) -> List[dict]:
         """Podcast channels `username` is subscribed to (by title)."""
 
@@ -700,8 +695,11 @@ class PodcastManager:
 
         return [dict(r) for r in rows]
 
-    def channels_overview(self) -> Tuple[List[dict], str]:
-        """Admin view: all channels with subscribers, episode counts, disk usage."""
+    def channels_overview(self, username: Optional[str] = None) -> Tuple[List[dict], str]:
+        """
+        Channels with subscribers, episode counts and disk usage.
+        All channels by default, or only those `username` is subscribed to.
+        """
 
         with database() as db:
             channel_rows = db.execute(
@@ -714,8 +712,9 @@ class PodcastManager:
                        (SELECT COALESCE(SUM(pe.file_size), 0) FROM podcast_episodes pe
                         WHERE pe.channel_id = pc.id AND pe.status = 'completed') AS bytes_on_disk
                 FROM podcast_channels pc
+                WHERE ? IS NULL OR pc.id IN (SELECT channel_id FROM podcast_subscriptions WHERE username = ?)
                 ORDER BY pc.title COLLATE NOCASE
-                """
+                """, (username, username)
             ).fetchall()
 
             subscription_rows = db.execute(
@@ -731,21 +730,37 @@ class PodcastManager:
             subscribers.setdefault(row['channel_id'], []).append(row['username'])
 
         channels = [
-            {**dict(r), 'subscribers': subscribers.get(r['id'], []), 'storage_size': format_bytes(r['bytes_on_disk'])}
+            {**dict(r), 'subscribers': subscribers.get(r['id'], []), 'storage_size': format_bytes(r['bytes_on_disk']),
+             'status_label': short_error(r['error_message']) if r['status'] == 'error' else r['status']}
             for r in channel_rows
         ]
 
         return channels, format_bytes(sum(r['bytes_on_disk'] for r in channel_rows))
 
-    def send_opml(self, username: Optional[str] = None):
-        """OPML export as a file download."""
-        import flask
+    def episodes_of(self, channel_id: int, username: Optional[str] = None) -> List[dict]:
+        """A channel's episodes, newest first. With `username`, flags the ones that user wants downloaded."""
 
-        return flask.Response(
-            self.export_opml(username),
-            mimetype='text/x-opml+xml',
-            headers={'Content-Disposition': 'attachment; filename="BeetstreamNext-Podcasts.opml"'},
-        )
+        with database() as db:
+            rows = db.execute(
+                """
+                SELECT pe.id, pe.title, pe.publish_date, pe.duration, pe.status, pe.file_size, pe.error_message,
+                       (ped.username IS NOT NULL) AS wanted
+                FROM podcast_episodes pe
+                LEFT JOIN podcast_episode_downloads ped ON ped.episode_id = pe.id AND ped.username = ?
+                WHERE pe.channel_id = ?
+                ORDER BY pe.publish_date DESC
+                """, (username, channel_id)
+            ).fetchall()
+
+        return [
+            {
+                **dict(r),
+                'duration_display': format_duration(r['duration']),
+                'status_label': short_error(r['error_message']) if r['status'] == 'error' else r['status'],
+                'size_display': format_bytes(r['file_size']) if r['file_size'] else None,
+            }
+            for r in rows
+        ]
 
     def export_opml(self, username: Optional[str] = None) -> bytes:
         """
@@ -1191,6 +1206,47 @@ class PodcastManager:
             bsn_logger.warning(f"Failed to remove podcast episode file '{row['file_path']}': {e}")
 
         self.push_status()
+
+    def release_channel_downloads(self, username: str, channel_id: int) -> int:
+        """
+        Clears username's wants on every episode of channel_id. Files that nobody else wants
+        anymore are purged. Returns how many were released.
+        """
+
+        with database() as db:
+            rows = db.execute(
+                """
+                SELECT ped.episode_id
+                FROM podcast_episode_downloads ped
+                JOIN podcast_episodes pe ON pe.id = ped.episode_id
+                WHERE ped.username = ? AND pe.channel_id = ?
+                """, (username, channel_id)
+            ).fetchall()
+
+        for row in rows:
+            self.release_episode_download(username, row['episode_id'])
+
+        return len(rows)
+
+    def delete_downloaded_episodes(self, channel_id: int) -> int:
+        """
+        Removes audio files of all downloaded episodes of channel_id
+        (unconditionally for everyone, admin override). Returns how many files were removed.
+        """
+
+        with database() as db:
+            rows = db.execute(
+                """
+                SELECT id
+                FROM podcast_episodes
+                WHERE channel_id = ? AND status = 'completed'
+                """, (channel_id,)
+            ).fetchall()
+
+        for row in rows:
+            self.delete_episode(row['id'])
+
+        return len(rows)
 
     def relayed_download(self, episode_id: int, channel_id: int, audio_url: str):
         """

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import flask
 
-from beetsplug.beetstreamnext.utils.htmx import modal_error
+from beetsplug.beetstreamnext.blueprints.views import modal_error
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger

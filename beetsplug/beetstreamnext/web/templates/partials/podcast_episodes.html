@@ -27,7 +27,8 @@
                 <td>{{ e.duration_display }}</td>
                 <td>
                 <span class="badge{{ ' badge-admin' if e.status == 'error' else '' }}"
-                      id="podcast-episode-status-{{ e.id }}" data-status="{{ e.status }}">{{ e.status }}</span>
+                      id="podcast-episode-status-{{ e.id }}" data-status="{{ e.status }}"
+                      data-label="{{ e.status_label }}"{% if e.error_message %} title="{{ e.error_message }}"{% endif %}>{{ e.status_label }}</span>
                 </td>
                 <td>
                 <span id="podcast-episode-size-{{ e.id }}">
@@ -38,6 +39,7 @@
                             {{ '' if e.status == 'downloading' else 'hidden' }}
                             {%- if e.file_size %} max="{{ e.file_size }}" value="0"{% endif %}></progress>
                 </td>
+{% if scope == 'admin' %}
                 <td class="actions-cell">
                     <form id="podcast-episode-dl-{{ e.id }}" class="form-inline"
                           hx-swap="innerHTML"
@@ -67,6 +69,21 @@
                         <button type="submit" class="icon-btn icon-btn-delete" title="Delete file"
                                 aria-label="Delete downloaded file for &quot;{{ e.title or 'episode' }}&quot;">{{ macros.icon('delete') }}</button>
                     </form>
+{% else %}
+                <td class="actions-cell">
+                    {% if e.status != 'downloading' and not (e.status == 'completed' and e.wanted) %}
+                        <button class="icon-btn" title="Download" aria-label="Download &quot;{{ e.title or 'episode' }}&quot;"
+                                hx-post="{{ url_for('account.route_download_podcast_episode', episode_id=e.id) }}"
+                                hx-target="closest .table-container" hx-swap="innerHTML">{{ macros.icon('download') }}</button>
+                    {% endif %}
+                    {% if e.wanted %}
+                        <button class="icon-btn icon-btn-delete" title="Delete file"
+                                aria-label="Delete downloaded file for &quot;{{ e.title or 'episode' }}&quot;"
+                                hx-post="{{ url_for('account.route_delete_podcast_episode', episode_id=e.id) }}"
+                                hx-target="closest .table-container" hx-swap="innerHTML"
+                                hx-confirm="Remove your download of this episode? The file is kept if other users still want it.">{{ macros.icon('delete') }}</button>
+                    {% endif %}
+{% endif %}
                 </td>
             </tr>
         {% endfor %}

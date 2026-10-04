@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import binascii
 import hashlib
 from pathlib import Path
 from typing import Optional, Tuple, Any
@@ -90,7 +89,7 @@ class IDs:
             padding = (4 - len(payload) % 4) % 4
             try:
                 mbid = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
-            except (binascii.Error, UnicodeDecodeError):
+            except ValueError:    # binascii.Error, UnicodeDecodeError and non-ASCII input
                 mbid = ''
             return (mbid, 'mbid') if mbid else (None, None)
 
@@ -114,7 +113,7 @@ class IDs:
             padding = (4 - len(payload) % 4) % 4
             try:
                 mbid = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
-            except (binascii.Error, UnicodeDecodeError):
+            except ValueError:    # binascii.Error, UnicodeDecodeError and non-ASCII input
                 mbid = ''
             return (mbid, 'mbid') if mbid else (None, None)
 
@@ -147,7 +146,7 @@ class IDs:
         try:
             value = base64.urlsafe_b64decode(payload + '=' * padding).decode('utf-8')
             return value, kind
-        except (binascii.Error, UnicodeDecodeError):
+        except ValueError:    # binascii.Error, UnicodeDecodeError and non-ASCII input
             return '', ''
 
     @classmethod

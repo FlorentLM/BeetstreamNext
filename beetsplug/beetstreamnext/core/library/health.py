@@ -8,6 +8,8 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from typing import Tuple, Dict
+
 import beets
 from beets.library import Album, Item, Library as BeetsLibrary
 
@@ -123,7 +125,7 @@ def needs_healing(song_id: str) -> bool:
     return row is not None
 
 
-def health_stats() -> dict[str, int]:
+def health_stats() -> Dict[str, int]:
     """Counts sum of all health errors. Returns total songs checked, and how many are flagged."""
 
     with database() as db:
@@ -176,7 +178,7 @@ def flagged_songs() -> list[dict]:
 
 
 @with_app_context
-def scan_library(full: bool = False) -> dict[str, int]:
+def scan_library(full: bool = False) -> Dict[str, int]:
     """
     Checks library audio files for health issues (currently just decode errors) incrementally.
 
@@ -207,7 +209,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
                 """
             ).fetchall()
 
-            existing: dict[str, dict[str, tuple[float, int]]] = {}
+            existing: Dict[str, Dict[str, Tuple[float, int]]] = {}
             for row in db.execute(
                 """
                 SELECT song_id, kind, mtime, ok
@@ -315,7 +317,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
 
 
 @with_app_context
-def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> tuple[int, int]:
+def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> Tuple[int, int]:
     """
     Stats a random sample of resolved item paths. Meant to be called once at boot, so a
     bad path-mapping/mount config is caught fast.
@@ -344,7 +346,7 @@ def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> tup
     return checked, missing
 
 
-def detect_beets_drift(db_path: str | Path) -> dict[str, dict]:
+def detect_beets_drift(db_path: str | Path) -> Dict[str, dict]:
     """
     Compares items/albums tables in a beets db against this install's expected schema, before Library() opens it.
     """
@@ -402,7 +404,7 @@ def detect_beets_drift(db_path: str | Path) -> dict[str, dict]:
     return result
 
 
-def start_health_scan(full: bool = False) -> tuple[bool, str]:
+def start_health_scan(full: bool = False) -> Tuple[bool, str]:
     """
     Starts a health scan on a background thread. Returns (started, message).
     """

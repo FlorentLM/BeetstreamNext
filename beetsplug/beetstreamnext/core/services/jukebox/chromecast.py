@@ -233,7 +233,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
                 break
             time.sleep(0.1)
         else:
-            raise JukeboxUnavailableException(f"Chromecast didn't confirm loading the track.")
+            raise JukeboxUnavailableException("Chromecast didn't confirm loading the track.")
 
         self._current_index = index
 

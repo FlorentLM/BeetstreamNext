@@ -1,5 +1,4 @@
 from __future__ import annotations
-import flask
 from flask import render_template
 
 from .. import public_bp

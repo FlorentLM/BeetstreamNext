@@ -145,7 +145,7 @@ def endpoint_report_playback() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
     media_id = r.get('mediaId', default='', type=safe_str)                      # Required
-    media_type = r.get('mediaType', default='song', type=safe_str)              # Required
+    media_type = r.get('mediaType', default='song', type=safe_str)              # Required      # noqa: F841
     position_ms = r.get('positionMs', default=0, type=int)                      # Required
     state = r.get('state', default='playing', type=safe_str)                    # Required
     playback_rate = r.get('playbackRate', default=1.0, type=float)              # Required (only in OpenSubsonic)

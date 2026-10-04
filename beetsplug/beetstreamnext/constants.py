@@ -19,7 +19,7 @@ START_TIME = time.time()    # not a constant but...yeah
 
 SERVER_NAME: str = 'BeetstreamNext'
 
-REPO_URL: str = f'https://github.com/FlorentLM/BeetstreamNext'
+REPO_URL: str = 'https://github.com/FlorentLM/BeetstreamNext'
 SUBSONIC_API_VER: str = '1.16.1'
 
 try:

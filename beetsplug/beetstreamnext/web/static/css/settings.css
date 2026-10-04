@@ -1603,3 +1603,7 @@ input:focus, select:focus {
 .pinned-path-remove:hover {
     color: var(--text);
 }
+
+.artist-image-sources {
+    font-size: 0.85rem;
+}

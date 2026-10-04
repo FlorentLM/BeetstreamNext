@@ -196,5 +196,39 @@
                 }
             }
         }));
+
+        // "Find an image yourself" links
+        Alpine.data('artistImageLinks', () => ({
+            name: '',
+
+            init() {
+                const input = document.getElementById('artistImageName');
+                if (!input) return;
+                this.name = input.value;
+                input.addEventListener('input', () => {
+                    this.name = input.value;
+                });
+            },
+
+            get query() {
+                return encodeURIComponent(this.name.trim());
+            },
+
+            get hasName() {
+                return this.name.trim() !== '';
+            },
+
+            get noName() {
+                return !this.hasName;
+            },
+
+            get lastfmUrl() {
+                return 'https://www.last.fm/music/' + this.query + '/+images';
+            },
+
+            get commonsUrl() {
+                return 'https://commons.wikimedia.org/w/index.php?search=' + this.query + '&ns6=1&ns14=1';
+            }
+        }));
     });
 })();

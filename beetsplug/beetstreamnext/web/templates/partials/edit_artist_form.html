@@ -26,5 +26,16 @@
         {{ macros.icon_picker('image', 'artistImageFile', 'Artist image', 'Choose artist image', 'Click the image to choose a file.', large=true) }}
     </div>
 
+    <div class="form-group artist-image-sources" x-data="artistImageLinks">
+        <span class="label-hint">Find an image yourself:</span>
+        <br/>
+        <span x-show="hasName">
+            <a :href="lastfmUrl" target="_blank" rel="noopener noreferrer">Last.fm</a>
+            &middot;
+            <a :href="commonsUrl" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>
+        </span>
+        <span class="label-hint" x-show="noName">Enter an artist name to get links</span>
+    </div>
+
     <button type="submit" class="btn btn-primary btn-full">Save image</button>
 </form>

@@ -7,9 +7,9 @@ from beetsplug.beetstreamnext.schemas import ALLOWED_BITRATES, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.api.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.core.images import sniff_image
+from beetsplug.beetstreamnext.core.avatars import avatar_response
 from beetsplug.beetstreamnext.core.users_crud import (
-    create_user, update_user, delete_user, get_userdata, load_all_users, get_user_avatar
+    create_user, update_user, delete_user, get_userdata, load_all_users
 )
 
 
@@ -219,13 +219,4 @@ def endpoint_get_avatar() -> flask.Response:
     if not username:
         return subsonic_error(10)
 
-    blob, last_changed = get_user_avatar(username)
-    if not blob:
-        flask.abort(404)
-
-    mimetype = sniff_image(blob) or 'image/jpeg'
-
-    response = flask.make_response(blob)
-    response.headers.set('Content-Type', mimetype)
-    response.headers.set('Cache-Control', 'public, max-age=86400')  # 1 day cached
-    return response
+    return avatar_response(username)

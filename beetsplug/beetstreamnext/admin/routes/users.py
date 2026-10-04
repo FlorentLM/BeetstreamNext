@@ -8,7 +8,8 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, load_all_users, set_user_avatar, session_stamp
-from beetsplug.beetstreamnext.core.images import read_uploaded_image, avatar_response
+from beetsplug.beetstreamnext.core.images import read_uploaded_image
+from beetsplug.beetstreamnext.core.avatars import avatar_response
 from beetsplug.beetstreamnext.forms import UserForm, EditUserForm, collect_form_data, form_error_messages
 from beetsplug.beetstreamnext.schemas import PUBLIC_USER_FIELDS
 

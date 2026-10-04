@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.core.users_crud import (
     get_userdata, update_user, webui_login, session_stamp, regenerate_api_key, set_user_avatar
 )
 from beetsplug.beetstreamnext.forms import AccountProfileForm, ChangePasswordForm, form_error_messages
-from beetsplug.beetstreamnext.core.images import save_uploaded_avatar, avatar_response
+from beetsplug.beetstreamnext.core.avatars import save_uploaded_avatar, avatar_response
 from beetsplug.beetstreamnext.schemas import USER_ROLES_SCHEMA, allowed_bitrates
 
 

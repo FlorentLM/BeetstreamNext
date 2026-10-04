@@ -9,6 +9,20 @@ from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
+def new_password_field(label: str = 'New password', *, required: bool = True) -> PasswordField:
+    """New password field with the minimum-length check."""
+    presence = DataRequired() if required else Optional()
+    return PasswordField(label, validators=[presence, Length(min=MIN_PASSWORD_LEN)])
+
+
+class PasswordConfirmMixin:
+    """Adds a `confirm_password` field that must match `password`."""
+    confirm_password = PasswordField(
+        'Confirm password',
+        validators=[DataRequired(), EqualTo('password', message='Passwords must match.')]
+    )
+
+
 class LoginForm(FlaskForm):
     """
     Basic login form.
@@ -17,16 +31,12 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
 
 
-class OnboardingForm(FlaskForm):
+class OnboardingForm(PasswordConfirmMixin, FlaskForm):
     """
     Create the first admin account.
     """
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=MIN_PASSWORD_LEN)])
-    confirm_password = PasswordField(
-        'Confirm password',
-        validators=[DataRequired(), EqualTo('password', message='Passwords must match.')]
-    )
+    password = new_password_field('Password')
     setup_key = PasswordField('Server key', validators=[DataRequired()])
 
 
@@ -35,7 +45,7 @@ class UserForm(FlaskForm):
     Form for creating a new user.
     """
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=MIN_PASSWORD_LEN)])
+    password = new_password_field('Password')
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
 
@@ -44,9 +54,25 @@ class EditUserForm(FlaskForm):
     """
     Form for editing an existing user.
     """
-    password = PasswordField('New password (leave blank to keep current)', validators=[Optional(), Length(min=MIN_PASSWORD_LEN)])
+    password = new_password_field('New password (leave blank to keep current)', required=False)
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
+
+
+class AccountProfileForm(FlaskForm):
+    """
+    Form for a user editing their own settings. Choices for maxBitRate are set per request.
+    """
+    email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
+    maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
+
+
+class ChangePasswordForm(PasswordConfirmMixin, FlaskForm):
+    """
+    Form for a user changing their own password.
+    """
+    current_password = PasswordField('Current password', validators=[DataRequired()])
+    password = new_password_field()
 
 
 class RadioStationForm(FlaskForm):

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import secrets
 import flask
 
@@ -10,6 +11,9 @@ from beetsplug.beetstreamnext.core.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.users_crud import load_all_users, load_user_roles, authenticate
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
 from beetsplug.beetstreamnext.api.responses import subsonic_error
+
+
+WEBUI_PREFIXES = ('/admin', '/account', '/login', '/logout')
 
 
 def _any_users_exist() -> bool:
@@ -87,8 +91,8 @@ def _before_request() -> flask.Response | None:
     if flask.request.url_rule is None:
         return
 
-    # Allow admin panel (auth is handled differently)
-    if flask.request.path.startswith('/admin'):
+    # Allow admin panel, user account panel and login/logout (auth is handled differently)
+    if flask.request.path.startswith(WEBUI_PREFIXES):
         return
 
     # Attempt authentication
@@ -113,7 +117,7 @@ def _before_request() -> flask.Response | None:
 
 @app.before_request
 def _csp_nonce() -> None:
-    if flask.request.path.startswith('/admin'):
+    if flask.request.path.startswith(WEBUI_PREFIXES):
         flask.g.csp_nonce = secrets.token_urlsafe(16)
 
 
@@ -127,7 +131,7 @@ def _add_security_headers(response):
     if flask.request.is_secure:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
-    if flask.request.path.startswith('/admin'):
+    if flask.request.path.startswith(WEBUI_PREFIXES):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         nonce = getattr(flask.g, 'csp_nonce', '')
         response.headers['Content-Security-Policy'] = (

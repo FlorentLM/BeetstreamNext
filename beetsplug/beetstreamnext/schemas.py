@@ -24,6 +24,13 @@ ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
 BITRATE_CHOICES_STR = [(0, 'No limit')] + [(b, f'{b} kbps') for b in sorted(ALLOWED_BITRATES) if b > 0]
 
 
+def allowed_bitrates(limit: int) -> list[tuple[int, str]]:
+    """Bitrate choices at or below `limit` for users picking their own cap."""
+    if not limit:
+        return list(BITRATE_CHOICES_STR)
+    return [(b, label) for b, label in BITRATE_CHOICES_STR if 0 < b <= limit]
+
+
 ## User data fields and roles
 
 USER_ROLES_SCHEMA = (

@@ -11,7 +11,7 @@ from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
+    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES, MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.events import admin_events
@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url
 from beetsplug.beetstreamnext.settings import settings_store
-from beetsplug.beetstreamnext.utils.general import human_bytes
+from beetsplug.beetstreamnext.utils.general import human_bytes, read_upload
 from beetsplug.beetstreamnext.utils.system import purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html
 
@@ -676,6 +676,13 @@ class PodcastManager:
         feeds = query_podcastindex(query, limit=15)
         return (feeds, None) if feeds else ([], 'No podcasts found.')
 
+    def render_discovery(self, query: Optional[str]) -> str:
+        """Discovery results partial."""
+        import flask
+
+        feeds, message = self.discover(query)
+        return flask.render_template('partials/podcast_search.html', feeds=feeds, message=message)
+
     def subscribed_channels(self, username: str) -> List[dict]:
         """Podcast channels `username` is subscribed to (by title)."""
 
@@ -780,6 +787,21 @@ class PodcastManager:
 
         ET.indent(root)
         return ET.tostring(root, encoding='utf-8', xml_declaration=True)
+
+    def import_opml_upload(self, username: str) -> None:
+        """Import the OPML file from the current request and flash the outcome."""
+        import flask
+
+        try:
+            data = read_upload('opml_file', MAX_OPML_BYTES)
+            if data is None:
+                flask.flash('Choose an OPML file to import.', 'error')
+            else:
+                for message, category in self.import_opml(username, data):
+                    flask.flash(message, category)
+
+        except ValueError as e:
+            flask.flash(f'Could not import OPML file: {e}', 'error')
 
     def import_opml(self, username: str, data: bytes) -> List[Tuple[str, str]]:
         """

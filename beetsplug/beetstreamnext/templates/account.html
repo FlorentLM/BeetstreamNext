@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% import '_macros.html' as macros %}
+
+{% block title %} - My account{% endblock %}
+
+{% block styles %}
+    <meta name="htmx-config" content='{"includeIndicatorCSS": false, "noSwap": [204, 304, "4xx", "5xx"]}'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+{% endblock %}
+
+{% block body %}
+    <div id="accountDashboard" class="dashboard-container">
+
+        <header class="header">
+            <a href="{{ url_for('public.home') }}" class="brand-section">
+                <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" class="logo-small">
+                <h1>BeetstreamNext <span class="brand-subtitle">/ My account</span></h1>
+            </a>
+            <div class="header-actions">
+                <button type="button" class="icon-btn theme-toggle" data-action="toggle-theme"
+                        title="Toggle light / dark theme" aria-label="Toggle light and dark theme" aria-pressed="false">
+                    {{ macros.icon('sun') }}{{ macros.icon('moon') }}
+                </button>
+                <span class="session-user">Signed in as <strong>{{ current_username }}</strong></span>
+                <form action="{{ url_for('auth.route_logout') }}" method="POST" class="form-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Log out</button>
+                </form>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, msg in messages %}
+                <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        {% if new_api_key %}
+            <div class="card">
+                <div class="table-header"><h2>Your new API key</h2></div>
+                <div class="card-section">
+                    <p class="api-key-hint">
+                        Please copy your API key and store it safely. It will <strong>not</strong> be shown again.
+                    </p>
+                    <div class="api-key-box">
+                        <code id="apiKeyValue">{{ new_api_key.key }}</code>
+                        <button type="button" class="btn btn-outline btn-copy" data-action="copy-api-key">Copy</button>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Profile #}
+        <div class="card">
+            <div class="table-header"><h2>Profile</h2></div>
+
+            <div class="card-section">
+                <div class="avatar-cell">
+                    {% if user.avatarLastChanged %}
+                        <img class="user-avatar" alt=""
+                             src="{{ url_for('account.route_serve_avatar') }}?v={{ (user.avatarLastChanged or 0)|int }}">
+                    {% else %}
+                        <span class="user-avatar user-avatar-placeholder">{{ user.username[0]|upper }}</span>
+                    {% endif %}
+
+                    <form action="{{ url_for('account.route_upload_avatar') }}" method="POST"
+                          enctype="multipart/form-data" class="form-inline" id="avatarForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="file" id="avatarInput" name="avatar" accept="image/jpeg,image/png,image/webp"
+                               class="hidden">
+                        <button type="button" class="btn btn-outline" data-action="pick-file" data-target="avatarInput">Change avatar</button>
+                    </form>
+
+                    {% if user.avatarLastChanged %}
+                        <form action="{{ url_for('account.route_delete_avatar') }}" method="POST" class="form-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline">Remove</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form action="{{ url_for('account.route_update_profile') }}" method="POST" class="card-body-form">
+                {{ profile_form.csrf_token }}
+                <div class="form-group">
+                    <label>Email <span class="label-hint">(optional)</span></label>
+                    {{ profile_form.email(placeholder="user@example.com", autocomplete="email") }}
+                </div>
+                <div class="form-group">
+                    <label>Max bitrate</label>
+                    {{ profile_form.maxBitRate() }}
+                    {% if user.maxBitRate %}
+                        <span class="label-hint">An administrator limited your streaming to {{ user.maxBitRate }} kbps.</span>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </form>
+
+            {# Permissions (read-only) #}
+            <div class="card-section account-permissions">
+                <label class="label-inline">Permissions</label>
+                <div class="roles-cell">
+                    {% for name, label, _ in USER_ROLES_SCHEMA %}
+                        {% if user[name] %}<span class="badge">{{ label }}</span>{% endif %}
+                    {% endfor %}
+                </div>
+                <p class="label-hint">Roles are managed by an administrator.</p>
+            </div>
+        </div>
+
+        {# Password #}
+        <div class="card">
+            <div class="table-header"><h2>Change password</h2></div>
+            <form action="{{ url_for('account.route_change_password') }}" method="POST" class="card-body-form">
+                {{ password_form.csrf_token }}
+                <div class="form-group">
+                    <label>Current password</label>
+                    {{ password_form.current_password(autocomplete="current-password") }}
+                </div>
+                <div class="form-group">
+                    <label>New password</label>
+                    {{ password_form.password(autocomplete="new-password") }}
+                </div>
+                <div class="form-group">
+                    <label>Confirm new password</label>
+                    {{ password_form.confirm_password(autocomplete="new-password") }}
+                </div>
+                <button type="submit" class="btn btn-primary">Change password</button>
+            </form>
+        </div>
+
+        {# API key #}
+        <div class="card">
+            <div class="table-header"><h2>API key</h2></div>
+            <p class="card-hint">
+                Subsonic clients can authenticate with an API key instead of a password.
+                Regenerating it immediately invalidates the old one.
+            </p>
+            <form action="{{ url_for('account.route_regenerate_api_key') }}" method="POST"
+                  class="card-body-form" data-confirm="Regenerate your API key? Clients using the old key will stop working.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-warning">Regenerate API key</button>
+            </form>
+        </div>
+
+        {# Shares #}
+        {% if user.shareRole %}
+            <div class="card">
+                <div class="table-header"><h2>My shares</h2></div>
+                <div id="accountShares"
+                     hx-get="{{ url_for('account.route_my_shares') }}"
+                     hx-trigger="load"
+                     hx-swap="innerHTML"></div>
+            </div>
+        {% endif %}
+
+        {# Podcasts #}
+        {% if user.podcastRole %}
+            <div class="card">
+                <div class="table-header">
+                    <h2>My podcast subscriptions</h2>
+                    <a href="{{ url_for('account.route_export_podcast_opml') }}" class="btn btn-outline">Export OPML</a>
+                </div>
+
+                <div class="card-section">
+                    {% if podcast_discovery_enabled %}
+                        <div class="radio-discovery form-group">
+                            <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
+                            <div class="setting-input-row">
+                                <input type="text" id="podcastDiscoveryQuery" name="q" placeholder="Podcast title">
+                                <button type="button" class="btn btn-outline"
+                                        hx-get="{{ url_for('account.route_discover_podcasts') }}"
+                                        hx-include="#podcastDiscoveryQuery"
+                                        hx-target="#podcastDiscoveryResults"
+                                        hx-swap="innerHTML"
+                                        hx-trigger="click"
+                                        hx-disable="this"
+                                        hx-indicator="#podcastDiscoverySpinner">Search
+                                </button>
+                            </div>
+                            <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">
+                                Searching&hellip;</p>
+                            <div class="suggestion-list" id="podcastDiscoveryResults"></div>
+                        </div>
+                    {% endif %}
+
+                    <form class="ip-add-form" id="addPodcastForm"
+                          hx-post="{{ url_for('account.route_add_podcast') }}"
+                          hx-target="#accountPodcasts"
+                          hx-swap="innerHTML"
+                          hx-disable="find button">
+                        <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
+                               required>
+                        <button type="submit" class="btn btn-primary">Subscribe</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('account.route_import_podcast_opml') }}"
+                          enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="file" name="opml_file" id="podcastOpmlFile"
+                               accept=".opml,.xml,text/xml,text/x-opml" class="hidden">
+                        <button type="button" class="btn btn-outline" data-action="pick-file" data-target="podcastOpmlFile">Import OPML</button>
+                    </form>
+                </div>
+
+                <div id="accountPodcasts"
+                     hx-get="{{ url_for('account.route_my_podcasts') }}"
+                     hx-trigger="load"
+                     hx-swap="innerHTML"></div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-overlay modal-confirm" id="confirmModal">
+        <div class="modal-content modal-content-small">
+            <h2>Confirm Action</h2>
+            <p class="confirm-text" id="confirmText"></p>
+            <div class="confirm-actions">
+                <button type="button" class="btn btn-outline" id="confirmCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

@@ -4,7 +4,7 @@ from typing import Callable
 import flask
 from flask import Blueprint
 
-from beetsplug.beetstreamnext.core.users_crud import load_user_roles
+from beetsplug.beetstreamnext.auth import session_roles
 from beetsplug.beetstreamnext.core.security import admin_host_allowed
 
 
@@ -22,15 +22,12 @@ def admin_required(f) -> Callable:
     """Decorator: redirect to login if the session has no valid admin user."""
     @wraps(f)
     def decorated(*args, **kwargs) -> flask.Response:
-        username = flask.session.get('username')
+        roles = session_roles()
+        if roles is None:
+            return flask.redirect(flask.url_for('auth.route_login'))
 
-        if not username:
-            return flask.redirect(flask.url_for('admin.route_login'))
-
-        if not load_user_roles(username).get('adminRole', False):
-            # Stale session (user deleted or demoted since login): drop
-            flask.session.clear()
-            flask.abort(403)
+        if not roles.get('adminRole'):
+            return flask.redirect(flask.url_for('account.route_account'))
         return f(*args, **kwargs)
 
     return decorated

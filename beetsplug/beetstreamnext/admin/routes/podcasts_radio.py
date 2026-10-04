@@ -4,15 +4,13 @@ from io import BytesIO
 
 from .. import admin_bp, admin_required, back_to
 
-from beetsplug.beetstreamnext.constants import MAX_OPML_BYTES
 from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art
+from beetsplug.beetstreamnext.core.images import sniff_image, send_stored_art, read_uploaded_image
 from beetsplug.beetstreamnext.core.radio import create_station, update_station, delete_station, resolve_station_icon
 from beetsplug.beetstreamnext.core.external import query_radio_browser
-from beetsplug.beetstreamnext.admin.forms import RadioStationForm, flash_form_errors
-from beetsplug.beetstreamnext.admin.routes.avatars import read_uploaded_image
+from beetsplug.beetstreamnext.forms import RadioStationForm, flash_form_errors
 from beetsplug.beetstreamnext.utils.text import safe_str, format_duration
-from beetsplug.beetstreamnext.utils.general import human_bytes, read_upload
+from beetsplug.beetstreamnext.utils.general import human_bytes
 
 
 ##
@@ -219,17 +217,7 @@ def route_add_podcast() -> flask.Response:
 @admin_required
 def route_import_podcast_opml() -> flask.Response:
 
-    try:
-        data = read_upload('opml_file', MAX_OPML_BYTES)
-        if data is None:
-            flask.flash('Choose an OPML file to import.', 'error')
-        else:
-            for message, category in flask.current_app.config['podcast_manager'].import_opml(
-                    flask.session.get('username'), data):
-                flask.flash(message, category)
-
-    except ValueError as e:
-        flask.flash(f'Could not import OPML file: {e}', 'error')
+    flask.current_app.config['podcast_manager'].import_opml_upload(flask.session.get('username'))
 
     return back_to('podcasts')
 
@@ -243,8 +231,7 @@ def route_export_podcast_opml() -> flask.Response:
 @admin_bp.route('/podcasts/discover', methods=['GET'])
 @admin_required
 def route_discover_podcasts() -> str:
-    feeds, message = flask.current_app.config['podcast_manager'].discover(flask.request.args.get('q'))
-    return flask.render_template('partials/podcast_search.html', feeds=feeds, message=message)
+    return flask.current_app.config['podcast_manager'].render_discovery(flask.request.args.get('q'))
 
 
 @admin_bp.route('/podcasts/refresh', methods=['POST'])

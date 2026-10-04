@@ -3,8 +3,7 @@ import flask
 
 from .. import admin_bp, admin_required
 
-from beetsplug.beetstreamnext.core.database import database
-from beetsplug.beetstreamnext.core.shares import list_shares
+from beetsplug.beetstreamnext.core.shares import list_shares, delete_share
 
 
 def _shares_partial() -> str:
@@ -22,7 +21,6 @@ def route_shares() -> str:
 @admin_required
 def route_delete_share(share_id: str) -> str:
 
-    with database() as db:
-        db.execute("""DELETE FROM shares WHERE id = ?""", (share_id,))
+    delete_share(share_id)
 
     return _shares_partial()

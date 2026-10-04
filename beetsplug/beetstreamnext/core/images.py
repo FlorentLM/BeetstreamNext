@@ -12,13 +12,14 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import request_url
+from beetsplug.beetstreamnext.utils.general import request_url, read_upload
 from beetsplug.beetstreamnext.utils.text import customstrip, validate_mbid, split_beets_multi
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_ffmpeg, resolve_path
-from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS
+from beetsplug.beetstreamnext.constants import MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.external import query_deezer, query_coverartarchive, capped_image_fetch
 from beetsplug.beetstreamnext.core.database import database
+from beetsplug.beetstreamnext.core.users_crud import set_user_avatar, get_user_avatar
 from beetsplug.beetstreamnext.schemas import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
 
 if TYPE_CHECKING:
@@ -600,3 +601,54 @@ def send_stored_art(kind: str, row_id: int, size: Optional[int] = None) -> flask
         return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
     return flask.send_file(BytesIO(row['image']), mimetype=sniff_image(row['image']) or 'image/jpeg')
+
+
+def read_uploaded_image(field: str = 'avatar') -> bytes | None:
+    """Reads, validates and resizes an uploaded square image (avatar, radio icon etc)."""
+    data = read_upload(field, MAX_AVATAR_BYTES)
+    if data is None:
+        return None
+
+    if sniff_image(data) is None:
+        raise ValueError('Unsupported or corrupt image. Use JPEG, PNG or WebP.')
+
+    try:
+        return resize_image(data, size=MAX_AVATAR_DIM, crop=True).getvalue()
+    except (ImageTooLarge, OSError):
+        raise ValueError('Unsupported, corrupt, or oversized image.')
+
+
+def save_uploaded_avatar(username: str) -> str | None:
+    """Stores the uploaded avatar for `username`. Returns an error message, or None on success."""
+    try:
+        blob = read_uploaded_image()
+    except ValueError as e:
+        return str(e)
+
+    if blob is None:
+        return 'No file provided.'
+    if not set_user_avatar(username, blob):
+        return f"User '{username}' not found."
+    return None
+
+
+def avatar_response(username: str) -> flask.Response:
+    """Cacheable (ETag) avatar image response."""
+    blob, last_changed = get_user_avatar(username)
+
+    if not blob:
+        flask.abort(404)
+
+    etag = hashlib.sha256(blob).hexdigest()[:16]
+    if flask.request.if_none_match and etag in flask.request.if_none_match:
+        return flask.Response(status=304)
+
+    resp = flask.Response(blob, mimetype=sniff_image(blob) or 'image/jpeg')
+    resp.set_etag(etag)
+    resp.cache_control.private = True
+    resp.cache_control.max_age = 300
+
+    if last_changed:
+        resp.last_modified = last_changed
+
+    return resp

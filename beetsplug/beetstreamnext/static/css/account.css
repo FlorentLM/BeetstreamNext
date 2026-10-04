@@ -1,0 +1,19 @@
+/* Account page: stacked cards */
+
+#accountDashboard .card {
+    margin-bottom: 1.5rem;
+}
+
+#accountDashboard .table-header + .card-section,
+#accountDashboard .table-header + .card-body-form {
+    padding-top: 1.5rem;
+}
+
+#accountDashboard .account-permissions {
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+}
+
+#accountDashboard .account-permissions .roles-cell {
+    margin: 0.75rem 0;
+}

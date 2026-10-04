@@ -22,3 +22,15 @@ def list_shares(username: Optional[str] = None) -> list[dict]:
         ).fetchall()
 
     return [{**dict(r), 'url': external_url(flask.url_for('public.share_view', share_id=r['id']))} for r in rows]
+
+
+def delete_share(share_id: str, username: Optional[str] = None) -> None:
+    """Delete a share. With `username`, only delete ones that belongs to that user."""
+
+    with database() as db:
+        db.execute(
+            f"""
+            DELETE FROM shares
+            WHERE id = ? {'AND username = ?' if username is not None else ''}
+            """, (share_id, username) if username is not None else (share_id,)
+        )

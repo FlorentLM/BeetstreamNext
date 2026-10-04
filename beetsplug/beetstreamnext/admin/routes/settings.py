@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.core.external import test_lastfm_connection, test_
 from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.schemas import SETTINGS_SCHEMA, SETTINGS_CATEGORIES, PUBLIC_USER_FIELDS
-from beetsplug.beetstreamnext.admin.forms import UserForm, RadioStationForm
+from beetsplug.beetstreamnext.forms import UserForm, RadioStationForm
 from beetsplug.beetstreamnext.settings import settings_store
 
 

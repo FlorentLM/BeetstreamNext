@@ -16,11 +16,12 @@ from beetsplug.beetstreamnext.constants import (
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.external import (
-    http_session, capped_image_fetch, normalize_url, https_variant, query_podcastindex
+    http_session, capped_image_fetch, normalize_url, query_podcastindex
 )
 from beetsplug.beetstreamnext.core.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url
+from beetsplug.beetstreamnext.utils.net import https_variant
 from beetsplug.beetstreamnext.settings import settings_store
 from beetsplug.beetstreamnext.utils.general import read_upload
 from beetsplug.beetstreamnext.utils.system import purge

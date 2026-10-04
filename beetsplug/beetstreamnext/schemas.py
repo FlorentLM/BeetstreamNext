@@ -9,7 +9,8 @@ from beetsplug.beetstreamnext.constants import (
     SERVER_NAME, DATA_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
     RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW, DEFAULT_HOST, DEFAULT_PORT
 )
-from beetsplug.beetstreamnext.core.security import ip_filter, validate_trusted_hosts, parse_host
+from beetsplug.beetstreamnext.core.security import ip_filter
+from beetsplug.beetstreamnext.utils.net import validate_trusted_hosts, parse_host
 
 
 ## Allowed image formats

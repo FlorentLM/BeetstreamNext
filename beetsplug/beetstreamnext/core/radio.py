@@ -5,9 +5,10 @@ from typing import Optional, List, Tuple
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.database import database
 from beetsplug.beetstreamnext.core.external import (
-    query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url, https_variant
+    query_radio_browser, capped_image_fetch, fetch_favicon, normalize_url
 )
 from beetsplug.beetstreamnext.core.images import sniff_image
+from beetsplug.beetstreamnext.utils.net import https_variant
 
 
 def resolve_station_icon(name: str, favicon_url: Optional[str] = None, homepage_url: Optional[str] = None) -> bytes:

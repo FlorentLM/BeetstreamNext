@@ -1,5 +1,4 @@
 from __future__ import annotations
-import re
 import socket
 import threading
 import time
@@ -7,8 +6,9 @@ import ipaddress
 import urllib.parse
 from collections import defaultdict
 from functools import lru_cache
-from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
+from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.core.events import admin_events
 from beetsplug.beetstreamnext.core.logging import bsn_logger
@@ -348,124 +348,6 @@ class IPFilter:
 
 ##
 # Host header validation
-
-# RFC 1123 hostname label: 1-63 alphanumerics/hyphens (not starting/ending with an hyphen)
-_HOSTNAME_RE = re.compile(
-    r'^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$'
-)
-
-_SCHEME_RE = re.compile(r'^([a-zA-Z][a-zA-Z0-9+.-]*)://')
-_PORT_RE = re.compile(r'^\d{1,5}$')
-
-def validate_trusted_hosts(raw: str) -> str:
-    """
-    Validate and normalise a comma-separated list of allowed Host header values
-    (hostnames or bare IPs, IPv6 literals may be bracketed as in a Host header).
-    """
-    if not raw:
-        return ''
-
-    entries: Set[str] = set()
-    invalid: List[str] = []
-
-    for item in split_list(raw):
-        candidate = item[1:-1] if item.startswith('[') and item.endswith(']') else item
-
-        try:
-            ipaddress.ip_address(candidate)
-            entries.add(candidate)
-            continue
-        except ValueError:
-            pass
-
-        normalized = candidate.rstrip('.').lower()
-        if bool(_HOSTNAME_RE.match(normalized)):
-            entries.add(normalized)
-        else:
-            invalid.append(item)
-
-    if invalid:
-        raise ValueError(f"Invalid host(s) in trusted_hosts: {', '.join(invalid)}")
-
-    return ','.join(sorted(entries))
-
-
-class ParsedHost(NamedTuple):
-    host: str                    # bare hostname or IP (lowercase)
-    scheme: Optional[str] = None
-    port: Optional[int] = None
-
-
-def _parse_port(raw: str) -> int:
-    if not _PORT_RE.match(raw) or not (0 < int(raw) <= 65535):
-        raise ValueError(f'Invalid port: {raw}')
-    return int(raw)
-
-
-def parse_host(raw: str) -> ParsedHost:
-    """
-    Parse a bare host/IP (`music.example.com`, `192.168.8.184`) or a full
-    `scheme://host[:port]` value into its parts.
-
-    Raises ValueError if host/IP part is invalid.
-    Returns an empty ParsedHost for an empty input.
-    """
-    raw = (raw or '').strip()
-    if not raw:
-        return ParsedHost(host='')
-
-    scheme = None
-    m = _SCHEME_RE.match(raw)
-    if m:
-        scheme = m.group(1).lower()
-        raw = raw[m.end():]
-
-    raw = raw.split('/', 1)[0]  # drop any trailing path/query
-    if not raw:
-        raise ValueError('Missing host')
-
-    if raw.startswith('['):
-        # bracketed IPv6 literal, optionally followed by :port
-        try:
-            end = raw.index(']')
-        except ValueError:
-            raise ValueError(f'Invalid host: {raw}')
-        host_part = raw[1:end]
-        rest = raw[end + 1:]
-        port = _parse_port(rest[1:]) if rest.startswith(':') else None
-        ipaddress.ip_address(host_part)
-        return ParsedHost(host=host_part, scheme=scheme, port=port)
-
-    # bare IP (v4, or unbracketed v6 with no port)
-    try:
-        ipaddress.ip_address(raw)
-        return ParsedHost(host=raw, scheme=scheme, port=None)
-    except ValueError:
-        pass
-
-    head, sep, tail = raw.rpartition(':')
-    host_part, port = (head, _parse_port(tail)) if sep else (tail, None)
-
-    try:
-        ipaddress.ip_address(host_part)
-    except ValueError:
-        normalized = host_part.rstrip('.').lower()
-        if not _HOSTNAME_RE.match(normalized):
-            raise ValueError(f'Invalid host: {raw}')
-        host_part = normalized
-
-    return ParsedHost(host=host_part, scheme=scheme, port=port)
-
-
-def strip_host_port(raw_host: str) -> str:
-    """Strip an optional `:port` from a Host header value, handling bracketed IPv6 literals."""
-    if raw_host.startswith('['):
-        try:
-            return raw_host[1:raw_host.index(']')]
-        except ValueError:
-            raise ValueError(f'Invalid Host header: {raw_host}')
-    return raw_host.split(':')[0]
-
 
 def admin_host_allowed(raw_host: str) -> bool:
     """

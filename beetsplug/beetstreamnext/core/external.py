@@ -13,20 +13,12 @@ from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import (
-    WIKI_API, RADIO_BROWSER, PODCASTINDEX, MAX_REMOTE_IMAGE_BYTES, USER_AGENT, _SCHEME_RE, _DUPLICATE_SCHEME_RE
+    WIKI_API, RADIO_BROWSER, PODCASTINDEX, MAX_REMOTE_IMAGE_BYTES, USER_AGENT
 )
 from beetsplug.beetstreamnext.core.logging import bsn_logger
 from beetsplug.beetstreamnext.core.security import is_public_url
+from beetsplug.beetstreamnext.utils.net import https_variant, SCHEME_RE, DUPLICATE_SCHEME_RE
 from beetsplug.beetstreamnext.settings import settings_store
-
-
-def https_variant(url: str) -> str:
-    """Returns url with its scheme flipped between http and https, or url unchanged if neither."""
-    if url.lower().startswith('http://'):
-        return 'https://' + url[len('http://'):]
-    if url.lower().startswith('https://'):
-        return 'http://' + url[len('https://'):]
-    return url
 
 
 class RequestThrottle(HTTPAdapter):
@@ -90,9 +82,9 @@ def normalize_url(url: str, probe_https: bool = False, probe_timeout: float = 3.
     if not url:
         return url
 
-    url = _DUPLICATE_SCHEME_RE.sub('', url)
+    url = DUPLICATE_SCHEME_RE.sub('', url)
 
-    if not _SCHEME_RE.match(url):
+    if not SCHEME_RE.match(url):
         url = f'https://{url}'
 
     if probe_https and url.lower().startswith('http://'):

@@ -56,7 +56,7 @@ def request_url(path_part: str) -> str:
 def external_url(path_part: str) -> str:
     """Build an absolute URL for 'path_part' on the configured public share hostname."""
     from beetsplug.beetstreamnext.settings import settings_store
-    from beetsplug.beetstreamnext.core.security import parse_host
+    from beetsplug.beetstreamnext.utils.net import parse_host
 
     external_host = settings_store.get('external_hostname')
     if not external_host:

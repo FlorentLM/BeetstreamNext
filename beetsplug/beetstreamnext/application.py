@@ -15,8 +15,8 @@ from beetsplug.beetstreamnext.utils.text import format_duration
 
 app = Flask(
     __name__,
-    template_folder='templates',
-    static_folder='static',
+    template_folder='web/templates',
+    static_folder='web/static',
     static_url_path='/static',
 )
 
@@ -30,7 +30,7 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=3600,   # 1 hour
     WTF_CSRF_CHECK_DEFAULT=True,
     PROJECT_ROOT=PROJECT_ROOT,
-    IMAGES_PATH=PROJECT_ROOT / 'static' / 'images',
+    IMAGES_PATH=PROJECT_ROOT / 'web' / 'static' / 'images',
     HTTP_CACHE_PATH=CACHE_DATA_DIR / 'httpcache.sqlite',
     THUMBNAIL_CACHE_PATH=CACHE_DATA_DIR / 'thumbnails',
     ARTIST_IMAGE_DATA_PATH=DATA_LOCATION / 'artist_images',

@@ -1,0 +1,124 @@
+{% set is_new = item.id is none %}
+
+{% set form_id = 'notification-form-' ~ ('new' if is_new else item.id) %}
+
+<div class="notification-row">
+    <form id="{{ form_id }}" class="notification-card {{ 'notification-card-new' if is_new }}"
+          x-data="notificationCard" :class="{ 'notification-card-dirty': dirty }" @input="markDirty" @change="markDirty"
+            {% if is_new %}
+          hx-post="{{ url_for('admin.route_notifications_add') }}"
+          hx-target="closest .notification-row"
+          hx-swap="outerHTML"
+            {% else %}
+          hx-post="{{ url_for('admin.route_notifications_update', notification_id=item.id) }}"
+          hx-target="closest .notification-row"
+          hx-swap="outerHTML"
+            {% endif %}
+          hx-disable="find button[type=submit]">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <details class="notification-details" {{ 'open' if is_new or message or open }}>
+            <summary class="notification-head">
+                <h3>{{ 'New notification' if is_new else (item.title or 'Untitled') }}</h3>
+                <span class="notification-kind">Type: {{ events[item.event].label }}</span>
+            </summary>
+
+            <div class="form-group">
+                <label>Type</label>
+                <select name="event" class="notification-type"
+                        {% if is_new %}
+                        hx-get="{{ url_for('admin.route_notifications_new') }}"
+                        hx-trigger="change"
+                        hx-include="[name='url']"
+                        hx-target="closest .notification-row"
+                        hx-swap="outerHTML"
+                        {% endif %}>
+                    {% for e in events.values() %}
+                        <option value="{{ e.key }}" {{ 'selected' if e.key == item.event }}>{{ e.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Title <span class="label-hint">(can use variables)</span></label>
+                <textarea name="title" class="notification-template notification-title" rows="1" required
+                          @keydown.enter.prevent>{{ item.title }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Body <span class="label-hint">(can use variables)</span></label>
+                <textarea name="body" class="notification-template" rows="3">{{ item.body }}</textarea>
+                <details class="notification-variables">
+                    <summary>Available variables</summary>
+                    {% set pad = (variables.keys() | map('length') | max) + 4 %}
+                    <pre class="setting-help"><code>{% for name, description in variables.items() %}
+                        {{ ('{' ~ name ~ '}').ljust(pad) }}{{ description }}
+                    {% endfor %}</code></pre>
+                </details>
+            </div>
+
+            <div class="form-group">
+                <label>URLs <span class="label-hint">(any <a href="https://appriseit.com/services/" target="_blank"
+                                                             rel="noopener">Apprise URL</a>, e.g. <code>discord://webhook_id/token</code>. The notification is sent to every URL.)</span></label>
+                {% for url in (item.urls or ['']) %}
+                    {% include 'partials/notification_url_row.html' %}
+                {% endfor %}
+                <button type="button" class="btn btn-outline btn-small notification-add-url"
+                        hx-get="{{ url_for('admin.route_notifications_url_row') }}"
+                        hx-target="this"
+                        hx-swap="beforebegin"
+                        title="Add another URL" aria-label="Add another URL">+ Add URL
+                </button>
+            </div>
+
+            <div class="setting-input-row notification-actions">
+                <button type="submit" class="btn btn-primary">{{ 'Add' if is_new else 'Save' }}</button>
+                <button type="button" class="btn btn-outline"
+                        hx-post="{{ url_for('admin.route_notifications_test') }}"
+                        hx-include="closest form"
+                        hx-target="next .notification-result"
+                        hx-swap="innerHTML"
+                        hx-disable="this">Send test
+                </button>
+                {% if is_new %}
+                    <button type="button" class="btn btn-outline" @click="discard">Cancel</button>
+                {% else %}
+                    {# Cancel btn only shown if the card has unsaved edits #}
+                    <button type="button" class="btn btn-outline" x-cloak x-show="dirty"
+                            hx-get="{{ url_for('admin.route_notifications_card', notification_id=item.id) }}"
+                            hx-target="closest .notification-row"
+                            hx-swap="outerHTML">Cancel
+                    </button>
+                    <button type="button" class="btn btn-outline notification-delete"
+                            hx-post="{{ url_for('admin.route_notifications_delete', notification_id=item.id) }}"
+                            hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                            hx-target="closest .notification-row"
+                            hx-swap="outerHTML"
+                            hx-confirm="Delete this notification?">Delete
+                    </button>
+                {% endif %}
+            </div>
+            <div class="notification-result">
+                {% if message %}
+                    <p class="test-result {{ 'test-result-ok' if ok else 'test-result-fail' }}">{{ message }}</p>{% endif %}
+            </div>
+        </details>
+    </form>
+
+    <div class="notification-enabled">
+        <label class="switch" title="{{ 'Enabled' if item.enabled else 'Disabled' }}">
+            {% if is_new %}
+                <input type="checkbox" name="enabled" value="1" form="{{ form_id }}"
+                       aria-label="Enabled" {{ 'checked' if item.enabled }}>
+            {% else %}
+                <input type="hidden" name="enabled" value="0">
+                <input type="checkbox" name="enabled" value="1" aria-label="Enabled" {{ 'checked' if item.enabled }}
+                       hx-post="{{ url_for('admin.route_notifications_enabled', notification_id=item.id) }}"
+                       hx-include="closest .switch"
+                       hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                       hx-swap="none">
+            {% endif %}
+            <span class="switch-track"></span>
+        </label>
+    </div>
+</div>

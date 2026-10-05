@@ -143,6 +143,25 @@ wheels = [
 ]
 
 [[package]]
+name = "apprise"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "click" },
+    { name = "markdown" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "requests-oauthlib" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/8d/61c02aeb9b7644d915106252b8fc42e5f3b3765343c9fe3bef5489e903a4/apprise-2.0.1.tar.gz", hash = "sha256:8cae8ae5877b9cfd1dddffc17ac1e50f780ab6bdf948f95215e2466ef7230565", size = 3353898, upload-time = "2026-10-03T19:44:56.142Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/0e/b0ca7dde275f100ecc199dba362a8f1783c906393ab0d3f2c148d8500ddc/apprise-2.0.1-py3-none-any.whl", hash = "sha256:2a9b0f4fc906227f70998ea4462184dd605e796d3932e6e7ce0fe0f134048610", size = 2456127, upload-time = "2026-10-03T19:44:53.265Z" },
+]
+
+[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -222,6 +241,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "apprise" },
     { name = "feedparser" },
     { name = "pychromecast" },
     { name = "python-podcastindex" },
@@ -231,6 +251,9 @@ all = [
 ]
 chromecast = [
     { name = "pychromecast" },
+]
+notifications = [
+    { name = "apprise" },
 ]
 podcast-discovery = [
     { name = "python-podcastindex" },
@@ -258,9 +281,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "apprise", marker = "extra == 'notifications'", specifier = ">=1.9.0" },
     { name = "beautifulsoup4", specifier = ">=4.15.0" },
     { name = "beets", specifier = ">=2.12.0" },
-    { name = "beetstreamnext", extras = ["wiki", "podcasts", "podcast-discovery", "radio-discovery", "sonos", "chromecast"], marker = "extra == 'all'" },
+    { name = "beetstreamnext", extras = ["wiki", "podcasts", "podcast-discovery", "radio-discovery", "sonos", "chromecast", "notifications"], marker = "extra == 'all'" },
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "feedparser", marker = "extra == 'podcasts'", specifier = ">=6.0.11" },
@@ -282,7 +306,7 @@ requires-dist = [
     { name = "werkzeug", specifier = ">=3.1.8" },
     { name = "wikipedia-api", marker = "extra == 'wiki'", specifier = ">=0.15.0" },
 ]
-provides-extras = ["wiki", "podcasts", "podcast-discovery", "radio-discovery", "sonos", "chromecast", "all"]
+provides-extras = ["wiki", "podcasts", "podcast-discovery", "radio-discovery", "sonos", "chromecast", "notifications", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1060,6 +1084,15 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown"
+version = "3.11"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/4f/700155c8c20d9e655dd0732b5fc3c7614f291b9148da271d7388e50bf774/markdown-3.11.tar.gz", hash = "sha256:180224db6aed87ba9ce1f2781ebcd5826253de8ff637112090e24b84502bbf9f", size = 485623, upload-time = "2026-09-25T13:46:23.473Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/1e/32971905a7ab47f8b66866ed949fa48b104ba1c4a6fa57794c4f2c4b2cb8/markdown-3.11-py3-none-any.whl", hash = "sha256:cd6c89e7eb308c8b332ed673215a52d208a43f8bacc030b1419376129408719e", size = 111296, upload-time = "2026-09-25T13:46:22.163Z" },
+]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1278,6 +1311,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/25/39/3453afb7119d0449ef11c886874120ff180e2c337760e0e2d88f70f1a945/numpy-2.5.3-cp314-cp314t-win32.whl", hash = "sha256:4c8a6d2ebce6305fd82fbefca827775437147052a976ee7c94b36a0c1b52ac6c", size = 6335421, upload-time = "2026-09-06T16:26:28.175Z" },
     { url = "https://files.pythonhosted.org/packages/99/01/22815d2b19a1a746b1d45205cffebb3fe511a18acb75fba6c88491fc9894/numpy-2.5.3-cp314-cp314t-win_amd64.whl", hash = "sha256:9a37475425b431b4d060f23b4f52cd2f3aef6bc7c654bd760adf0040eec9d435", size = 12896420, upload-time = "2026-09-06T16:26:31.265Z" },
     { url = "https://files.pythonhosted.org/packages/fa/ee/a7cbba67eeaff038dc29ca8b98a88396c8b0cc9c89d4924f4a27a5c9150b/numpy-2.5.3-cp314-cp314t-win_arm64.whl", hash = "sha256:2d8240cb4c16fd831074aa2b2cf9fc54664d826341d61c372245b96a74a49a9a", size = 10857177, upload-time = "2026-09-06T16:26:34.167Z" },
+]
+
+[[package]]
+name = "oauthlib"
+version = "4.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/d8/a1bcc8ba112a627f8ffbdc212a78ce18d3ac07e91a5ca65d27918eee25a1/oauthlib-4.0.0.tar.gz", hash = "sha256:efb274799819440f95b4ab3b818869f1ce9ae26c5beacba0201d1a1b76b54f86", size = 187232, upload-time = "2026-09-28T06:01:18.77Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/f4/78229a1066068ca14fc60fb26cf7381cabe4382261392b90e5f9552722d4/oauthlib-4.0.0-py3-none-any.whl", hash = "sha256:624c28c13a0a59cabf9747dfa52af63be3e512a7f2714df16e91b5b3a145e6cd", size = 159715, upload-time = "2026-09-28T06:01:17.008Z" },
 ]
 
 [[package]]
@@ -1757,6 +1799,19 @@ wheels = [
 ]
 
 [[package]]
+name = "requests-oauthlib"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "oauthlib" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/f2/05f29bc3913aea15eb670be136045bf5c5bbf4b99ecb839da9b422bb2c85/requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9", size = 55650, upload-time = "2024-03-22T20:32:29.939Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36", size = 24179, upload-time = "2024-03-22T20:32:28.055Z" },
+]
+
+[[package]]
 name = "requests-ratelimiter"
 version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1853,6 +1908,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
+]
+
+[[package]]
+name = "tzdata"
+version = "2026.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/68/f1b440335057bfce71b6e50a9d09445aa2ecbd08359a337976627b8409e7/tzdata-2026.5.tar.gz", hash = "sha256:8cc73c0a0bfca7dbfa59235d60b2eff82231dee33f53d206db1acd9173cfc0a7", size = 200404, upload-time = "2026-10-03T09:23:14.143Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/21/1e5995a1c920cce14e4bffae20c665ec10e7ed03ab25e006cd741092b718/tzdata-2026.5-py2.py3-none-any.whl", hash = "sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac", size = 347996, upload-time = "2026-10-03T09:23:12.535Z" },
 ]
 
 [[package]]

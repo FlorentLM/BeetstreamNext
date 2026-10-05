@@ -1,0 +1,10 @@
+{% if not apprise %}
+    <p class="card-hint">Notifications need the optional <code>apprise</code> package.
+        Install it with <code>pip install "beetstreamnext[notifications]"</code> and restart.</p>
+{% else %}
+    {% for item in items %}
+        {% include 'partials/notification_form.html' %}
+    {% else %}
+        <p class="empty-state">No notifications yet. Use "Add notification" to create one.</p>
+    {% endfor %}
+{% endif %}

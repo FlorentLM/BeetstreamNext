@@ -42,6 +42,36 @@
             }
         }));
 
+        // Notification card
+
+        Alpine.data('notificationCard', () => {
+            const clearResult = card => card.querySelector('.notification-result')?.replaceChildren();
+
+            return {
+                dirty: false,
+
+                markDirty(event) {
+                    this.dirty = true;
+                    clearResult(event.currentTarget);
+                },
+
+                // Cancel on a never-saved notification -> delete
+                discard(event) {
+                    event.currentTarget.closest('.notification-row').remove();
+                },
+
+                // Keep one (empty) row so there is always somewhere to type
+                removeUrl(event) {
+                    const row = event.currentTarget.closest('.notification-url-row');
+                    const card = row.closest('.notification-card');
+                    if (row.parentElement.querySelectorAll('.notification-url-row').length > 1) row.remove();
+                    else row.querySelector('input').value = '';
+                    this.dirty = true;
+                    clearResult(card);
+                }
+            };
+        });
+
         // Beets import panel: status/log pushed over the admin SSE stream (with one initial poll on page load)
         Alpine.data('beetsImport', () => {
             const LABELS = {
@@ -320,8 +350,10 @@
         }
     }
 
-    if (adminSseSource) adminSseSource.addEventListener('podcast-status', handlePodcastStatusSse);
-    if (adminSseSource) adminSseSource.addEventListener('server-log', handleServerLogSse);
+
+    const adminDashboard = document.getElementById('adminDashboard');
+    adminDashboard?.addEventListener('podcast-status', handlePodcastStatusSse);
+    adminDashboard?.addEventListener('server-log', handleServerLogSse);
 
     // Episodes lists are lazy-loaded htmx
     document.body.addEventListener('htmx:after:swap', event => {

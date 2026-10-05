@@ -38,6 +38,7 @@ FEEDPARSER: bool = is_installed('feedparser')
 PODCASTINDEX: bool = is_installed('python-podcastindex')
 SOCO: bool = is_installed('soco')
 PYCHROMECAST: bool = is_installed('pychromecast')
+APPRISE: bool = is_installed('apprise')
 
 PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()    # safe to lose (regenerable/disposable)

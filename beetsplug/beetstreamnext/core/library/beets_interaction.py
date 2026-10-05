@@ -20,8 +20,12 @@ from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.library.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.notifications import (
+    IMPORT_COMPLETED, IMPORT_FAILED, IMPORT_NEEDS_INPUT, IMPORT_QUEUE_ABORTED, IMPORT_STARTED, notify
+)
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
+from beetsplug.beetstreamnext.utils.text import format_elapsed
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
 
 IS_WINDOWS = sys.platform == 'win32'
@@ -38,6 +42,7 @@ _master_fd: Optional[int] = None    # POSIX only, Windows pty process reads/writ
 _state: str = 'idle'                # idle, running, needs_input, completed, failed
 _current_path: Optional[str] = None
 _exit_code: Optional[int] = None
+_started_at: Optional[float] = None
 _queue: List[dict] = []             # pinned paths waiting to be scanned
 
 _NEEDS_INPUT_SNIPPETS = (
@@ -83,7 +88,7 @@ def start_import(path: str, quiet: bool = False, incremental: bool = False, rese
     """
     Start a `beet import` against `path`.
     """
-    global _proc, _master_fd, _state, _current_path, _exit_code
+    global _proc, _master_fd, _state, _current_path, _exit_code, _started_at
 
     with _lock:
         if is_import_running():
@@ -172,12 +177,14 @@ def start_import(path: str, quiet: bool = False, incremental: bool = False, rese
         _current_path = str(candidate)
         _state = 'running'
         _exit_code = None
+        _started_at = time.monotonic()
 
         pump_thread.start()
 
         bsn_logger.info(f"Started beets import (pid {pid_for_log}) on '{candidate}': "
                          f"{' '.join(shlex.quote(c) for c in command)}")
         _push_import_status()
+        notify(IMPORT_STARTED, path=_current_path)
         return True, 'Import started.'
 
 
@@ -231,6 +238,7 @@ def _start_next_queued() -> None:
         if not ok:
             bsn_logger.warning(f"Pinned scan stopped at '{entry['path']}': {message}")
             _queue = []
+            notify(IMPORT_QUEUE_ABORTED, path=entry['path'], exit_code='', duration='')
 
 
 def _handle_output_chunk(log_file, text: str) -> None:
@@ -240,10 +248,15 @@ def _handle_output_chunk(log_file, text: str) -> None:
     log_file.write(text)
     log_file.flush()
 
+    needs_input_path = None
     if any(s in text for s in _NEEDS_INPUT_SNIPPETS):
         with _lock:
             if _state == 'running':
                 _state = 'needs_input'
+                needs_input_path = _current_path
+
+    if needs_input_path is not None:    # Only on the running -> needs_input
+        notify(IMPORT_NEEDS_INPUT, path=needs_input_path)
 
     _push_import_status()
 
@@ -254,12 +267,18 @@ def _finish_import(log_file, exit_code: int) -> None:
     with _lock:
         _exit_code = exit_code
         _state = 'completed' if exit_code == 0 else 'failed'
+        path = _current_path
+        duration = format_elapsed(time.monotonic() - _started_at) if _started_at is not None else ''
 
     log_file.write(f'\n[beetstreamnext] Beets import finished (exit code {exit_code}).\n')
     log_file.flush()
 
     _push_import_status()
+
     bsn_logger.info(f'Beets import finished (exit {exit_code})')
+
+    notify(IMPORT_COMPLETED if exit_code == 0 else IMPORT_FAILED,
+           path=path, exit_code=exit_code, duration=duration)
 
     _start_next_queued()
 

@@ -47,6 +47,7 @@ from .routes import (
     events,
     jukebox,
     maintenance,
+    notifications,
     podcasts,
     security,
     settings,

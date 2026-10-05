@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.core.services.external.lastfm import test_lastfm_c
 from beetsplug.beetstreamnext.core.services.external.audiomuse import test_audiomuse_connection
 from beetsplug.beetstreamnext.core.services.external.podcastindex import test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
-from beetsplug.beetstreamnext.constants import RADIO_BROWSER
+from beetsplug.beetstreamnext.constants import APPRISE, RADIO_BROWSER
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA, SETTINGS_CATEGORIES
 from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.blueprints.forms import UserForm, RadioStationForm
@@ -242,6 +242,7 @@ def route_settings() -> flask.Response:
             server_info=get_server_info(extended=True),
             current_username=flask.session.get('username'),
             settings_categories=SETTINGS_CATEGORIES,
+            apprise_available=APPRISE,
             settings_by_category=settings_by_category,
             paired_with=_PAIRED_WITH,
             setting_pills=setting_pills,

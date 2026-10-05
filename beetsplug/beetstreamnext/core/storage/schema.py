@@ -171,6 +171,20 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event TEXT NOT NULL,           -- event type
+            title TEXT NOT NULL,           -- templates with {variables} expanded
+            body TEXT NOT NULL,
+            urls TEXT NOT NULL,            -- JSON list of Apprise URLs, Fernet-encrypted when a key is available
+            encrypted INTEGER NOT NULL DEFAULT 0,
+            enabled INTEGER NOT NULL DEFAULT 1
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS internet_radio_stations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,

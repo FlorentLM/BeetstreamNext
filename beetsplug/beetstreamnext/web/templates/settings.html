@@ -110,6 +110,10 @@
                     :aria-selected="active === 'beets' ? 'true' : 'false'" @click="set('beets')"
                     aria-controls="tab-beets">Beets
             </button>
+            <button class="tab" role="tab" data-tab="notifications" :class="{ active: active === 'notifications' }"
+                    :aria-selected="active === 'notifications' ? 'true' : 'false'" @click="set('notifications')"
+                    aria-controls="tab-notifications">Notifications
+            </button>
             <button class="tab" role="tab" data-tab="maintenance" :class="{ active: active === 'maintenance' }"
                     :aria-selected="active === 'maintenance' ? 'true' : 'false'" @click="set('maintenance')"
                     aria-controls="tab-maintenance">Maintenance
@@ -329,7 +333,8 @@
                     <br>
                     <div class="setting-input-row">
                         <div class="beets-path-field">
-                            <input type="text" id="beetsImportPath" name="path" placeholder="e.g. /downloads/music/Radiohead - In Rainbows (2007)"
+                            <input type="text" id="beetsImportPath" name="path"
+                                   placeholder="e.g. /downloads/music/Radiohead - In Rainbows (2007)"
                                    autocomplete="off" x-ref="path" @keydown.enter.prevent="start()"
                                    hx-get="{{ url_for('admin.route_beets_import_browse') }}"
                                    hx-trigger="input changed delay:300ms, focus once"
@@ -340,9 +345,11 @@
                                     hx-post="{{ url_for('admin.route_pinned_paths_add') }}"
                                     hx-include="#beetsImportPath"
                                     hx-vals='{"csrf_token": "{{ csrf_token() }}", "incremental": "1"}'
-                                    hx-target="#pinnedPaths" hx-swap="innerHTML"><span class="material-symbols-outlined">keep</span></button>
+                                    hx-target="#pinnedPaths" hx-swap="innerHTML"><span
+                                    class="material-symbols-outlined">keep</span></button>
                         </div>
-                        <button type="button" class="btn btn-primary" @click="start()" :disabled="startDisabled">Start import
+                        <button type="button" class="btn btn-primary" @click="start()" :disabled="startDisabled">Start
+                            import
                         </button>
                     </div>
                     <p class="test-result" :class="startResultClass" x-text="startMessage"></p>
@@ -365,6 +372,32 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </section>
+
+        {# Notifications tab #}
+        <section class="tab-content" id="tab-notifications" :class="{ active: active === 'notifications' }"
+                 role="tabpanel">
+            <div class="card">
+                <div class="table-header">
+                    <h2>Notifications</h2>
+                    {% if apprise_available %}
+                        <button type="button" class="btn btn-primary"
+                                hx-get="{{ url_for('admin.route_notifications_new') }}"
+                                hx-target="#notificationNew"
+                                hx-swap="innerHTML">Add notification
+                        </button>
+                    {% endif %}
+                </div>
+                <p class="card-hint">Each notification sends one type of alert to one
+                    <a href="https://appriseit.com/services/" target="_blank" rel="noopener">Apprise</a> URL.
+                    Titles and bodies can use <code>{variables}</code>.</p>
+                <div class="notification-columns" aria-hidden="true"><span>Enabled</span></div>
+                <div id="notificationNew"></div>
+                <div id="notificationList"
+                     hx-get="{{ url_for('admin.route_notifications') }}"
+                     hx-trigger="load, notification-added from:body"
+                     hx-swap="innerHTML"></div>
             </div>
         </section>
 
@@ -560,7 +593,8 @@
                     </div>
                 </div>
                 <pre class="log-view" id="serverLogText" data-lines="{{ log_lines|length }}"
-                     data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}{{ log_lines|map('safe')|join('\n') }}{% else %}(no log
+                     data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}
+                    {{ log_lines|map('safe')|join('\n') }}{% else %}(no log
                     output yet){% endif %}</pre>
             </div>
         </section>
@@ -624,8 +658,12 @@
                     <div class="roles-header">
                         <label class="label-inline">Roles &amp; Permissions</label>
                         <div class="roles-actions">
-                            <button type="button" class="text-btn text-btn-icon" title="Select all" aria-label="Select all" @click="setAll(true, ['adminRole'])"><span class="material-symbols-outlined">select_all</span></button>
-                <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection" aria-label="Clear selection" @click="setAll(false)"><span class="material-symbols-outlined">deselect</span></button>
+                            <button type="button" class="text-btn text-btn-icon" title="Select all"
+                                    aria-label="Select all" @click="setAll(true, ['adminRole'])"><span
+                                    class="material-symbols-outlined">select_all</span></button>
+                            <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection"
+                                    aria-label="Clear selection" @click="setAll(false)"><span
+                                    class="material-symbols-outlined">deselect</span></button>
                         </div>
                     </div>
                     <div class="roles-grid">

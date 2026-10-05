@@ -36,7 +36,8 @@ def render_shares(username: Optional[str] = None) -> str:
 def radio_endpoints(bp_name: str) -> dict[str, str]:
     """Endpoint names of the radio routes registered on blueprint `bp_name`, for the templates."""
     return {
-        key: f'{bp_name}.route_{key}_radio' for key in ('create', 'update', 'edit', 'delete', 'image')} | {
+        key: f'{bp_name}.route_{key}_radio' for key in ('create', 'update', 'edit', 'delete')} | {
+        'image': f'{bp_name}.route_serve_radio_image',
         'list': f'{bp_name}.route_radios',
         'discover': f'{bp_name}.route_discover_radios',
         'favicon_proxy': f'{bp_name}.route_radio_favicon_proxy',

@@ -144,4 +144,5 @@ beetstreamnext:
     cors_supports_credentials: true
 ```
 
->️ **Warning:** Never set `cors_origins: '*'` together with `cors_supports_credentials: true`. Doing so would allow *any* website you visit to silently interact with your BeetstreamNext server in the background.
+> [!CAUTION]
+>️ **_Never_** set `cors_origins: '*'` together with `cors_supports_credentials: true`. Doing so would allow *any* website you visit to silently interact with your **BeetstreamNext** server in the background.

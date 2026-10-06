@@ -52,6 +52,7 @@ pip install .[podcast-discovery] # Podcast channel discovery (using the Podcast 
 pip install .[radio-discovery]   # Internet radio station discovery (using the Radio Browser API)
 pip install .[sonos]             # Sonos speaker jukebox backend (using SoCo)
 pip install .[chromecast]        # Chromecast jukebox backend (using pychromecast)
+pip install .[notifications]     # Notifications for imports (using Apprise)
 ```
 
 or 
@@ -200,7 +201,7 @@ docker build -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
 
 Build-time options (`--build-arg`):
 
-- `EXTRAS` _(default_ `all`_)_: which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, or `all`.
+- `EXTRAS` _(default_ `all`_)_: which optional feature sets to install, comma-separated. Same list as [above](#1-clone-and-install): `wiki`, `podcasts`, `podcast-discovery`, `radio-discovery`, `sonos`, `chromecast`, `notifications`, or `all`.
 
 - `PYTHON_VERSION` _(default_ `3.13`_)_: Python version to use instead of the one defined in `pyproject.toml`.
 
@@ -513,7 +514,7 @@ security_opt:
 
 - **`deploy.resources.limits`**
 
-**memory:** Caps the _container's total memory_. If you're using `read_only` + `tmpfs` above: a `tmpfs` mount counts against this limit and can't be reclaimed under memory pressure, so size it comfortably above your `tmpfs` size plus BeetstreamNext's normal usage, or a large library scan can fail with what looks like a SQLite disk I/O error.
+**memory:** Caps the _container's total memory_. If you're using `read_only` + `tmpfs` above: a `tmpfs` mount counts against this limit and can't be reclaimed under memory pressure, so size it comfortably above your `tmpfs` size plus **BeetstreamNext**'s normal usage.
 
 ```yaml
 deploy:

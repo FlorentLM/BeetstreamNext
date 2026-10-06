@@ -76,8 +76,11 @@ See the [configuration reference](../configuration.md) for the full settings pre
 `create-user`/`--create-user`, `update-user`/`--update-user`, `passwd`/`--password`, and `delete-user`/`--delete-user` all prompt interactively on the terminal:
 
 - **Create**: Asks for a username (flags invalid characters and offers a sanitized alternative), a password, and asks you if the new user should be an admin or not.
+
 - **Update**: Walks through every role one at a time (press Enter to leave a role unchanged, or `y`/`n` to enable/disable it).
+
 - **Password change**: Asks for the new password.
+
 - **Delete**: Asks for a confirmation before removing the account.
 
 The interactivity is _deliberate_: these commands touch credentials, so user input is mandatory. Only exception to this is the [Unattended first run](../installation.md#unattended-first-run).

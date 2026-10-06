@@ -49,3 +49,7 @@ A pinned folder marked as **watched** is monitored ,and whenever new audio files
 ## Disk writes
 
 Imports that write tags, or that copy/move files, need [`allow_disk_writes`](../configuration.md#library--metadata) enabled. This isn't required if your Beets config has `write`, `copy` and `move` all disabled.
+
+## Notifications
+
+**BeetstreamNext** can send an [Apprise notification](./notifications.md) when an import starts, finishes, fails or needs input.

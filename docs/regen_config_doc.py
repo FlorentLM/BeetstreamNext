@@ -31,6 +31,7 @@ BeetstreamNext settings can be set from various ways:
    - via an environment variable
    - in plugin mode: via **Beets**' `config.yaml`, under a `beetstreamnext:` block (see [Installation](./installation.md#plugin-mode))
    - in standalone mode: via **BeetstreamNext**'s config YAML (see [Installation](./installation.md#standalone-mode))
+
 2. **The Admin WebUI**: Only for settings that aren't already pinned by one of the _explicit_ sources above. When a setting is pinned by any of those sources, its field in the Admin panel is locked/disabled.
 
 Settings resolve order (first one set takes precedence):

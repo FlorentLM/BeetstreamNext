@@ -75,36 +75,11 @@ View the full chat log, edit/delete any user's message for moderation, or post s
 
 ### Beets
 
-Interact with the Beets installation: view/update Beets' `config.yaml` and run imports (see [Beets import](../features/beets-import.md) for the details).
+Interact with the Beets installation: view/update Beets' `config.yaml` and run imports (interactive, pinned and watched folders).
 
-#### Interactive import
-
-Enter a directory, and start a `beet import` on it in an interactive terminal-like view, similar to [**Betanin**](https://github.com/sentriz/betanin).
+See [Beets import](../features/beets-import.md) for the details.
 
 <img class="screenshot" src="../images/light/screenshot_beets.png" alt="Beets configuration and import">
-
-#### Pinned import folders
-
-Pin the folders you regularly import from (a _downloads_ directory for instance) so they can be imported _non-interactively_ from Subsonic clients (quiet mode: beets follows your config for `quiet_fallback`, `timid`, etc).
-
-See [`startScan`](../api-coverage.md) endpoint.
-
-> [!IMPORTANT]
-> Imports that modify files on disk (writing tags, copying or moving files) need [`allow_disk_writes`](../configuration.md#library--metadata) to be enabled, unless your Beets config has `write`, `copy` and `move` all disabled.
-
-#### Watched folders (auto-import)
-
-When a pinned folder is flagged as **Watch**, new audio files dropped into it are imported automatically.
-
-   - This needs the global [`import_watch_enabled`](../configuration.md#library--metadata) setting to be enabled.
-
-   - Watched folders are polled every 30 seconds.
-
-   - A folder is only imported once its contents have stopped changing for [`import_watch_settle`](../configuration.md#library--metadata) (60 sec by default). This is to avoid auto-importing half-copied or half-downloaded albums.
-
-   - Watched imports are always `quiet` and `incremental`.
-
-   - Skipping rules follow your Beets configuration.
 
 ### Maintenance
 

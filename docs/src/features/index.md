@@ -25,6 +25,7 @@ See [API coverage](../api-coverage.md) for the full endpoint-by-endpoint checkli
 | Security               | IP allow/deny lists, adaptive rate-limiting                                                                                 | [Security](security.md)                                       |
 | Jukebox mode           | OpenSubsonic's jukebox mode, augmented by Sonos and Chromecast support                                                      | [Jukebox mode](./jukebox.md)                                  |
 | Beets import           | Betanin-like interactive or non-interactive imports (also triggerable from Subsonic clients) and watched-folder auto-import | [Beets import](./beets-import.md)                             |
+| Notifications          | Apprise notifications (Discord, Telegram, ntfy, email, webhooks, etc) when imports start, finish, fail, or need input       | [Notifications](./notifications.md)                           |
 | Advanced Beets queries | Prefix any search from your client app with `beets:` or `b:` to run a complex Beets query instead of simple search          | [Library augmentation](library-augmentation.md)               |
 
 ## External data sources

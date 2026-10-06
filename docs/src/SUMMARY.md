@@ -14,6 +14,7 @@
 - [Radio & podcasts](./features/radio-and-podcasts.md)
 - [Jukebox mode](./features/jukebox.md)
 - [Beets import](./features/beets-import.md)
+- [Notifications](./features/notifications.md)
 
 # Installation
 

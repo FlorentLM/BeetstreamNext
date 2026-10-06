@@ -2,7 +2,7 @@
 
 Subsonic's [Jukebox](https://opensubsonic.netlify.app/docs/endpoints/jukeboxcontrol/) mode lets playback happen directly _on the server_, with the Subsonic client app acting as the _remote control_ instead of streaming the audio itself.
 
-**BeetstreamNext** exposes (in addition to the server's own hardware) two network backends: **Sonos** and **Chromecast**, allowing the audio to be played through a speaker on the server's local network.
+**BeetstreamNext** exposes (in addition to the server's own hardware) two network backends: _Sonos_ and _Chromecast_, allowing the audio to be played through a speaker on the server's local network.
 
 ## Backend choice
 
@@ -37,8 +37,10 @@ If you're containerizing **BeetstreamNext**, you have a few options:
 
 - **`network_mode: host`**: the container shares the host's network namespace, so multicast just works and "Discover devices" behaves like it would bare-metal.
   - Simplest option, but it's Linux-only in practice (Docker Desktop on macOS/Windows runs containers inside a VM, so host networking doesn't give the container real access to your LAN's multicast traffic).
+
 - **A `macvlan`/`ipvlan` network**: the container has its own IP directly on the LAN, so it sits on the same layer as your Sonos/Chromecast devices and multicast works.
   - This needs a physical (usually wired) interface, as most Wi-Fi drivers/APs won't allow the extra MAC addresses macvlan relies on. Also you'd need an extra macvlan shim interface on the host (to still reach **BeetstreamNext**'s web UI locally). Bit of a hassle, but should be possible.
+
 - **Don't use discovery**: set `jukebox_hardware_device` directly in the Web UI or in `config.yaml` (the speaker's IP for Sonos, the Chromecast's UUID/IP/hostname).
 
 The `server_hardware` backend needs a real audio output device passed into the container:

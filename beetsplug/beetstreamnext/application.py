@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import os
 import functools
 import flask
 from flask import Flask
+from flask.sessions import SecureCookieSessionInterface
 from flask_wtf.csrf import CSRFProtect
 
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION
@@ -13,12 +15,22 @@ from beetsplug.beetstreamnext.utils.text import format_duration
 
 ##
 
+class SessionInterface(SecureCookieSessionInterface):
+    """
+    Tiny wrapper to mark the session cookie as secure whenever the request is HTTPS (as seen after ProxyFix)
+    """
+    def get_cookie_secure(self, app: Flask) -> bool:
+        return super().get_cookie_secure(app) or flask.request.is_secure
+
+
 app = Flask(
     __name__,
     template_folder='web/templates',
     static_folder='web/static',
     static_url_path='/static',
 )
+
+app.session_interface = SessionInterface()
 
 app.logger.setLevel(LOG_LEVEL)
 

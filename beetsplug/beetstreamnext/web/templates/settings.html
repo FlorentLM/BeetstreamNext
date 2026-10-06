@@ -74,49 +74,64 @@
             </div>
         </div>
 
+        {% set tab_icons = {
+            'users': 'group',
+            'server': 'dns',
+            'library': 'library_music',
+            'audio': 'graphic_eq',
+            'security': 'shield',
+            'podcasts': 'podcasts',
+            'radios': 'radio',
+            'artists': 'artist',
+            'shares': 'share',
+            'chat': 'chat',
+            'beets': 'database',
+            'notifications': 'notifications',
+            'maintenance': 'build',
+        } %}
         <nav class="tabs" role="tablist">
             <button class="tab" role="tab" data-tab="users" :class="{ active: active === 'users' }"
                     :aria-selected="active === 'users' ? 'true' : 'false'" @click="set('users')"
-                    aria-controls="tab-users">Users
+                    aria-controls="tab-users"><span class="material-symbols-outlined">{{ tab_icons.get('users', 'circle') }}</span>Users
             </button>
             {% for cat in settings_categories if cat != 'podcasts' %}
                 <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
                         :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')"
-                        aria-controls="tab-{{ cat }}">{{ cat|capitalize }}</button>
+                        aria-controls="tab-{{ cat }}"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
             {% endfor %}
             {% if 'podcasts' in settings_categories %}
                 <button class="tab" role="tab" data-tab="podcasts" :class="{ active: active === 'podcasts' }"
                         :aria-selected="active === 'podcasts' ? 'true' : 'false'" @click="set('podcasts')"
-                        aria-controls="tab-podcasts">Podcasts
+                        aria-controls="tab-podcasts"><span class="material-symbols-outlined">{{ tab_icons.get('podcasts', 'circle') }}</span>Podcasts
                 </button>
             {% endif %}
             <button class="tab" role="tab" data-tab="radios" :class="{ active: active === 'radios' }"
                     :aria-selected="active === 'radios' ? 'true' : 'false'" @click="set('radios')"
-                    aria-controls="tab-radios">Radios
+                    aria-controls="tab-radios"><span class="material-symbols-outlined">{{ tab_icons.get('radios', 'circle') }}</span>Radios
             </button>
             <button class="tab" role="tab" data-tab="artists" :class="{ active: active === 'artists' }"
                     :aria-selected="active === 'artists' ? 'true' : 'false'" @click="set('artists')"
-                    aria-controls="tab-artists">Artists
+                    aria-controls="tab-artists"><span class="material-symbols-outlined">{{ tab_icons.get('artists', 'circle') }}</span>Artists
             </button>
             <button class="tab" role="tab" data-tab="shares" :class="{ active: active === 'shares' }"
                     :aria-selected="active === 'shares' ? 'true' : 'false'" @click="set('shares')"
-                    aria-controls="tab-shares">Shares
+                    aria-controls="tab-shares"><span class="material-symbols-outlined">{{ tab_icons.get('shares', 'circle') }}</span>Shares
             </button>
             <button class="tab" role="tab" data-tab="chat" :class="{ active: active === 'chat' }"
-                    :aria-selected="active === 'chat' ? 'true' : 'false'" @click="set('chat')" aria-controls="tab-chat">
+                    :aria-selected="active === 'chat' ? 'true' : 'false'" @click="set('chat')" aria-controls="tab-chat"><span class="material-symbols-outlined">{{ tab_icons.get('chat', 'circle') }}</span>
                 Chat
             </button>
             <button class="tab" role="tab" data-tab="beets" :class="{ active: active === 'beets' }"
                     :aria-selected="active === 'beets' ? 'true' : 'false'" @click="set('beets')"
-                    aria-controls="tab-beets">Beets
+                    aria-controls="tab-beets"><span class="material-symbols-outlined">{{ tab_icons.get('beets', 'circle') }}</span>Beets
             </button>
             <button class="tab" role="tab" data-tab="notifications" :class="{ active: active === 'notifications' }"
                     :aria-selected="active === 'notifications' ? 'true' : 'false'" @click="set('notifications')"
-                    aria-controls="tab-notifications">Notifications
+                    aria-controls="tab-notifications"><span class="material-symbols-outlined">{{ tab_icons.get('notifications', 'circle') }}</span>Notifications
             </button>
             <button class="tab" role="tab" data-tab="maintenance" :class="{ active: active === 'maintenance' }"
                     :aria-selected="active === 'maintenance' ? 'true' : 'false'" @click="set('maintenance')"
-                    aria-controls="tab-maintenance">Maintenance
+                    aria-controls="tab-maintenance"><span class="material-symbols-outlined">{{ tab_icons.get('maintenance', 'circle') }}</span>Maintenance
             </button>
         </nav>
 
@@ -584,13 +599,11 @@
             </div>
 
             <div class="card">
-                <div class="table-header">
-                    <h2>Server Log</h2>
-                    <div class="table-header-actions">
-                        <button type="button" class="btn btn-outline" data-action="copy-log"
-                                data-target="serverLogText">{{ macros.icon('copy') }} <span
-                                class="btn-label">Copy</span></button>
-                    </div>
+                <div class="table-header"><h2>Server Log</h2></div>
+                <div class="log-toolbar">
+                    <button type="button" class="btn btn-outline" data-action="copy-log"
+                            data-target="serverLogText">{{ macros.icon('copy') }} <span
+                            class="btn-label">Copy</span></button>
                 </div>
                 <pre class="log-view" id="serverLogText" data-lines="{{ log_lines|length }}"
                      data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}

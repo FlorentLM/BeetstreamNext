@@ -43,7 +43,7 @@
 
         {# Profile #}
         <div class="card">
-            <div class="table-header"><h2>Profile</h2></div>
+            <div class="table-header"><h2><span class="material-symbols-outlined">person</span>Profile</h2></div>
 
             <div class="card-section" id="avatarBlock">
                 {% include 'partials/account_avatar.html' %}
@@ -82,7 +82,7 @@
 
         {# Password #}
         <div class="card">
-            <div class="table-header"><h2>Change password</h2></div>
+            <div class="table-header"><h2><span class="material-symbols-outlined">password</span>Change password</h2></div>
             <form id="passwordForm"
                   hx-post="{{ url_for('account.route_change_password') }}"
                   hx-target="#passwordResult"
@@ -107,7 +107,7 @@
 
         {# API key #}
         <div class="card">
-            <div class="table-header"><h2>API key</h2></div>
+            <div class="table-header"><h2><span class="material-symbols-outlined">key</span>API key</h2></div>
             <p class="card-hint">
                 Subsonic clients can authenticate with an API key instead of a password.
                 Regenerating it immediately invalidates the old one.
@@ -126,7 +126,7 @@
         {# Shares #}
         {% if user.shareRole %}
             <div class="card">
-                <div class="table-header"><h2>My shares</h2></div>
+                <div class="table-header"><h2><span class="material-symbols-outlined">share</span>My shares</h2></div>
                 <div id="accountShares"
                      hx-get="{{ url_for('account.route_my_shares') }}"
                      hx-trigger="load"
@@ -138,7 +138,7 @@
         {% if user.podcastRole %}
             <div class="card">
                 <div class="table-header">
-                    <h2>My podcast subscriptions</h2>
+                    <h2><span class="material-symbols-outlined">podcasts</span>My podcast subscriptions</h2>
                     <a href="{{ url_for('account.route_export_podcast_opml') }}" class="btn btn-outline">Export OPML</a>
                 </div>
 
@@ -196,7 +196,7 @@
         {# Radio stations #}
         <div class="card">
             <div class="table-header">
-                <h2>My radio stations</h2>
+                <h2><span class="material-symbols-outlined">radio</span>My radio stations</h2>
                 <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
                     + Add Station
                 </button>
@@ -210,7 +210,7 @@
 
         {# Data export #}
         <div class="card">
-            <div class="table-header"><h2>My data</h2></div>
+            <div class="table-header"><h2><span class="material-symbols-outlined">database</span>My data</h2></div>
             <p class="card-hint">
                 Download everything stored about you (profile, likes, ratings, bookmarks, play history,
                 play queue, shares, podcast subscriptions, radio stations and chat messages) as a JSON file.
@@ -224,7 +224,7 @@
         <details class="danger-zone">
             <summary>Danger zone</summary>
             <div class="card">
-                <div class="table-header"><h2>Delete account</h2></div>
+                <div class="table-header"><h2><span class="material-symbols-outlined">delete_forever</span>Delete account</h2></div>
                 <p class="card-hint">
                     Permanently deletes your account and all of the data above. This cannot be undone.
                 </p>

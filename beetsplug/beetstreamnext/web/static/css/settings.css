@@ -240,6 +240,9 @@ h2 {
 
 .table-header h2 {
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .table-header-actions {
@@ -788,6 +791,13 @@ input:focus, select:focus {
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     transition: color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tab .material-symbols-outlined {
+    font-size: 1rem;
 }
 
 .tab:hover {
@@ -1088,6 +1098,12 @@ input:focus, select:focus {
 
 .card-footer {
     margin: 1rem 1.5rem;
+}
+
+.log-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem 0.75rem;
 }
 
 .log-view {

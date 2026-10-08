@@ -1,31 +1,29 @@
 from __future__ import annotations
 
-import re
+import hashlib
+import os
 import secrets
+import threading
 import time
 import zipfile
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 import flask
 from flask import render_template
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR
+from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR, ZIP_MAX_CONCURRENT
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.runtime.web import send_file
+from beetsplug.beetstreamnext.utils.system import safe_filename
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.core.library.resolve import beets_abspath
-
-
-def _safe_filename(name: Any) -> str:
-    cleaned = re.sub(r'[\\/:*?"<>|]', '_', str(name or '')).strip(' .')
-    return cleaned or 'untitled'
 
 
 def _get_active_share(share_id: str):
@@ -80,21 +78,58 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
     return bool(album_match)
 
 
-def _zip_album(items: List) -> Path:
-    """Zip all songs of an album and returns the zip path."""
-    zip_path = ZIP_CACHE_DIR / f'{secrets.token_hex(16)}.zip'
+_zip_slots = threading.BoundedSemaphore(ZIP_MAX_CONCURRENT)
 
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_STORED) as zf:
-        for item in items:
-            path_obj = beets_abspath(item)
-            if not path_obj.is_file():
-                bsn_logger.warning(f"Skipping missing file for album zip: '{path_obj}'")
-                continue
 
-            track = item.get('track') or 0
-            title = _safe_filename(item.get('title') or path_obj.stem)
-            arcname = f'{track:02d} - {title}{path_obj.suffix}' if track else f'{title}{path_obj.suffix}'
-            zf.write(path_obj, arcname=arcname)
+def _zip_cache_path(entry_id: str, files: List[Tuple[Path, str]]) -> Path:
+    """
+    Cached by album and by (name, size, mtime) of the files so repeat downloads cost nothing.
+    """
+
+    digest = hashlib.sha256(entry_id.encode())
+    for path_obj, arcname in files:
+        st = path_obj.stat()
+        digest.update(f'\0{path_obj}\0{arcname}\0{st.st_size}\0{st.st_mtime_ns}'.encode())
+
+    return ZIP_CACHE_DIR / f'{digest.hexdigest()}.zip'
+
+
+def _zip_album(entry_id: str, items: list) -> Path | None:
+    """
+    Zip an album and returns the (cached) path, or None if too many zips are being built
+    """
+
+    files: List[Tuple[Path, str]] = []
+
+    for item in items:
+        path_obj = beets_abspath(item)
+        if not path_obj.is_file():
+            bsn_logger.warning(f"Skipping missing file for album zip: '{path_obj}'")
+            continue
+
+        track = item.get('track') or 0
+        title = safe_filename(item.get('title') or path_obj.stem, 'untitled')
+        arcname = f'{track:02d} - {title}{path_obj.suffix}' if track else f'{title}{path_obj.suffix}'
+        files.append((path_obj, arcname))
+
+    zip_path = _zip_cache_path(entry_id, files)
+    if zip_path.is_file():
+        os.utime(zip_path)      # Recently used: keep
+        return zip_path
+
+    if not _zip_slots.acquire(blocking=False):
+        return None
+
+    tmp_path = zip_path.with_suffix(f'.{secrets.token_hex(8)}.part')
+    try:
+        with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_STORED) as zf:
+            for path_obj, arcname in files:
+                zf.write(path_obj, arcname=arcname)
+        os.replace(tmp_path, zip_path)      # Atomic swap to avoid serving half-written zip
+
+    finally:
+        tmp_path.unlink(missing_ok=True)
+        _zip_slots.release()
 
     return zip_path
 
@@ -165,7 +200,7 @@ def share_download(share_id: str, entry_id: str) -> flask.Response | None:
     return send_file(
         song_path,
         as_attachment=True,
-        download_name=f"{item.title}.{item.format.lower()}"
+        download_name=f"{safe_filename(item.title or song_path.stem, 'untitled')}.{(item.format or song_path.suffix.lstrip('.')).lower()}"
     )
 
 
@@ -198,19 +233,15 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     if not items:
         flask.abort(404)
 
-    zip_path = _zip_album(items)
-    download_name = f"{_safe_filename(album.albumartist)} - {_safe_filename(album.album)}.zip"
+    zip_path = _zip_album(entry_id, items)
+    if zip_path is None:
+        response = flask.make_response('Too many downloads are being prepared, try again shortly.', 503)
+        response.headers['Retry-After'] = '10'
+        return response
 
-    response = flask.send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=download_name)
+    download_name = f"{safe_filename(album.albumartist, 'untitled')} - {safe_filename(album.album, 'untitled')}.zip"
 
-    @response.call_on_close
-    def _cleanup_zip() -> None:
-        try:
-            zip_path.unlink(missing_ok=True)
-        except OSError as e:
-            bsn_logger.warning(f"Failed to clean up temporary zip '{zip_path}': {e}")
-
-    return response
+    return flask.send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=download_name)
 
 
 @public_bp.route('/share/<share_id>/cover/<entry_id>')

@@ -11,7 +11,7 @@ from beets.util import bytestring_path
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import genres_formatter
-from beetsplug.beetstreamnext.utils.system import creation_date, safe_join
+from beetsplug.beetstreamnext.utils.system import creation_date, safe_join, safe_filename
 from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.media.images import fetch_playlist_images
@@ -180,8 +180,7 @@ class Playlist:
     def rename(self, name : Optional[str] = None) -> None:
         with self._lock:
             if name and name[:200] != self.name:
-                safe_name = os.path.basename(str(name)).rsplit('.', 1)[0]
-                safe_name = safe_name[:200]
+                safe_name = safe_filename(str(name).rsplit('.', 1)[0], fallback='playlist')
 
                 new_path = safe_join(self.path.parent, f"{safe_name}.m3u", error="Invalid rename target.")
 
@@ -261,7 +260,7 @@ class Playlist:
         owner = flask.g.username
         _validate_owner(owner)
 
-        safe_name = os.path.basename(os.fsdecode(name)).rsplit('.', 1)[0][:200]
+        safe_name = safe_filename(os.fsdecode(name).rsplit('.', 1)[0], fallback='playlist')
         root_dir = Path(os.fsdecode(flask.g.playlist_provider.playlist_dirs.get(0))).resolve()
         base_dir = root_dir / owner
         base_dir.mkdir(parents=True, exist_ok=True)

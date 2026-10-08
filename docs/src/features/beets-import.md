@@ -46,6 +46,17 @@ A pinned folder marked as **watched** is monitored ,and whenever new audio files
 
 - Watched imports are always [quiet](https://beets.readthedocs.io/en/stable/reference/config.html#quiet) and [incremental](https://beets.readthedocs.io/en/stable/reference/config.html#incremental)
 
+## Editing the Beets config
+
+The Beets tab shows your Beets `config.yaml`.
+
+Editing it from the Admin WebUI is restricted by default for security. You can allow this by enabling the [`allow_beets_config_edit`](../configuration.md#library--metadata) setting or by setting its corresponding environment variable.
+
+> [!WARNING]
+> A Beets config can load plugins from any path and run shell commands when an import runs. Whoever can edit it can therefore potentially run code on the server (as the user beets runs as).
+>
+> Only enable it if you trust every admin account _and the network_ they reach the panel from (i.e. via HTTPS, and ideally using the `admin_hostname` restriction).
+
 ## Disk writes
 
 Imports that write tags, or that copy/move files, need [`allow_disk_writes`](../configuration.md#library--metadata) enabled. This isn't required if your Beets config has `write`, `copy` and `move` all disabled.

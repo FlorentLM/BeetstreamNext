@@ -372,6 +372,18 @@ Required to allow <code>beet import</code> scans to modify content on disk (writ
 
 ---
 
+### `allow_beets_config_edit`
+
+Allow editing the Beets config file from the admin panel. <br>A Beets config could load plugins and run shell commands when an import runs,so whoever can edit it could run code on the server.<br>This setting is not modifiable from the Web UI.
+
+*type:* `bool`
+
+*default:* `False`
+
+*env:* `BSN_ALLOW_BEETS_CONFIG_EDIT`
+
+---
+
 ### `import_watch_enabled`
 
 Enable automatic Beets import for new files in configured watched folders.
@@ -702,11 +714,13 @@ Always prevent audio peaks from exceeding 0 dB (prevent clipping).
 
 ### `ffmpeg_path`
 
-Path to the ffmpeg binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/ffmpeg</code>). <br>Leave empty to auto-detect from PATH.
+Path to the ffmpeg binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/ffmpeg</code>). <br>Leave empty to auto-detect from PATH.<br>This setting is not modifiable from the Web UI.
 
 *type:* `str`
 
 *default:* *(empty)*
+
+*env:* `BSN_FFMPEG_PATH`
 
 ---
 
@@ -742,11 +756,13 @@ Which hardware jukebox mode plays audio on.<br>For <code>server_hardware</code>,
 
 ### `mpv_path`
 
-For <code>server_hardware</code> backend only. Path to the mpv binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/mpv</code>).<br>Leave empty to auto-detect from PATH.
+For <code>server_hardware</code> backend only. Path to the mpv binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/mpv</code>).<br>Leave empty to auto-detect from PATH.<br>This setting is not modifiable from the Web UI.
 
 *type:* `str`
 
 *default:* *(empty)*
+
+*env:* `BSN_MPV_PATH`
 
 ## Security
 

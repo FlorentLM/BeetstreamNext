@@ -22,7 +22,7 @@ Both existing modes share the same [feature set](./features/index.md) and [setti
 - Optionally, [`mpv`](https://mpv.io/) installed and available on `PATH` for jukebox mode using the server's own audio hardware (not needed for the `sonos`/`chromecast` jukebox backends, or if you don't use jukebox mode. See [Jukebox](./features/jukebox.md) info).
 
 > [!NOTE]
-> Both `ffmpeg` and `mpv` binaries can be pointed to explicitly via the `ffmpeg_path`/`mpv_path` settings if they aren't on your `PATH`.
+> Both `ffmpeg` and `mpv` binaries can be pointed to explicitly if they aren't on your `PATH`, with the `BSN_FFMPEG_PATH`/`BSN_MPV_PATH` environment variables or the `ffmpeg_path`/`mpv_path` keys of the config file.
 
 > [!NOTE]
 > These requirements are for running from source. If you run **BeetstreamNext** via the [Docker image](#docker) instead, everything is already bundled with it.

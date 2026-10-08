@@ -75,7 +75,7 @@ View the full chat log, edit/delete any user's message for moderation, or post s
 
 ### Beets
 
-Interact with the Beets installation: view/update Beets' `config.yaml` and run imports (interactive, pinned and watched folders).
+Interact with the Beets installation: view Beets' `config.yaml` (editing it needs to be [allowed at server startup](../features/beets-import.md#editing-the-beets-config)) and run imports (interactive, pinned and watched folders).
 
 See [Beets import](../features/beets-import.md) for the details.
 

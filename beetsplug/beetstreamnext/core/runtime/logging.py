@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 
 _werkzeug_regex = re.compile(r'("(?:GET|POST|PUT|DELETE|HEAD|PATCH|OPTIONS) )(\S+)( HTTP/\d)')
 
-_SENSITIVE_URL_PARAMS = frozenset({'p', 't', 's', 'apiKey'})
+_SENSITIVE_URL_PARAMS = frozenset({'p', 't', 's', 'apiKey', 'password'})
 _REDACTED = 'REDACTED'
 
 

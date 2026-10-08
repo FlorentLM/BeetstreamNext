@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import ipaddress
+import socket
 import time
 import threading
 from datetime import timedelta
 import requests
 from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.exceptions import NameResolutionError, NewConnectionError
+from urllib3.util.connection import create_connection
 from requests_cache import CachedSession
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import MAX_REMOTE_IMAGE_BYTES, USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.accounts.security import is_public_url
-from beetsplug.beetstreamnext.utils.net import https_variant, SCHEME_RE, DUPLICATE_SCHEME_RE
+from beetsplug.beetstreamnext.utils.net import is_public_ip, is_public_url, https_variant, SCHEME_RE, DUPLICATE_SCHEME_RE
 
 
 class RequestThrottle(HTTPAdapter):
@@ -35,6 +40,72 @@ class RequestThrottle(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
+##
+# Public-only connections
+
+def _public_only_connect(host: str, port: int, timeout, source_address, socket_options) -> socket.socket:
+    try:
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except UnicodeError as e:
+        raise socket.gaierror(str(e)) from e
+
+    last_error: Exception | None = None
+    for _family, _, _, _, sockaddr in infos:
+        ip = sockaddr[0].split('%', 1)[0]
+        if not is_public_ip(ipaddress.ip_address(ip)):
+            last_error = OSError(f'Refusing to connect to non-public address {ip} ({host})')
+            continue
+        try:
+            return create_connection((ip, port), timeout, source_address=source_address, socket_options=socket_options)
+        except OSError as e:
+            last_error = e
+
+    raise last_error or OSError(f'No address found for {host}')
+
+
+class _PublicOnlyMixin:
+    """Connection mixin: only opens sockets to public addresses."""
+
+    def _new_conn(self) -> socket.socket:
+        try:
+            return _public_only_connect(
+                self._dns_host, self.port, self.timeout, self.source_address, self.socket_options
+            )
+        except socket.gaierror as e:
+            raise NameResolutionError(self.host, self, e) from e
+        except OSError as e:
+            raise NewConnectionError(self, f'Failed to establish a new connection: {e}') from e
+
+
+class _PublicOnlyHTTPConnection(_PublicOnlyMixin, HTTPConnection):
+    """http connection restricted to public addresses."""
+
+
+class _PublicOnlyHTTPSConnection(_PublicOnlyMixin, HTTPSConnection):
+    """https connection restricted to public addresses."""
+
+
+class _PublicOnlyHTTPPool(HTTPConnectionPool):
+    """http pool using public-only connections."""
+    ConnectionCls = _PublicOnlyHTTPConnection
+
+
+class _PublicOnlyHTTPSPool(HTTPSConnectionPool):
+    """https pool using public-only connections."""
+    ConnectionCls = _PublicOnlyHTTPSConnection
+
+
+class PublicOnlyAdapter(HTTPAdapter):
+    """
+    HTTPAdapter that refuses to connect to private/loopback/link-local/reserved addresses.
+    (connections made through a https(s) proxy aren't affected)
+    """
+
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {'http': _PublicOnlyHTTPPool, 'https': _PublicOnlyHTTPSPool}
+
+
 _http_session = None
 
 
@@ -52,12 +123,32 @@ def http_session() -> CachedSession:
 
         _http_session.headers.update({'User-Agent': USER_AGENT})
 
+        _public_adapter = PublicOnlyAdapter()
+        _http_session.mount('http://', _public_adapter)
+        _http_session.mount('https://', _public_adapter)
+
         # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
         # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
         musicbrainz_adapter = RequestThrottle(min_interval=0.04)
         _http_session.mount('https://musicbrainz.org', musicbrainz_adapter)
         _http_session.mount('http://musicbrainz.org', musicbrainz_adapter)
     return _http_session
+
+
+def fetch_public(url: str, *, cache: bool = False, **kwargs) -> requests.Response:
+    """
+    Streamed GET of a user-passed URL (feed, episode, radio stream, etc)
+    ValueError if URL isn't public, any redirect to a non-public host fails at connection time
+    """
+    if not is_public_url(url):
+        raise ValueError(f'Refusing to fetch non-public URL: {url}')
+
+    kwargs.setdefault('headers', {'User-Agent': USER_AGENT})
+    if cache:
+        return http_session().get(url, stream=True, **kwargs)
+
+    with http_session().cache_disabled():
+        return http_session().get(url, stream=True, **kwargs)
 
 
 def normalize_url(url: str, probe_https: bool = False, probe_timeout: float = 3.0) -> str:
@@ -83,6 +174,10 @@ def normalize_url(url: str, probe_https: bool = False, probe_timeout: float = 3.
 
     if probe_https and url.lower().startswith('http://'):
         https_url = https_variant(url)
+
+        if not is_public_url(https_url):
+            return url
+
         try:
             with http_session().cache_disabled():
                 resp = http_session().head(

@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser, imag
 from beetsplug.beetstreamnext.core.runtime.web import send_file
 from beetsplug.beetstreamnext.core.media.images import send_album_art, send_artist_image
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.constants import USER_AGENT
+from beetsplug.beetstreamnext.core.services.external.session import fetch_public
 
 
 def proxy_stream(url: str) -> flask.Response | None:
@@ -20,8 +20,8 @@ def proxy_stream(url: str) -> flask.Response | None:
     whose URLs need to sit behind our tokenised route to carry a recognisable extension.
     """
     try:
-        upstream = requests.get(url, stream=True, timeout=10, headers={'User-Agent': USER_AGENT})
-    except requests.exceptions.RequestException as e:
+        upstream = fetch_public(url, timeout=10)
+    except (ValueError, requests.exceptions.RequestException) as e:
         bsn_logger.error(f"Failed to proxy stream '{url}': {e}")
         return None
 

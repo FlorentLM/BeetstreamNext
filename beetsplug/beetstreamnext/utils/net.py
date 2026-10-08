@@ -1,6 +1,11 @@
 from __future__ import annotations
+
 import ipaddress
 import re
+import socket
+import time
+import urllib.parse
+from functools import lru_cache
 from typing import List, NamedTuple, Optional, Set
 
 from beetsplug.beetstreamnext.utils.text import split_list
@@ -136,3 +141,53 @@ def https_variant(url: str) -> str:
     if url.lower().startswith('https://'):
         return 'http://' + url[len('https://'):]
     return url
+
+
+
+##
+# SSRF guard: is this a public destination?
+
+def is_public_ip(addr: ipaddress._BaseAddress) -> bool:
+    """Whether `addr` is a globally routable unicast address (not private/loopback/link-local/CGNAT/reserved...)."""
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped     # ::ffff:127.0.0.1 is loopback
+
+    return addr.is_global and not (addr.is_multicast or addr.is_unspecified or addr.is_reserved)
+
+
+@lru_cache(maxsize=512)
+def _hostname_is_public(hostname: str, _cache_ttl_hash=None) -> bool:
+    """`_cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, UnicodeError):
+        return False
+
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not is_public_ip(addr):
+            return False
+
+    return True
+
+
+def is_public_url(url: str) -> bool:
+    """
+    Check if url is http(s) and every address its host resolves to is a public one
+    (that is, not loopback/link-local/private/reserved/multicast/unspecified)
+
+    Used to block SSRF before fetching a user-supplied URL.
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        hostname = parsed.hostname
+    except ValueError:
+        return False
+
+    if parsed.scheme not in ('http', 'https') or not hostname:
+        return False
+
+    return _hostname_is_public(hostname, _cache_ttl_hash=round(time.time() / 300))

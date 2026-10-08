@@ -8,7 +8,7 @@ import asyncio
 
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER, USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.accounts.security import is_public_url
+from beetsplug.beetstreamnext.utils.net import is_public_url
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch, http_session
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import urllib.parse
 from pathlib import Path
 from typing import Optional
 
@@ -7,7 +8,7 @@ import flask
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.system import get_mimetype
+from beetsplug.beetstreamnext.utils.system import get_mimetype, safe_filename
 from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
@@ -46,6 +47,13 @@ def external_url(path_part: str) -> str:
     return f'{scheme}://{external_host}{path_part}'
 
 
+def content_disposition(download_name: str) -> str:
+    """'attachment' header with an ASCII fallback and the RFC 6266/5987 UTF-8 `filename*` form."""
+    name = safe_filename(download_name)
+    ascii_name = name.encode('ascii', 'replace').decode().replace('?', '_')
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{urllib.parse.quote(name, safe='')}"
+
+
 def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optional[str]) -> flask.Response | None:
     """
     Hand the file off to the reverse proxy (Nginx/Apache) instead of streaming it through
@@ -60,7 +68,7 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optio
 
     resp = flask.Response(status=200, mimetype=get_mimetype(file_path))
     if as_attachment:
-        resp.headers['Content-Disposition'] = f'attachment; filename="{download_name or file_path.name}"'
+        resp.headers['Content-Disposition'] = content_disposition(download_name or file_path.name)
 
     if method == 'x-sendfile':
         resp.headers['X-Sendfile'] = str(file_path)
@@ -87,6 +95,8 @@ def send_file(
     ) -> flask.Response | None:
 
     file_path = Path(file_path)
+    if download_name is not None:
+        download_name = safe_filename(download_name, fallback=file_path.name)
 
     offloaded = _sendfile_offload(file_path, as_attachment, download_name)
     if offloaded is not None:

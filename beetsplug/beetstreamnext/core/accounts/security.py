@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import socket
 import threading
 import time
 import ipaddress
-import urllib.parse
 from collections import defaultdict
-from functools import lru_cache
 from typing import Dict, List, Optional, Sequence, Set, Tuple
+
+import flask
 
 from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.utils.text import split_list
@@ -17,6 +16,43 @@ from beetsplug.beetstreamnext.constants import (
     LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
     RATE_LIMIT_IP_MAX_FAILURES, RATE_LIMIT_IP_BLOCK_WINDOW
 )
+
+
+_warning_issued = False
+
+
+def is_local_client() -> bool:
+    """
+    Check whether the current request comes from this machine or not
+    (and so can be exempt from rate limiter and IP filter)
+    """
+    global _warning_issued
+
+    if not flask.has_request_context():
+        return True
+
+    environ = flask.request.environ
+    raw_peer = environ.get('werkzeug.proxy_fix.orig', {}).get('REMOTE_ADDR', environ.get('REMOTE_ADDR'))
+
+    if raw_peer not in LOOPBACK_IPS or (flask.request.remote_addr or '') not in LOOPBACK_IPS:
+        return False
+
+    from beetsplug.beetstreamnext.core.config.store import settings_store
+
+    fwding_headers = ('X-Forwarded-For', 'X-Forwarded-Host', 'X-Forwarded-Proto', 'Forwarded', 'X-Real-IP')
+
+    if not settings_store.get('reverse_proxy') and any(h in flask.request.headers for h in fwding_headers):
+
+        if not _warning_issued:
+            bsn_logger.warning(
+                'Requests come from loopback with proxy forwarding headers but `reverse_proxy` is off: '
+                'Enable `reverse_proxy` (and set `proxy_hops`) so real client IPs are used.'
+            )
+            _warning_issued = True
+        return False
+
+    return True
+
 
 class RateLimiter:
     """
@@ -48,7 +84,7 @@ class RateLimiter:
     def is_blocked(self, ip: str, username: str = '') -> bool:
         """Check if an (IP, username) pair, or the IP itself, is currently blocked."""
 
-        if ip in LOOPBACK_IPS:
+        if ip in LOOPBACK_IPS and is_local_client():
             bsn_logger.debug(f'IP {ip} is a loopback IP, ignoring rate limiting check.')
             return False
 
@@ -80,7 +116,7 @@ class RateLimiter:
 
     def record(self, ip: str, username: str = ''):
         """Log a failed attempt."""
-        if ip in LOOPBACK_IPS:
+        if ip in LOOPBACK_IPS and is_local_client():
             bsn_logger.debug(f'IP {ip} is a loopback IP, skipping rate limiting record.')
             return
 
@@ -261,7 +297,7 @@ class IPFilter:
 
     def is_allowed(self, ip: str) -> bool:
 
-        if ip in LOOPBACK_IPS:
+        if ip in LOOPBACK_IPS and is_local_client():
             return True
 
         try:
@@ -365,50 +401,6 @@ def admin_host_allowed(raw_host: str) -> bool:
     except ValueError:
         return False
     return request_host == admin_host or request_host in LOOPBACK_IPS
-
-
-##
-# SSRF guard
-
-@lru_cache(maxsize=512)
-def _hostname_is_public(hostname: str, _cache_ttl_hash=None) -> bool:
-    """`_cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
-    try:
-        infos = socket.getaddrinfo(hostname, None)
-    except (socket.gaierror, UnicodeError):
-        return False
-
-    for info in infos:
-        try:
-            addr = ipaddress.ip_address(info[4][0])
-        except ValueError:
-            return False
-        if (
-            addr.is_private or addr.is_loopback or addr.is_link_local
-            or addr.is_reserved or addr.is_multicast or addr.is_unspecified
-        ):
-            return False
-
-    return True
-
-
-def is_public_url(url: str) -> bool:
-    """
-    Check if url is http(s) and every address its host resolves to is a public one
-    (that is, not loopback/link-local/private/reserved/multicast/unspecified)
-
-    Used to block SSRF before fetching a user-supplied URL.
-    """
-    try:
-        parsed = urllib.parse.urlparse(url)
-        hostname = parsed.hostname
-    except ValueError:
-        return False
-
-    if parsed.scheme not in ('http', 'https') or not hostname:
-        return False
-
-    return _hostname_is_public(hostname, _cache_ttl_hash=round(time.time() / 300))
 
 
 ##

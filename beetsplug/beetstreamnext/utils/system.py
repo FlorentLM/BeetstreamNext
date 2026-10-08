@@ -21,6 +21,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 ##
 
 _VERSION_RE = re.compile(r'\d+(?:\.\d+){1,3}')
+_UNSAFE_FILENAME_CHARS = re.compile(r'[\x00-\x1f\x7f\\/:*?"<>|]')
 
 
 def is_writable(path: bytes | str | Path) -> bool:
@@ -187,6 +188,12 @@ def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -
         path_obj = Path(root_directory) / path_obj
 
     return _remap_mount(path_obj, root_directory)
+
+
+def safe_filename(name: object, fallback: str = 'file') -> str:
+    """File name that's safe (no control chars, quotes or path separators)."""
+    cleaned = _UNSAFE_FILENAME_CHARS.sub('_', str(name or '')).strip(' .')
+    return cleaned[:200] or fallback
 
 
 def safe_join(base_dir: Path, *parts: str, error: str = 'Path escapes base directory.') -> Path:

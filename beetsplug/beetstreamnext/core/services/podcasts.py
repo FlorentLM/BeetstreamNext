@@ -11,16 +11,15 @@ from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES, MAX_PODCAST_FEED_BYTES,
-    MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC, USER_AGENT
+    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES,
+    MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC
 )
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.events import admin_events
-from beetsplug.beetstreamnext.core.services.external.session import http_session, capped_image_fetch, normalize_url
+from beetsplug.beetstreamnext.core.services.external.session import http_session, fetch_public, capped_image_fetch, normalize_url
 from beetsplug.beetstreamnext.core.services.external.podcastindex import query_podcastindex
 from beetsplug.beetstreamnext.core.media.images import resize_image, ImageTooLarge
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.accounts.security import is_public_url
 from beetsplug.beetstreamnext.utils.net import https_variant
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import read_upload
@@ -49,12 +48,8 @@ def _get_audio_url(entry) -> Tuple[str, int]:
 
 def _fetch_feed_bytes(url: str) -> bytes:
 
-    if not is_public_url(url):
-        raise ValueError(f'Refusing to fetch non-public feed URL: {url}')
-
     # Feeds change quite frequently so no caching
-    with http_session().cache_disabled():
-        resp = http_session().get(url, stream=True, timeout=15, headers={'User-Agent': USER_AGENT})
+    resp = fetch_public(url, timeout=15)
 
     resp.raise_for_status()
 
@@ -989,7 +984,7 @@ class PodcastManager:
 
                 # Never cache the audio files
                 with http_session().cache_disabled():
-                    resp = http_session().get(audio_url, stream=True, timeout=30, headers={'User-Agent': USER_AGENT})
+                    resp = fetch_public(audio_url, timeout=30)
                     resp.raise_for_status()
 
                     size = 0
@@ -1283,8 +1278,7 @@ class PodcastManager:
             tmp_path = target_path.with_suffix(target_path.suffix + '.part')
 
             # Never cache the audio files
-            with http_session().cache_disabled():
-                resp = http_session().get(audio_url, stream=True, timeout=30, headers={'User-Agent': USER_AGENT})
+            resp = fetch_public(audio_url, timeout=30)
 
             resp.raise_for_status()
 

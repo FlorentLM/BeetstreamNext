@@ -23,6 +23,8 @@ Two independent buckets slow down brute-force attempts:
 
 - **Per-IP**: `rate_limit_ip_max_failures` failed attempts from an IP (using *any* username) within `rate_limit_ip_block_window` seconds blocks that IP. This catches attackers rotating usernames to dodge the per-user limit above.
 
+- **Tokenised URLs** (the unauthenticated stream URLs handed to Sonos/Chromecast speakers, and the image links in artist/album info) stop working after 12 hours (streams) or 24 hours (images) without being used. A speaker playing a queue or a client re-fetching an image keeps its link alive. Stale links return 404, and the client gets a fresh one the next time it asks.
+
 ---
 
 See the [configuration reference](../configuration.md) for any of the settings mentioned here.

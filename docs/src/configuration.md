@@ -244,6 +244,18 @@ Allow legacy MD5 token / cleartext password authentication. API-key authenticati
 
 ---
 
+### `api_user_management`
+
+Allow admins to create, update and delete users, and change other users' passwords, through the Subsonic API (createUser, updateUser, deleteUser, changePassword). The admin panel is not affected.
+
+*type:* `bool`
+
+*default:* `False`
+
+*env:* `BSN_API_USER_MANAGEMENT`
+
+---
+
 ### `public_now_playing`
 
 Show the currently playing song on the public home page.

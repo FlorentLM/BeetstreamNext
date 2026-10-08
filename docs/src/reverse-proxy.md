@@ -32,6 +32,57 @@ example.com {
 }
 ```
 
+## Credentials in proxy logs
+
+The Subsonic protocol sends credentials as URL query parameters: `p` (password), `t` and `s` (token and salt), and `apiKey`. Creating or updating a user over the API also puts the new `password` in the query string.
+
+**BeetstreamNext** redacts these from its own logs, but your reverse proxy sees the full URL, and **its access log will contain them in clear text** (and so will any other log or monitoring tool in front of **BeetstreamNext**). Anyone who can read those logs can read your users' passwords and API keys.
+
+To avoid it, either turn access logging off, or log the path only and leave the query string out.
+
+**Nginx**: log `$uri` instead of `$request`/`$request_uri`:
+
+```nginx
+log_format bsn '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent';
+access_log /var/log/nginx/beetstreamnext.access.log bsn;
+```
+
+**Apache**: log `%U` (path only) instead of `%r`:
+
+```apache
+LogFormat "%h %t \"%m %U\" %>s %b" bsn
+CustomLog logs/beetstreamnext_access.log bsn
+```
+
+**Caddy**: replace the sensitive parameters in the log:
+
+```
+example.com {
+    log {
+        format filter {
+            wrap json
+            fields {
+                request>uri query {
+                    replace p REDACTED
+                    replace t REDACTED
+                    replace s REDACTED
+                    replace apiKey REDACTED
+                    replace password REDACTED
+                }
+            }
+        }
+    }
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+Prefer clients that support [API keys](./features/accounts-and-permissions.md) (`apiKey`) over passwords where possible: an API key can be revoked on its own, whereas a leaked password is also the user's web UI login (and, for admins, the admin panel login).
+
+> [!TIP]
+> Avoid using an account with the **Admin** role in a Subsonic client. Create a separate non-admin account for streaming, and keep the admin account for the browser only. That way, whatever ends up in a log can't open the admin panel or manage users.
+
+Also, use HTTPS so the URLs aren't readable on the network.
+
 ## Offloading file serving to the proxy
 
 Instead of streaming raw file bytes through the Python process, the reverse proxy can serve them directly.

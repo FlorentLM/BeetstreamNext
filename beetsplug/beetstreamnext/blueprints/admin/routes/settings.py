@@ -53,6 +53,8 @@ def route_update_settings(category: str) -> flask.Response:
     for key, spec in SETTINGS_SCHEMA.items():
         if spec.get('category') != category:
             continue
+        if not spec.get('web_editable', True):
+            continue   # Not settable from the panel
         if spec['type'] == 'list[str]' and key not in _CAN_MULTISELECT:
             continue   # Handled by dedicated endpoints
         if settings_store.locked(key):
@@ -113,7 +115,7 @@ def route_clear_setting(category: str, key: str) -> str:
     if category not in SETTINGS_CATEGORIES:
         flask.abort(404)
     spec = SETTINGS_SCHEMA.get(key)
-    if not spec or spec.get('category') != category:
+    if not spec or spec.get('category') != category or not spec.get('web_editable', True):
         flask.abort(404)
 
     try:

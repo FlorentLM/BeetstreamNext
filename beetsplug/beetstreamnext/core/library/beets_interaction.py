@@ -23,6 +23,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.notifications import (
     IMPORT_COMPLETED, IMPORT_FAILED, IMPORT_NEEDS_INPUT, IMPORT_QUEUE_ABORTED, IMPORT_STARTED, notify
 )
+from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 from beetsplug.beetstreamnext.utils.text import format_elapsed
@@ -393,15 +394,25 @@ def read_config() -> dict:
     except OSError:
         content = ''
 
+    edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
+
     return {
         'path': str(path),
         'content': content,
-        'read_only': not is_writable(path),
+        'read_only': not edit_allowed or not is_writable(path),
+        'edit_disabled': not edit_allowed,
+        'edit_env_var': SETTINGS_SCHEMA['allow_beets_config_edit']['env_var'],
         'loaded_at': time.time(),
     }
 
 
 def write_config(content: str) -> Tuple[bool, str]:
+
+    edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
+
+    if not edit_allowed:
+        return False, 'Editing the beets config from the admin panel is disabled (see `allow_beets_config_edit`).'
+
     path = config_path()
 
     if not is_writable(path):

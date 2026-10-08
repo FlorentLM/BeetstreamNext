@@ -7,6 +7,16 @@
     <span class="badge badge-admin" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
 </p>
 
+{% if beets_config.edit_disabled %}
+<p class="card-hint" id="beetsConfigEditNote" hx-swap-oob="true">
+    Editing is disabled. A Beets config could load plugins and run commands, so it is restricted for security.
+    <br/><br/>
+    You can allow this with the <code>allow_beets_config_edit</code> key in the config file (or the <code>{{ beets_config.edit_env_var }}=1</code> environment variable).
+</p>
+{% else %}
+<p class="card-hint" id="beetsConfigEditNote" hx-swap-oob="true" hidden></p>
+{% endif %}
+
 <div class="card-section" id="beetsConfigEditorWrap">
     <textarea id="beetsConfigEditor" name="content" class="code-editor" spellcheck="false" autocomplete="off"
               autocapitalize="off" wrap="off"

@@ -46,6 +46,7 @@ class SettingsStore:
         self._lock = threading.RLock()
 
         self._cache: Dict[str, Any] = {}
+        self._external: set = set()     # keys present in yaml_defaults (CLI flag/env var/YAML/beets-config)
         self._locked: set = set()       # settings explicitly set via a CLI flag/env var/YAML/beets-config are locked
         self._pinned: Dict[str, Any] = {}   # list[str] keys: explicitly set items are locked
         self._directly_applicable: Optional[Dict[str, Callable]] = None
@@ -118,11 +119,22 @@ class SettingsStore:
         with self._lock:
             self._cache.clear()
             self._locked = set()
+            self._external = set(yaml_defaults)
             self._pinned = {}
 
             for key, spec in SETTINGS_SCHEMA.items():
                 is_list = spec['type'] == 'list[str]'
                 external = key in yaml_defaults
+
+                if not spec.get('web_editable', True):
+                    # Settings not available in WebUI are also not in db
+                    self._locked.add(key)
+                    if not external:
+                        if db_values.get(key):
+                            bsn_logger.warning(
+                                f"Ignoring '{key}' stored in the database: it can only be set via env var or config file now."
+                            )
+                        db_values.pop(key, None)
 
                 if external and is_list:
                     val = list(yaml_defaults[key] or []) + list(db_values.get(key) or [])
@@ -207,6 +219,9 @@ class SettingsStore:
 
         pinned = self._pinned.get(key)
 
+        if not SETTINGS_SCHEMA[key].get('web_editable', True):
+            raise PermissionError(f"'{key}' can only be set via an environment variable or the config file.")
+
         if pinned is None and self.locked(key):
             raise PermissionError(
                 f"'{key}' is explicitly set via a CLI flag, environment variable, or config file. It can't be modified from here."
@@ -269,6 +284,9 @@ class SettingsStore:
 
         pinned = self._pinned.get(key)
 
+        if not SETTINGS_SCHEMA[key].get('web_editable', True):
+            raise PermissionError(f"'{key}' can only be set via an environment variable or the config file.")
+
         if pinned is None and self.locked(key):
             raise PermissionError(
                 f"'{key}' is set explicitly via a CLI flag, environment variable, or config file. It can't be reset from here."
@@ -309,6 +327,9 @@ class SettingsStore:
                     continue
 
                 if spec.get('standalone_only') and not standalone:
+                    continue
+
+                if not spec.get('web_editable', True):
                     continue
 
                 val = self._cache.get(key, spec['default'])

@@ -35,6 +35,7 @@ class SettingDescriptor(TypedDict, total=False):
     help: str                           # If set, admin UI shows this as a dotted box
     on_empty: Callable[[], str]         # Admin UI placeholder text/value shown while this is unset
     env_var: str                        # Name of the env var that can also set this key
+    web_editable: bool                  # If false, setting is not shown in the web UI
 
 
 # (Lazy imported inside each function to avoid import cycles)
@@ -332,6 +333,22 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'env_var': 'BSN_ALLOW_DISK_WRITES',
     },
+    'allow_beets_config_edit': {
+        'type': 'bool',
+        'default': False,
+        'category': 'library',
+        'description': (
+            "Allow editing the Beets config file from the admin panel. "
+            "<br>"
+            "A Beets config could load plugins and run shell commands when an import runs,"
+            "so whoever can edit it could run code on the server."
+            "<br>"
+            "This setting is not modifiable from the Web UI."
+        ),
+        'requires_restart': False,
+        'env_var': 'BSN_ALLOW_BEETS_CONFIG_EDIT',
+        'web_editable': False,
+    },
     'import_watch_enabled': {
         'type': 'bool',
         'default': False,
@@ -613,7 +630,11 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "Path to the ffmpeg binary, if it isn't on the system PATH (e.g. <code>/usr/local/bin/ffmpeg</code>). "
             "<br>"
             "Leave empty to auto-detect from PATH."
+            "<br>"
+            "This setting is not modifiable from the Web UI."
         ),
+        'env_var': 'BSN_FFMPEG_PATH',
+        'web_editable': False,
         'requires_restart': False,
         'validator': validate_path,
         'on_empty': partial(_effective_binary_path, 'ffmpeg'),
@@ -671,7 +692,11 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
             "(e.g. <code>/usr/local/bin/mpv</code>)."
             "<br>"
             "Leave empty to auto-detect from PATH."
+            "<br>"
+            "This setting is not modifiable from the Web UI."
         ),
+        'env_var': 'BSN_MPV_PATH',
+        'web_editable': False,
         'requires_restart': False,
         'validator': validate_path,
         'on_empty': partial(_effective_binary_path, 'mpv'),

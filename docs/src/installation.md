@@ -544,6 +544,9 @@ Given that, how the server key is provisioned matters:
 
 - **You don't have secrets management**: On first run, **BeetstreamNext** generates a new key, prints it _once_, and saves it to a `.env` file next to your database. Keep that file safe: set restrictive permissions if your platform doesn't already (it's created with `0600`), and make sure it's excluded from anywhere the database itself isn't equally protected.
 
+> [!NOTE]
+> If `BEETSTREAMNEXT_KEY` is set but isn't valid, **BeetstreamNext** will refuse to start.
+
 If the key is lost, stored passwords become unrecoverable and you will need to delete the **BeetstreamNext** database and set up again (of course your Beets library stays perfectly fine).
 
 > [!IMPORTANT]

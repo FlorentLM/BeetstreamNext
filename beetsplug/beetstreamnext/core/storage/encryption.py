@@ -15,7 +15,6 @@ from functools import lru_cache
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
-from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.system import get_env
 
@@ -157,14 +156,33 @@ def ensure_secret(db_path: str | Path) -> None:
             ], color=TermColors.FAIL)
             exit(1)
 
+    try:
+        get_cipher()
+
+    except InvalidKeyError as e:
+        print_box([
+            '',
+            f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP FAILED: Invalid secret  {TermColors.ENDC}',
+            '',
+            str(e),
+            '',
+            'Refusing to start: user passwords would otherwise be stored unencrypted.',
+            '',
+        ], color=TermColors.FAIL)
+        exit(1)
+
+
+class InvalidKeyError(RuntimeError):
+    """BEETSTREAMNEXT_KEY is set but isn't a valid Fernet key."""
+
 
 @lru_cache(maxsize=1)
-def _cipher_for(key: str) -> Fernet | None:
+def _cipher_for(key: str) -> Fernet:
     """Fernet for a given key string. Cached for the process lifetime."""
     try:
         return Fernet(key)
-    except (ValueError, TypeError):
-        return None
+    except (ValueError, TypeError) as e:
+        raise InvalidKeyError('BEETSTREAMNEXT_KEY is not valid (expected: 32-byte, url-safe, base64-encoded)') from e
 
 
 @lru_cache(maxsize=1)
@@ -174,6 +192,10 @@ def _hash_for(key: str) -> str:
 
 
 def get_cipher() -> Fernet | None:
+    """
+    Cipher for BEETSTREAMNEXT_KEY.
+    Raises InvalidKeyError if the key absent or is malformed.
+    """
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
@@ -188,14 +210,3 @@ def get_key_hash() -> str | None:
         return _hash_for(key)
     except binascii.Error:
         return None
-
-
-def verify_key() -> bool:
-
-    with database() as db:
-        result = db.execute("""SELECT value FROM encryption WHERE key = 'key_hash'""").fetchone()
-
-    stored_hash = result[0] if result else None
-    current_hash = get_key_hash()
-
-    return current_hash == stored_hash

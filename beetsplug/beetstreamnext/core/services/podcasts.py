@@ -74,17 +74,15 @@ def _parse_opml(data: bytes) -> List[str]:
     Extracts feed URLs from an OPML file.
     """
 
-    import xml.etree.ElementTree as ET
+    from defusedxml import ElementTree as SafeET
+    from defusedxml.common import DefusedXmlException
 
-    # OPML has no use for a DOCTYPE/entity, and the stdlib parser doesn't guard
-    # against entity-expansion bombs, so we just nope out of anything that has one
-    lowered = data.lower()
-    if b'<!doctype' in lowered or b'<!entity' in lowered:
-        raise ValueError('OPML file contains disallowed XML declarations.')
-
+    # OPML has no use for a DOCTYPE, entities or external references: they're all refused
     try:
-        root = ET.fromstring(data)
-    except ET.ParseError as e:
+        root = SafeET.fromstring(data, forbid_dtd=True)
+    except DefusedXmlException as e:
+        raise ValueError('OPML file contains disallowed XML declarations.') from e
+    except SafeET.ParseError as e:
         raise ValueError(f'Not a valid OPML/XML file: {e}') from e
 
     seen: set = set()

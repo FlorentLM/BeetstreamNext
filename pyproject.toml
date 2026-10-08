@@ -29,6 +29,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "pywinpty>=2.0.14; sys_platform == 'win32'",
     "email-validator>=2.3.0",
+    "defusedxml>=0.7.1",
 ]
 
 [project.urls]

@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 import os
+import shutil
 import subprocess
+import threading
 import hashlib
 import time
 from pathlib import Path
@@ -9,7 +12,9 @@ import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, HLS_CACHE_DIR
+from beetsplug.beetstreamnext.constants import (
+    ALLOWED_BITRATES, FFMPEG_PYTHON, HLS_CACHE_DIR, HLS_MAX_CONCURRENT, HLS_MAX_VARIANTS
+)
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -21,6 +26,30 @@ from beetsplug.beetstreamnext.core.library.health import needs_healing
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, is_lossless, evaluate_limitation, get_normalization_filter, try_transcode
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
+
+
+_hls_slots = threading.BoundedSemaphore(HLS_MAX_CONCURRENT)
+
+
+def _snap_bitrate(kbps: int) -> int:
+    """Nearest bitrate from the allowed set, so clients can't mint endless distinct HLS variants."""
+    return min(sorted(ALLOWED_BITRATES - {0}), key=lambda b: abs(b - kbps))
+
+
+def _run_hls_encode(command: list, stream_dir) -> None:
+    """Runs ffmpeg (holds an HLS slot), and drops the session if it failed."""
+
+    try:
+        returncode = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+    except OSError as e:
+        bsn_logger.warning(f'HLS encode failed to start: {e}')
+        returncode = -1
+    finally:
+        _hls_slots.release()
+
+    if returncode != 0:
+        bsn_logger.warning(f"HLS encode failed (rc={returncode}), discarding '{stream_dir.name}'.")
+        shutil.rmtree(stream_dir, ignore_errors=True)
 
 
 def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional[Any], Optional[str], Optional[flask.Response]]:
@@ -480,20 +509,20 @@ def endpoint_hls() -> flask.Response | None:
             # Handle standard (bitRate=128) and Video format (bitRate=1000@480x360)
             br = int(br_raw.split('@')[0])
             if br > 0:
-                bitrates.append(br)
+                bitrates.append(_snap_bitrate(br))
         except ValueError:
             pass
 
     if not bitrates:
         max_br = r.get('maxBitRate', default=0, type=int)
-        bitrates = [max_br if max_br > 0 else 160]
+        bitrates = [_snap_bitrate(max_br if max_br > 0 else 160)]
 
     # Cap at user max bitrate
     user_max_bitrate = flask.g.user_data.get('maxBitRate', 0)
     if user_max_bitrate > 0:
         bitrates = [min(br, user_max_bitrate) for br in bitrates]
 
-    bitrates = sorted(list(set(bitrates)))  # dedup and sort
+    bitrates = sorted(set(bitrates))[:HLS_MAX_VARIANTS]  # dedup, sort, cap
 
     try:
         mtime = os.path.getmtime(song_path)
@@ -506,41 +535,52 @@ def endpoint_hls() -> flask.Response | None:
 
     # If this specific one doesn't exist build it
     if not stream_dir.exists():
-        stream_dir.mkdir(parents=True)
-
         hls_ffmpeg_bin = find_binary('ffmpeg')
         if not (hls_ffmpeg_bin or FFMPEG_PYTHON):
             return subsonic_error(0, message='FFmpeg is required for HLS streaming.', resp_fmt=resp_fmt)
 
-        norm_filter = get_normalization_filter(song)
+        if not _hls_slots.acquire(blocking=False):
+            return subsonic_error(0, message='Too many HLS sessions are being prepared, try again shortly.', resp_fmt=resp_fmt)
 
-        command = [
-            hls_ffmpeg_bin or 'ffmpeg', '-hide_banner', '-loglevel', 'error',
-            '-i', str(song_path)
-        ]
+        try:
+            stream_dir.mkdir(parents=True)
+        except FileExistsError:     # Another request just started this exact session
+            _hls_slots.release()
+        except OSError:
+            _hls_slots.release()
+            raise
 
-        if norm_filter:
-            command.extend(['-af', norm_filter])
+        else:
+            norm_filter = get_normalization_filter(song)
 
-        # Spawn a stream for each requested bitrate
-        for i, br in enumerate(bitrates):
-            br_dir = stream_dir / str(br)
-            br_dir.mkdir(exist_ok=True)
+            command = [
+                hls_ffmpeg_bin or 'ffmpeg', '-hide_banner', '-loglevel', 'error',
+                '-i', str(song_path)
+            ]
 
-            command.extend([
-                '-map', '0:a',
-                f'-b:a:{i}', f'{br}k',
-                f'-c:a:{i}', 'aac',  # HLS expects AAC or mp3
-                '-f', 'hls',
-                '-hls_time', '10',  # 10 second chunks
-                '-hls_list_size', '0',  # keep all chunks
-                '-hls_playlist_type', 'event',  # tells player that chunks will keep arriving
-                '-hls_segment_filename', str(br_dir / '%03d.ts'),
-                '-hls_base_url', f'hls_data/{stream_id}/{br}/', # tells client where to request the chunks from
-                str(br_dir / 'index.m3u8')
-            ])
+            if norm_filter:
+                command.extend(['-af', norm_filter])
 
-        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Spawn a stream for each requested bitrate
+            for i, br in enumerate(bitrates):
+                br_dir = stream_dir / str(br)
+                br_dir.mkdir(exist_ok=True)
+
+                command.extend([
+                    '-map', '0:a',
+                    f'-b:a:{i}', f'{br}k',
+                    f'-c:a:{i}', 'aac',  # HLS expects AAC or mp3
+                    '-f', 'hls',
+                    '-hls_time', '10',  # 10 second chunks
+                    '-hls_list_size', '0',  # keep all chunks
+                    '-hls_playlist_type', 'event',  # tells player that chunks will keep arriving
+                    '-hls_segment_filename', str(br_dir / '%03d.ts'),
+                    '-hls_base_url', f'hls_data/{stream_id}/{br}/', # tells client where to request the chunks from
+                    str(br_dir / 'index.m3u8')
+                ])
+
+            # Thread releases the slot when ffmpeg exits
+            threading.Thread(target=_run_hls_encode, args=(command, stream_dir), daemon=True).start()
 
     # generate and return a playlist pointing to the subplaylists, client will call /hls_data/.../index.m3u8
     master_playlist = ['#EXTM3U']

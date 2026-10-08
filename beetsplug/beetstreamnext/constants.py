@@ -194,6 +194,8 @@ SESSION_KEY_ROTATION_DAYS: int = 30
 TRANSCODE_MAX_AGE_SEC: int = 3600        # leaked transcode tempfiles (should be seconds/minutes old, not this)
 HLS_MAX_AGE_SEC: int = 6 * 3600          # abandoned HLS session directories
 ZIP_MAX_AGE_SEC: int = 86400             # album zip downloads
+HLS_MAX_VARIANTS: int = 4                # bitrate variants per HLS session
+HLS_MAX_CONCURRENT: int = 2              # HLS sessions being encoded at once
 ZIP_MAX_CONCURRENT: int = 2              # album zips being built at once
 PART_MAX_AGE_SEC: int = 86400            # interrupted podcast '.part' downloads
 

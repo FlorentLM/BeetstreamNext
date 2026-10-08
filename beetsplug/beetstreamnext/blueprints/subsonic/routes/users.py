@@ -15,6 +15,20 @@ from beetsplug.beetstreamnext.core.accounts.users_crud import (
 )
 
 
+def _admin_api_denied(resp_fmt: str) -> flask.Response | None:
+    """
+    Error response if the caller is not an admin or admin API management is disabled.
+    """
+
+    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not flask.current_app.config.get('api_user_management', False):
+        return subsonic_error(50, message='User management over the API is disabled.', resp_fmt=resp_fmt)
+
+    return None
+
+
 def user_payload(user_data: dict) -> dict:
     """Build a OpenSubsonic user dict."""
 
@@ -91,8 +105,8 @@ def endpoint_create_user() -> flask.Response:
     username = r.get('username', default='', type=safe_str)         # Required
     password = r.get('password', default='', type=str)              # Required
 
-    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
+    if denied := _admin_api_denied(resp_fmt):
+        return denied
 
     if not username or not password:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -129,8 +143,8 @@ def endpoint_update_user() -> flask.Response:
     username = r.get('username', default=r.get('u', ''), type=safe_str)     # Required
     password = r.get('password', default='', type=str)
 
-    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
+    if denied := _admin_api_denied(resp_fmt):
+        return denied
 
     if not username:
         return subsonic_error(10, message='Username is required.', resp_fmt=resp_fmt)
@@ -172,8 +186,8 @@ def endpoint_delete_user() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     target_user = r.get('username', default='', type=safe_str)   # Required
 
-    if not flask.g.user_data or not bool(flask.g.user_data.get('adminRole')):
-        return subsonic_error(50, resp_fmt=resp_fmt)
+    if denied := _admin_api_denied(resp_fmt):
+        return denied
 
     if not target_user:
         return subsonic_error(10, message='Username to be deleted must be passed.', resp_fmt=resp_fmt)
@@ -202,6 +216,9 @@ def endpoint_change_password() -> flask.Response:
 
     if not is_admin and not (is_self and flask.g.user_data.get('settingsRole', False)):
         return subsonic_error(50, resp_fmt=resp_fmt)
+
+    if not is_self and (denied := _admin_api_denied(resp_fmt)):
+        return denied
 
     if not new_password:
         return subsonic_error(10, resp_fmt=resp_fmt)

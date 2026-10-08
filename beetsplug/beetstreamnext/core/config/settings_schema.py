@@ -236,6 +236,15 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'env_var': 'BSN_LEGACY_AUTH',
     },
+    'api_user_management': {
+        'type': 'bool',
+        'default': False,
+        'category': 'server',
+        'description': 'Allow admins to create, update and delete users, and change other users\' passwords, through the Subsonic API '
+                       '(createUser, updateUser, deleteUser, changePassword). The admin panel is not affected.',
+        'requires_restart': False,
+        'env_var': 'BSN_API_USER_MANAGEMENT',
+    },
     'public_now_playing': {
         'type': 'bool',
         'default': False,

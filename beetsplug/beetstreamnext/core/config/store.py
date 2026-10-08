@@ -59,7 +59,7 @@ class SettingsStore:
         self._directly_applicable = {}
 
         # Simple app.config updates
-        for k in ('trusted_hosts', 'legacy_auth',
+        for k in ('trusted_hosts', 'legacy_auth', 'api_user_management',
                   'never_transcode', 'lastfm_api_key',
                   'fetch_artists_images', 'save_artists_images',
                   'fetch_artists_biographies', 'save_album_art', 'follow_playlist_embedded_urls',

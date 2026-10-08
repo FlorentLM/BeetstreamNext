@@ -22,7 +22,7 @@ def home() -> str:
         with database() as db:
             row = db.execute(
                 """
-                SELECT np.item_id, np.player_name, np.username
+                SELECT np.item_id, np.player_name
                 FROM now_playing np
                          JOIN users u ON np.username = u.username
                 WHERE np.state = 'playing'
@@ -40,7 +40,6 @@ def home() -> str:
                     'artist': entry.artist,
                     'album': entry.album,
                     'player': row['player_name'],
-                    'username': row['username']
                 }
 
             elif entry_type == 'radio' and entry:
@@ -49,7 +48,6 @@ def home() -> str:
                     'artist': 'Internet Radio',
                     'album': '',
                     'player': row['player_name'],
-                    'username': row['username']
                 }
 
     server_url = request_url('/')

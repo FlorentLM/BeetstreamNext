@@ -119,10 +119,14 @@ def send_file(
     if offloaded is not None:
         return offloaded
 
+    mimetype = get_mimetype(file_path)
+    if not mimetype.startswith(('audio/', 'video/')) and mimetype != 'application/x-mpegURL':
+        mimetype = 'application/octet-stream'
+
     try:
         return flask.send_file(
             file_path,
-            mimetype=get_mimetype(file_path),
+            mimetype=mimetype,
             as_attachment=as_attachment,
             download_name=download_name
         )

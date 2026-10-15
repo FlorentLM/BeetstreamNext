@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import calendar
 import os
-import shutil
+import re
 import time
 from threading import Thread, Lock, Event
 import urllib.parse
@@ -11,7 +11,7 @@ from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES,
+    AUDIO_EXTENSIONS, DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES,
     MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC
 )
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -23,7 +23,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.net import https_variant
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import read_upload
-from beetsplug.beetstreamnext.utils.system import purge
+from beetsplug.beetstreamnext.utils.system import AUDIO_MIMETYPES, purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes, format_duration, short_error
 
 
@@ -113,6 +113,16 @@ def _fetch_feed(url: str) -> tuple:
             pass   # fall through and try original http URL below
 
     return feedparser.parse(_fetch_feed_bytes(url)), url
+
+
+# <episode id>.<audio extension> (with '.part' while download)
+_EPISODE_FILE_RE = re.compile(r'\d+\.[A-Za-z0-9]{1,10}(\.part)?')
+
+
+def get_episode_ext(audio_url: str) -> str:
+    ext = Path(urllib.parse.urlparse(audio_url).path).suffix.lower()
+    is_audio = ext in AUDIO_EXTENSIONS or AUDIO_MIMETYPES.get(ext.lstrip('.'), '').startswith('audio/')
+    return ext if is_audio else '.mp3'
 
 
 class DownloadCancelled(Exception):
@@ -212,11 +222,21 @@ class PodcastManager:
     @with_app_context
     def remove_leftovers(self) -> dict[str, int]:
         """
-        Removes on-disk episode files/channel dirs with no matching db row,
-        and any '.part' downloads.
+        Removes on-disk episode files with no matching db row, files of channels that no longer exist, and old
+        '.part' downloads.
         """
 
         base = self.storage_dir()
+        marker = base / '.beetstreamnext_podcasts'
+
+        if not marker.exists():
+            if any(not (entry.is_dir() and entry.name.isdecimal()) for entry in base.iterdir()):
+                bsn_logger.warning(
+                    f"'{base}' seems to contain non-podcast things. Use an empty directory for 'podcast_storage_dir'."
+                )
+                return {}
+            marker.touch()
+
         now = time.time()
         purged: dict[str, int] = {}
 
@@ -233,34 +253,31 @@ class PodcastManager:
             }
 
         for channel_dir in base.iterdir():
+            if not (channel_dir.is_dir() and channel_dir.name.isdecimal()):
+                continue
 
-            if channel_dir.is_dir():
+            keep_files = int(channel_dir.name) in channel_ids
 
-                try:
-                    cid = int(channel_dir.name)
-                except ValueError:
-                    cid = None
-
-                if cid is None or cid not in channel_ids:
-                    try:
-                        shutil.rmtree(channel_dir)
-                        purged['leftover podcast file(s)'] = purged.get('leftover podcast file(s)', 0) + 1
-                    except OSError as e:
-                        bsn_logger.warning(f"Failed to remove leftover podcast directory '{channel_dir}': {e}")
-                    continue
-
+            if keep_files:
                 n = purge(channel_dir, PART_MAX_AGE_SEC, now, suffix='.part')
                 if n:
                     purged['old partial download(s)'] = purged.get('old partial download(s)', 0) + n
 
-                for f in channel_dir.iterdir():
-                    if f.is_file() and f.suffix != '.part' and str(f) not in valid_paths:
-                        f.unlink(missing_ok=True)
-                        purged['leftover podcast file(s)'] = purged.get('leftover podcast file(s)', 0) + 1
+            for f in channel_dir.iterdir():
+                if not (f.is_file() and _EPISODE_FILE_RE.fullmatch(f.name)):
+                    continue
+                if keep_files and (f.suffix == '.part' or str(f) in valid_paths):
+                    continue
                 try:
-                    next(channel_dir.iterdir())
-                except StopIteration:
-                    channel_dir.rmdir()
+                    f.unlink(missing_ok=True)
+                    purged['leftover podcast file(s)'] = purged.get('leftover podcast file(s)', 0) + 1
+                except OSError as e:
+                    bsn_logger.warning(f"Failed to remove leftover podcast file '{f}': {e}")
+
+            try:
+                channel_dir.rmdir()     # Only if it's empty now
+            except OSError:
+                pass
 
         return purged
 
@@ -983,7 +1000,7 @@ class PodcastManager:
                 channel_dir = self.storage_dir() / str(channel_id)
                 channel_dir.mkdir(parents=True, exist_ok=True)
 
-                ext = Path(urllib.parse.urlparse(audio_url).path).suffix or '.mp3'
+                ext = get_episode_ext(audio_url)
                 target_path = channel_dir / f'{episode_id}{ext}'
                 tmp_path = target_path.with_suffix(target_path.suffix + '.part')
 
@@ -1278,7 +1295,7 @@ class PodcastManager:
             channel_dir = self.storage_dir() / str(channel_id)
             channel_dir.mkdir(parents=True, exist_ok=True)
 
-            ext = Path(urllib.parse.urlparse(audio_url).path).suffix or '.mp3'
+            ext = get_episode_ext(audio_url)
             target_path = channel_dir / f'{episode_id}{ext}'
             tmp_path = target_path.with_suffix(target_path.suffix + '.part')
 

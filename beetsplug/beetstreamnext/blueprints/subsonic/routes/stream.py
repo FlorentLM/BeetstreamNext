@@ -185,7 +185,10 @@ def _streamdownload_podcast(req_values, required_role: str) -> flask.Response | 
         return subsonic_error(0, message='This episode is already being fetched, try again shortly.', resp_fmt=resp_fmt)
 
     resp, tmp_path, target_path = started
-    mimetype = resp.headers.get('Content-Type') or get_mimetype(str(target_path))
+
+    mimetype = resp.headers.get('Content-Type', '').split(';')[0].strip().lower()
+    if not mimetype.startswith('audio/'):
+        mimetype = get_mimetype(str(target_path))
     episode_id = episode['id']
 
     def generate() -> Generator:

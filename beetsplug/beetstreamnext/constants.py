@@ -203,6 +203,7 @@ STREAM_TOKEN_MAX: int = 5000             # Most live tokens kept (oldest dropped
 IMAGE_TOKEN_MAX: int = 20000
 HLS_MAX_VARIANTS: int = 4                # bitrate variants per HLS session
 HLS_MAX_CONCURRENT: int = 2              # HLS sessions being encoded at once
+HLS_MAX_CACHE_BYTES: int = 2 * 1024 ** 3 # Total size of all HLS sessions on disk
 ZIP_MAX_CONCURRENT: int = 2              # album zips being built at once
 PART_MAX_AGE_SEC: int = 86400            # interrupted podcast '.part' downloads
 

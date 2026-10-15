@@ -6,6 +6,7 @@ import subprocess
 import threading
 import hashlib
 import time
+from contextlib import suppress
 from pathlib import Path
 from typing import Generator, Optional, Any, Tuple
 import flask
@@ -13,13 +14,13 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import (
-    ALLOWED_BITRATES, FFMPEG_PYTHON, HLS_CACHE_DIR, HLS_MAX_CONCURRENT, HLS_MAX_VARIANTS
+    ALLOWED_BITRATES, FFMPEG_PYTHON, HLS_CACHE_DIR, HLS_MAX_CACHE_BYTES, HLS_MAX_CONCURRENT, HLS_MAX_VARIANTS
 )
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.core.runtime.web import send_file
-from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, resolve_path
+from beetsplug.beetstreamnext.utils.system import dir_size, get_mimetype, find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.health import needs_healing
@@ -36,6 +37,47 @@ def _snap_bitrate(kbps: int) -> int:
     return min(sorted(ALLOWED_BITRATES - {0}), key=lambda b: abs(b - kbps))
 
 
+_hls_lock = threading.Lock()
+_hls_encoding: set = set()    # ids of sessions ffmpeg is still writing
+
+
+def _enforce_hls_cache_cap() -> bool:
+    """
+    Delete least recently used sessions until the HLS cache under the size cap.
+    """
+    total = dir_size(HLS_CACHE_DIR)
+    if total <= HLS_MAX_CACHE_BYTES:
+        return True
+
+    idle = []
+    for entry in HLS_CACHE_DIR.iterdir():
+        if entry.is_dir() and entry.name not in _hls_encoding:
+            idle.append((entry.stat().st_mtime, entry, dir_size(entry)))
+
+    for _, entry, size in sorted(idle, key=lambda item: item[0]):
+        if total <= HLS_MAX_CACHE_BYTES:
+            break
+        shutil.rmtree(entry, ignore_errors=True)
+        total -= size
+        bsn_logger.debug(f"HLS cache over size cap: removed '{entry.name}'.")
+
+    return total <= HLS_MAX_CACHE_BYTES
+
+
+def _reserve_hls_session(stream_dir: Path) -> str:
+
+    with _hls_lock:
+        if stream_dir.exists():
+            return 'exists'
+
+        if not _enforce_hls_cache_cap():
+            return 'full'
+
+        stream_dir.mkdir(parents=True)
+        _hls_encoding.add(stream_dir.name)
+        return 'created'
+
+
 def _run_hls_encode(command: list, stream_dir) -> None:
     """Runs ffmpeg (holds an HLS slot), and drops the session if it failed."""
 
@@ -46,6 +88,8 @@ def _run_hls_encode(command: list, stream_dir) -> None:
         returncode = -1
     finally:
         _hls_slots.release()
+        with _hls_lock:
+            _hls_encoding.discard(stream_dir.name)
 
     if returncode != 0:
         bsn_logger.warning(f"HLS encode failed (rc={returncode}), discarding '{stream_dir.name}'.")
@@ -543,44 +587,61 @@ def endpoint_hls() -> flask.Response | None:
             return subsonic_error(0, message='Too many HLS sessions are being prepared, try again shortly.', resp_fmt=resp_fmt)
 
         try:
-            stream_dir.mkdir(parents=True)
-        except FileExistsError:     # Another request just started this exact session
-            _hls_slots.release()
-        except OSError:
+            reservation = _reserve_hls_session(stream_dir)
+        except BaseException:
             _hls_slots.release()
             raise
 
+        if reservation == 'full':
+            _hls_slots.release()
+            return subsonic_error(0, message='The HLS cache is full, try again shortly.', resp_fmt=resp_fmt)
+
+        if reservation == 'exists':     # Another request just started this exact session
+            _hls_slots.release()
+
         else:
-            norm_filter = get_normalization_filter(song)
+            try:
+                norm_filter = get_normalization_filter(song)
 
-            command = [
-                hls_ffmpeg_bin or 'ffmpeg', '-hide_banner', '-loglevel', 'error',
-                '-i', str(song_path)
-            ]
+                command = [
+                    hls_ffmpeg_bin or 'ffmpeg', '-hide_banner', '-loglevel', 'error',
+                    '-i', str(song_path)
+                ]
 
-            if norm_filter:
-                command.extend(['-af', norm_filter])
+                if norm_filter:
+                    command.extend(['-af', norm_filter])
 
-            # Spawn a stream for each requested bitrate
-            for i, br in enumerate(bitrates):
-                br_dir = stream_dir / str(br)
-                br_dir.mkdir(exist_ok=True)
+                # Spawn a stream for each requested bitrate
+                for i, br in enumerate(bitrates):
+                    br_dir = stream_dir / str(br)
+                    br_dir.mkdir(exist_ok=True)
 
-                command.extend([
-                    '-map', '0:a',
-                    f'-b:a:{i}', f'{br}k',
-                    f'-c:a:{i}', 'aac',  # HLS expects AAC or mp3
-                    '-f', 'hls',
-                    '-hls_time', '10',  # 10 second chunks
-                    '-hls_list_size', '0',  # keep all chunks
-                    '-hls_playlist_type', 'event',  # tells player that chunks will keep arriving
-                    '-hls_segment_filename', str(br_dir / '%03d.ts'),
-                    '-hls_base_url', f'hls_data/{stream_id}/{br}/', # tells client where to request the chunks from
-                    str(br_dir / 'index.m3u8')
-                ])
+                    command.extend([
+                        '-map', '0:a',
+                        f'-b:a:{i}', f'{br}k',
+                        f'-c:a:{i}', 'aac',  # HLS expects AAC or mp3
+                        '-f', 'hls',
+                        '-hls_time', '10',  # 10 second chunks
+                        '-hls_list_size', '0',  # keep all chunks
+                        '-hls_playlist_type', 'event',  # tells player that chunks will keep arriving
+                        '-hls_segment_filename', str(br_dir / '%03d.ts'),
+                        '-hls_base_url', f'hls_data/{stream_id}/{br}/', # tells client where to request the chunks from
+                        str(br_dir / 'index.m3u8')
+                    ])
+
+            except BaseException:
+                _hls_slots.release()
+                with _hls_lock:
+                    _hls_encoding.discard(stream_id)
+                shutil.rmtree(stream_dir, ignore_errors=True)
+                raise
 
             # Thread releases the slot when ffmpeg exits
             threading.Thread(target=_run_hls_encode, args=(command, stream_dir), daemon=True).start()
+
+    else:
+        with suppress(FileNotFoundError):
+            os.utime(stream_dir)
 
     # generate and return a playlist pointing to the subplaylists, client will call /hls_data/.../index.m3u8
     master_playlist = ['#EXTM3U']
@@ -611,6 +672,9 @@ def endpoint_hls_data(stream_id: str, bitrate: str, filename: str) -> flask.Resp
 
     if not target_path.exists():
         flask.abort(404)
+
+    with suppress(FileNotFoundError):
+        os.utime(HLS_CACHE_DIR / stream_id)
 
     mimetype = 'application/vnd.apple.mpegurl' if filename.endswith('.m3u8') else 'video/MP2T'
     return flask.send_file(target_path, mimetype=mimetype)

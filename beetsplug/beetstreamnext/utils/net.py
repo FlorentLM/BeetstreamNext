@@ -61,6 +61,12 @@ class ParsedHost(NamedTuple):
     scheme: Optional[str] = None
     port: Optional[int] = None
 
+    @property
+    def netloc(self) -> str:
+        """`host` or `host:port` with IPv6 bracketed."""
+        host = f'[{self.host}]' if ':' in self.host else self.host
+        return host if self.port is None else f'{host}:{self.port}'
+
 
 def _parse_port(raw: str) -> int:
     if not (raw.isdecimal() and 0 < int(raw) <= 65535):
@@ -68,18 +74,24 @@ def _parse_port(raw: str) -> int:
     return int(raw)
 
 
-def parse_host(raw: str) -> ParsedHost:
+def parse_host(raw: str, strict: bool = False) -> ParsedHost:
     """
     Parse a host/IP (`music.example.com`, `192.168.8.184`) or a full
     `scheme://host[:port]` value into parts.
 
     Raises ValueError if host/IP part is invalid.
     Returns an empty ParsedHost for an empty input.
+
+    If `strict`: only `host[:port]` is accepted.
     """
 
-    raw = (raw or '').strip()
-    if not raw:
-        return ParsedHost(host='')
+    if strict:
+        if not raw or raw != raw.strip() or SCHEME_RE.match(raw) or '/' in raw:
+            raise ValueError(f'Invalid host: {raw!r}')
+    else:
+        raw = (raw or '').strip()
+        if not raw:
+            return ParsedHost(host='')
 
     scheme = None
     m = SCHEME_RE.match(raw)

@@ -222,7 +222,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Allowed Host headers (domain names/IPs, comma-separated).'
                        '<br>'
-                       'If empty, all hosts are allowed.'
+                       'If empty, all hosts are allowed. Setting this is recommended if the '
+                       'server reachable beyond your own machine.'
                       '<br>'
                        'Loopback is always allowed.',
         'requires_restart': False,

@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_filter
-from beetsplug.beetstreamnext.utils.net import strip_host_port
+from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.core.library.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users, get_user_roles
 from beetsplug.beetstreamnext.blueprints.subsonic.auth import authenticate_subsonic
@@ -33,15 +33,16 @@ def _any_users_exist() -> bool:
 
 @app.before_request
 def _before_request() -> flask.Response | None:
+    try:
+        # the Host header ends up in tokenised URLs so it has to be just host[:port]
+        request_host = parse_host(flask.request.host, strict=True).host
+    except ValueError:
+        flask.abort(400)
+
     trusted_raw = app.config.get('trusted_hosts', '')
     if trusted_raw:
 
         allowed = set(split_list(trusted_raw))
-
-        try:
-            request_host = strip_host_port(flask.request.host).lower()
-        except ValueError:
-            flask.abort(400)
 
         if request_host not in allowed and request_host not in LOOPBACK_IPS:
             bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')
@@ -130,6 +131,7 @@ def _add_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers.add('Vary', 'Host')
     if flask.request.is_secure:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 

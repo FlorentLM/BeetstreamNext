@@ -135,6 +135,9 @@ def _add_security_headers(response):
     if flask.request.is_secure:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
+    if flask.request.path.startswith(('/rest', '/tokenised-')):
+        response.headers['Content-Security-Policy'] = "sandbox; default-src 'none'"
+
     if flask.request.path.startswith(WEBUI_PREFIXES):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         nonce = getattr(flask.g, 'csp_nonce', '')

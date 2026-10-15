@@ -7,7 +7,7 @@ from flask import Flask
 from flask.sessions import SecureCookieSessionInterface
 from flask_wtf.csrf import CSRFProtect
 
-from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION
+from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION, MAX_REQUEST_BYTES
 from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL
 from beetsplug.beetstreamnext.core.storage.connection import close_database
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
@@ -40,6 +40,7 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=3600,   # 1 hour
+    MAX_CONTENT_LENGTH=MAX_REQUEST_BYTES,
     WTF_CSRF_CHECK_DEFAULT=True,
     PROJECT_ROOT=PROJECT_ROOT,
     IMAGES_PATH=PROJECT_ROOT / 'web' / 'static' / 'images',

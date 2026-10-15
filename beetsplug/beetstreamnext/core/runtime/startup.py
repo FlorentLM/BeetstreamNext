@@ -14,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
-from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS
+from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS, MAX_REQUEST_BYTES
 from beetsplug.beetstreamnext.core.accounts.commands import check_onboarding
 from beetsplug.beetstreamnext.core.storage.encryption import ensure_secret, rotate_session_key
 from beetsplug.beetstreamnext.core.library.import_watcher import ImportWatcher
@@ -308,5 +308,6 @@ def run_server(
 
         serve(
             logged_app, listen=[f'{h}:{port}' for h in host], threads=threads,
-            channel_timeout=channel_timeout, connection_limit=connection_limit
+            channel_timeout=channel_timeout, connection_limit=connection_limit,
+            max_request_body_size=MAX_REQUEST_BYTES
         )

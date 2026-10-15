@@ -10,7 +10,7 @@ import threading
 from typing import Generator, Optional, Any
 import flask
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, TRANSCODE_TMP_DIR
+from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, TRANSCODE_MAX_CONCURRENT, TRANSCODE_TMP_DIR
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.web import send_file
@@ -106,6 +106,9 @@ def get_normalization_filter(item) -> str | None:
 
     # Final filter: volume adjustment + a hard limiter at -0.1dB as a safety net
     return f'volume={gain:.2f}dB,alimiter=limit=0.99'
+
+
+_transcode_slots = threading.BoundedSemaphore(TRANSCODE_MAX_CONCURRENT)
 
 
 def _send_transcode(
@@ -331,21 +334,37 @@ def try_transcode(
     if not (FFMPEG_PYTHON or find_binary('ffmpeg')):
         return send_file(file_path)
 
-    if exact_length:
-        return _send_transcode_tempfile(
-            file_path=file_path,
-            start_at=start_at,
-            max_bitrate=max_bitrate,
-            req_format=req_format,
-            audio_filters=audio_filters
-        )
+    if not _transcode_slots.acquire(blocking=False):
+        busy = flask.Response('Too many transcodes are running, try again shortly.', status=503)
+        busy.headers['Retry-After'] = '5'
+        return busy
 
-    return _send_transcode(
-        file_path=file_path,
-        start_at=start_at,
-        max_bitrate=max_bitrate,
-        req_format=req_format,
-        duration=duration,
-        estimate_length=estimate_length,
-        audio_filters=audio_filters
-    )
+    try:
+        if exact_length:
+            response = _send_transcode_tempfile(
+                file_path=file_path,
+                start_at=start_at,
+                max_bitrate=max_bitrate,
+                req_format=req_format,
+                audio_filters=audio_filters
+            )
+        else:
+            response = _send_transcode(
+                file_path=file_path,
+                start_at=start_at,
+                max_bitrate=max_bitrate,
+                req_format=req_format,
+                duration=duration,
+                estimate_length=estimate_length,
+                audio_filters=audio_filters
+            )
+    except BaseException:
+        _transcode_slots.release()
+        raise
+
+    if response is None or exact_length:
+        _transcode_slots.release()      # Nothing started (or tmp file is complete) -> ffmpeg is done
+    else:
+        response.call_on_close(_transcode_slots.release)
+
+    return response

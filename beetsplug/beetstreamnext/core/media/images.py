@@ -5,6 +5,7 @@ import re
 import subprocess
 import os
 import tempfile
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 from io import BytesIO
@@ -18,12 +19,12 @@ from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, fin
 from beetsplug.beetstreamnext.constants import (
     MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
 )
-from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, IMAGE_EXTENSIONS
+from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, COVER_EXTRACT_MAX_CONCURRENT, IMAGE_EXTENSIONS
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.deezer import query_deezer
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_coverartarchive
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
-from beetsplug.beetstreamnext.core.media.artist_images import find_uploaded_image
+from beetsplug.beetstreamnext.core.media.artist_images import find_artist, find_uploaded_image
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 if TYPE_CHECKING:
@@ -235,6 +236,9 @@ def fetch_playlist_images(item, url: str) -> None:
         bsn_logger.warning(f"Failed to save captured playlist art for album {album_id}: {e}")
 
 
+_cover_extractions = threading.BoundedSemaphore(COVER_EXTRACT_MAX_CONCURRENT)
+
+
 def image_from_song(path: str | Path) -> bytes | None:
     """
     Extracts an embedded picture from an audio file.
@@ -250,37 +254,44 @@ def image_from_song(path: str | Path) -> bytes | None:
 
     ffmpeg_bin = find_binary('ffmpeg')
 
-    if FFMPEG_PYTHON:
-        import ffmpeg
+    if not _cover_extractions.acquire(timeout=10):
+        bsn_logger.warning(f"Too many cover art extractions running, skipping '{path.name}' for now.")
+        return None
 
-        try:
-            img_bytes, _ = (
-                ffmpeg
-                .input(os.fsdecode(path))
+    try:
+        if FFMPEG_PYTHON:
+            import ffmpeg
+
+            try:
+                img_bytes, _ = (
+                    ffmpeg
+                    .input(os.fsdecode(path))
+                    # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
+                    .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
+                    .run(capture_stdout=True, capture_stderr=False, quiet=True, cmd=ffmpeg_bin or 'ffmpeg')
+                )
+            except ffmpeg.Error:
+                img_bytes = b''
+
+        elif ffmpeg_bin:
+            command = [
+                ffmpeg_bin,
+                '-i', os.fsdecode(path),
                 # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
-                .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
-                .run(capture_stdout=True, capture_stderr=False, quiet=True, cmd=ffmpeg_bin or 'ffmpeg')
-            )
-        except ffmpeg.Error:
+                '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
+                'pipe:1'
+            ]
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            try:
+                img_bytes, _ = process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate() # flush buffers to avoid zombies
+                img_bytes = b''
+        else:
             img_bytes = b''
-
-    elif ffmpeg_bin:
-        command = [
-            ffmpeg_bin,
-            '-i', os.fsdecode(path),
-            # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
-            '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
-            'pipe:1'
-        ]
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        try:
-            img_bytes, _ = process.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.communicate() # flush buffers to avoid zombies
-            img_bytes = b''
-    else:
-        img_bytes = b''
+    finally:
+        _cover_extractions.release()
 
     return img_bytes or None
 

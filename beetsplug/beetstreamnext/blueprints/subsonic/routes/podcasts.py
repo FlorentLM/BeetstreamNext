@@ -6,7 +6,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import FEEDPARSER
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -102,7 +102,7 @@ def endpoint_get_podcasts() -> flask.Response:
 def endpoint_get_newest_podcasts() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    count = r.get('count', default=20, type=int)
+    count = r.get('count', default=20, type=page_size)
 
     entries = [
         Serialise.podcast_episode(row, {'channel_title': row.get('channel_title')})

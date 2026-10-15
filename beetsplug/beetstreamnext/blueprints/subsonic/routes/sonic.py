@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_resp
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
+from beetsplug.beetstreamnext.utils.general import page_size
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.core.services.external.audiomuse import audiomuse_get
@@ -46,7 +47,7 @@ def endpoint_get_sonic_similar_tracks() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     song_id = r.get('id', default='', type=safe_str)        # Required
-    count = r.get('count', default=50, type=int)
+    count = r.get('count', default=50, type=page_size)
 
     if not song_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -70,7 +71,7 @@ def endpoint_find_sonic_path() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     start_id = r.get('startSongId', default='', type=safe_str)  # Required
     end_id = r.get('endSongId', default='', type=safe_str)      # Required
-    max_steps = r.get('count', default=25, type=int)
+    max_steps = r.get('count', default=25, type=page_size)
 
     if not start_id or not end_id:
         return subsonic_error(10, resp_fmt=resp_fmt)

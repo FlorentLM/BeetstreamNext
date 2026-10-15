@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
+from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
@@ -88,8 +89,8 @@ def endpoint_songs_by_genre() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     genre = r.get('genre', default='', type=safe_str)[:64]   # Required
-    count = r.get('count', default=10, type=int)
-    offset = r.get('offset', default=0, type=int)
+    count = r.get('count', default=10, type=page_size)
+    offset = r.get('offset', default=0, type=page_offset)
 
     if not genre:
         return subsonic_error(10, resp_fmt=resp_fmt)
@@ -135,7 +136,7 @@ def endpoint_songs_by_genre() -> flask.Response:
 def endpoint_get_random_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    size = r.get('size', default=10, type=int)
+    size = r.get('size', default=10, type=page_size)
     genre = r.get('genre', default='', type=safe_str)[:64]
     from_year = r.get('fromYear', default=0, type=int)
     to_year = r.get('toYear', default=0, type=int)
@@ -189,7 +190,7 @@ def endpoint_get_top_songs() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_artist_name = r.get('artist', default='', type=safe_str)    # Required (unless id is provided)
     req_artist_id = r.get('id', default='', type=safe_str)          # Required (only in OpenSubsonic)
-    count = r.get('count', default=50, type=int)
+    count = r.get('count', default=50, type=page_size)
 
     lookup = req_artist_id if IDs.decode_type(req_artist_id) == 'artist' else req_artist_name
     resolved = Resolve.artist(lookup)
@@ -321,7 +322,7 @@ def endpoint_get_similar_songs() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     req_id = r.get('id', default='', type=safe_str)      # Required
-    limit = r.get('count', default=50, type=int)
+    limit = r.get('count', default=50, type=page_size)
 
     if not req_id:
         return subsonic_error(70, resp_fmt=resp_fmt)

@@ -4,6 +4,7 @@ import flask
 
 from .. import subsonic_bp
 
+from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -110,8 +111,8 @@ def endpoint_get_album_list() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
     sort_by = r.get('type', default='alphabeticalByName', type=safe_str)    # Required
-    size = r.get('size', default=10, type=int)
-    offset = r.get('offset', default=0, type=int)
+    size = r.get('size', default=10, type=page_size)
+    offset = r.get('offset', default=0, type=page_offset)
     from_year = r.get('fromYear', default=0, type=int)                      # Required if byYear
     to_year = r.get('toYear', default=3000, type=int)                       # Required if byYear
     genre_filter = r.get('genre', default='', type=safe_str)[:64]           # Required if byGenre

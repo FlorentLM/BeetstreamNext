@@ -7,7 +7,8 @@ from typing import Any, Optional, Tuple
 
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, strip_text, standard_ascii, safe_str
 from beetsplug.beetstreamnext.constants import (
-    GENRE_MAP, GENRES_REGEX, GENRE_TOKEN_MAP, COLLAPSE_SPACES, DOT_TRANS, DECADE_APOSTROPHE, GENRES_DELIM
+    GENRE_MAP, GENRES_REGEX, GENRE_TOKEN_MAP, COLLAPSE_SPACES, DOT_TRANS, DECADE_APOSTROPHE, GENRES_DELIM,
+    MAX_PAGE_SIZE
 )
 
 
@@ -19,6 +20,14 @@ def api_bool(val: Any) -> bool:
     if val is None:
         return False
     return safe_str(val).lower() not in ('false', '0', 'no', 'none', 'null', '')
+
+
+def page_size(val: Any) -> int:
+    return max(0, min(int(val), MAX_PAGE_SIZE))
+
+
+def page_offset(val: Any) -> int:
+    return max(0, int(val))
 
 
 def timestamp_to_iso(timestamp) -> str:

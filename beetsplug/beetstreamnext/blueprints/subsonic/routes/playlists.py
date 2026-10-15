@@ -160,6 +160,9 @@ def endpoint_update_playlist() -> flask.Response:
     to_add = r.getlist('songIdToAdd', type=safe_str)
     to_remove = r.getlist('songIndexToRemove', type=int)
 
+    if not flask.g.user_data.get('playlistRole'):
+        return subsonic_error(50, resp_fmt=resp_fmt)
+
     if not playlist_id:
         return subsonic_error(10, 'Playlist ID is required.', resp_fmt=resp_fmt)
 

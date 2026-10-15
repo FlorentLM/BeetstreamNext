@@ -9,7 +9,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, split_beets_multi
-from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_wikidata_title
@@ -148,7 +148,7 @@ def endpoint_artist_info() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     artist_id = r.get('id', default='', type=safe_str)   # Required
-    count = r.get('count', default=20, type=int)
+    count = r.get('count', default=20, type=page_size)
     include_not_present = r.get('includeNotPresent', default=False, type=api_bool)
 
     if not artist_id:

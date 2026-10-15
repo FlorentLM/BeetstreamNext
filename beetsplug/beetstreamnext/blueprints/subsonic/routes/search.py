@@ -5,6 +5,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_albums, preload_artists, get_song_counts
+from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -25,15 +26,15 @@ def endpoint_search() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
     # Pagination
-    global_count = r.get('count', default=20, type=int)
-    global_offset = r.get('offset', default=0, type=int)
+    global_count = r.get('count', default=20, type=page_size)
+    global_offset = r.get('offset', default=0, type=page_offset)
 
-    song_count = r.get('songCount', default=global_count, type=int)
-    song_offset = r.get('songOffset', default=global_offset, type=int)
-    album_count = r.get('albumCount', default=global_count, type=int)
-    album_offset = r.get('albumOffset', default=global_offset, type=int)
-    artist_count = r.get('artistCount', default=global_count, type=int)
-    artist_offset = r.get('artistOffset', default=global_offset, type=int)
+    song_count = r.get('songCount', default=global_count, type=page_size)
+    song_offset = r.get('songOffset', default=global_offset, type=page_offset)
+    album_count = r.get('albumCount', default=global_count, type=page_size)
+    album_offset = r.get('albumOffset', default=global_offset, type=page_offset)
+    artist_count = r.get('artistCount', default=global_count, type=page_size)
+    artist_offset = r.get('artistOffset', default=global_offset, type=page_offset)
 
     # Legacy search
     depr_artist = r.get('artist', default='', type=safe_str)

@@ -8,6 +8,7 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, list_users, set_user_avatar, session_stamp
+from beetsplug.beetstreamnext.core.accounts.sessions import current_sid, revoke_user_sessions
 from beetsplug.beetstreamnext.core.media.images import read_uploaded_image
 from beetsplug.beetstreamnext.core.media.avatars import avatar_response
 from beetsplug.beetstreamnext.blueprints.forms import UserForm, EditUserForm, collect_form_data, form_error_messages
@@ -64,6 +65,7 @@ def route_edit_user(username) -> str:
         'partials/edit_user_form.html',
         user=user,
         edit_form=EditUserForm(formdata=None, data=user),
+        current_username=flask.session.get('username'),
     )
 
 
@@ -147,6 +149,19 @@ def route_regenerate_api_key(username) -> str | flask.Response:
 
     return _users_partial(f"API key for '{username}' regenerated. The old key no longer works.") + \
         _api_key_modal(username, raw_api_key)
+
+
+@admin_bp.route('/users/<username>/sessions/revoke', methods=['POST'])
+@admin_required
+def route_revoke_user_sessions(username: str) -> str:
+    """Sign out user's sessions."""
+
+    if not get_userdata(username, fields=['username']):
+        return _users_partial(f"User '{username}' not found.", ok=False)
+
+    keep = current_sid() if username == flask.session.get('username') else None
+    count = revoke_user_sessions(username, keep=keep)
+    return _users_partial(f"Signed '{username}' out of {count} web session{'s' if count != 1 else ''}.")
 
 
 @admin_bp.route('/users/<username>/avatar', methods=['GET'])

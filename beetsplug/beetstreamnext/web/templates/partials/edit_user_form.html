@@ -67,3 +67,15 @@
         <button type="submit" class="btn btn-warning btn-small">Update API key</button>
     </form>
 </div>
+
+<div class="form-group">
+    <form class="form-inline"
+          hx-trigger="confirmed"
+          hx-post="{{ url_for('admin.route_revoke_user_sessions', username=user.username) }}"
+          hx-target="#usersTable"
+          hx-swap="innerHTML"
+          data-confirm="Sign {{ user.username | e }} out of every web session{% if user.username == current_username %} (except this one){% endif %}?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-warning btn-small">Sign out web sessions</button>
+    </form>
+</div>

@@ -6,6 +6,7 @@ import flask
 
 from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.core.services.events import admin_events
+from beetsplug.beetstreamnext.core.accounts.sessions import validate_session
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.constants import EVENT_BUS_INTERVAL
@@ -24,6 +25,7 @@ def route_admin_events() -> flask.Response:
         return flask.Response('Too many live update streams open', status=503, headers={'Retry-After': str(EVENT_BUS_INTERVAL)})
 
     username = flask.session.get('username')
+    sid = flask.session.get('sid')
     app = flask.current_app._get_current_object()   # the stream runs after the request context is gone
 
     def stream():
@@ -37,8 +39,9 @@ def route_admin_events() -> flask.Response:
                 if time.monotonic() - last_check >= EVENT_BUS_INTERVAL:
                     with app.app_context():
                         roles = get_user_roles(username)
+                        revoked = not validate_session(sid, username, touch=False)
 
-                    if not (roles and roles.get('adminRole')):
+                    if revoked or not (roles and roles.get('adminRole')):
                         return
 
                     last_check = time.monotonic()

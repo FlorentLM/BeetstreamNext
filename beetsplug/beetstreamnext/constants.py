@@ -190,6 +190,9 @@ CLEANUP_INTERVAL_SEC: int = 86400    # clean once per day
 MAX_CACHE_AGE_DAYS: int = 30
 SESSION_KEY_ROTATION_DAYS: int = 30
 
+WEB_SESSION_MAX_AGE_SEC: int = 24 * 3600     # Web UI login never lasts longer than that
+WEB_SESSION_LASTSEEN_SEC: int = 60           # How often to check if a session is active
+
 # Max age for leftover tmp/session files
 TRANSCODE_MAX_AGE_SEC: int = 3600        # leaked transcode tempfiles (should be seconds/minutes old, not this)
 HLS_MAX_AGE_SEC: int = 6 * 3600          # abandoned HLS session directories

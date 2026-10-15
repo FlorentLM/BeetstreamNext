@@ -105,6 +105,27 @@
             </form>
         </div>
 
+        {# Sessions #}
+        <div class="card">
+            <div class="table-header"><h2><span class="material-symbols-outlined">devices</span>Sessions</h2></div>
+            <p class="card-hint">
+                {% if other_sessions %}
+                    You are also signed in on <strong>{{ other_sessions }}</strong> other browser{{ 's' if other_sessions != 1 }} or device{{ 's' if other_sessions != 1 }}.
+                {% else %}
+                    No other browser or device is signed in to this account.
+                {% endif %}
+            </p>
+            <form hx-post="{{ url_for('account.route_revoke_other_sessions') }}"
+                  hx-trigger="confirmed"
+                  hx-target="#sessionsResult"
+                  hx-swap="innerHTML"
+                  class="card-body-form" data-confirm="Sign out everywhere else? This session stays open.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-warning">Sign out other sessions</button>
+            </form>
+            <div id="sessionsResult"></div>
+        </div>
+
         {# API key #}
         <div class="card">
             <div class="table-header"><h2><span class="material-symbols-outlined">key</span>API key</h2></div>

@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import flask
 
 from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.accounts.sessions import create_session
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata, session_stamp
 
 
@@ -86,4 +87,7 @@ def start_session(username: str, **extra) -> None:
     flask.session.permanent = True
     flask.session['username'] = username
     flask.session['pv'] = session_stamp(username)
+    flask.session['sid'] = create_session(
+        username, ip=flask.request.remote_addr, user_agent=flask.request.headers.get('User-Agent')
+    )
     flask.session.update(extra)

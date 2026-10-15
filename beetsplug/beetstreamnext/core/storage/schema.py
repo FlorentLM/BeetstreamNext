@@ -116,6 +116,22 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS web_sessions
+        (
+            id         TEXT PRIMARY KEY,   -- SHA-256 of the session id from the browser's cookie
+            username   TEXT NOT NULL,
+            created    REAL NOT NULL,
+            last_seen  REAL NOT NULL,
+            ip         TEXT,
+            user_agent TEXT,
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_web_sessions_username ON web_sessions (username)""")
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS likes
         (
             username   TEXT    NOT NULL,

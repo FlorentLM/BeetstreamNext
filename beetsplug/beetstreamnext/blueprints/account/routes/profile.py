@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.core.accounts.users_crud import (
     get_userdata, update_user, session_stamp, regenerate_api_key, set_user_avatar, delete_user
 )
 from beetsplug.beetstreamnext.core.accounts.credentials import webui_login
+from beetsplug.beetstreamnext.core.accounts.sessions import current_sid, count_active_sessions, revoke_user_sessions
 from beetsplug.beetstreamnext.core.accounts.export import export_user_data
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
@@ -53,6 +54,7 @@ def route_account() -> str:
         radio_form=RadioStationForm(formdata=None),
         radio_ep=radio_endpoints('account'),
         current_username=username,
+        other_sessions=count_active_sessions(username, exclude=current_sid()),
     )
 
 
@@ -116,6 +118,16 @@ def route_change_password() -> str:
     # Other sessions now invalid, current one stays because it has the new stamp
     flask.session['pv'] = session_stamp(username)
     return flask.render_template('partials/action_result.html', message='Password changed.', ok=True)
+
+
+@account_bp.route('/sessions/revoke-others', methods=['POST'])
+@account_required
+def route_revoke_other_sessions() -> str:
+    """Sign out every other browser logged in to current account."""
+
+    count = revoke_user_sessions(flask.g.account_user, keep=current_sid())
+    message = f"Signed out {count} other session{'s' if count != 1 else ''}." if count else 'No other active sessions.'
+    return flask.render_template('partials/action_result.html', message=message, ok=True)
 
 
 @account_bp.route('/apikey', methods=['POST'])

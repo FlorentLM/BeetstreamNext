@@ -8,7 +8,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, split_beets_multi
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
@@ -168,7 +168,7 @@ def endpoint_artist_info() -> flask.Response:
         else:
             data_lastfm = query_lastfm(q=artist_name, data_type='artist', method='info', is_mbid=False)
 
-        lastfm_bio = data_lastfm.get('artist', {}).get('bio', {}).get('content', '')
+        lastfm_bio = strip_html(data_lastfm.get('artist', {}).get('bio', {}).get('content', ''))     # lastfm community-edited has HTML
 
         bio_lower = lastfm_bio.lower()
         if lastfm_bio and (

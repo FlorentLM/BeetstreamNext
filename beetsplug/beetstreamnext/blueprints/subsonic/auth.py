@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 from typing import TYPE_CHECKING
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.credentials import check_password
 from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
@@ -31,7 +30,7 @@ def authenticate_subsonic(flask_req_values: 'CombinedMultiDict'):
             # 43: "Multiple conflicting authentication mechanisms provided."
             return False, 43, None
 
-        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+        api_key_hash = sha256_hex(api_key)
         found_user = load_username(api_key_hash)
         if found_user:
             return True, 0, found_user

@@ -1,12 +1,11 @@
 from __future__ import annotations
-import hashlib
 import flask
 
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import genres_formatter
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -297,7 +296,7 @@ def endpoint_token_info() -> flask.Response:
     if not api_key:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+    api_key_hash = sha256_hex(api_key)
     username = load_username(api_key_hash)
 
     if not username:

@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 
 
@@ -132,7 +132,7 @@ def _set_api_key(username: str, db: Optional[sqlite3.Connection] = None) -> str:
     opening/committing here (caller owns the transaction).
     """
     raw_api_key = secrets.token_urlsafe(32)
-    api_key_hash = hashlib.sha256(raw_api_key.encode('utf-8')).hexdigest()
+    api_key_hash = sha256_hex(raw_api_key)
 
     def _execute(conn: sqlite3.Connection) -> None:
         conn.execute(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import re
 import string
@@ -14,6 +15,11 @@ from beetsplug.beetstreamnext.constants import (
 
 ##
 # Text utilities
+
+
+def sha256_hex(value: str) -> str:
+    """Hex SHA-256 digest of a string (UTF-8)."""
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
 
 def validate_mbid(value: Any) -> str:

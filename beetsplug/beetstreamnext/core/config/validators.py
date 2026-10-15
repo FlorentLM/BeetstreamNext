@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import shutil
+from pathlib import Path
 from typing import Any, Callable, List
 from uuid import UUID
 
@@ -31,6 +32,33 @@ def validate_path(x: Any) -> str:
     s = str(x or '').strip()
     if s and shutil.which(s) is None:
         raise ValueError('Not an executable file (or not found).')
+    return s
+
+
+def validate_storage_dir(x: Any) -> str:
+    """
+    Directory where BSN stores stuff: absolute, not the filesystem root, and not overlapping with the music library.
+    """
+
+    s = str(x or '').strip()
+    if not s:
+        return s
+
+    path = Path(s).expanduser()
+    if not path.is_absolute():
+        raise ValueError('Use an absolute path.')
+
+    resolved = path.resolve()
+    if resolved == Path(resolved.anchor):
+        raise ValueError("Can't be the filesystem root.")
+
+    from beetsplug.beetstreamnext.application import app
+    music_root = app.config.get('root_directory')
+    if music_root:
+        music_root = Path(music_root).resolve()
+        if resolved.is_relative_to(music_root) or music_root.is_relative_to(resolved):
+            raise ValueError('Must not be inside the music library, or contain it.')
+
     return s
 
 

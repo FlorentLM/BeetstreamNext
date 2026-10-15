@@ -16,7 +16,8 @@ from beetsplug.beetstreamnext.core.config.validators import (
     validate_host_list,
     validate_int_range,
     validate_jukebox_device,
-    validate_path
+    validate_path,
+    validate_storage_dir
 )
 
 
@@ -551,6 +552,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         ),
         'requires_restart': False,
         'on_empty': _effective_podcast_dir,
+        'validator': validate_storage_dir,
     },
     'podcast_auto_download_count': {
         'type': 'int',

@@ -86,6 +86,8 @@ class LocalJukeboxPlayer(JukeboxBackend):
 
         args = [
             mpv_bin, '--no-video', '--idle=yes', '--msg-level=all=warn',
+            '--ytdl=no',
+            '--load-scripts=no',
             f'--input-ipc-server={sock_path}',
         ]
         audio_device = settings_store.get('jukebox_hardware_device')

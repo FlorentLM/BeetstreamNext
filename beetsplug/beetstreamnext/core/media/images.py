@@ -529,7 +529,8 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
         resolved = Resolve.artist(artist)
         artist_name, artist_mbid = resolved if resolved else ('', '')
     else:
-        artist_name = artist
+        found = find_artist(artist)
+        artist_name, artist_mbid = found if found else ('', '')
 
     if not artist_name:
         return None

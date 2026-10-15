@@ -2,26 +2,30 @@
 
 ## Access controls
 
-- **IP allow/deny lists**: `ip_whitelist`/`ip_blacklist`, they accept individual IPs or CIDR ranges.
+- **IP allow/deny lists**: [`ip_whitelist`](../configuration.md#ip_whitelist)/[`ip_blacklist`](../configuration.md#ip_blacklist), they accept individual IPs or CIDR ranges.
 
-- **Admin panel host restriction**: `admin_hostname` restricts the admin panel to a specific hostname.
+- **Admin panel host restriction**: [`admin_hostname`](../configuration.md#admin_hostname) restricts the admin panel to a specific hostname.
   - **Remark:** Loopback access is always allowed.
 
-- **Trusted `Host` headers**: `trusted_hosts` controls which `Host` header values are accepted.
+- **Trusted `Host` headers**: [`trusted_hosts`](../configuration.md#trusted_hosts) controls which `Host` header values are accepted.
+  - **Remark:** If the server is reachable beyond your own machine, it is recommended to set this. You can also use [`external_hostname`](../configuration.md#external_hostname) for share links.
+  
+  - A `Host` header that isn't just a `hostname[:port]` (scheme, path, `user@`, spaces, control characters...) is always refused (with HTTP 400).
 
-- **Legacy authentication**: `legacy_auth` controls whether the older MD5-token/cleartext Subsonic authentication mode is accepted. Many clients still need it.
+- **Legacy authentication**: [`legacy_auth`](../configuration.md#legacy_auth) controls whether the older MD5-token/cleartext Subsonic authentication mode is accepted. Many clients still need it.
   - **Remark:** API-key authentication is always available regardless of this setting.
+  
   - **Remark:** The Subsonic protocol sends credentials in the URL query string, so they can end up in **reverse-proxy access logs**. See [Credentials in proxy logs](../reverse-proxy.md#credentials-in-proxy-logs).
 
-- **User management over the API**: `api_user_management` controls whether admins can create, update and delete users, and change other users' passwords, through the Subsonic API. It is off by default. The admin panel is not affected.
+- **User management over the API**: [`api_user_management`](../configuration.md#api_user_management) controls whether admins can create, update and delete users, and change other users' passwords, through the Subsonic API. It is off by default. The admin panel is not affected.
 
 ## Adaptive login rate-limiting
 
 Two independent buckets slow down brute-force attempts:
 
-- **Per-pair of _(IP, username)_**: `rate_limit_max_failures` failed attempts within `rate_limit_block_window` seconds blocks that specific _(IP, username)_ pair.
+- **Per-pair of _(IP, username)_**: [`rate_limit_max_failures`](../configuration.md#rate_limit_max_failures) failed attempts within [`rate_limit_block_window`](../configuration.md#rate_limit_block_window) seconds blocks that specific _(IP, username)_ pair.
 
-- **Per-IP**: `rate_limit_ip_max_failures` failed attempts from an IP (using *any* username) within `rate_limit_ip_block_window` seconds blocks that IP. This catches attackers rotating usernames to dodge the per-user limit above.
+- **Per-IP**: [`rate_limit_max_failures`](../configuration.md#rate_limit_max_failures) failed attempts from an IP (using *any* username) within [`rate_limit_block_window`](../configuration.md#rate_limit_block_window) seconds blocks that IP. This catches attackers rotating usernames to dodge the per-user limit above.
 
 - **Tokenised URLs** (the unauthenticated stream URLs handed to Sonos/Chromecast speakers, and the image links in artist/album info) stop working after 12 hours (streams) or 24 hours (images) without being used. A speaker playing a queue or a client re-fetching an image keeps its link alive. Stale links return 404, and the client gets a fresh one the next time it asks.
 

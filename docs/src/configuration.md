@@ -222,7 +222,7 @@ Internal URI prefix your Nginx config maps, via an internal-only <code>location<
 
 ### `trusted_hosts`
 
-Allowed Host headers (domain names/IPs, comma-separated).<br>If empty, all hosts are allowed.<br>Loopback is always allowed.
+Allowed Host headers (domain names/IPs, comma-separated).<br>If empty, all hosts are allowed. Setting this is recommended if the server reachable beyond your own machine.<br>Loopback is always allowed.
 
 *type:* `str`
 

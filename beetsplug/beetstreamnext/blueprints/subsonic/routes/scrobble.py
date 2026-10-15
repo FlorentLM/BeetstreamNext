@@ -4,7 +4,7 @@ import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.constants import NOW_PLAYING_TIMEOUT_SEC
+from beetsplug.beetstreamnext.constants import MAX_SCROBBLE_IDS, NOW_PLAYING_TIMEOUT_SEC
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -27,6 +27,9 @@ def endpoint_scrobble() -> flask.Response:
 
     if not playing_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
+
+    if len(playing_ids) > MAX_SCROBBLE_IDS:
+        return subsonic_error(0, message=f'Too many ids. Maximum {MAX_SCROBBLE_IDS} plays per call.', resp_fmt=resp_fmt)
 
     username = flask.g.username
     now = time.time()

@@ -228,6 +228,7 @@ MAX_PODCAST_FEED_BYTES: int = 30 * 1024 * 1024   # 30 MB cap on a fetched podcas
 MAX_OPML_BYTES: int = 2 * 1024 * 1024            # 2 MB cap on an uploaded OPML subscriptions export
 MAX_REQUEST_BYTES: int = 4 * 1024 * 1024         # Request body above this are denied
 MAX_PAGE_SIZE: int = 1000                        # most items one API call returns
+MAX_SCROBBLE_IDS: int = 500                      # most plays one scrobble call can report
 
 
 ## Other stuff

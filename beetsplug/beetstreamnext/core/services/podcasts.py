@@ -36,7 +36,7 @@ def _get_audio_url(entry) -> Tuple[str, int]:
         href = enc.get('href') or enc.get('url')
         enc_type = (enc.get('type') or '').lower()
 
-        if href and (enc_type.startswith('audio/') or not enc_type):
+        if href and href.lower().startswith(('http://', 'https://')) and (enc_type.startswith('audio/') or not enc_type):
             try:
                 length = int(enc.get('length'))
             except (TypeError, ValueError):
@@ -526,7 +526,10 @@ class PodcastManager:
         if not url.strip():
             return None, 'Feed URL is required.'
 
-        url = normalize_url(url)
+        try:
+            url = normalize_url(url)
+        except ValueError as e:
+            return None, str(e)
         alt_url = https_variant(url)
 
         with database() as db:
@@ -825,7 +828,11 @@ class PodcastManager:
         failed: List[Tuple[str, str]] = []
 
         for url in urls:
-            norm = normalize_url(url)
+            try:
+                norm = normalize_url(url)
+            except ValueError as e:
+                failed.append((url, str(e)))
+                continue
             alt = https_variant(norm)
 
             with database() as db:

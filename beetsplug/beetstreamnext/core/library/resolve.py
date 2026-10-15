@@ -510,7 +510,7 @@ class Resolve:
         return result
 
     @classmethod
-    def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[
+    def playable(cls, entry_id: str, username: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[
         Tuple[str, str]]:
         """
         Resolve any playable Subsonic ID (song, radio station, or podcast episode) to (id, local path or URL).
@@ -541,28 +541,36 @@ class Resolve:
             return IDs.encode_song(standardise_datadict(obj)), path
 
         if entry_type == 'radio':
-            if not obj.get('stream_url'):
-                bsn_logger.warning(f'Radio station {entry_id!r} has no stream url, skipping.')
+
+            if obj.get('owner') != username:
+                bsn_logger.warning(f'Radio station {entry_id!r} belongs to someone else, skipping.')
                 return None
+
+            if not str(obj.get('stream_url') or '').lower().startswith(('http://', 'https://')):
+                bsn_logger.warning(f'Radio station {entry_id!r} has no http(s) stream url, skipping.')
+                return None
+
             return entry_id, obj['stream_url']
 
         if entry_type == 'podcast_episode':
+
             if obj.get('status') == 'completed' and obj.get('file_path'):
                 return entry_id, obj['file_path']
-            if obj.get('audio_url'):
+
+            if str(obj.get('audio_url') or '').lower().startswith(('http://', 'https://')):
                 return entry_id, obj['audio_url']
 
             bsn_logger.warning(f'Podcast episode {entry_id!r} has no playable source, skipping.')
             return None
 
     @classmethod
-    def playables(cls, entry_ids: Sequence[str]) -> List[Tuple[str, str]]:
+    def playables(cls, entry_ids: Sequence[str], username: str) -> List[Tuple[str, str]]:
         """
         Batched playable resolving. Resolves a list of playable Subsonic IDs
         to (id, local path or URL) pairs, skipping unresolvable ones.
         """
         resolved = cls.multiple(entry_ids)
-        return [item for entry_id in entry_ids if (item := cls.playable(entry_id, resolved)) is not None]
+        return [item for entry_id in entry_ids if (item := cls.playable(entry_id, username, resolved)) is not None]
 
     @classmethod
     def shared_items(cls, entry_ids: Sequence[str]) -> Tuple[List[Item], List[LibModel]]:

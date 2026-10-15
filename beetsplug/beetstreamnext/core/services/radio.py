@@ -51,9 +51,12 @@ def create_station(
     station_id is None if the owner already has this stream URL
     """
 
-    stream_url = normalize_url(stream_url, probe_https=True)
-    if homepage_url:
-        homepage_url = normalize_url(homepage_url)
+    try:
+        stream_url = normalize_url(stream_url, probe_https=True)
+        if homepage_url:
+            homepage_url = normalize_url(homepage_url)
+    except ValueError as e:
+        return None, str(e)
 
     with database() as db:
         existing = db.execute(
@@ -95,9 +98,12 @@ def update_station(
     of their stations, or if the station is not found.
     """
 
-    stream_url = normalize_url(stream_url, probe_https=True)
-    if homepage_url:
-        homepage_url = normalize_url(homepage_url)
+    try:
+        stream_url = normalize_url(stream_url, probe_https=True)
+        if homepage_url:
+            homepage_url = normalize_url(homepage_url)
+    except ValueError as e:
+        return str(e)
 
     with database() as db:
         station = db.execute(

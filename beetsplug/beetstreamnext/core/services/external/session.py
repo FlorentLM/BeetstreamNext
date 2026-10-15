@@ -172,6 +172,9 @@ def normalize_url(url: str, probe_https: bool = False, probe_timeout: float = 3.
     if not SCHEME_RE.match(url):
         url = f'https://{url}'
 
+    if not url.lower().startswith(('http://', 'https://')):
+        raise ValueError('Only http:// and https:// URLs are supported.')
+
     if probe_https and url.lower().startswith('http://'):
         https_url = https_variant(url)
 

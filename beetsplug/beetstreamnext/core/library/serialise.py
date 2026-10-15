@@ -702,7 +702,10 @@ class Serialise:
             return cls.song(obj)
 
         if entry_type == 'radio':
-            return cls.radio(dict(obj))
+            station = cls.radio(dict(obj))
+            if obj['owner'] != flask.g.get('username'):
+                station['streamUrl'] = station['homePageUrl'] = ''
+            return station
 
         if entry_type == 'podcast_episode':
             channel = Resolve.podcast_channel(IDs.encode_podcast_channel(obj['channel_id']))

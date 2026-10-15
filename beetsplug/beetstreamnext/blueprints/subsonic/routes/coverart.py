@@ -89,7 +89,7 @@ def endpoint_get_cover_art() -> flask.Response:
                     return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
 
     elif entry_type == 'radio':
-        if entry:
+        if entry and entry['owner'] == flask.g.username:
             response = send_stored_art('radio', entry['id'])
             if response is not None:
                 return response

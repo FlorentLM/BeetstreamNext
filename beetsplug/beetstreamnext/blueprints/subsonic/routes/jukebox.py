@@ -76,10 +76,10 @@ def endpoint_jukebox_control() -> flask.Response:
             pass
 
         elif action == 'set':
-            player.set_playlist(Resolve.playables(entry_ids))
+            player.set_playlist(Resolve.playables(entry_ids, username))
 
         elif action == 'add':
-            player.add(Resolve.playables(entry_ids))
+            player.add(Resolve.playables(entry_ids, username))
 
         elif action == 'clear':
             player.clear()

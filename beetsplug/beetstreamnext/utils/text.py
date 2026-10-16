@@ -99,7 +99,7 @@ def trim_text(text: str, char_limit: int = 300) -> str:
         return text
 
     snippet = text[:char_limit]
-    period_index = text.find(".", char_limit)
+    period_index = text.find(".", char_limit, char_limit + 200)  # Finish the sentence but not at any length
 
     if period_index != -1:
         snippet = text[:period_index + 1]

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import re
+import time
 import urllib.parse
 from typing import List
 import requests
 import asyncio
 
-from beetsplug.beetstreamnext.constants import RADIO_BROWSER, USER_AGENT
+from beetsplug.beetstreamnext.constants import MAX_RADIO_HOMEPAGE_BYTES, RADIO_BROWSER, USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.net import is_public_url
-from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch, http_session
+from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch, fetch_public
 
 
 _ICON_LINK_RE = re.compile(
@@ -50,24 +50,38 @@ def fetch_favicon(homepage_url: str) -> bytes:
     if not domain:
         return b''
 
-    if not is_public_url(homepage_url):
-        bsn_logger.warning(f'Refusing to fetch favicon from non-public URL: {homepage_url}')
-        return b''
-
     best_url, best_size = None, 0
     try:
-        resp = http_session().get(homepage_url, timeout=8, headers={'User-Agent': USER_AGENT})
-        if resp.ok:
-            for tag in _ICON_LINK_RE.findall(resp.text):
-                href = _ICON_HREF_RE.search(tag)
-                if not href:
-                    continue
-                size_match = _ICON_SIZES_RE.search(tag)
-                size = int(size_match.group(1)) if size_match else 32  # unspecified ~= favicon-grade
-                if size > best_size:
-                    best_url, best_size = urllib.parse.urljoin(homepage_url, href.group(1)), size
+        resp = fetch_public(homepage_url, timeout=8)
+    except ValueError:
+        bsn_logger.warning(f'Refusing to fetch favicon from non-public URL: {homepage_url}')
+        return b''
     except requests.exceptions.RequestException:
-        pass
+        resp = None
+
+    if resp is not None:
+        try:
+            if resp.ok:
+                page = bytearray()
+                deadline = time.monotonic() + 10
+                for chunk in resp.iter_content(8192):
+                    page += chunk
+                    if len(page) >= MAX_RADIO_HOMEPAGE_BYTES or time.monotonic() > deadline:
+                        break
+
+                html = bytes(page).decode(resp.encoding or 'utf-8', errors='replace')
+                for tag in _ICON_LINK_RE.findall(html):
+                    href = _ICON_HREF_RE.search(tag)
+                    if not href:
+                        continue
+                    size_match = _ICON_SIZES_RE.search(tag)
+                    size = int(size_match.group(1)) if size_match else 32
+                    if size > best_size:
+                        best_url, best_size = urllib.parse.urljoin(homepage_url, href.group(1)), size
+        except (requests.exceptions.RequestException, LookupError):
+            pass
+        finally:
+            resp.close()
 
     if best_url:
         image = capped_image_fetch(best_url)

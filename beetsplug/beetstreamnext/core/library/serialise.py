@@ -20,7 +20,7 @@ from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_d
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
 from beetsplug.beetstreamnext.core.runtime.web import external_url
-from beetsplug.beetstreamnext.utils.system import get_mimetype
+from beetsplug.beetstreamnext.utils.system import get_mimetype, relative_to
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.media.playlists import Playlist
@@ -449,7 +449,7 @@ class Serialise:
             'albumId': album_id,
             'coverArt': album_id or song_id,
             'language': data.get('language') or '',
-            'path': song_filepath,
+            'path': relative_to(song_filepath, app.config['root_directory']) if song_filepath else '',
             'userRating': one_rating(song_id),
             'duration': round(data.get('length') or 0),
             'bpm': data.get('bpm') or 0,

@@ -190,6 +190,21 @@ def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -
     return _remap_mount(path_obj, root_directory)
 
 
+def relative_to(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:
+
+    from beetsplug.beetstreamnext.core.config.store import settings_store
+
+    path_obj = Path(os.fsdecode(path))
+    for base in (os.fsdecode(root_directory), settings_store.get('library_remote_path')):
+        if base:
+            try:
+                return path_obj.relative_to(base).as_posix()
+            except ValueError:
+                continue
+
+    return path_obj.as_posix()
+
+
 def safe_filename(name: object, fallback: str = 'file') -> str:
     """File name that's safe (no control chars, quotes or path separators)."""
     cleaned = _UNSAFE_FILENAME_CHARS.sub('_', str(name or '')).strip(' .')

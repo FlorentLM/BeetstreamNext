@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
-from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
+from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -211,13 +211,15 @@ def endpoint_get_top_songs() -> flask.Response:
 
         if lastfm_track_names:
             placeholders = ','.join(['?'] * len(lastfm_track_names))
+            columns = get_beets_schema('items')
+            name_conditions, name_params = _sql_conditions_for(artist_name, [f for f in ('artist', 'artists') if f in columns])
             sql = f"""
                    SELECT * FROM items 
-                   WHERE (albumartist = ? OR artist = ? OR artists LIKE ?)
+                   WHERE (albumartist = ? OR {' OR '.join(name_conditions)})
                      AND title IN ({placeholders})
                    """
             with flask.g.lib.transaction() as tx:
-                top_tracks_available = list(tx.query(sql, [artist_name, artist_name, f"%{artist_name}%"] + lastfm_track_names))
+                top_tracks_available = list(tx.query(sql, [artist_name, *name_params, *lastfm_track_names]))
 
             if top_tracks_available:
                 preload_songs(top_tracks_available)
@@ -248,7 +250,7 @@ def endpoint_get_top_songs() -> flask.Response:
         if not item:
             continue
         if artist_name in (item.get('albumartist') or '', item.get('artist') or '') \
-                or artist_name in (item.get('artists') or ''):
+                or artist_name in split_beets_multi(item.get('artists') or ''):
             matches.append(item)
             if len(matches) >= count:
                 break

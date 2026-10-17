@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional, Tuple, Any, List
 import beets
@@ -428,16 +430,32 @@ def write_config(content: str) -> Tuple[bool, str]:
     except yaml.YAMLError as e:
         return False, f'Invalid YAML: {e}'
 
+    target = path.resolve()
+
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_path = tempfile.mkstemp(dir=path.parent)
+        target.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with os.fdopen(fd, 'w', encoding='utf-8') as tf:
-                tf.write(content)
-            os.replace(tmp_path, path)
+            fd, tmp_path = tempfile.mkstemp(dir=target.parent)
+            try:
+                with os.fdopen(fd, 'w', encoding='utf-8') as tf:
+                    tf.write(content)
+
+                if target.exists():
+                    shutil.copymode(target, tmp_path)
+
+                    if hasattr(os, 'chown'):
+                        stat = target.stat()
+                        with suppress(OSError):
+                            os.chown(tmp_path, stat.st_uid, stat.st_gid)
+
+                os.replace(tmp_path, target)
+            except OSError:
+                with suppress(OSError):
+                    os.unlink(tmp_path)
+                raise
         except OSError:
-            os.unlink(tmp_path)
-            raise
+            # No atomic swap possible
+            target.write_text(content, encoding='utf-8')
     except OSError as e:
         bsn_logger.error(f"Failed to write beets config '{path}': {e}")
         return False, f'Failed to write file: {e}'

@@ -90,7 +90,7 @@ def build_app(root: Path, config: dict | None = None, yaml_defaults: dict | None
 
     prestartup_config(beets_db, root / 'bsn.db', None)
 
-    app.config.update(lib=lib, root_directory=music_dir, **(config or {}))
+    app.config.update(lib=lib, music_root=music_dir, **(config or {}))
     app.config.pop('_users_exist_cache', None)
     playlist_dir = root / 'playlists'
     playlist_dir.mkdir()

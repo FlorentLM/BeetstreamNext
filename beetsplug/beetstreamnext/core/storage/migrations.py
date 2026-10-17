@@ -247,11 +247,9 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
     from beetsplug.beetstreamnext.core.library.ids import IDs
 
     config = flask.current_app.config
+    _music_root = config.get('music_root')
 
-    if config.get('music_root'):
-        return str(config['music_root'])
-
-    if config.get('STANDALONE_MODE'):  # 'music_root' setting is standalone-only
+    if not _music_root and config.get('STANDALONE_MODE'):  # 'music_root' setting is standalone-only
         try:
             row = conn.execute(
                 """
@@ -259,15 +257,12 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
                 FROM settings
                 WHERE key = 'music_root'
                 """).fetchone()
-            stored = json.loads(row[0]) if row and row[0] else ''
+            _music_root = json.loads(row[0]) if row and row[0] else ''
 
         except (sqlite3.Error, ValueError):
-            stored = ''
+            _music_root = ''
 
-        if stored:
-            return str(stored)
-
-    _music_root = str(beets.config['directory'].get())
+    _music_root = str(_music_root or beets.config['directory'].get())
 
     conn.commit()   # close any implicit transaction before toggling FK enforcement
     conn.execute("""PRAGMA foreign_keys = OFF""")

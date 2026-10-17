@@ -123,6 +123,10 @@ _SONG_REF_TABLES = (
 )
 
 
+_SWEEP_MIN_REFS = 20
+_SWEEP_MAX_STALE_RATIO = 0.5
+
+
 @with_app_context
 def sweep_stale_references() -> dict[str, int]:
     """
@@ -176,6 +180,13 @@ def sweep_stale_references() -> dict[str, int]:
         if all_refs:
             resolved = Resolve.songs(list(all_refs))
             stale_songs = all_refs - resolved.keys()
+
+            # A library that was swapped, emptied or failed to load would otherwise wipe everyone's data
+            if len(all_refs) >= _SWEEP_MIN_REFS and len(stale_songs) / len(all_refs) > _SWEEP_MAX_STALE_RATIO:
+                bsn_logger.warning(
+                    f'{len(stale_songs)}/{len(all_refs)} song references seem stale, which is sus. Is the right beets library loaded?'
+                )
+                stale_songs = set()
 
             for (table, column), ids in refs_by_table.items():
 

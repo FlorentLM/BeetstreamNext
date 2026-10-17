@@ -382,10 +382,10 @@ class Resolve:
                 if row[0] in seen_rows:
                     continue
                 seen_rows.add(row[0])
-                key = row[1] or row[2]
                 item = flask.g.lib.get_item(row[0])
-                for sid in by_mbid.get(key, []):
-                    result[sid] = item
+                for key in {row[1], row[2]}:
+                    for sid in by_mbid.get(key, []):
+                        result[sid] = item
 
         if by_hash:
             root_directory = app.config['root_directory']

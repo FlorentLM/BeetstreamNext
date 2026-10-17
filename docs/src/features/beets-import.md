@@ -57,9 +57,36 @@ Editing it from the Admin WebUI is restricted by default for security. You can a
 >
 > Only enable it if you trust every admin account _and the network_ they reach the panel from (i.e. via HTTPS, and ideally using the `admin_hostname` restriction).
 
+### Blocked settings
+
+Even with editing enabled, the config editor refuses to save any change that adds or modifies a setting that's able to run code or commands.
+
+| Kind                   | Blocked                                                                                                                                                          |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Plugins                | `inline` and `hook` (can't be added to `plugins`)                                                                                                                |
+| Top-level keys         | `pluginpath`, `item_fields`, `album_fields`                                                                                                                      |
+| Command/binary options | `hook.hooks`, `convert.command`, `convert.formats`, `play.command`, `play.raw`, `badfiles.commands`, `replaygain.command`, `keyfinder.bin`, `absubmit.extractor` |
+
+- The YAML is parsed with a safe loader so Python-specific tags are never evaluated
+- Entries that were **already in the file are trusted** as long as you leave them _unchanged_, so a config that legitimately uses `convert.command` can still be edited around it. Changing or adding one is refused, and the response lists the offending names
+
+> [!IMPORTANT]
+> This is not a sandbox: it can't stop someone with access to the file on disk, and it only knows about the options listed above. Third-party plugins that can execute commands are not covered.
+
 ## Disk writes
 
 Imports that write tags, or that copy/move files, need [`allow_disk_writes`](../configuration.md#library--metadata) enabled. This isn't required if your Beets config has `write`, `copy` and `move` all disabled.
+
+This also counts some plugins as disk-writing when they are loaded:
+
+| Plugin     | Considered unsafe when      |
+|------------|-----------------------------|
+| `scrub`    | `scrub.auto` is on          |
+| `embedart` | `embedart.auto` is on       |
+| `fetchart` | `fetchart.auto` is on       |
+| `hook`     | always                      |
+
+If the config can't be resolved, the import is treated as unsafe and requires  [`allow_disk_writes`](../configuration.md#library--metadata).
 
 ## Notifications
 

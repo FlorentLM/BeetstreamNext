@@ -19,6 +19,25 @@
 
 - **User management over the API**: [`api_user_management`](../configuration.md#api_user_management) controls whether admins can create, update and delete users, and change other users' passwords, through the Subsonic API. It is off by default. The admin panel is not affected.
 
+## Beets config protection
+
+The Beets config can load plugins and run commands, so editing it from the admin panel has some restrictions:
+
+- [`allow_beets_config_edit`](../configuration.md#allow_beets_config_edit) must be enabled before server runs (it can't be changed from the Web UI).
+
+- **Code-execution settings are blocked**: even when editing is on, the panel refuses to add or modify the `inline` and `hook` plugins, `pluginpath`, `item_fields`/`album_fields`, and options holding a command or binary (`convert.command`, `play.command`, `keyfinder.bin`, etc).
+
+    Settings already present in the file are honoured as long as they are unchanged.
+
+    See [Blocked settings](./beets-import.md#blocked-settings) for the full list.
+
+- **Disk writes need opt-in**: imports that would modify files (tags, copy/move, or plugins such as `scrub`, `embedart` or `fetchart` in `auto` mode) require [`allow_disk_writes`](../configuration.md#allow_disk_writes).
+
+    See [Disk writes](./beets-import.md#disk-writes).
+
+> [!NOTE]
+> These are guard rails against a compromised or careless admin session, not a sandbox. Someone who has write access to the config file on the server can obviously still change them.
+
 ## Adaptive login rate-limiting
 
 Two independent buckets slow down brute-force attempts:

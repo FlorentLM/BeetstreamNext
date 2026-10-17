@@ -62,15 +62,32 @@ _NEEDS_INPUT_SNIPPETS = (
 )
 
 
+# Plugins that change the music folder when importing (and the option that turns them off)
+DISK_WRITING_PLUGINS = {'scrub': 'auto', 'embedart': 'auto', 'fetchart': 'auto', 'hook': None}
+# TODO: add more?
+
+
 def is_import_safe() -> bool:
     """
     Returns True if the resolved beets config has no disk-affecting side effects
     (no file modification, moving or copying)
     """
     try:
-        return not any(beets.config['import'][key].get(bool) for key in ('move', 'copy', 'write'))
+        if any(beets.config['import'][key].get(bool) for key in ('move', 'copy', 'write')):
+            return False
+
+        loaded = beets.config['plugins'].as_str_seq()
+
+        for name, option in DISK_WRITING_PLUGINS.items():
+            if name not in loaded:
+                continue
+            if option is None or beets.config[name][option].get(bool):
+                return False
+
     except confuse.ConfigError:
         return False
+
+    return True
 
 
 def import_status() -> dict:

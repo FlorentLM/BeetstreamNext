@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.session import http_session
 
 
-def query_discogs(release_id: Any) -> dict:
+def query_discogs(release_id: Any, cached_only: bool = False) -> dict:
     """
     Fetch a Discogs release.
     Unauthenticated version so 25 req/min, maximum.
@@ -20,7 +20,7 @@ def query_discogs(release_id: Any) -> dict:
     headers = {'User-Agent': USER_AGENT}
 
     try:
-        response = http_session().get(endpoint, headers=headers, timeout=8)
+        response = http_session().get(endpoint, headers=headers, timeout=8, only_if_cached=cached_only)
         if response.from_cache:
             bsn_logger.debug(f"Cache hit for Discogs: {release_id}")
         return response.json() if response.ok else {}

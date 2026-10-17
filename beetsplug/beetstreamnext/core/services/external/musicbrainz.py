@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch, http_session
 
 
-def query_musicbrainz(mbid: str, data_type: str) -> dict:
+def query_musicbrainz(mbid: str, data_type: str, cached_only: bool = False) -> dict:
 
     types_mb = {'track': 'recording', 'album': 'release', 'artist': 'artist'}
     endpoint = f'https://musicbrainz.org/ws/2/{types_mb[data_type]}/{mbid}'
@@ -19,7 +19,7 @@ def query_musicbrainz(mbid: str, data_type: str) -> dict:
         params['inc'] = 'url-rels'
 
     try:
-        response = http_session().get(endpoint, headers=headers, params=params, timeout=8)
+        response = http_session().get(endpoint, headers=headers, params=params, timeout=8, only_if_cached=cached_only)
         if response.from_cache:
             bsn_logger.debug(f"Cache hit for MusicBrainz: {mbid}")
         return response.json() if response.ok else {}

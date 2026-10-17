@@ -316,15 +316,19 @@ class Serialise:
         }
         subsonic_album.update(album_specific)
 
+        # Lists of albums only use cache (network is for single album views)
+        cached_only = not include_songs
+
         version = data.get('version')  # 'Deluxe Edition', 'Japanese Expanded Edition', etc.
         if not version and subsonic_album['musicBrainzId'] and app.config.get('fetch_album_version'):
-            mb_data = query_musicbrainz(subsonic_album['musicBrainzId'], data_type='album')
+            mb_data = query_musicbrainz(subsonic_album['musicBrainzId'], data_type='album', cached_only=cached_only)
             version = mb_data.get('disambiguation')
+
+            if version and app.config.get('save_album_version'):
+                write_beets_field('album', beets_album_id, 'version', version.title(), allow_flex=True)
 
         if version:
             subsonic_album['version'] = version.title()
-            if app.config.get('save_album_version'):
-                write_beets_field('album', data['id'], 'version', version.title(), allow_flex=True)
 
         # Add labels if possible
         label = data.get('label', '')
@@ -400,7 +404,7 @@ class Serialise:
 
         discogs_avg = None
         if discogs_mode != 'off' and data.get('discogs_albumid') and (discogs_mode == 'prefer' or not local_count):
-            rating = query_discogs(data['discogs_albumid']).get('community', {}).get('rating', {})
+            rating = query_discogs(data['discogs_albumid'], cached_only=cached_only).get('community', {}).get('rating', {})
             if rating.get('average'):
                 discogs_avg = round(rating['average'], 2)
 

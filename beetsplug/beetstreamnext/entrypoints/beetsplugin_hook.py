@@ -26,6 +26,7 @@ from beets.plugins import BeetsPlugin
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.runtime.startup import run_server, prestartup_config
 from beetsplug.beetstreamnext.core.storage.schema import initialise_db
 from beetsplug.beetstreamnext.core.accounts.commands import (
@@ -49,9 +50,17 @@ def _detect_config_override(argv: List[str]) -> Optional[str]:
     parser.add_option('-p', '--plugins')
     parser.add_option('-P', '--disable-plugins')
 
+    def _raise(msg):
+        raise optparse.OptParseError(msg)
+    parser.error = _raise
+
     try:
         options, _ = parser.parse_args(list(argv))
-    except optparse.OptParseError:
+    except optparse.OptParseError as e:
+        bsn_logger.warning(
+            f"Could not read beets' command line to find a -c/--config ({e}). "
+            "Assuming default beets config file."
+        )
         return None
 
     return options.config

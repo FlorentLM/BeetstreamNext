@@ -12,9 +12,14 @@ from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 
 
-_werkzeug_regex = re.compile(r'("(?:GET|POST|PUT|DELETE|HEAD|PATCH|OPTIONS) )(\S+)( HTTP/\d)')
-
-_SENSITIVE_URL_PARAMS = frozenset({'p', 't', 's', 'apiKey', 'password'})
+# Matched case-insensitively
+_SENSITIVE_URL_PARAMS = frozenset({
+    'p', 't', 's', 'apikey', 'api_key', 'password', 'token', 'access_token', 'secret', 'auth'
+})
+_sensitive_param_regex = re.compile(
+    r'([?&;](?:' + '|'.join(sorted(map(re.escape, _SENSITIVE_URL_PARAMS), key=len, reverse=True)) + r')=)[^&\s"\'#]*',
+    re.IGNORECASE
+)
 _REDACTED = 'REDACTED'
 
 
@@ -39,7 +44,7 @@ def _scrub_uri(req_uri: str) -> str:
         return req_uri
 
     scrubbed = [
-        (k, _REDACTED if k in _SENSITIVE_URL_PARAMS else v)
+        (k, _REDACTED if k.lower() in _SENSITIVE_URL_PARAMS else v)
         for k, v in parse_qsl(parts.query, keep_blank_values=True)
     ]
     new_query = urlencode(scrubbed)
@@ -77,34 +82,32 @@ class LoggingRedactingFilter(logging.Filter):
         if DISABLE_LOGS_REDACTION:
             return True
 
-        else:
-            msg = record.getMessage()
-            if '?' in msg and any(f'{p}=' in msg for p in _SENSITIVE_URL_PARAMS):
-                record.msg = self._scrub_werkzeug_line(msg)
+        msg = record.getMessage()
+        if '=' in msg:
+            scrubbed = self._scrub_text(msg)
+            if scrubbed != msg:
+                record.msg = scrubbed
                 record.args = ()
-            return True
+        return True
 
     @staticmethod
-    def _scrub_werkzeug_line(line: str) -> str:
+    def _scrub_text(text: str) -> str:
         """
-        Werkzeug logs lines like: "GET /rest/ping?u=x&p=y HTTP/1.1" 200 -
-        Try (best effort) to find the quoted request target and scrub its query string.
+        Blank the value of a sensitive `?param=value` / `&param=value` found anywhere
+        in the text (request lines, referrers, URLs in error messages from requests/urllib3 etc).
         """
-
-        def _repl(m: re.Match) -> str:
-            return m.group(1) + _scrub_uri(m.group(2)) + m.group(3)
-
-        # "METHOD URI HTTP/x.y"  -> capture the URI between method and protocol
-        return re.sub(_werkzeug_regex, _repl, line)
+        return _sensitive_param_regex.sub(lambda m: m.group(1) + _REDACTED, text)
 
 
 def apply_logs_redaction() -> None:
-    """
-    Attach the redacting filter to the loggers whose records can contain raw request URLs.
-    """
+
     if DISABLE_LOGS_REDACTION:
         return
+
     _filter = LoggingRedactingFilter()
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(_filter)
+
     logging.getLogger('werkzeug').addFilter(_filter)
     bsn_logger.addFilter(_filter)
 

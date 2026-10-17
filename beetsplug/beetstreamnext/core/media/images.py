@@ -15,6 +15,7 @@ import flask
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.web import request_url, read_upload
 from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split_beets_multi
+from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.constants import (
     MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
@@ -281,7 +282,12 @@ def image_from_song(path: str | Path) -> bytes | None:
                 '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
                 'pipe:1'
             ]
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                env=subprocess_env()
+            )
             try:
                 img_bytes, _ = process.communicate(timeout=5)
             except subprocess.TimeoutExpired:

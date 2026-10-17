@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON, TRANSCODE_MAX_CONC
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.web import send_file
+from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import find_binary
 
 
@@ -179,7 +180,12 @@ def _send_transcode(
 
         command.append('pipe:1')
 
-        output_stream = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        output_stream = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            env=subprocess_env()
+        )
     else:
         return None
 
@@ -298,7 +304,13 @@ def _send_transcode_tempfile(
     command.append(str(tmp_path))
 
     try:
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600)
+        result = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=600,
+            env=subprocess_env()
+        )
     except (subprocess.TimeoutExpired, OSError) as e:
         bsn_logger.warning(f"Full transcode of '{file_path}' failed: {e}")
         tmp_path.unlink(missing_ok=True)

@@ -13,6 +13,7 @@ from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths, mark_pinned_triggered
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.utils.general import filter_dict
 
 
 Snapshot = FrozenSet[Tuple[str, int, int]]
@@ -67,7 +68,7 @@ class ImportWatcher(threading.Thread):
         with app.app_context():
 
             watched = [p for p in list_pinned_paths() if p['watch']]
-            self._states = {k: v for k, v in self._states.items() if k in {p['path'] for p in watched}}
+            self._states = filter_dict(self._states, keep={p['path'] for p in watched})
 
             settle = settings_store.get('import_watch_settle')
             now = time.monotonic()

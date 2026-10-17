@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR
+from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import find_binary
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, JukeboxUnavailableException, PropertyUnavailableExceptionException
@@ -29,7 +30,13 @@ def mpv_discovery(timeout: float = 5.0) -> List[dict]:
         raise JukeboxUnavailableException("mpv wasn't found. Install it, or update the 'mpv_path' setting.")
 
     try:
-        result = subprocess.run([mpv_bin, '--audio-device=help'], capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(
+            [mpv_bin, '--audio-device=help'],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=subprocess_env()
+        )
     except Exception as e:
         raise JukeboxUnavailableException(f'mpv device listing failed: {e}') from e
 
@@ -96,7 +103,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
 
         bsn_logger.info(f'Jukebox: launching mpv: {shlex.join(args)}')
         self._proc = subprocess.Popen(
-            args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=subprocess_env()
         )
         threading.Thread(target=self._drain_output, args=(self._proc,), daemon=True).start()
 

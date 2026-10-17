@@ -6,6 +6,7 @@ from beetsplug.beetstreamnext.blueprints.views import modal_error
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.utils.general import filter_dict
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, list_users, set_user_avatar, session_stamp
 from beetsplug.beetstreamnext.core.accounts.sessions import revoke_user_sessions
@@ -32,9 +33,7 @@ def route_create_user() -> str | flask.Response:
         data = collect_form_data(form)
         is_admin = data.pop('adminRole', False)
         # username/password are passed positionally and csrf_token isn't a user field
-        data.pop('username', None)
-        data.pop('password', None)
-        data.pop('csrf_token', None)
+        data = filter_dict(data, drop=('username', 'password', 'csrf_token'))
         raw_api_key = create_user(
             form.username.data,
             form.password.data,

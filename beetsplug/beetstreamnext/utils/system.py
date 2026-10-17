@@ -269,9 +269,12 @@ def find_binary(name: str) -> Optional[str]:
 @lru_cache(maxsize=8)
 def binary_version(bin_path: str, version_flag: str) -> Optional[str]:
     """Runs '<bin_path> <version_flag>' and pulls a version number from first line of output."""
+
+    from beetsplug.beetstreamnext.utils.general import subprocess_env
+
     try:
         result = subprocess.run(
-            [bin_path, version_flag], capture_output=True, text=True, timeout=5
+            [bin_path, version_flag], capture_output=True, text=True, timeout=5, env=subprocess_env()
         )
     except (OSError, subprocess.TimeoutExpired) as e:
         bsn_logger.warning(f"Could not run '{bin_path} {version_flag}': {e}")

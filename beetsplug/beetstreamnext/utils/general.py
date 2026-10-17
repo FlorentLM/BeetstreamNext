@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Optional, Tuple
+from typing import Any, Collection, Dict, Mapping, Optional, Tuple
 
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, strip_text, standard_ascii, safe_str
 from beetsplug.beetstreamnext.constants import (
@@ -14,6 +15,32 @@ from beetsplug.beetstreamnext.constants import (
 
 ##
 # Various parsers / converters / formatters
+
+
+def filter_dict(data: Mapping, keep: Optional[Collection] = None, drop: Collection = ()) -> dict:
+    """A copy of `data` only with the keys in `keep` and without the keys in `drop`."""
+    return {k: v for k, v in data.items() if (keep is None or k in keep) and k not in drop}
+
+
+@lru_cache(maxsize=1)
+def _secret_env_vars() -> frozenset:
+    from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
+
+    return frozenset(
+        {'BEETSTREAMNEXT_KEY'}
+        | {spec['env_var'] for spec in SETTINGS_SCHEMA.values() if spec.get('sensitive') and 'env_var' in spec}
+    )
+
+
+def subprocess_env(*drop: str) -> Dict[str, str]:
+    """
+    The environment for a child process without any secret or unnecessary env vars.
+
+    Args:
+        - drop: more variables to leave out
+    """
+    return filter_dict(os.environ, drop=_secret_env_vars() | set(drop))
+
 
 
 def api_bool(val: Any) -> bool:

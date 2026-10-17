@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
 from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.utils.general import filter_dict
 from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 
@@ -71,7 +72,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
     if not username:
         raise ValueError("User dict must have the 'username' key!")
 
-    filtered_dict = {k: v for k, v in _user_dict.items() if k in ALL_USER_FIELDS}
+    filtered_dict = filter_dict(_user_dict, keep=ALL_USER_FIELDS)
 
     cipher = get_cipher()
     if 'password' in filtered_dict and cipher:
@@ -206,7 +207,7 @@ def update_user(username: str, **updates):
     if not get_userdata(username, fields=['username']):   # any field, doesnt matter
         raise ValueError(f"User '{username}' does not exist.")
 
-    filtered_updates = {k: v for k, v in updates.items() if k in ALL_USER_FIELDS}
+    filtered_updates = filter_dict(updates, keep=ALL_USER_FIELDS)
     filtered_updates['username'] = username
 
     if 'password' in filtered_updates and len(filtered_updates['password']) < MIN_PASSWORD_LEN:

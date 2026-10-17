@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.constants import (
 )
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.general import api_bool, subprocess_env
 from beetsplug.beetstreamnext.core.runtime.web import send_file
 from beetsplug.beetstreamnext.utils.system import dir_size, get_mimetype, find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -82,7 +82,12 @@ def _run_hls_encode(command: list, stream_dir) -> None:
     """Runs ffmpeg (holds an HLS slot), and drops the session if it failed."""
 
     try:
-        returncode = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+        returncode = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=subprocess_env()
+        ).returncode
     except OSError as e:
         bsn_logger.warning(f'HLS encode failed to start: {e}')
         returncode = -1

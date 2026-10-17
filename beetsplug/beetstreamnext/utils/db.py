@@ -51,6 +51,34 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
     return columns
 
 
+_lib_cache: Dict[str, Any] = {}
+
+_lib_cache_lock = threading.Lock()
+
+
+def _library_stamp() -> Tuple:
+    path = os.fsdecode(flask.g.lib.path)
+    mtimes = []
+    for p in (path, path + '-wal'):
+        try:
+            mtimes.append(os.path.getmtime(p))
+        except OSError:
+            mtimes.append(None)
+    return (path, *mtimes)
+
+
+def library_cache(name: str) -> Dict[Any, Any]:
+    """
+    Process-wide dict for things derived from the beets library, shared across requests.
+    """
+    stamp = _library_stamp()
+    with _lib_cache_lock:
+        if _lib_cache.get('_stamp') != stamp:
+            _lib_cache.clear()
+            _lib_cache['_stamp'] = stamp
+        return _lib_cache.setdefault(name, {})
+
+
 def chunked_query(
         db_obj: 'Transaction | Connection',
         query_template: str,

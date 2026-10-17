@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import os
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Any, Sequence, Callable
@@ -11,9 +10,9 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid, sha1_hex
 from beetsplug.beetstreamnext.utils.system import path_hash, resolve_path
-from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
+from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query, library_cache, sql_conditions_for
 
 
 def beets_abspath(item: Dict | Item | Any) -> Path:
@@ -63,7 +62,7 @@ def get_artist_metadata(name: str) -> dict:
     if not name:
         return {'mbid': '', 'sort_name': '', 'roles': []}
 
-    cache = flask.g.setdefault('_artist_metadata_cache', {})
+    cache = library_cache('artist_metadata')
     if name in cache:
         return cache[name]
 
@@ -105,37 +104,26 @@ def get_artist_metadata(name: str) -> dict:
                 sort_name = row[1]
 
         # Check for secondary roles
-        if not roles:
-            if tx.query(
-                    """
-                    SELECT 1
-                    FROM items
-                    WHERE artists LIKE ?
-                    LIMIT 1
-                    """, (f"%{name}%",)):
-                roles.append('artist')
-
         cols = get_beets_schema('items')
 
-        comp_col = 'composers' if 'composers' in cols else ('composer' if 'composer' in cols else None)
-        if comp_col and tx.query(
-                f"""
-                SELECT 1 FROM items
-                WHERE {comp_col} = ? OR {comp_col}
-                LIKE ?
-                LIMIT 1
-                """, (name, f"%{name}%")):
-            roles.append('composer')
+        checks = []     # (role, column)
+        if not roles:
+            checks.append(('artist', 'artists'))
 
-        lyr_col = 'lyricists' if 'lyricists' in cols else ('lyricist' if 'lyricist' in cols else None)
-        if lyr_col and tx.query(
-                f"""
-                SELECT 1 FROM items
-                WHERE {lyr_col} = ? OR {lyr_col}
-                LIKE ?
-                LIMIT 1
-                """, (name, f"%{name}%")):
-            roles.append('lyricist')
+        checks.append(('composer', 'composers' if 'composers' in cols else 'composer'))
+        checks.append(('lyricist', 'lyricists' if 'lyricists' in cols else 'lyricist'))
+        checks = [(role, col) for role, col in checks if col in cols]
+
+        if checks:
+            selects = []
+            params = []
+            for _, col in checks:
+                conditions, col_params = sql_conditions_for(name, [col])
+                selects.append(f"MAX({' OR '.join(conditions)})")
+                params.extend(col_params)
+
+            found = tx.query(f"""SELECT {', '.join(selects)} FROM items""", params)[0]
+            roles.extend(role for (role, _), hit in zip(checks, found) if hit)
 
     result = {
         'mbid': mbid,
@@ -145,6 +133,30 @@ def get_artist_metadata(name: str) -> dict:
 
     cache[name] = result
     return result
+
+
+def _song_hash_index() -> Dict[str, int]:
+    """
+    Path hash -> beets id mapping for songs that have no mbid.
+    """
+
+    root_directory = app.config['root_directory']
+    cache = library_cache(f'song_hash:{root_directory}')
+
+    if 'index' not in cache:
+        with flask.g.lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT id, path
+                FROM items
+                WHERE (mb_releasetrackid IS NULL OR mb_releasetrackid = '')
+                  AND (mb_trackid IS NULL OR mb_trackid = '')
+                ORDER BY id DESC
+                """
+            )
+        cache['index'] = {path_hash(row[1], root_directory): row[0] for row in rows}    # lowest id wins a collision
+
+    return cache['index']
 
 
 ##
@@ -230,22 +242,21 @@ class Resolve:
             return artist_name, value  # value is the mbid
 
         elif kind == 'hash':
-            with flask.g.lib.transaction() as tx:
-                candidates = tx.query(
-                    """
-                    SELECT albumartist
-                    FROM albums
-                    WHERE albumartist IS NOT NULL
-                    GROUP BY albumartist
-                    """
-                )
+            cache = library_cache('artist_hash')
+            if 'index' not in cache:
+                with flask.g.lib.transaction() as tx:
+                    rows = tx.query(
+                        """
+                        SELECT albumartist
+                        FROM albums
+                        WHERE albumartist IS NOT NULL
+                        GROUP BY albumartist
+                        """
+                    )
+                cache['index'] = {sha1_hex(r[0])[:16]: r[0] for r in rows if r[0]}
 
-            for row in candidates:
-                name = row[0] or ''
-                if name and hashlib.sha1(name.encode('utf-8')).hexdigest()[:16] == value:
-                    return name, ''
-
-            return None
+            name = cache['index'].get(value)
+            return (name, '') if name else None
 
         else:
             artist_name = value
@@ -272,21 +283,24 @@ class Resolve:
             return flask.g.lib.get_album(rows[0][0]) if rows else None
 
         if kind == 'hash':
-            with flask.g.lib.transaction() as tx:
-                candidates = tx.query(
-                    """
-                    SELECT id, albumartist, album
-                    FROM albums
-                    WHERE mb_albumid IS NULL OR mb_albumid = ''
-                    """
-                )
+            cache = library_cache('album_hash')
+            if 'index' not in cache:
+                with flask.g.lib.transaction() as tx:
+                    rows = tx.query(
+                        """
+                        SELECT id, albumartist, album
+                        FROM albums
+                        WHERE mb_albumid IS NULL OR mb_albumid = ''
+                        ORDER BY id DESC
+                        """
+                    )
+                cache['index'] = {      # descending (lowest id wins a collision)
+                    sha1_hex(f"{r[1] or ''}\x1f{r[2] or ''}")[:16]: r[0]
+                    for r in rows
+                }
 
-            for row in candidates:
-                key = f"{row[1] or ''}\x1f{row[2] or ''}"
-                if hashlib.sha1(key.encode('utf-8')).hexdigest()[:16] == value:
-                    return flask.g.lib.get_album(row[0])
-
-            return None
+            album_id = cache['index'].get(value)
+            return flask.g.lib.get_album(album_id) if album_id is not None else None
 
         if kind == 'legacy_int':
             return flask.g.lib.get_album(value)
@@ -314,23 +328,8 @@ class Resolve:
             return flask.g.lib.get_item(rows[0][0]) if rows else None
 
         if kind == 'hash':
-            root_directory = app.config['root_directory']
-
-            with flask.g.lib.transaction() as tx:
-                candidates = tx.query(
-                    """
-                    SELECT id, path
-                    FROM items
-                    WHERE (mb_releasetrackid IS NULL OR mb_releasetrackid = '')
-                      AND (mb_trackid IS NULL OR mb_trackid = '')
-                    """
-                )
-
-            for row in candidates:
-                if path_hash(row[1], root_directory) == value:
-                    return flask.g.lib.get_item(row[0])
-
-            return None
+            item_id = _song_hash_index().get(value)
+            return flask.g.lib.get_item(item_id) if item_id is not None else None
 
         if kind == 'legacy_int':
             return flask.g.lib.get_item(value)
@@ -388,21 +387,11 @@ class Resolve:
                         result[sid] = item
 
         if by_hash:
-            root_directory = app.config['root_directory']
-            with flask.g.lib.transaction() as tx:
-                candidates = tx.query(
-                    """
-                    SELECT id, path
-                    FROM items
-                    WHERE (mb_releasetrackid IS NULL OR mb_releasetrackid = '')
-                      AND (mb_trackid IS NULL OR mb_trackid = '')
-                    """
-                )
-            for row in candidates:
-                h = path_hash(row[1], root_directory)
-                if h in by_hash:
-                    item = flask.g.lib.get_item(row[0])
-                    for sid in by_hash[h]:
+            index = _song_hash_index()
+            for h, sids in by_hash.items():
+                if h in index:
+                    item = flask.g.lib.get_item(index[h])
+                    for sid in sids:
                         result[sid] = item
 
         if by_int:

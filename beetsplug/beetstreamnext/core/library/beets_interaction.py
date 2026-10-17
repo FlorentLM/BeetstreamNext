@@ -28,6 +28,7 @@ from beetsplug.beetstreamnext.core.notifications import (
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
+from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_elapsed
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
 
@@ -127,8 +128,7 @@ def start_import(path: str, quiet: bool = False, incremental: bool = False, rese
             command += ['-q', '--incremental' if incremental else '--noincremental']
         command.append(str(candidate))
 
-        env = dict(os.environ)
-        env.pop('NO_COLOR', None)
+        env = subprocess_env('NO_COLOR')
         env.setdefault('TERM', 'xterm-256color')
 
         if reset_log:

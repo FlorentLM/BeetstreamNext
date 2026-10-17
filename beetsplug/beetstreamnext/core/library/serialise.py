@@ -193,9 +193,6 @@ class Serialise:
             },
         }
 
-        if display_composer:
-            subsonic_media['displayComposer'] = display_composer
-
         return subsonic_media
 
     @classmethod

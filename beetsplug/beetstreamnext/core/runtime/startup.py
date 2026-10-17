@@ -304,7 +304,6 @@ def run_server(
         threads = settings_store.get('threads')
         channel_timeout = settings_store.get('channel_timeout')
         connection_limit = settings_store.get('connection_limit')
-        logging.getLogger('waitress').setLevel(LOG_LEVEL)
 
         if LOG_LEVEL > logging.INFO:
             urls = ', '.join(f'http://{n}' for n in netlocs)

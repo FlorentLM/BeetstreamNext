@@ -17,6 +17,11 @@ from beetsplug.beetstreamnext.constants import (
 # Text utilities
 
 
+def sha1_hex(value: str) -> str:
+    """Hex SHA-1 digest of a string (UTF-8)."""
+    return hashlib.sha1(value.encode('utf-8')).hexdigest()
+
+
 def sha256_hex(value: str) -> str:
     """Hex SHA-256 digest of a string (UTF-8)."""
     return hashlib.sha256(value.encode('utf-8')).hexdigest()

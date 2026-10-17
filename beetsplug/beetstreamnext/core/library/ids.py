@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import base64
-import hashlib
 from pathlib import Path
 from typing import Optional, Tuple, Any
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import split_beets_multi
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, sha1_hex
 from beetsplug.beetstreamnext.utils.system import path_hash
 
 
@@ -174,7 +173,7 @@ class IDs:
         """
 
         if joint_credit:
-            digest = hashlib.sha1(str(name_or_mbid).encode('utf-8')).hexdigest()[:16]
+            digest = sha1_hex(str(name_or_mbid))[:16]
             return f"{cls._ART_HASH_PREF}{digest}"
 
         if is_mbid is None:
@@ -211,7 +210,7 @@ class IDs:
 
         key = f"{albumartist or ''}\x1f{album or ''}"
         if key != '\x1f':
-            digest = hashlib.sha1(key.encode('utf-8')).hexdigest()[:16]
+            digest = sha1_hex(key)[:16]
             return f"{cls._ALB_HASH_PREF}{digest}"
 
         return f"{cls._ALB_ID_PREF}{beets_id or 0}"

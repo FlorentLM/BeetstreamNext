@@ -92,3 +92,20 @@ class KeyedLimiter:
     def held(self, key: Hashable) -> int:
         with self._lock:
             return self._held.get(key, 0)
+
+
+class DoOnce:
+    """Hands out a single True from `claim()`, to do something (like warn) only the first time."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._claimed = False
+
+    def claim(self) -> bool:
+        with self._lock:
+            if self._claimed:
+                return False
+            self._claimed = True
+            return True
+
+

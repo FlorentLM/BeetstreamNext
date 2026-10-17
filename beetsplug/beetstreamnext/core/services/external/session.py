@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import ipaddress
 import socket
 import time
@@ -106,33 +107,28 @@ class PublicOnlyAdapter(HTTPAdapter):
         self.poolmanager.pool_classes_by_scheme = {'http': _PublicOnlyHTTPPool, 'https': _PublicOnlyHTTPSPool}
 
 
-_http_session = None
-
-
+@functools.cache
 def http_session() -> CachedSession:
-    global _http_session
+    session = CachedSession(
+        str(app.config['HTTP_CACHE_PATH']),
+        backend='sqlite',
+        expire_after=timedelta(days=30),
+        allowable_codes=[200],
+        stale_if_error=True     # serve expired cached version if remote server goes down
+    )
 
-    if _http_session is None:
-        _http_session = CachedSession(
-            str(app.config['HTTP_CACHE_PATH']),
-            backend='sqlite',
-            expire_after=timedelta(days=30),
-            allowable_codes=[200],
-            stale_if_error=True     # serve expired cached version if remote server goes down
-        )
+    session.headers.update({'User-Agent': USER_AGENT})
 
-        _http_session.headers.update({'User-Agent': USER_AGENT})
+    public_adapter = PublicOnlyAdapter()
+    session.mount('http://', public_adapter)
+    session.mount('https://', public_adapter)
 
-        _public_adapter = PublicOnlyAdapter()
-        _http_session.mount('http://', _public_adapter)
-        _http_session.mount('https://', _public_adapter)
-
-        # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
-        # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
-        musicbrainz_adapter = RequestThrottle(min_interval=0.04)
-        _http_session.mount('https://musicbrainz.org', musicbrainz_adapter)
-        _http_session.mount('http://musicbrainz.org', musicbrainz_adapter)
-    return _http_session
+    # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
+    # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
+    musicbrainz_adapter = RequestThrottle(min_interval=0.04)
+    session.mount('https://musicbrainz.org', musicbrainz_adapter)
+    session.mount('http://musicbrainz.org', musicbrainz_adapter)
+    return session
 
 
 def fetch_public(url: str, *, cache: bool = False, **kwargs) -> requests.Response:

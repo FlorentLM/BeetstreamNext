@@ -3,8 +3,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+from functools import cache
 from typing import Optional, Tuple
 import flask
+from cryptography.fernet import Fernet
 
 from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
 from beetsplug.beetstreamnext.core.accounts.sessions import create_session
@@ -13,23 +15,22 @@ from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata, sess
 
 # Dummy strings comparison when username not found
 _DUMMY_PASSWORD = secrets.token_urlsafe(24)
-_DUMMY_TOKEN: Optional[bytes] = None   # set lazily (cipher may not exist yet)
+
+
+@cache
+def _dummy_token(cipher: Fernet) -> bytes:
+    return cipher.encrypt(_DUMMY_PASSWORD.encode('utf-8'))
 
 
 def _dummy_stored_password() -> str:
     """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
 
-    global _DUMMY_TOKEN
-
-    cipher = get_cipher()
+    cipher = get_cipher()      # may not exist yet
     if cipher is None:
         return _DUMMY_PASSWORD
 
-    if _DUMMY_TOKEN is None:
-        _DUMMY_TOKEN = cipher.encrypt(_DUMMY_PASSWORD.encode('utf-8'))
-
     try:
-        return cipher.decrypt(_DUMMY_TOKEN).decode('utf-8')
+        return cipher.decrypt(_dummy_token(cipher)).decode('utf-8')
     except Exception:
         return _DUMMY_PASSWORD
 

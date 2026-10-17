@@ -10,6 +10,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, safe_filename
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
+from beetsplug.beetstreamnext.utils.concurrency import DoOnce
 from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
@@ -27,20 +28,17 @@ def read_upload(field: str, max_bytes: int) -> bytes | None:
     return data
 
 
-_warned_host_header = False
+_host_header_warning = DoOnce()
 
 
 def request_url(path_part: str) -> str:
     """
     Build an absolute URL for 'path_part' using the current request's scheme+host.
     """
-    global _warned_host_header
-
     scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
     host = parse_host(flask.request.host, strict=True)
 
-    if not _warned_host_header and not app.config.get('trusted_hosts') and host.host not in LOOPBACK_IPS:
-        _warned_host_header = True
+    if not app.config.get('trusted_hosts') and host.host not in LOOPBACK_IPS and _host_header_warning.claim():
         bsn_logger.warning(
             'Tokenised links are built from the request\'s Host header, but `trusted_hosts` '
             'is not set. This is dangerous, consider setting `trusted_hosts` (and `external_hostname` for share links).'

@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import flask
 
+from beetsplug.beetstreamnext.utils.concurrency import DoOnce
 from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.core.services.events import admin_events
@@ -18,7 +19,7 @@ from beetsplug.beetstreamnext.constants import (
 )
 
 
-_warning_issued = False
+_proxy_headers_warning = DoOnce()
 
 
 def is_local_client() -> bool:
@@ -26,8 +27,6 @@ def is_local_client() -> bool:
     Check whether the current request comes from this machine or not
     (and so can be exempt from rate limiter and IP filter)
     """
-    global _warning_issued
-
     if not flask.has_request_context():
         return True
 
@@ -43,12 +42,11 @@ def is_local_client() -> bool:
 
     if not settings_store.get('reverse_proxy') and any(h in flask.request.headers for h in fwding_headers):
 
-        if not _warning_issued:
+        if _proxy_headers_warning.claim():
             bsn_logger.warning(
                 'Requests come from loopback with proxy forwarding headers but `reverse_proxy` is off: '
                 'Enable `reverse_proxy` (and set `proxy_hops`) so real client IPs are used.'
             )
-            _warning_issued = True
         return False
 
     return True

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import time
 import flask
 
@@ -7,7 +8,7 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.core.services.jukebox import get_jukebox_player
+from beetsplug.beetstreamnext.core.services.jukebox import jukebox_manager
 from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, JukeboxUnavailableException
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -57,7 +58,7 @@ def endpoint_jukebox_control() -> flask.Response:
         return subsonic_error(0, message='Jukebox mode is disabled on this server.', resp_fmt=resp_fmt)
 
     entry_ids = cap_ids(r.getlist('id', type=safe_str))
-    player = get_jukebox_player()
+    player = jukebox_manager.player()
     username = flask.g.username
 
     try:

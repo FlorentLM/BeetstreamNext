@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.core.library.health import get_server_info
 from beetsplug.beetstreamnext.utils.text import format_bytes
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.library.maintenance import cache_breakdown
-from beetsplug.beetstreamnext.core.library.beets_interaction import read_config, is_import_safe
+from beetsplug.beetstreamnext.core.library.beets.interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users
 from beetsplug.beetstreamnext.core.services.radio import list_radios
 from beetsplug.beetstreamnext.core.services.external.lastfm import test_lastfm_connection

@@ -39,6 +39,7 @@ def prestartup_config(
         ip_blacklist: Iterable[str] = (),
         standalone: bool = False,
         music_root: Optional[str | Path] = None,
+        bsn_config_path: Optional[str | Path] = None,
     ) -> None:
     """
     Setup configs and secrets needed before anything else touches the db
@@ -49,6 +50,7 @@ def prestartup_config(
         BSN_DB_PATH=Path(bsn_db_path),
         BEETS_CONFIG_PATH=beets_config_path,
         STANDALONE_MODE=standalone,
+        BSN_CONFIG_PATH=bsn_config_path,
     )
 
     if music_root:

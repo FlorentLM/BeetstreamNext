@@ -16,7 +16,7 @@ import confuse
 import yaml
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH, ALPHANUM_CHARS
+from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH, ALPHANUM_CHARS, DEFAULT_CONFIG_PATH
 from beetsplug.beetstreamnext.core.storage.connection import dual_database
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.services.events import admin_events
@@ -27,6 +27,9 @@ from beetsplug.beetstreamnext.core.notifications import (
 )
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.core.library.beets.config_policy import (
+    CODE_EXECUTION_PLUGINS, CODE_EXECUTION_KEYS, COMMAND_OPTIONS, DISK_WRITING_PLUGINS,
+)
 from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_elapsed
@@ -60,11 +63,6 @@ _NEEDS_INPUT_SNIPPETS = (
     '# selection (default', 'ore candidates',
     'nter search, enter', 'This album is already in the library!',
 )
-
-
-# Plugins that change the music folder when importing (and the option that turns them off)
-DISK_WRITING_PLUGINS = {'scrub': 'auto', 'embedart': 'auto', 'fetchart': 'auto', 'hook': None}
-# TODO: add more?
 
 
 def is_import_safe() -> bool:
@@ -442,14 +440,50 @@ def read_config() -> dict:
 
     edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
 
+    try:
+        locked = sorted(_exec_violations(content)) if edit_allowed else []
+    except yaml.YAMLError:
+        locked = []
+
     return {
         'path': str(path),
         'content': content,
+        'locked': locked,
         'read_only': not edit_allowed or not is_writable(path),
         'edit_disabled': not edit_allowed,
+        'settings_file': str(app.config.get('BSN_CONFIG_PATH') or DEFAULT_CONFIG_PATH) if app.config.get('STANDALONE_MODE') else str(path),
         'edit_env_var': SETTINGS_SCHEMA['allow_beets_config_edit']['env_var'],
         'loaded_at': time.time(),
     }
+
+
+def _exec_violations(content: str) -> dict:
+    """
+    Config entries in `content` that would let beets run code or commands, as {name: value}.
+    Raises yaml.YAMLError on invalid YAML.
+    """
+
+    data = yaml.safe_load(content)     # safe_load: no python/object tags
+
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        return {'<top-level is not a mapping>': None}
+
+    found = {key: data[key] for key in CODE_EXECUTION_KEYS if key in data}
+
+    plugins = data.get('plugins')
+    if isinstance(plugins, str):
+        plugins = plugins.split()
+    if isinstance(plugins, list):
+        found.update({f'plugins: {p}': True for p in plugins if p in CODE_EXECUTION_PLUGINS})
+
+    for plugin, options in COMMAND_OPTIONS.items():
+        section = data.get(plugin)
+        if isinstance(section, dict):
+            found.update({f'{plugin}.{option}': section[option] for option in options if option in section})
+
+    return found
 
 
 def write_config(content: str) -> Tuple[bool, str]:
@@ -465,9 +499,22 @@ def write_config(content: str) -> Tuple[bool, str]:
         return False, 'Config file is read-only.'
 
     try:
-        yaml.safe_load(content)
+        violations = _exec_violations(content)
     except yaml.YAMLError as e:
         return False, f'Invalid YAML: {e}'
+
+    # Entries the operator already had in the file are trusted as long as they are left unchanged
+    try:
+        existing = _exec_violations(path.read_text(encoding='utf-8'))
+    except (OSError, yaml.YAMLError):
+        existing = {}
+
+    violations = {name for name, value in violations.items()
+                  if name not in existing or existing[name] != value}
+
+    if violations:
+        return False, ('Refused: these settings can execute code, so they cannot be modified '
+                       f'from the admin panel: {", ".join(sorted(violations))}')
 
     target = path.resolve()
 
@@ -495,6 +542,7 @@ def write_config(content: str) -> Tuple[bool, str]:
         except OSError:
             # No atomic swap possible
             target.write_text(content, encoding='utf-8')
+
     except OSError as e:
         bsn_logger.error(f"Failed to write beets config '{path}': {e}")
         return False, f'Failed to write file: {e}'

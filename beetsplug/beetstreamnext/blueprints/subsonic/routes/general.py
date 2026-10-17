@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.routes.albums import album_pay
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.artists import artist_payload
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
-from beetsplug.beetstreamnext.core.library.beets_interaction import is_import_running, start_pinned_imports
+from beetsplug.beetstreamnext.core.library.beets.interaction import is_import_running, start_pinned_imports
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.config.store import settings_store

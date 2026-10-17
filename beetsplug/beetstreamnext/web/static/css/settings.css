@@ -1274,6 +1274,17 @@ input:focus, select:focus {
     cursor: default;
 }
 
+.config-locked {
+    opacity: 0.6;
+}
+
+.config-locked-list {
+    margin: 0 1.5rem 1rem;
+    padding-left: 1.2rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
 .config-editor-footer {
     display: flex;
     flex-wrap: wrap;

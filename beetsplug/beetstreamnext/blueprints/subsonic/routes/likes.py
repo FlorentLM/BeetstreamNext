@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_resp
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
-from beetsplug.beetstreamnext.core.library.beets_interaction import commit_likes
+from beetsplug.beetstreamnext.core.library.beets.interaction import commit_likes
 
 
 def item_exists(item_id: str) -> bool:

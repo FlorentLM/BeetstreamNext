@@ -11,7 +11,7 @@
 <p class="card-hint" id="beetsConfigEditNote" hx-swap-oob="true">
     Editing is disabled. A Beets config could load plugins and run commands, so it is restricted for security.
     <br/><br/>
-    You can allow this with the <code>allow_beets_config_edit</code> key in the config file (or the <code>{{ beets_config.edit_env_var }}=1</code> environment variable).
+    You can allow this with the <code>allow_beets_config_edit</code> key in the config file <code>{{ beets_config.settings_file }}</code> (or the <code>{{ beets_config.edit_env_var }}=1</code> environment variable).
 </p>
 {% else %}
 <p class="card-hint" id="beetsConfigEditNote" hx-swap-oob="true" hidden></p>
@@ -21,6 +21,14 @@
     <textarea id="beetsConfigEditor" name="content" class="code-editor" spellcheck="false" autocomplete="off"
               autocapitalize="off" wrap="off"
               {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+    {% if beets_config.locked %}
+    <div class="config-locked">
+        <p class="card-hint">Pre-existing dangerous keys that can't be modified from here (only deleted):</p>
+        <ul class="config-locked-list">
+            {% for entry in beets_config.locked %}<li><code>{{ entry }}</code></li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
 
 <div class="config-editor-footer" id="beetsConfigFooter" hx-swap-oob="true">

@@ -210,6 +210,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         ip_blacklist=ip_blacklist,
         standalone=True,
         music_root=music_root,
+        bsn_config_path=config_path or DEFAULT_CONFIG_PATH,
     )
 
     if args.command == 'clear-cache':

@@ -7,7 +7,7 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.library.beets_interaction import write_beets_field
+from beetsplug.beetstreamnext.core.library.beets.interaction import write_beets_field
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_musicbrainz
 from beetsplug.beetstreamnext.core.services.external.discogs import query_discogs
 from beetsplug.beetstreamnext.core.storage.cache import (

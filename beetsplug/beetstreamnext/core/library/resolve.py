@@ -208,8 +208,10 @@ class Resolve:
 
         if entry_type == 'artist':
             value, kind = IDs.decode_artist(req_id)
+        elif entry_type is None:
+            value, kind = req_id, 'name'        # artist name (not ID)
         else:
-            value, kind = req_id, 'name'
+            return None                         # ID of something else (radio, playlist, podcast etc)
 
         if kind == 'mbid':
             with flask.g.lib.transaction() as tx:

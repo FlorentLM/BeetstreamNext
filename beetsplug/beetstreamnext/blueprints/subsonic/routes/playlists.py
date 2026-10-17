@@ -7,7 +7,7 @@ from beetsplug.beetstreamnext.core.media.playlists import Playlist, PlaylistProv
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -91,7 +91,7 @@ def endpoint_create_playlist() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('playlistId', default='', type=safe_str)     # Required if updating
     name = r.get('name', default='', type=safe_str)[:200]            # Required if creating
-    songs_ids = r.getlist('songId', type=safe_str)
+    songs_ids = cap_ids(r.getlist('songId', type=safe_str))
 
     if playlist_id:
         return endpoint_update_playlist()
@@ -157,8 +157,8 @@ def endpoint_update_playlist() -> flask.Response:
     new_name =  r.get('name', default='', type=safe_str)[:200]
     new_comment = r.get('comment', default=None, type=safe_str)
     make_public = r.get('public', default=None, type=api_bool)
-    to_add = r.getlist('songIdToAdd', type=safe_str)
-    to_remove = r.getlist('songIndexToRemove', type=int)
+    to_add = cap_ids(r.getlist('songIdToAdd', type=safe_str))
+    to_remove = cap_ids(r.getlist('songIndexToRemove', type=int))
 
     if not flask.g.user_data.get('playlistRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)

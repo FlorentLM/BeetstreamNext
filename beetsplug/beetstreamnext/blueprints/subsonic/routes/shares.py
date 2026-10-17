@@ -5,7 +5,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -58,7 +58,7 @@ def endpoint_create_share() -> flask.Response:
     r = flask.request.values
 
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    ids = r.getlist('id', type=safe_str)                    # Required
+    ids = cap_ids(r.getlist('id', type=safe_str))                 # Required
     description = r.get('description', default='', type=safe_str)
     expires_ms = r.get('expires', default=0, type=int)
 

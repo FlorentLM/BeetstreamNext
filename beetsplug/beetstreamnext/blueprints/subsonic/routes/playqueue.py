@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -75,7 +75,7 @@ def endpoint_save_play_queue() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     client = r.get('c', default='', type=safe_str)
-    song_ids = r.getlist('id', type=safe_str)
+    song_ids = cap_ids(r.getlist('id', type=safe_str))
     current_sid = r.get('current', default='', type=safe_str)    # Required unless id is empty
     position = r.get('position', default=0.0, type=float)
 

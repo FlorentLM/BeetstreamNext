@@ -9,7 +9,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -21,15 +21,12 @@ def endpoint_scrobble() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     client = r.get('c', default='', type=safe_str)
-    playing_ids = r.getlist('id', type=safe_str)        # Required
+    playing_ids = cap_ids(r.getlist('id', type=safe_str))       # Required
     times_ms = r.getlist('time', type=int)
     submission = r.get('submission', default=True, type=api_bool)
 
     if not playing_ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
-
-    if len(playing_ids) > MAX_SCROBBLE_IDS:
-        return subsonic_error(0, message=f'Too many ids. Maximum {MAX_SCROBBLE_IDS} plays per call.', resp_fmt=resp_fmt)
 
     username = flask.g.username
     now = time.time()

@@ -1,12 +1,12 @@
 from __future__ import annotations
 import json
 import re
-from typing import Optional, Dict
+from typing import List, Optional, Dict
 from xml.etree import ElementTree as ET
 
 import flask
 
-from beetsplug.beetstreamnext.constants import SUBSONIC_API_VER, SERVER_VERSION, ALPHANUM_CHARS, SERVER_NAME
+from beetsplug.beetstreamnext.constants import MAX_REST_IDS, SUBSONIC_API_VER, SERVER_VERSION, ALPHANUM_CHARS, SERVER_NAME
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
@@ -139,3 +139,14 @@ def jsonpify(format: str, data: dict) -> flask.Response:
         return flask.Response(f"{callback}({json.dumps(data)});", mimetype='application/javascript')
     else:
         return flask.jsonify(data)
+
+
+class TooManyIDs(Exception):
+    """Raised by cap_ids() and turned into a Subsonic error by the blueprint's error handler."""
+
+
+def cap_ids(ids: List[str]) -> List[str]:
+    """Validator for ID lists."""
+    if len(ids) > MAX_REST_IDS:
+        raise TooManyIDs(f'Too many IDs. Maximum {MAX_REST_IDS} per call.')
+    return ids

@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_a
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
-from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -59,7 +59,7 @@ def endpoint_star_or_unstar() -> flask.Response:
 
     username = flask.g.username
 
-    to_like = song_ids + album_ids + artist_ids
+    to_like = cap_ids(song_ids + album_ids + artist_ids)
     for id_ in to_like:
         _set_liked(username, id_,  liked)
 

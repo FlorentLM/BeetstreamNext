@@ -237,7 +237,12 @@ MAX_SCROBBLE_IDS: int = 500                      # most plays one scrobble call 
 
 ## Other stuff
 
-MAX_CHAT_CHAR: int = 1000
+CHAT_MAX_CHARS: int = 1000
+CHAT_RATE_MAX: int = 10                     # messages one user can post per CHAT_RATE_WINDOW_SEC
+CHAT_RATE_WINDOW_SEC: int = 60
+CHAT_RETENTION_SEC: int = 30 * 86400        # Messages deleted after 30 days
+CHAT_MAX_STORED: int = 2000                 # Most messages kept
+
 
 HTTP_ERROR_LABELS = {
     400: 'bad request',

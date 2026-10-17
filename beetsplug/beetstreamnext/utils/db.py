@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import os
 import threading
 from sqlite3 import Connection
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Hashable, Any, List, Optional, Tuple
 
 import flask
 from beets.dbcore.db import Transaction
@@ -13,8 +14,43 @@ from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 ##
 # Beets' database access utilities
 
-_schema_cache: Dict[str, Any] = {}
-_schema_lock = threading.Lock()
+
+class SchemaCache:
+    """
+    Thread-safe cache of the beets db schema. Clear itself when mtime
+    of the db changes.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._stamp: Hashable = None
+        self._data: Dict[Hashable, Any] = {}
+
+    def _sync(self, stamp: Hashable) -> None:
+        """Drop everything if `stamp` has changed."""
+        if self._stamp != stamp:
+            self._data.clear()
+            self._stamp = stamp
+
+    def get(self, stamp: Hashable, key: Hashable) -> Any:
+        with self._lock:
+            self._sync(stamp)
+            return self._data.get(key)
+
+    def put(self, stamp: Hashable, key: Hashable, value: Any) -> None:
+        with self._lock:
+            if self._stamp == stamp:
+                self._data[key] = value
+
+    def bucket(self, stamp: Hashable, name: Hashable) -> Dict[Any, Any]:
+        """Dict private to `name`."""
+        with self._lock:
+            self._sync(stamp)
+            return self._data.setdefault(name, {})
+
+
+schema_cache = SchemaCache()
+
 
 _beets_table_names = frozenset(['items', 'albums'])
 
@@ -27,15 +63,9 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
 
     lib_path = flask.g.lib.path
     current_mtime = os.path.getmtime(os.fsdecode(lib_path))
-    cache_key = f'schema_{table_name}'
-
-    with _schema_lock:
-        if _schema_cache.get('_mtime') != current_mtime:
-            _schema_cache.clear()
-            _schema_cache['_mtime'] = current_mtime
-
-        if cache_key in _schema_cache:
-            return _schema_cache[cache_key]
+    cached = schema_cache.get(current_mtime, table_name)
+    if cached is not None:
+        return cached
 
     # Query outside lock to avoid holding during IO
     with flask.g.lib.transaction() as tx:
@@ -43,17 +73,11 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
         cursor = tx.query(f"PRAGMA table_info({table_name})")
         columns = [row[1] for row in cursor]
 
-    with _schema_lock:
-        # cache only if mtime hasn't changed while querying
-        if _schema_cache.get('_mtime') == current_mtime:
-            _schema_cache[cache_key] = columns
-
+    schema_cache.put(current_mtime, table_name, columns)    # dropped if the db changed while querying
     return columns
 
 
-_lib_cache: Dict[str, Any] = {}
-
-_lib_cache_lock = threading.Lock()
+_lib_cache = SchemaCache()
 
 
 def _library_stamp() -> Tuple:
@@ -71,12 +95,7 @@ def library_cache(name: str) -> Dict[Any, Any]:
     """
     Process-wide dict for things derived from the beets library, shared across requests.
     """
-    stamp = _library_stamp()
-    with _lib_cache_lock:
-        if _lib_cache.get('_stamp') != stamp:
-            _lib_cache.clear()
-            _lib_cache['_stamp'] = stamp
-        return _lib_cache.setdefault(name, {})
+    return _lib_cache.bucket(_library_stamp(), name)
 
 
 def chunked_query(

@@ -314,5 +314,6 @@ def run_server(
         serve(
             logged_app, listen=netlocs, threads=threads,
             channel_timeout=channel_timeout, connection_limit=connection_limit,
-            max_request_body_size=MAX_REQUEST_BYTES
+            max_request_body_size=MAX_REQUEST_BYTES,
+            clear_untrusted_proxy_headers=not settings_store.get('reverse_proxy'),
         )

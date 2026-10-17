@@ -83,3 +83,7 @@ BeetstreamNext can also run standalone, see [Installation](https://florentlm.git
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+## Privacy
+
+No ads, no telemetry, no analytics. Your data stays on your server ([details](https://florentlm.github.io/BeetstreamNext/privacy.html)).

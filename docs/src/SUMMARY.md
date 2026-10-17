@@ -35,3 +35,4 @@
 - [API coverage](./api-coverage.md)
 - [Tested clients](./clients.md)
 - [Planned features](./planned.md)
+- [Privacy](./privacy.md)

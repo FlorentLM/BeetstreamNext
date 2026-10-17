@@ -24,6 +24,7 @@ from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.services.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter
 from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.utils.system import is_docker
 from beetsplug.beetstreamnext.utils.text import split_list
 
@@ -137,6 +138,7 @@ def run_server(
             return
 
     host = bindable_host
+    netlocs = [parse_host(h)._replace(port=port).netloc for h in host]      # IPv6 gets its brackets
 
     with app.app_context():
         check_onboarding(app.config.get('STANDALONE_MODE', False), host=host, port=port)
@@ -172,7 +174,7 @@ def run_server(
                 f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
                 '',
                 'Legacy authentication is enabled, and the server',
-                f"is listening on {', '.join(f'http://{h}:{port}' for h in host)}",
+                f"is listening on {', '.join(f'http://{n}' for n in netlocs)}",
                 'without a reverse proxy.',
                 '',
                 'Passwords from legacy clients may be',
@@ -305,13 +307,13 @@ def run_server(
         logging.getLogger('waitress').setLevel(LOG_LEVEL)
 
         if LOG_LEVEL > logging.INFO:
-            urls = ', '.join(f'http://{h}:{port}' for h in host)
+            urls = ', '.join(f'http://{n}' for n in netlocs)
             print(f'BeetstreamNext server running on {urls}...')
 
         logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
         serve(
-            logged_app, listen=[f'{h}:{port}' for h in host], threads=threads,
+            logged_app, listen=netlocs, threads=threads,
             channel_timeout=channel_timeout, connection_limit=connection_limit,
             max_request_body_size=MAX_REQUEST_BYTES
         )

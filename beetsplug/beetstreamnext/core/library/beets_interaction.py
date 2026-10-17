@@ -39,7 +39,13 @@ if IS_WINDOWS:
 else:
     import pty
 
+IMPORT_PUSH_INTERVAL = 0.5     # max seconds between live import log updates
+
 _lock = threading.RLock()
+_push_lock = threading.Lock()
+
+_last_push = 0.0
+_push_timer: Optional[threading.Timer] = None
 
 _proc: Optional[Any] = None         # subprocess.Popen or winpty.PtyProcess
 _master_fd: Optional[int] = None    # POSIX only, Windows pty process reads/writes itself
@@ -83,8 +89,24 @@ def htmlify_log() -> List[str]:
     return [ansi_to_html(line) for line in read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)]
 
 
-def _push_import_status() -> None:
-    """Publish import status and recent log to connected admin sessions."""
+def _push_import_status(throttle: float = 0.0) -> None:
+    """
+    Publish import status and recent log to connected admin sessions.
+    """
+    global _last_push, _push_timer
+
+    with _push_lock:
+        wait = _last_push + throttle - time.monotonic()
+        if throttle and wait > 0:
+            if _push_timer is None:
+                _push_timer = threading.Timer(wait, _push_import_status)
+                _push_timer.daemon = True
+                _push_timer.start()
+            return
+
+        _last_push = time.monotonic()
+        _push_timer = None
+
     admin_events.publish('beets-import', {**import_status(), 'lines': htmlify_log()})
 
 
@@ -260,7 +282,7 @@ def _handle_output_chunk(log_file, text: str) -> None:
     if needs_input_path is not None:    # Only on the running -> needs_input
         notify(IMPORT_NEEDS_INPUT, path=needs_input_path)
 
-    _push_import_status()
+    _push_import_status(throttle=0.0 if needs_input_path is not None else IMPORT_PUSH_INTERVAL)
 
 
 def _finish_import(log_file, exit_code: int) -> None:

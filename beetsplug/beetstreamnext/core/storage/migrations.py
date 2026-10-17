@@ -402,7 +402,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT (username, song_id) DO UPDATE SET
                     play_count  = play_count + excluded.play_count,
-                    last_played = MAX(last_played, excluded.last_played)
+                    last_played = COALESCE(MAX(last_played, excluded.last_played), last_played, excluded.last_played)
                 """, (username, new_id, play_count, last_played)
             )
         conn.execute("""DROP TABLE play_stats""")

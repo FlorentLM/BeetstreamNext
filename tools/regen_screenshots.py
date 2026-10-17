@@ -2,7 +2,7 @@
 Regenerates the Web UI screenshots used in the docs
 
     uv run --with playwright playwright install chromium
-    uv run --with playwright python docs/regen_screenshots.py
+    uv run --with playwright python tools/regen_screenshots.py
 
 Options:
     --theme {light,dark,both}
@@ -17,24 +17,27 @@ import sys
 import threading
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT))
+##
 
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+##
 
 # The sandbox overrides $HOME so browser location pinned first
 if 'PLAYWRIGHT_BROWSERS_PATH' not in os.environ:
     _real_cache = Path.home() / {'darwin': 'Library/Caches', 'win32': 'AppData/Local'}.get(sys.platform, '.cache')
     os.environ['PLAYWRIGHT_BROWSERS_PATH'] = str(_real_cache / 'ms-playwright')
 
-from tests.demo import ADMIN_USER, ADMIN_PASSWORD, add_albums, build_app, seed_demo, use_sandbox, CORE_ALBUMS
+from tests.demo import ADMIN_USER, ADMIN_PASSWORD, add_albums, build_app, seed_demo, use_sandbox, CORE_ALBUMS  # noqa: E402
 
 SANDBOX = use_sandbox()     # before anything imports beetsplug
 
-MAX_HEIGHT = 1400       # px: very tall tabs -> cropped to that
+MAX_HEIGHT = 1400       # px: very tall tabs -> cropped
 VIEWPORT = {'width': 1280, 'height': 900}
 SCALE = 2
 
-BEETS_CONFIG = '''directory: /music
+example_beets_config = '''directory: /music
 library: /config/library.db
 
 import:
@@ -48,7 +51,7 @@ paths:
 plugins: fetchart embedart lastgenre
 '''
 
-SHOTS = {
+shots = {
     'home': ('/', None, None),
     'users': ('/admin/', 'users', '#tab-users'),
     'server': ('/admin/', 'server', '#tab-server'),
@@ -62,7 +65,10 @@ SHOTS = {
 }
 
 
-def serve(app):
+##
+
+def serve(app) -> tuple:
+
     from werkzeug.serving import make_server
 
     server = make_server('127.0.0.1', 0, app, threaded=True)
@@ -70,7 +76,8 @@ def serve(app):
     return server, f'http://127.0.0.1:{server.server_port}'
 
 
-def capture(browser, base, theme, names, out_dir, masks):
+def capture(browser, base: str, theme: str, names: list[str], out_dir: Path, masks: dict[str, str]) -> None:
+
     ctx = browser.new_context(
         viewport=VIEWPORT,
         device_scale_factor=SCALE,
@@ -90,7 +97,7 @@ def capture(browser, base, theme, names, out_dir, masks):
     theme_dir.mkdir(parents=True, exist_ok=True)
 
     for name in names:
-        path, tab, selector = SHOTS[name]
+        path, tab, selector = shots[name]
         page.goto(f'{base}{path}' if tab is None else f'{base}{path}#{tab}')
         page.reload()
 
@@ -111,7 +118,7 @@ def capture(browser, base, theme, names, out_dir, masks):
         }''', masks)
 
         if name == 'beets':       # no beets config.yaml in the sandbox: show the dummy one
-            page.evaluate('(text) => { const el = document.getElementById("beetsConfigEditor"); if (el && !el.value) el.value = text; }', BEETS_CONFIG)
+            page.evaluate('(text) => { const el = document.getElementById("beetsConfigEditor"); if (el && !el.value) el.value = text; }', example_beets_config)
 
         out = theme_dir / f'screenshot_{name}.png'
         if selector:
@@ -120,23 +127,23 @@ def capture(browser, base, theme, names, out_dir, masks):
                 'x': box['x'], 'y': box['y'], 'width': box['width'], 'height': min(box['height'], MAX_HEIGHT)})
         else:
             page.screenshot(path=str(out), full_page=True)
-        print(f'  {out.relative_to(REPO_ROOT)}')
+        print(f'  {out.relative_to(ROOT)}')
 
     ctx.close()
 
 
-def main():
+def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--theme', choices=['light', 'dark', 'both'], default='both')
-    parser.add_argument('--only', nargs='+', choices=sorted(SHOTS), metavar='NAME')
-    parser.add_argument('--out', type=Path, default=REPO_ROOT / 'docs' / 'src' / 'images')
+    parser.add_argument('--only', nargs='+', choices=sorted(shots), metavar='NAME')
+    parser.add_argument('--out', type=Path, default=ROOT / 'docs' / 'src' / 'images')
     args = parser.parse_args()
 
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        sys.exit('Playwright is missing. Run with: uv run --with playwright python docs/regen_screenshots.py')
+        sys.exit('Playwright is missing. Run with: uv run --with playwright python tools/regen_screenshots.py')
 
     (SANDBOX / 'app').mkdir()
     app, lib = build_app(SANDBOX / 'app')
@@ -146,7 +153,7 @@ def main():
 
     masks = {str(SANDBOX): '/srv', base: 'http://music.example.com:8080'}
     themes = ['light', 'dark'] if args.theme == 'both' else [args.theme]
-    names = args.only or list(SHOTS)
+    names = args.only or list(shots)
     args.out.mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as p:

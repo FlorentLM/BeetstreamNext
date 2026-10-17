@@ -1,17 +1,23 @@
-#!/usr/bin/env python3
-"""Regenerates docs/src/configuration.md from SETTINGS_SCHEMA.
-
-    uv run python docs/regen_config_doc.py          # regenerate the file
-    uv run python docs/regen_config_doc.py --check  # exit 1 if the file is out of date, don't write
 """
+Regenerates docs/src/configuration.md from SETTINGS_SCHEMA
+
+    uv run python tools/regen_config_doc.py          # regenerate the file
+    uv run python tools/regen_config_doc.py --check  # fail if the file is out of date, don't write
+"""
+from __future__ import annotations
+
+import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 
-OUT_PATH = Path(__file__).resolve().parent / 'src' / 'configuration.md'
+##
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT_PATH = ROOT / 'docs' / 'src' / 'configuration.md'
+
+##
 
 # (Schema category key, Doc heading) in display order
 CATEGORIES = [
@@ -22,7 +28,7 @@ CATEGORIES = [
     ('security', 'Security'),
 ]
 
-HEADER = """# Configuration reference
+header = """# Configuration reference
 
 BeetstreamNext settings can be set from various ways:
 
@@ -72,23 +78,27 @@ Settings marked <span style="color:#fab915">**requires restart**</span> only tak
 > 
 > If either isn't (for example when they're bind-mounted `:ro`, as in the [Betanin example stack](./installation.md#example-stack-beetstreamnext--betanin)), the WebUI will show a red "read-only" pill next to any setting that would otherwise need write access."""
 
-BADGES = {
+badges = {
     'standalone_only': ('#6b5c58', 'standalone only'),
     'sensitive': ('#6b5c58', 'sensitive'),
     'requires_restart': ('#fab915', 'requires restart'),
 }
 
 
+##
+
 def badges_line(descriptor: dict) -> str | None:
+
     spans = [
         f'<span style="color:{color}">**{label}**</span>'
-        for flag, (color, label) in BADGES.items()
+        for flag, (color, label) in badges.items()
         if descriptor.get(flag)
     ]
     return ', '.join(spans) if spans else None
 
 
 def default_n_choices(descriptor: dict) -> str:
+
     default = descriptor.get('default')
 
     if default == '' or default == []:
@@ -106,6 +116,7 @@ def default_n_choices(descriptor: dict) -> str:
 
 
 def render_setting(key: str, descriptor: dict) -> str:
+
     description = ' '.join(descriptor['description'].split())
 
     paragraphs = [f'### `{key}`', description]
@@ -125,6 +136,7 @@ def render_setting(key: str, descriptor: dict) -> str:
 
 
 def render_category(category: str, heading: str) -> str | None:
+
     entries = [
         render_setting(key, descriptor)
         for key, descriptor in SETTINGS_SCHEMA.items()
@@ -136,12 +148,13 @@ def render_category(category: str, heading: str) -> str | None:
 
 
 def render() -> str:
+
     known_categories = {c for c, _ in CATEGORIES}
     unmapped = {d['category'] for d in SETTINGS_SCHEMA.values()} - known_categories
     if unmapped:
         raise ValueError(f'Setting(s) use categor(y/ies) not in CATEGORIES: {sorted(unmapped)}')
 
-    sections = [HEADER]
+    sections = [header]
     for category, heading in CATEGORIES:
         section = render_category(category, heading)
         if section:
@@ -150,21 +163,26 @@ def render() -> str:
     return '\n\n'.join(sections) + '\n'
 
 
-def main() -> int:
-    content = render()
+def main() -> None:
 
-    if '--check' in sys.argv[1:]:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--check', action='store_true', help='just compare with the committed file instead of writing')
+    args = parser.parse_args()
+
+    md_content = render()
+
+    if args.check:
         current = OUT_PATH.read_text() if OUT_PATH.exists() else None
-        if current != content:
-            print(f'{OUT_PATH} is out of date, run: uv run python docs/regen_config_doc.py')
-            return 1
-        print(f'{OUT_PATH} is up to date.')
-        return 0
 
-    OUT_PATH.write_text(content)
+        if current != md_content:
+            sys.exit(f'{OUT_PATH} is out of date, run: uv run python tools/regen_config_doc.py')
+        print(f'{OUT_PATH} is up to date.')
+
+        return
+
+    OUT_PATH.write_text(md_content)
     print(f'Wrote {OUT_PATH}')
-    return 0
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    main()

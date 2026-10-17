@@ -66,7 +66,7 @@ def restart_server(delay: float = 1.5) -> None:
     """
     def _do_restart() -> None:
         bsn_logger.info('Restarting server...')
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        os.execv(sys.executable, [sys.executable] + sys.orig_argv[1:])
 
     threading.Timer(delay, _do_restart).start()
 
@@ -118,7 +118,7 @@ def run_server(
                 f"The configured host ({host[0]}) can't be bound right now.",
                 '',
             ], color=TermColors.FAIL)
-            return
+            sys.exit(1)
         bindable_host = host
     else:
         bindable_host = [h for h in host if _bindable(h, port)]
@@ -135,7 +135,7 @@ def run_server(
                 f"None of the configured hosts ({', '.join(host)}) can be bound right now.",
                 '',
             ], color=TermColors.FAIL)
-            return
+            sys.exit(1)
 
     host = bindable_host
     netlocs = [parse_host(h)._replace(port=port).netloc for h in host]      # IPv6 gets its brackets
@@ -165,7 +165,7 @@ def run_server(
                 'The Werkzeug debugger allows arbitrary remote code execution.',
                 '',
             ], color=TermColors.FAIL)
-            return
+            sys.exit(1)
 
     if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
         if any(h not in LOOPBACK_IPS for h in host):
@@ -297,7 +297,7 @@ def run_server(
                 f"Debug mode (Werkzeug) can only bind one interface, ignoring all but '{host[0]}' "
                 f"(configured: {', '.join(host)})."
             )
-        app.run(host=host[0], port=port, debug=True, threaded=True)
+        app.run(host=host[0], port=port, debug=True, threaded=True, use_reloader=False)
 
     else:
         logging.getLogger('waitress').setLevel(LOG_LEVEL)

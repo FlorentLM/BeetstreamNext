@@ -275,7 +275,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     beets.config['timeout'] = DEFAULT_DB_TIMEOUT   # beets.library.Library() has no timeout kwarg?
 
     if not _beets_version_healthcheck(final_library_db):
-        return
+        sys.exit(1)
 
     lib = Library(str(final_library_db), str(final_music_root))
 

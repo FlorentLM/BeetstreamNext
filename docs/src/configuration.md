@@ -76,7 +76,7 @@ Public hostname used for public share links (e.g. <code>shares.example.com</code
 
 ### `host`
 
-Host(s) to listen on (comma-separated for multiple).
+Host(s) to listen on (comma-separated for multiple), or <code>unix:/path/to/socket</code> (to use a Unix socket, <code>reverse_proxy</code> has to be enabled)
 
 <span style="color:#fab915">**requires restart**</span>
 

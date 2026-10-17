@@ -4,13 +4,31 @@
 
 Enable the `reverse_proxy` option (see [configuration](./configuration.md#reverse_proxy)) so it trusts those forwarded headers, and set the `proxy_hops` to the number of trusted proxies in front of it.
 
+## Unix socket
+
+With the proxy on the same machine (or sharing a volume with the container), **BeetstreamNext** can listen on a unix socket instead of a port.
+
+Set `host` to `unix:/absolute/path/of/socket`:
+
+```
+BSN_HOST=unix:/run/beetstreamnext/bsn.sock
+```
+
+The socket is created with `660` permissions: add the proxy's user to the group that runs **BeetstreamNext**.
+
+- `reverse_proxy` has to be on, the server refuses to start otherwise: every request via a socket looks local, so the real client addresses can _only_ come from the proxy's forwarded headers.
+- It can't be combined with other `host` entries
+- It isn't available on Windows, nor in debug mode.
+- The folder must exist and be writable by **BeetstreamNext**, and an old socket file from a previous run is replaced.
+- In Docker, mount the socket's folder as a volume shared with the proxy.
+
 ## Nginx
 
 Example configuration:
 
 ```nginx
 location /beetstreamnext {
-    proxy_pass http://127.0.0.1:8080;
+    proxy_pass http://127.0.0.1:8080;  # or http://unix:/run/beetstreamnext/bsn.sock if using a Unix socket
 
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -31,6 +49,7 @@ example.com {
     reverse_proxy 127.0.0.1:8080
 }
 ```
+(or `reverse_proxy unix//run/beetstreamnext/bsn.sock` if using a Unix socket)
 
 ## Credentials in proxy logs
 

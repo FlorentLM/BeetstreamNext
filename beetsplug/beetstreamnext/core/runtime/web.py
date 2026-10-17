@@ -92,11 +92,11 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optio
         return resp
 
     if method == 'x-accel-redirect':
-        root = Path(app.config['root_directory'])
+        root = Path(app.config['music_root'])
         try:
             rel = file_path.resolve().relative_to(root.resolve())
         except ValueError:
-            bsn_logger.warning(f"'{file_path}' is outside root_directory, can't use X-Accel-Redirect.")
+            bsn_logger.warning(f"'{file_path}' is outside music_root, can't use X-Accel-Redirect.")
             return None
         prefix = settings_store.get('sendfile_internal_prefix').rstrip('/')
         resp.headers['X-Accel-Redirect'] = f'{prefix}/{rel.as_posix()}'

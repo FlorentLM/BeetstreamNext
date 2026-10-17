@@ -113,6 +113,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 beets_config_path=_detect_config_override(sys.argv[1:]),
                 ip_whitelist=self.config['ip_whitelist'].as_str_seq(),
                 ip_blacklist=self.config['ip_blacklist'].as_str_seq(),
+                music_root=beets.config['directory'].get(),
             )
 
             # Cache clearing
@@ -215,7 +216,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
                 port=port,
                 debug=debug,
                 force_trust_host=force_trust_host,
-                root_directory=Path(beets.config['directory'].get()),
+                music_root=app.config['music_root'],
                 playlist_dirs=playlist_dirs,
             )
 

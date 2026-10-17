@@ -132,7 +132,7 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
     if not media_path:
         return None, None, subsonic_error(70, resp_fmt=resp_fmt)
 
-    media_path = str(resolve_path(media_path, app.config['root_directory']))
+    media_path = str(resolve_path(media_path, app.config['music_root']))
 
     return media, media_path, None
 

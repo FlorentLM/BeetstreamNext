@@ -153,9 +153,9 @@ def get_mimetype(path: bytes | str | Path) -> str:
     return AUDIO_MIMETYPES.get(ext) or mimetypes.guess_type(path)[0] or 'application/octet-stream'
 
 
-def _remap_mount(path_obj: Path, root_directory: bytes | str | Path) -> Path:
+def _remap_mount(path_obj: Path, music_root: bytes | str | Path) -> Path:
     """
-    Substitute root_directory for 'library_remote_path' when another container
+    Substitute music_root for 'library_remote_path' when another container
     and this one mount the music volume at different paths.
     """
     from beetsplug.beetstreamnext.core.config.store import settings_store
@@ -169,33 +169,33 @@ def _remap_mount(path_obj: Path, root_directory: bytes | str | Path) -> Path:
     except ValueError:
         return path_obj
 
-    if isinstance(root_directory, bytes):
-        root_directory = os.fsdecode(root_directory)
-    return Path(root_directory) / rel
+    if isinstance(music_root, bytes):
+        music_root = os.fsdecode(music_root)
+    return Path(music_root) / rel
 
 
-def resolve_path(path: bytes | str | Path, root_directory: bytes | str | Path) -> Path:
-    """Absolute Path for a beets-stored path, which may be bytes and/or relative to root_directory."""
+def resolve_path(path: bytes | str | Path, music_root: bytes | str | Path) -> Path:
+    """Absolute Path for a beets-stored path, which may be bytes and/or relative to music_root."""
 
     if isinstance(path, bytes):
         path = os.fsdecode(path)
     path_obj = Path(path)
 
-    if isinstance(root_directory, bytes):
-        root_directory = os.fsdecode(root_directory)
+    if isinstance(music_root, bytes):
+        music_root = os.fsdecode(music_root)
 
     if not path_obj.is_absolute():
-        path_obj = Path(root_directory) / path_obj
+        path_obj = Path(music_root) / path_obj
 
-    return _remap_mount(path_obj, root_directory)
+    return _remap_mount(path_obj, music_root)
 
 
-def relative_to(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:
+def relative_to(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
 
     from beetsplug.beetstreamnext.core.config.store import settings_store
 
     path_obj = Path(os.fsdecode(path))
-    for base in (os.fsdecode(root_directory), settings_store.get('library_remote_path')):
+    for base in (os.fsdecode(music_root), settings_store.get('library_remote_path')):
         if base:
             try:
                 return path_obj.relative_to(base).as_posix()
@@ -223,16 +223,16 @@ def safe_join(base_dir: Path, *parts: str, error: str = 'Path escapes base direc
     return target
 
 
-def path_hash(path: bytes | str | Path, root_directory: bytes | str | Path) -> str:
-    """Short hash of a file's path relative to root_directory."""
+def path_hash(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
+    """Short hash of a file's path relative to music_root."""
     if not path:
         return ''
     if isinstance(path, bytes):
         path = os.fsdecode(path)
-    if isinstance(root_directory, bytes):
-        root_directory = os.fsdecode(root_directory)
+    if isinstance(music_root, bytes):
+        music_root = os.fsdecode(music_root)
     try:
-        rel = Path(path).relative_to(str(root_directory)).as_posix()
+        rel = Path(path).relative_to(str(music_root)).as_posix()
     except ValueError:
         rel = Path(path).as_posix()
     return hashlib.sha1(rel.encode('utf-8')).hexdigest()[:16]

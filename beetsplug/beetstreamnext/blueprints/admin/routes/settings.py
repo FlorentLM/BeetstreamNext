@@ -179,7 +179,7 @@ def _settings_ui(only: str | None = None) -> tuple[dict[str, dict[str, dict]], d
     # Small contextual pills next to a setting
     setting_pills: dict[str, tuple[str, str]] = {}
 
-    music_root = flask.current_app.config.get('root_directory')
+    music_root = flask.current_app.config.get('music_root')
     music_ro = bool(music_root) and not is_writable(music_root)
 
     library_db_path = flask.current_app.config.get('BEETS_DB_PATH')

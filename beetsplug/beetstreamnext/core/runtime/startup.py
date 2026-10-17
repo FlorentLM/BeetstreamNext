@@ -35,6 +35,7 @@ def prestartup_config(
         ip_whitelist: Iterable[str] = (),
         ip_blacklist: Iterable[str] = (),
         standalone: bool = False,
+        music_root: Optional[str | Path] = None,
     ) -> None:
     """
     Setup configs and secrets needed before anything else touches the db
@@ -46,6 +47,9 @@ def prestartup_config(
         BEETS_CONFIG_PATH=beets_config_path,
         STANDALONE_MODE=standalone,
     )
+
+    if music_root:
+        app.config.update(music_root=Path(music_root))
 
     ip_filter.whitelist = list(ip_whitelist)
     ip_filter.blacklist = list(ip_blacklist)
@@ -95,7 +99,7 @@ def run_server(
         port: int,
         debug: bool,
         force_trust_host: bool,
-        root_directory: Path,
+        music_root: Path,
         playlist_dirs: dict,
     ) -> None:
     """
@@ -216,18 +220,18 @@ def run_server(
     # App-level things that don't belong in db settings
     app.config.update(
         lib=lib,
-        root_directory=root_directory,
+        music_root=music_root,
         playlist_dirs=playlist_dirs
     )
 
-    checked_paths, missing_paths = startup_path_check(root_directory)
+    checked_paths, missing_paths = startup_path_check(music_root)
     if checked_paths and missing_paths == checked_paths:
         print_box([
             '',
             f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
             '',
             f'None of {checked_paths} sampled library item paths were found on disk under:',
-            f'  {root_directory}',
+            f'  {music_root}',
             '',
             'This probably means an incorrect path-mapping/mount config.',
             'Check your `music_root`/`library_local_path`/`library_remote_path` settings.',
@@ -237,7 +241,7 @@ def run_server(
     elif missing_paths:
         bsn_logger.warning(
             f'Startup path check: {missing_paths}/{checked_paths} sampled library item paths not found on disk '
-            f'(root: {root_directory}).'
+            f'(root: {music_root}).'
         )
 
     app.config.update(playlist_provider=PlaylistProvider())

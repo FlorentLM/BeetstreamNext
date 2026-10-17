@@ -48,7 +48,7 @@ def _effective_library_path() -> str:
 
 def _effective_music_root() -> str:
     from beetsplug.beetstreamnext.application import app
-    return str(app.config.get('root_directory') or '') or 'Not set'
+    return str(app.config.get('music_root') or '') or 'Not set'
 
 
 def _effective_podcast_dir() -> str:

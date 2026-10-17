@@ -400,7 +400,7 @@ class Playlist:
                     content.append(albuminfo)
 
                 try:
-                    path_str = Path(path).relative_to(app.config['root_directory']).as_posix()
+                    path_str = Path(path).relative_to(app.config['music_root']).as_posix()
                 except ValueError:
                     path_str = Path(path).as_posix()
                 content.append(path_str)

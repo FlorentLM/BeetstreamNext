@@ -456,7 +456,7 @@ class Serialise:
             'albumId': album_id,
             'coverArt': album_id or song_id,
             'language': data.get('language') or '',
-            'path': relative_to(song_filepath, app.config['root_directory']) if song_filepath else '',
+            'path': relative_to(song_filepath, app.config['music_root']) if song_filepath else '',
             'userRating': one_rating(song_id),
             'duration': round(data.get('length') or 0),
             'bpm': data.get('bpm') or 0,
@@ -544,7 +544,7 @@ class Serialise:
         subsonic_song['size'] = round(((data.get('bitrate') or 0) * (data.get('length') or 0)) / 8)
         if exact_size and song_filepath:
             try:
-                subsonic_song['size'] = resolve_path(song_filepath, app.config['root_directory']).stat().st_size
+                subsonic_song['size'] = resolve_path(song_filepath, app.config['music_root']).stat().st_size
             except OSError:
                 pass    # Unreachable file so keep estimate
 

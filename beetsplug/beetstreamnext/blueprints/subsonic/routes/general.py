@@ -23,7 +23,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 def musicdirectory_payload(subsonic_musicdirectory_id: str) -> dict:
 
     # Only one possible root directory in beets (?), so just return its name
-    directory_name = app.config['root_directory'].name
+    directory_name = app.config['music_root'].name
 
     payload = {
         'musicFolders': {

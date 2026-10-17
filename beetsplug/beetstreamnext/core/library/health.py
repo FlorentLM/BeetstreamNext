@@ -206,7 +206,7 @@ def scan_library(full: bool = False) -> Dict[str, int]:
 
     _scanning = True
     _push_health_status()
-    root_directory = app.config['root_directory']
+    music_root = app.config['music_root']
 
     try:
         with dual_database() as db:
@@ -242,7 +242,7 @@ def scan_library(full: bool = False) -> Dict[str, int]:
                 })
                 seen_song_ids.add(song_id)
 
-                path_obj = resolve_path(path, root_directory)
+                path_obj = resolve_path(path, music_root)
                 prev_missing = None if full else existing.get(song_id, {}).get(MISSING_FILE_CHECK)
 
                 try:
@@ -324,7 +324,7 @@ def scan_library(full: bool = False) -> Dict[str, int]:
 
 
 @with_app_context
-def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> Tuple[int, int]:
+def startup_path_check(music_root: str | Path, sample_size: int = 20) -> Tuple[int, int]:
     """
     Stats a random sample of resolved item paths. Meant to be called once at boot, so a
     bad path-mapping/mount config is caught fast.
@@ -347,7 +347,7 @@ def startup_path_check(root_directory: str | Path, sample_size: int = 20) -> Tup
         if not path:
             continue
         checked += 1
-        if not resolve_path(path, root_directory).exists():
+        if not resolve_path(path, music_root).exists():
             missing += 1
 
     return checked, missing

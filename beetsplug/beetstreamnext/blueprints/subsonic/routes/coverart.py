@@ -36,7 +36,7 @@ def endpoint_get_cover_art() -> flask.Response:
     size = round_image_size(req_size)
 
     # root folder ID or name: serve BeetstreamNext's logo
-    if req_id == app.config['root_directory'].name or req_id == 'm-0':
+    if req_id == app.config['music_root'].name or req_id == 'm-0':
         return flask.send_file(app.config['IMAGES_PATH'] / 'logo.png', mimetype='image/png')
 
     entry_type, entry = Resolve.any(req_id)
@@ -61,7 +61,7 @@ def endpoint_get_cover_art() -> flask.Response:
 
         # Fallback: try to extract cover from the song file
         if FFMPEG_PYTHON or find_binary('ffmpeg'):
-            song_path = str(resolve_path(item.path, app.config['root_directory']))
+            song_path = str(resolve_path(item.path, app.config['music_root']))
             try:
                 song_mtime = os.path.getmtime(song_path)
             except OSError:

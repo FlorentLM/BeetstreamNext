@@ -53,7 +53,7 @@ def validate_storage_dir(x: Any) -> str:
         raise ValueError("Can't be the filesystem root.")
 
     from beetsplug.beetstreamnext.application import app
-    music_root = app.config.get('root_directory')
+    music_root = app.config.get('music_root')
     if music_root:
         music_root = Path(music_root).resolve()
         if resolved.is_relative_to(music_root) or music_root.is_relative_to(resolved):

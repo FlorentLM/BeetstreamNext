@@ -39,7 +39,7 @@ def validate_pinned_path(candidate: Path) -> Optional[str]:
         return f"'{candidate}' is not a directory."
 
     # Non-interactive import must never touch the formatted library
-    path_a, path_b = candidate.resolve(), app.config['root_directory'].resolve()
+    path_a, path_b = candidate.resolve(), app.config['music_root'].resolve()
 
     if path_a.is_relative_to(path_b) or path_b.is_relative_to(path_a):
         return 'Path must not overlap the formatted music directory (be inside it, or contain it).'

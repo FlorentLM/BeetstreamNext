@@ -40,7 +40,7 @@ class IDs:
     _ART_HASH_PREF = 'ar-h-'    # ar-h-<hash of the full joint-credit text>, for multi-artist entries
     _SNG_ID_PREF = 'sg-'        # legacy: sg-<raw beets row id> (decode-only)
     _SNG_MBID_PREF = 'sg-m-'    # sg-m-<base64url(mb_releasetrackid or mb_trackid)>
-    _SNG_HASH_PREF = 'sg-h-'    # sg-h-<hash of path relative to root_directory>
+    _SNG_HASH_PREF = 'sg-h-'    # sg-h-<hash of path relative to music_root>
 
     _ALB_ID_PREF = 'al-'         # legacy: al-<raw beets row id> (decode-only)
     _ALB_MBID_PREF = 'al-m-'     # al-m-<base64url(mb_albumid)>
@@ -216,7 +216,7 @@ class IDs:
         return f"{cls._ALB_ID_PREF}{beets_id or 0}"
 
     @classmethod
-    def encode_song(cls, song: dict, _root_directory: Optional[bytes | str | Path] = None) -> str:
+    def encode_song(cls, song: dict, _music_root: Optional[bytes | str | Path] = None) -> str:
         """
         Mint the song ID for a beets item: prefers whatever external database ID beets
         recorded (MusicBrainz, Deezer, Spotify etc... beets always writes them in the mb_* field).
@@ -224,15 +224,15 @@ class IDs:
         Falls back to a hash of the item's path (relative to the root directory), or to the raw beets
         row ID if neither is available (but this one is unstable across reimports).
 
-        Note: _root_directory is only necessary for the db migration callsite, it's called
-            before app.config['root_directory'] is set
+        Note: _music_root is only necessary for the db migration callsite, it's called
+            before app.config['music_root'] is set
         """
         mbid = str(song.get('mb_releasetrackid') or song.get('mb_trackid') or '').strip()
         if mbid:
             encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
             return f"{cls._SNG_MBID_PREF}{encoded}"
 
-        hash = path_hash(song.get('path'), _root_directory or app.config['root_directory'])
+        hash = path_hash(song.get('path'), _music_root or app.config['music_root'])
         if hash:
             return f"{cls._SNG_HASH_PREF}{hash}"
 

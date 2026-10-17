@@ -20,7 +20,7 @@ def beets_abspath(item: Dict | Item | Any) -> Path:
     Beets sometimes stores paths relative to its 'directory' config.
     This resolves to an absolute path.
     """
-    return resolve_path(item.get('path', b''), app.config['root_directory'])
+    return resolve_path(item.get('path', b''), app.config['music_root'])
 
 
 class AttrDict(dict):
@@ -140,8 +140,8 @@ def _song_hash_index() -> Dict[str, int]:
     Path hash -> beets id mapping for songs that have no mbid.
     """
 
-    root_directory = app.config['root_directory']
-    cache = library_cache(f'song_hash:{root_directory}')
+    music_root = app.config['music_root']
+    cache = library_cache(f'song_hash:{music_root}')
 
     if 'index' not in cache:
         with flask.g.lib.transaction() as tx:
@@ -154,7 +154,7 @@ def _song_hash_index() -> Dict[str, int]:
                 ORDER BY id DESC
                 """
             )
-        cache['index'] = {path_hash(row[1], root_directory): row[0] for row in rows}    # lowest id wins a collision
+        cache['index'] = {path_hash(row[1], music_root): row[0] for row in rows}    # lowest id wins a collision
 
     return cache['index']
 

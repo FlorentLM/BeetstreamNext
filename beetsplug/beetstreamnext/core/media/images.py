@@ -220,7 +220,7 @@ def fetch_playlist_images(item, url: str) -> None:
     if not album_dir_raw:
         return
 
-    album_dir = resolve_path(album_dir_raw, app.config['root_directory'])
+    album_dir = resolve_path(album_dir_raw, app.config['music_root'])
 
     if _image_from_folder(album_dir):
         return  # already has art on disk
@@ -328,7 +328,7 @@ def _album_art_bytes(album_id, size: int) -> bytes | None:
 
     art_path = os.fsdecode(album.get('artpath') or b'')
     if art_path:
-        art_path = str(resolve_path(art_path, app.config['root_directory']))
+        art_path = str(resolve_path(art_path, app.config['music_root']))
 
         if os.path.isfile(art_path):
             resized = _cached_resize(art_path, size)
@@ -338,7 +338,7 @@ def _album_art_bytes(album_id, size: int) -> bytes | None:
     album_dir_raw = os.fsdecode(album.item_dir() or b'')
     album_dir = None
     if album_dir_raw:
-        album_dir = resolve_path(album_dir_raw, app.config['root_directory'])
+        album_dir = resolve_path(album_dir_raw, app.config['music_root'])
 
         found_art = _image_from_folder(album_dir)
         if found_art:
@@ -382,7 +382,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     # No size requested: serve original file as-is (if not oversized)
     art_path = os.fsdecode(album.get('artpath') or b'')
     if art_path:
-        art_path = str(resolve_path(art_path, app.config['root_directory']))
+        art_path = str(resolve_path(art_path, app.config['music_root']))
 
         if os.path.isfile(art_path):
             try:
@@ -398,7 +398,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     album_dir_raw = os.fsdecode(album.item_dir() or b'')
     album_dir = None
     if album_dir_raw:
-        album_dir = resolve_path(album_dir_raw, app.config['root_directory'])
+        album_dir = resolve_path(album_dir_raw, app.config['music_root'])
 
         found_art = _image_from_folder(album_dir)
 

@@ -189,7 +189,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     if not library_db.is_file():
         parser.error(f'Beets database not found at `{library_db}`.')
 
-    music_root_val = _cascade_value(args.music_root, get_env('MUSIC_ROOT'), yaml_cfg.get('music_root'), _beets_cfg('directory'))
+    music_root = _cascade_value(args.music_root, get_env('MUSIC_ROOT'), yaml_cfg.get('music_root'), _beets_cfg('directory'))
 
     bsn_db = _cascade_value(args.bsn_db, get_env('BSN_DB_PATH'), yaml_cfg.get('bsn_db'))
     if bsn_db:
@@ -209,6 +209,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         ip_whitelist=ip_whitelist,
         ip_blacklist=ip_blacklist,
         standalone=True,
+        music_root=music_root,
     )
 
     if args.command == 'clear-cache':
@@ -238,8 +239,8 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # TODO: 'library_path' always comes from the library_db cascade above: it's needed to locate BSN's db, so it can never be set via WebUI... Change this maybe?
     yaml_defaults: Dict[str, Any] = {'library_path': str(library_db)}
-    if music_root_val:
-        yaml_defaults['music_root'] = music_root_val
+    if music_root:
+        yaml_defaults['music_root'] = music_root
 
     for key in SETTINGS_SCHEMA:
         if key in ('ip_whitelist', 'ip_blacklist', 'library_path', 'music_root'):
@@ -292,7 +293,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         port=port,
         debug=debug,
         force_trust_host=force_trust_host,
-        root_directory=Path(final_music_root),
+        music_root=Path(final_music_root),
         playlist_dirs=playlist_dirs,
     )
 

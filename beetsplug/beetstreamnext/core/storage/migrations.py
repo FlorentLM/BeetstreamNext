@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 import beets
@@ -242,10 +243,31 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
 
     Rows for a song that no longer exists in the library are dropped.
     """
+
     from beetsplug.beetstreamnext.core.library.ids import IDs
 
-    # this migration runs before app.config['root_directory'] is set so this is needed
-    _root_dir = beets.config['directory'].get()
+    config = flask.current_app.config
+
+    if config.get('music_root'):
+        return str(config['music_root'])
+
+    if config.get('STANDALONE_MODE'):  # 'music_root' setting is standalone-only
+        try:
+            row = conn.execute(
+                """
+                SELECT value
+                FROM settings
+                WHERE key = 'music_root'
+                """).fetchone()
+            stored = json.loads(row[0]) if row and row[0] else ''
+
+        except (sqlite3.Error, ValueError):
+            stored = ''
+
+        if stored:
+            return str(stored)
+
+    _music_root = str(beets.config['directory'].get())
 
     conn.commit()   # close any implicit transaction before toggling FK enforcement
     conn.execute("""PRAGMA foreign_keys = OFF""")
@@ -262,7 +284,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
         id_map = {
             row[0]: IDs.encode_song(
                 {'id': row[0], 'mb_trackid': row[1], 'mb_releasetrackid': row[2], 'path': row[3]},
-                _root_directory=_root_dir
+                _music_root=_music_root
             )
             for row in item_rows
         }

@@ -23,7 +23,7 @@ def song_payload(subsonic_song_id: str) -> dict:
         return {}
 
     payload = {
-        'song': Serialise.song(song_item)
+        'song': Serialise.song(song_item, exact_size=True)
     }
     return payload
 

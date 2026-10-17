@@ -20,7 +20,7 @@ from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_d
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
 from beetsplug.beetstreamnext.core.runtime.web import external_url
-from beetsplug.beetstreamnext.utils.system import get_mimetype, relative_to
+from beetsplug.beetstreamnext.utils.system import get_mimetype, relative_to, resolve_path
 
 if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.media.playlists import Playlist
@@ -385,19 +385,8 @@ class Serialise:
                 subsonic_album['songCount'] = len(songs)
                 subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
 
-            song_filesizes = {}
-            if songs:
-                try:
-                    album_dir = os.path.dirname(os.fsdecode(songs[0].path))
-                    with os.scandir(album_dir) as it:
-                        for entry in it:
-                            if entry.is_file():
-                                song_filesizes[entry.path] = entry.stat().st_size
-                except Exception as e:
-                    bsn_logger.debug(f"Filesize prefetch failed: {e}")
-
             songs.sort(key=lambda s: (s.get('disc', 1), s.get('track', 1)))
-            subsonic_album['song'] = [cls.song(s, prefetched_sizes=song_filesizes) for s in songs]
+            subsonic_album['song'] = [cls.song(s, exact_size=True) for s in songs]     # one album is only a few stats
 
         local_avg, local_count = avg_rating(subsonic_album_id)
         discogs_mode = app.config.get('discogs_ratings', 'off')
@@ -425,9 +414,13 @@ class Serialise:
         return subsonic_album
 
     @classmethod
-    def song(cls, song_object: Dict | LibModel | Item, prefetched_sizes: Optional[Dict[str, int]] = None) -> dict:
+    def song(cls, song_object: Dict | LibModel | Item, exact_size: bool = False) -> dict:
         """
         Map a beets song item to its serialised Subsonic Child response dict.
+
+        Args:
+            - exact_size: stat the file for its real size, instead of estimating it from bitrate and length
+            (for single song views: a stat per song is too slow for lists, and the estimate is off for VBR)
         """
 
         data = standardise_datadict(song_object)
@@ -543,19 +536,12 @@ class Serialise:
         subsonic_song['suffix'] = suffix or 'mp3'
         subsonic_song['contentType'] = get_mimetype(song_filepath or suffix)
 
-        if prefetched_sizes and song_filepath in prefetched_sizes:
-            subsonic_song['size'] = prefetched_sizes[song_filepath]
-        else:
-            bitrate = data.get('bitrate') or 0
-            length = data.get('length') or 0
-            subsonic_song['size'] = round((bitrate * length) / 8)
-
-            # only hit the disk if bitrate/length missing
-            if subsonic_song['size'] == 0:
-                try:
-                    subsonic_song['size'] = os.path.getsize(song_filepath)
-                except Exception:
-                    pass
+        subsonic_song['size'] = round(((data.get('bitrate') or 0) * (data.get('length') or 0)) / 8)
+        if exact_size and song_filepath:
+            try:
+                subsonic_song['size'] = resolve_path(song_filepath, app.config['root_directory']).stat().st_size
+            except OSError:
+                pass    # Unreachable file so keep estimate
 
         stats = one_play_stats(song_id)
         if stats:

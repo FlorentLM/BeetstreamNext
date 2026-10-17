@@ -505,8 +505,8 @@ class Resolve:
         Resolve any playable Subsonic ID (song, radio station, or podcast episode) to (id, local path or URL).
 
         Args:
-            - pre_resolved: An optional {id: (type, object)} map from a prior resolve_many() call.
-            Falls back to a single-item resolve() when it's not given or doesn't have the id.
+            - pre_resolved: An optional {id: (type, object)} map from a prior Resolve.multiple() call.
+            Falls back to a single-item Resolve.any() when it's not given or doesn't have the id.
         """
         entry_type, obj = (pre_resolved or {}).get(entry_id) or Resolve.any(entry_id)
 

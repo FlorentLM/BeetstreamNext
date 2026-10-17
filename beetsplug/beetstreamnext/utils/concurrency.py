@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Optional
+from collections import Counter, defaultdict, deque
+from typing import Hashable, Optional
 
 
 class SingleAccess:
@@ -36,3 +37,58 @@ class Throttle:
                 return False
             self._last = now
             return True
+
+
+class RollingLimiter:
+    """Lets each key through at most `max_events` times in any `window` seconds."""
+
+    def __init__(self, max_events: int, window: float) -> None:
+        self._max_events = max_events
+        self._window = window
+        self._lock = threading.Lock()
+        self._events: defaultdict[Hashable, deque] = defaultdict(deque)
+
+    def allow(self, key: Hashable, now: Optional[float] = None) -> bool:
+
+        now = time.time() if now is None else now
+
+        with self._lock:
+            events = self._events[key]
+            while events and now - events[0] > self._window:
+                events.popleft()
+
+            if len(events) >= self._max_events:
+                return False
+
+            events.append(now)
+            return True
+
+
+class KeyedLimiter:
+    """Caps how many things each key can have running at once."""
+
+    def __init__(self, max_per_key: int) -> None:
+        self._max = max_per_key
+        self._lock = threading.Lock()
+        self._held: Counter = Counter()
+
+    def try_acquire(self, key: Optional[Hashable]) -> bool:
+        if not key:
+            return True
+        with self._lock:
+            if self._held[key] >= self._max:
+                return False
+            self._held[key] += 1
+            return True
+
+    def release(self, key: Optional[Hashable]) -> None:
+        if not key:
+            return
+        with self._lock:
+            self._held[key] -= 1
+            if self._held[key] <= 0:
+                del self._held[key]
+
+    def held(self, key: Hashable) -> int:
+        with self._lock:
+            return self._held.get(key, 0)

@@ -14,69 +14,25 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import (
-    ALLOWED_BITRATES, FFMPEG_INPUT_ARGS, HLS_CACHE_DIR, HLS_MAX_CACHE_BYTES, HLS_MAX_CONCURRENT,
-    HLS_MAX_VARIANTS
+    ALLOWED_BITRATES, FFMPEG_INPUT_ARGS, HLS_CACHE_DIR, HLS_MAX_VARIANTS
 )
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, subprocess_env
 from beetsplug.beetstreamnext.core.runtime.web import send_file
-from beetsplug.beetstreamnext.utils.system import dir_size, get_mimetype, find_binary, resolve_path
+from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.health import needs_healing
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.media.hls import hls_sessions
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, is_lossless, evaluate_limitation, get_normalization_filter, try_transcode
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
-
-
-_hls_slots = threading.BoundedSemaphore(HLS_MAX_CONCURRENT)
 
 
 def _snap_bitrate(kbps: int) -> int:
     """Nearest bitrate from the allowed set, so clients can't mint endless distinct HLS variants."""
     return min(sorted(ALLOWED_BITRATES - {0}), key=lambda b: abs(b - kbps))
-
-
-_hls_lock = threading.Lock()
-_hls_encoding: set = set()    # ids of sessions ffmpeg is still writing
-
-
-def _enforce_hls_cache_cap() -> bool:
-    """
-    Delete least recently used sessions until the HLS cache under the size cap.
-    """
-    total = dir_size(HLS_CACHE_DIR)
-    if total <= HLS_MAX_CACHE_BYTES:
-        return True
-
-    idle = []
-    for entry in HLS_CACHE_DIR.iterdir():
-        if entry.is_dir() and entry.name not in _hls_encoding:
-            idle.append((entry.stat().st_mtime, entry, dir_size(entry)))
-
-    for _, entry, size in sorted(idle, key=lambda item: item[0]):
-        if total <= HLS_MAX_CACHE_BYTES:
-            break
-        shutil.rmtree(entry, ignore_errors=True)
-        total -= size
-        bsn_logger.debug(f"HLS cache over size cap: removed '{entry.name}'.")
-
-    return total <= HLS_MAX_CACHE_BYTES
-
-
-def _reserve_hls_session(stream_dir: Path) -> str:
-
-    with _hls_lock:
-        if stream_dir.exists():
-            return 'exists'
-
-        if not _enforce_hls_cache_cap():
-            return 'full'
-
-        stream_dir.mkdir(parents=True)
-        _hls_encoding.add(stream_dir.name)
-        return 'created'
 
 
 def _run_hls_encode(command: list, stream_dir) -> None:
@@ -89,13 +45,13 @@ def _run_hls_encode(command: list, stream_dir) -> None:
             stderr=subprocess.DEVNULL,
             env=subprocess_env()
         ).returncode
+
     except OSError as e:
         bsn_logger.warning(f'HLS encode failed to start: {e}')
         returncode = -1
+
     finally:
-        _hls_slots.release()
-        with _hls_lock:
-            _hls_encoding.discard(stream_dir.name)
+        hls_sessions.end(stream_dir.name)
 
     if returncode != 0:
         bsn_logger.warning(f"HLS encode failed (rc={returncode}), discarding '{stream_dir.name}'.")
@@ -145,14 +101,7 @@ def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional
 
 def _streamdownload_podcast(req_values, required_role: str) -> flask.Response | None:
     """
-    Some clients never call downloadPodcastEpisode, they just hit /stream (or /download)
-    directly with an episode id and expect audio back...
-
-    So for episodes not yet downloaded, relayed_download() proxies it live,
-    and simultaneously saves it to local storage.
-
-    Returns None when this doesn't apply (not a podcast episode id, or already downloaded): in this case
-    _get_media_context handles it (it supports range/transcode) so the caller falls through just fine.
+    Proxies download live and simultaneously saves it to local storage.
     """
 
     resp_fmt = req_values.get('f', default='xml', type=safe_str)
@@ -249,9 +198,6 @@ def endpoint_stream_song() -> flask.Response | None:
     song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
     norm_filter = get_normalization_filter(song)
 
-    # Flagged by a health scan as having decode errors direct-play can't recover from. Checked
-    # unconditionally (not just as a last-resort elif) since it changes how any resulting transcode
-    # is served, regardless of which other reason also called for one.
     healing = not isinstance(song, dict) and needs_healing(IDs.encode_song(standardise_datadict(song)))
 
     needs_transcode = False
@@ -283,9 +229,7 @@ def endpoint_stream_song() -> flask.Response | None:
         if req_format != 'raw':
             target_format = req_format
         elif max_bitrate <= 0 and song_ext in FORMAT_MAP:
-            # No explicit different-format or bitrate-cap request (e.g. transcoding only to apply
-            # ReplayGain or heal bitstream corruption): keep the original container/codec, so a
-            # healed flac stays flac instead of silently dropping to lossy mp3.
+            # Original container/codec can be kept
             target_format = song_ext
         elif max_bitrate <= 0 and is_lossless(song_ext):
             target_format = 'flac'
@@ -467,8 +411,6 @@ def endpoint_get_transcode_decision() -> flask.Response:
         }
 
         # Encode transcode instructions into a opaque string for getTranscodeStream
-        # 4th field: whether this transcode is (also) needed to heal bitstream corruption, so
-        # getTranscodeStream knows to serve an exact Content-Length instead of an estimated one.
         tx_params = f'{target_container}|{target_br}|{int(bool(norm_filter))}|{int(healing)}'
 
     decision = {
@@ -591,21 +533,21 @@ def endpoint_hls() -> flask.Response | None:
         if not hls_ffmpeg_bin:
             return subsonic_error(0, message='FFmpeg is required for HLS streaming.', resp_fmt=resp_fmt)
 
-        if not _hls_slots.acquire(blocking=False):
+        if not hls_sessions.try_acquire_slot():
             return subsonic_error(0, message='Too many HLS sessions are being prepared, try again shortly.', resp_fmt=resp_fmt)
 
         try:
-            reservation = _reserve_hls_session(stream_dir)
+            reservation = hls_sessions.reserve(stream_dir)
         except BaseException:
-            _hls_slots.release()
+            hls_sessions.release_slot()
             raise
 
         if reservation == 'full':
-            _hls_slots.release()
+            hls_sessions.release_slot()
             return subsonic_error(0, message='The HLS cache is full, try again shortly.', resp_fmt=resp_fmt)
 
         if reservation == 'exists':     # Another request just started this exact session
-            _hls_slots.release()
+            hls_sessions.release_slot()
 
         else:
             try:
@@ -638,9 +580,7 @@ def endpoint_hls() -> flask.Response | None:
                     ])
 
             except BaseException:
-                _hls_slots.release()
-                with _hls_lock:
-                    _hls_encoding.discard(stream_id)
+                hls_sessions.end(stream_id)
                 shutil.rmtree(stream_dir, ignore_errors=True)
                 raise
 

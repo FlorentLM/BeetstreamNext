@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 import queue
 import threading
-from collections import Counter
 from typing import Generator, Optional, Any
 import flask
 
@@ -18,6 +17,7 @@ from beetsplug.beetstreamnext.constants import (
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.web import send_file
+from beetsplug.beetstreamnext.utils.concurrency import KeyedLimiter
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import find_binary
 
@@ -114,27 +114,7 @@ def get_normalization_filter(item) -> str | None:
 
 
 _transcode_slots = threading.BoundedSemaphore(TRANSCODE_MAX_CONCURRENT)
-_user_transcodes: Counter = Counter()      # username -> nb transcodes running
-_user_transcodes_lock = threading.Lock()
-
-
-def _take_user_slot(username: str | None) -> bool:
-    if not username:
-        return True     # no user (e.g. a tokenised stream URL) -> global limit applies
-    with _user_transcodes_lock:
-        if _user_transcodes[username] >= TRANSCODE_MAX_PER_USER:
-            return False
-        _user_transcodes[username] += 1
-        return True
-
-
-def _give_user_slot(username: str | None) -> None:
-    if not username:
-        return
-    with _user_transcodes_lock:
-        _user_transcodes[username] -= 1
-        if _user_transcodes[username] <= 0:
-            del _user_transcodes[username]
+_user_slots = KeyedLimiter(TRANSCODE_MAX_PER_USER)
 
 
 def _send_transcode(
@@ -347,20 +327,20 @@ def try_transcode(
 
     username = getattr(flask.g, 'username', None)
 
-    if not _take_user_slot(username):
+    if not _user_slots.try_acquire(username):
         busy = flask.Response('You have too many transcodes running, try again shortly.', status=503)
         busy.headers['Retry-After'] = '5'
         return busy
 
     if not _transcode_slots.acquire(blocking=False):
-        _give_user_slot(username)
+        _user_slots.release(username)
         busy = flask.Response('Too many transcodes are running, try again shortly.', status=503)
         busy.headers['Retry-After'] = '5'
         return busy
 
     def _release() -> None:
         _transcode_slots.release()
-        _give_user_slot(username)
+        _user_slots.release(username)
 
     try:
         if exact_length:

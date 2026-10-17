@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import threading
 import time
-from collections import defaultdict, deque
 import flask
 
 from .. import subsonic_bp
@@ -12,25 +10,11 @@ from beetsplug.beetstreamnext.constants import (
 )
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.utils.concurrency import RollingLimiter
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
-_recent_posts: dict[str, deque] = defaultdict(deque)     # username -> times of latest messages
-_recent_posts_lock = threading.Lock()
-
-
-def post_message(username: str, now: float) -> bool:
-
-    with _recent_posts_lock:
-        posts = _recent_posts[username]
-        while posts and now - posts[0] > CHAT_RATE_WINDOW_SEC:
-            posts.popleft()
-
-        if len(posts) >= CHAT_RATE_MAX:
-            return False
-
-        posts.append(now)
-        return True
+_chat_limiter = RollingLimiter(CHAT_RATE_MAX, CHAT_RATE_WINDOW_SEC)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/
@@ -51,7 +35,7 @@ def endpoint_add_chat_message() -> flask.Response:
     now = time.time()
     now_ms = int(now * 1000)
 
-    if not post_message(username, now):
+    if not _chat_limiter.allow(username, now):
         return subsonic_error(0, message='Too many messages, slow down.', resp_fmt=resp_fmt)
 
     with database() as db:

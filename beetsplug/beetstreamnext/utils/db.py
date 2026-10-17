@@ -79,6 +79,29 @@ def chunked_query(
     return results
 
 
+def chunked_execute(
+        db_obj: 'Connection',
+        query_template: str,
+        chunked_values: List[Any],
+        trailing_params: Optional[List[Any]] = None,
+        chunk_size: int = 900
+    ) -> int:
+    """
+    db_obj: The beets Transaction or sqlite Connection object
+    query_template: SQL string with a '{q}' placeholder for the IN clause
+    trailing_params: Static parameters to bind after the chunked values
+    """
+    trailing_params = trailing_params or []
+    affected = 0
+
+    for i in range(0, len(chunked_values), chunk_size):
+        chunk = list(chunked_values[i: i + chunk_size])
+        sql = query_template.replace('{q}', ','.join(['?'] * len(chunk)))
+        affected += max(db_obj.execute(sql, chunk + trailing_params).rowcount, 0)
+
+    return affected
+
+
 def escape_like(s: str, escape: str = '!') -> str:
     """Escape SQL LIKE wildcards. Use with `LIKE ? ESCAPE '!'`."""
     return s.replace(escape, escape * 2).replace('%', escape + '%').replace('_', escape + '_')

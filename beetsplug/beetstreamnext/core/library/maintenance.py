@@ -19,6 +19,7 @@ from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.accounts.sessions import purge_expired_sessions
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.utils.system import purge, dir_size
+from beetsplug.beetstreamnext.utils.db import chunked_execute
 
 _cleanup_lock = threading.Lock()
 _last_cleanup: float = 0.0
@@ -150,11 +151,11 @@ def sweep_stale_references() -> dict[str, int]:
             ).fetchall()
         ]
         if stale_pe:
-            placeholders = ','.join('?' * len(stale_pe))
-            db.execute(
-                f"""
+            chunked_execute(
+                db,
+                """
                 DELETE FROM bookmarks 
-                WHERE song_id IN ({placeholders})
+                WHERE song_id IN ({q})
                 """, stale_pe
             )
             purged['bookmarks (deleted podcast episodes)'] = len(stale_pe)
@@ -194,12 +195,12 @@ def sweep_stale_references() -> dict[str, int]:
                 if not to_delete:
                     continue
 
-                placeholders = ','.join('?' * len(to_delete))
-                db.execute(
+                chunked_execute(
+                    db,
                     f"""
                     DELETE FROM {table} 
                     WHERE {column} 
-                    IN ({placeholders})
+                    IN ({{q}})
                     """, to_delete
                 )
 

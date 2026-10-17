@@ -22,6 +22,7 @@ from beetsplug.beetstreamnext.constants import START_TIME, SERVER_VERSION
 from beetsplug.beetstreamnext.core.library.beets_interaction import config_path
 from beetsplug.beetstreamnext.utils.system import find_binary, binary_version, resolve_path
 from beetsplug.beetstreamnext.utils.text import format_duration, format_elapsed
+from beetsplug.beetstreamnext.utils.db import chunked_execute
 
 DECODE_ERRORS_CHECK = 'decode_errors'
 MISSING_FILE_CHECK = 'missing_file'
@@ -305,12 +306,12 @@ def scan_library(full: bool = False) -> Dict[str, int]:
 
             stale_ids = existing.keys() - seen_song_ids
             if stale_ids:
-                placeholders = ','.join('?' * len(stale_ids))
-                db.execute(
-                    f"""
+                chunked_execute(
+                    db,
+                    """
                     DELETE FROM song_checks
-                    WHERE song_id IN ({placeholders}) AND kind IN (?, ?)
-                    """, (*stale_ids, DECODE_ERRORS_CHECK, MISSING_FILE_CHECK)
+                    WHERE song_id IN ({q}) AND kind IN (?, ?)
+                    """, list(stale_ids), [DECODE_ERRORS_CHECK, MISSING_FILE_CHECK]
                 )
                 db.commit()
                 counts['pruned'] = len(stale_ids)

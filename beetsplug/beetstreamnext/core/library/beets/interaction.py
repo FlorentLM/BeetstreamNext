@@ -571,7 +571,7 @@ def write_beets_field(
             UPDATE beets.{core_table} 
             SET {key} = ? 
             WHERE id = ?
-            """, (value, entity_id),
+            """, (value, entity_id),  # nosec B608
         )
         db.commit()
 
@@ -591,7 +591,7 @@ def write_beets_field(
         INSERT INTO beets.{attr_table} (entity_id, key, value)
         VALUES (?, ?, ?)
         ON CONFLICT(entity_id, key) DO UPDATE SET value = excluded.value
-        """,
+        """,  # nosec B608
         (entity_id, key, str(value)),
     )
     db.commit()

@@ -54,7 +54,8 @@ def check_password(
 
     ok = False
     if token and salt:
-        expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()
+        # MD5 is imposed by the Subsonic token scheme: md5(password + salt)
+        expected = hashlib.md5(f"{stored_password}{salt}".encode('utf-8')).hexdigest().lower()  # nosec B324
         ok = hmac.compare_digest(token.encode('utf-8'), expected.encode('utf-8'))
 
     elif clearpass:

@@ -90,7 +90,7 @@ def thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = 
         mtime = os.path.getmtime(original_path)
 
     path_str = os.fsdecode(original_path)
-    file_hash = hashlib.md5(f"{path_str}_{size}_{mtime}".encode()).hexdigest()
+    file_hash = hashlib.md5(f"{path_str}_{size}_{mtime}".encode(), usedforsecurity=False).hexdigest()
 
     return app.config['THUMBNAIL_CACHE_PATH'] / f'.{file_hash}.jpg'
 
@@ -462,7 +462,7 @@ def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
         return BytesIO(tiles[0])
 
     cache_key = f"{playlist.id}_{'-'.join(used_album_ids)}"
-    file_hash = hashlib.md5(f"{cache_key}_{size}".encode()).hexdigest()
+    file_hash = hashlib.md5(f"{cache_key}_{size}".encode(), usedforsecurity=False).hexdigest()
     cache_path = app.config['THUMBNAIL_CACHE_PATH'] / f'.mosaic-{file_hash}.jpg'
     
     if cache_path.is_file():
@@ -537,7 +537,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     if manual:
         return _send_blob(manual, size)
 
-    cache_key = hashlib.md5(artist_name.encode('utf-8')).hexdigest()
+    cache_key = hashlib.md5(artist_name.encode('utf-8'), usedforsecurity=False).hexdigest()
     local_image_path = app.config['ARTIST_IMAGE_DATA_PATH'] / f'{cache_key}.jpg'
 
     # Find possible artist for getting an image from
@@ -617,7 +617,7 @@ def send_stored_art(kind: str, row_id: int, size: Optional[int] = None) -> flask
             f"""
             SELECT image FROM {table} 
             WHERE id = ?
-            """, (row_id,)
+            """, (row_id,)  # nosec B608
         ).fetchone()
 
     if not row or not row['image']:

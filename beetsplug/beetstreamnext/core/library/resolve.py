@@ -122,7 +122,7 @@ def get_artist_metadata(name: str) -> dict:
                 selects.append(f"MAX({' OR '.join(conditions)})")
                 params.extend(col_params)
 
-            found = tx.query(f"""SELECT {', '.join(selects)} FROM items""", params)[0]
+            found = tx.query(f"""SELECT {', '.join(selects)} FROM items""", params)[0]  # nosec B608
             roles.extend(role for (role, _), hit in zip(checks, found, strict=True) if hit)
 
     result = {

@@ -18,7 +18,7 @@ def list_shares(username: Optional[str] = None) -> list[dict]:
             FROM shares s
             {'WHERE s.username = ?' if username is not None else ''}
             ORDER BY s.created DESC
-            """, (username,) if username is not None else ()
+            """, (username,) if username is not None else ()  # nosec B608
         ).fetchall()
 
     return [{**dict(r), 'url': external_url(flask.url_for('public.share_view', share_id=r['id']))} for r in rows]
@@ -32,5 +32,5 @@ def delete_share(share_id: str, username: Optional[str] = None) -> None:
             f"""
             DELETE FROM shares
             WHERE id = ? {'AND username = ?' if username is not None else ''}
-            """, (share_id, username) if username is not None else (share_id,)
+            """, (share_id, username) if username is not None else (share_id,)  # nosec B608
         )

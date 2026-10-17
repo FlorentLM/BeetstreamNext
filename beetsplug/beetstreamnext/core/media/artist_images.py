@@ -78,7 +78,7 @@ def find_uploaded_image(name: str, mbid: Optional[str] = None) -> bytes | None:
             FROM artist_images
             WHERE artist_key IN ({','.join('?' * len(keys))}) 
             AND image IS NOT NULL
-            """, keys
+            """, keys  # nosec B608
         ).fetchall()
 
     by_key = {r['artist_key']: r['image'] for r in rows}
@@ -235,14 +235,14 @@ def library_keys() -> set[str]:
                         f"""
                         SELECT {name_col}, {mbid_col} 
                         FROM {table}
-                        """
+                        """  # nosec B608
                     )
                     for row in rows:
                         add(row[0], row[1])
 
             name_col, names_col, mbids_col = joint_cols[table]
             if {name_col, names_col, mbids_col} <= cols:
-                for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):
+                for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):  # nosec B608
                     if name and IDs.is_joint_credit(names, name):
                         keys.update(joint_keys(name, names, mbids))
     return keys

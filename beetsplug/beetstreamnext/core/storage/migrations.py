@@ -411,7 +411,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
         # likes/ratings: item_id is already TEXT, but may hold the old 'sg-<row id>' form
         for table in ('likes', 'ratings'):
             legacy_rows = conn.execute(
-                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'sg-[0-9]*'"""
+                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'sg-[0-9]*'"""  # nosec B608
             ).fetchall()
             for rowid, item_id in legacy_rows:
                 try:
@@ -422,10 +422,10 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
                 if new_id is None or new_id == item_id:
                     continue
                 try:
-                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))
+                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))  # nosec B608
                 except sqlite3.IntegrityError:
                     # a row for (username, new_id) already exists: drop the stale duplicate
-                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))
+                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))  # nosec B608
 
         _set_version(conn, version)
         conn.commit()
@@ -474,7 +474,7 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, versio
 
         for table in ('likes', 'ratings'):
             legacy_rows = conn.execute(
-                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'al-[0-9]*'"""
+                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'al-[0-9]*'"""  # nosec B608
             ).fetchall()
             for rowid, item_id in legacy_rows:
                 try:
@@ -485,10 +485,10 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, versio
                 if new_id is None or new_id == item_id:
                     continue
                 try:
-                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))
+                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))  # nosec B608
                 except sqlite3.IntegrityError:
                     # a row for (username, new_id) already exists: drop the stale duplicate
-                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))
+                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))  # nosec B608
 
         legacy_shares = conn.execute(
             """SELECT rowid, item_id FROM share_entries WHERE item_id GLOB 'al-[0-9]*'"""

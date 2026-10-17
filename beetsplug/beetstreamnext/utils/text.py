@@ -19,7 +19,7 @@ from beetsplug.beetstreamnext.constants import (
 
 def sha1_hex(value: str) -> str:
     """Hex SHA-1 digest of a string (UTF-8)."""
-    return hashlib.sha1(value.encode('utf-8')).hexdigest()
+    return hashlib.sha1(value.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
 def sha256_hex(value: str) -> str:

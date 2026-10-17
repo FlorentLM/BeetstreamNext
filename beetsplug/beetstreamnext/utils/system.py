@@ -235,7 +235,7 @@ def path_hash(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
         rel = Path(path).relative_to(str(music_root)).as_posix()
     except ValueError:
         rel = Path(path).as_posix()
-    return hashlib.sha1(rel.encode('utf-8')).hexdigest()[:16]
+    return hashlib.sha1(rel.encode('utf-8'), usedforsecurity=False).hexdigest()[:16]
 
 
 def make_hidden(filepath: bytes | str | Path) -> None:

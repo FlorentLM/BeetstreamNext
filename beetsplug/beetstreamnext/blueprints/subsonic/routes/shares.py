@@ -151,7 +151,7 @@ def endpoint_update_share() -> flask.Response:
 
         if updates:
             params.append(share_id)
-            db.execute(f"""UPDATE shares SET {', '.join(updates)} WHERE id = ?""", params)
+            db.execute(f"""UPDATE shares SET {', '.join(updates)} WHERE id = ?""", params)  # nosec B608
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

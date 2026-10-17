@@ -183,7 +183,8 @@ MIN_PASSWORD_LEN: int = 8
 
 ## Server defaults
 
-DEFAULT_HOST: str = '0.0.0.0'
+# A media server has to be reachable from other devices
+DEFAULT_HOST: str = '0.0.0.0'  # nosec B104
 DEFAULT_PORT: int = 8080
 
 DB_BUSY_TIMEOUT_MS: int = 5000

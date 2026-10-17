@@ -40,7 +40,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
             SELECT {columns_str}
             FROM users
             WHERE username = ?
-            """, (username,)
+            """, (username,)  # nosec B608
         ).fetchone()
 
     if not row:
@@ -92,7 +92,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
         columns_str = ', '.join(columns)
         placeholders_str = ', '.join(placeholders)
 
-        sql = f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str})"
+        sql = f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str})"  # nosec B608
         sql_values = values
     else:
         # Updating an existing user
@@ -106,7 +106,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
             update_clauses.append(f"{key} = ?")
             sql_values.append(val)
 
-        sql = f"UPDATE users SET {', '.join(update_clauses)} WHERE username = ?"
+        sql = f"UPDATE users SET {', '.join(update_clauses)} WHERE username = ?"  # nosec B608
         sql_values.append(username)
 
     def _execute(conn: sqlite3.Connection) -> None:
@@ -259,7 +259,7 @@ def list_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
 
     with database() as db:
         rows = db.execute(
-            f"""SELECT {columns_str} FROM users"""
+            f"""SELECT {columns_str} FROM users"""  # nosec B608
         ).fetchall()
 
     return [dict(zip(column_names, row, strict=True)) for row in rows]

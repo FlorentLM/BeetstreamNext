@@ -81,7 +81,7 @@ def endpoint_songs_by_genre() -> flask.Response:
         SELECT * FROM items 
         WHERE ({' OR '.join(conditions)}) 
         ORDER BY title LIMIT ? OFFSET ?
-        """
+        """  # nosec B608
         params.extend([count, offset])
 
         with flask.g.lib.transaction() as tx:
@@ -184,7 +184,7 @@ def endpoint_get_top_songs() -> flask.Response:
                    SELECT * FROM items 
                    WHERE (albumartist = ? OR {' OR '.join(name_conditions)})
                      AND title IN ({placeholders})
-                   """
+                   """  # nosec B608
             with flask.g.lib.transaction() as tx:
                 top_tracks_available = list(tx.query(sql, [artist_name, *name_params, *lastfm_track_names]))
 
@@ -269,7 +269,7 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int
     if not conditions:
         return matches
 
-    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions)
+    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions)  # nosec B608
     with flask.g.lib.transaction() as tx:
         rows = list(tx.query(query, params))
 
@@ -362,7 +362,7 @@ def endpoint_get_similar_songs() -> flask.Response:
         if conditions:
             # Overfetch a bit since some rows may duplicate what track-level already found
             remaining = limit - len(matched_songs)
-            query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"
+            query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"  # nosec B608
             params.append(remaining + len(matched_songs))
 
             with flask.g.lib.transaction() as tx:

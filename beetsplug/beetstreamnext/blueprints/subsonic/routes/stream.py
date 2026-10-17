@@ -524,7 +524,7 @@ def endpoint_hls() -> flask.Response | None:
         mtime = 0.0
 
     # Unique hash for this file + bitrates combination
-    stream_id = hashlib.md5(f"{song.id}_{'-'.join(map(str, bitrates))}_{mtime}".encode()).hexdigest()
+    stream_id = hashlib.md5(f"{song.id}_{'-'.join(map(str, bitrates))}_{mtime}".encode(), usedforsecurity=False).hexdigest()
     stream_dir = HLS_CACHE_DIR / stream_id
 
     # If this specific one doesn't exist build it

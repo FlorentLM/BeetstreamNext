@@ -317,7 +317,8 @@ def run_server(
                 f"Debug mode (Werkzeug) can only bind one interface, ignoring all but '{host[0]}' "
                 f"(configured: {', '.join(host)})."
             )
-        app.run(host=host[0], port=port, debug=True, threaded=True, use_reloader=False)
+        # Only reachable with the explicit debug option
+        app.run(host=host[0], port=port, debug=True, threaded=True, use_reloader=False)  # nosec B201
 
     else:
         logging.getLogger('waitress').setLevel(LOG_LEVEL)

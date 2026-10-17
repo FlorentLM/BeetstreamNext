@@ -167,11 +167,12 @@ def sweep_stale_references() -> dict[str, int]:
 
         for table, column in _SONG_REF_TABLES:
             rows = db.execute(
-                f"""SELECT DISTINCT {column} 
+                f"""
+                SELECT DISTINCT {column} 
                 FROM {table} 
                 WHERE {column} 
                 LIKE 'sg-%'
-                """
+                """  # nosec B608
             ).fetchall()
 
             ids = [row[0] for row in rows]
@@ -201,7 +202,7 @@ def sweep_stale_references() -> dict[str, int]:
                     DELETE FROM {table} 
                     WHERE {column} 
                     IN ({{q}})
-                    """, to_delete
+                    """, to_delete  # nosec B608
                 )
 
                 purged[f'{table} (deleted songs)'] = len(to_delete)
@@ -218,7 +219,7 @@ def sweep_stale_references() -> dict[str, int]:
             f"""
             DELETE FROM settings
             WHERE key NOT IN ({placeholders})
-            """, tuple(SETTINGS_SCHEMA.keys())
+            """, tuple(SETTINGS_SCHEMA.keys())  # nosec B608
         )
         if cur.rowcount:
             purged['settings (unknown keys)'] = cur.rowcount

@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.routes.albums import album_pay
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.artists import artist_payload
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.songs import song_payload
 from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
-from beetsplug.beetstreamnext.core.library.beets.interaction import is_import_running, start_pinned_imports
+from beetsplug.beetstreamnext.core.library.beets.interaction import import_session
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.config.store import settings_store
@@ -255,11 +255,11 @@ def endpoint_start_scan() -> flask.Response:
     if not flask.g.user_data.get('adminRole'):
         return subsonic_error(40, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
 
-    ok, message = start_pinned_imports(list_pinned_paths())
+    ok, message = import_session.start_pinned(list_pinned_paths())
     if not ok:
         return subsonic_error(0, message=message, resp_fmt=resp_fmt)
 
-    return subsonic_response({'scanStatus': {'scanning': is_import_running()}}, resp_fmt=resp_fmt)
+    return subsonic_response({'scanStatus': {'scanning': import_session.is_running()}}, resp_fmt=resp_fmt)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getScanStatus/
@@ -278,7 +278,7 @@ def endpoint_get_scan_status() -> flask.Response:
 
     payload = {
         'scanStatus': {
-            "scanning": is_import_running(),
+            "scanning": import_session.is_running(),
             "count": items_count
         }
     }

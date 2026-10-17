@@ -209,6 +209,7 @@ HLS_MAX_CONCURRENT: int = 2              # HLS sessions being encoded at once
 HLS_MAX_CACHE_BYTES: int = 2 * 1024 ** 3 # Total size of all HLS sessions on disk
 ZIP_MAX_CONCURRENT: int = 2              # album zips being built at once
 TRANSCODE_MAX_CONCURRENT: int = 16       # max ffmpeg transcodes at once
+TRANSCODE_MAX_PER_USER: int = 4
 COVER_EXTRACT_MAX_CONCURRENT: int = 8    # max ffmpeg cover art extractions at once
 PART_MAX_AGE_SEC: int = 86400            # interrupted podcast '.part' downloads
 

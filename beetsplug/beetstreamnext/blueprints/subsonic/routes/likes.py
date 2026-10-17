@@ -146,29 +146,29 @@ def endpoint_get_starred() -> flask.Response:
 
     if mbids_to_resolve:
         with flask.g.lib.transaction() as tx:
-            placeholders = ','.join(['?'] * len(mbids_to_resolve))
-            rows = tx.query(
-                f"""
+            rows = chunked_query(
+                db_obj=tx,
+                query_template="""
                 SELECT albumartist, albumartists
                 FROM albums
-                WHERE mb_albumartistid IN ({placeholders})
+                WHERE mb_albumartistid IN ({q})
                 GROUP BY albumartist
-                """, mbids_to_resolve
+                """,
+                chunked_values=mbids_to_resolve
             )
-        # Prefer solo credit for each MBID
+        # Prefer solo credit for each MBID (an artist can come back from more than one chunk)
         solo_names = [r[0] for r in rows if r[0] and not IDs.is_joint_credit(r[1], r[0])]
-        beets_artist_names.extend(solo_names or (r[0] for r in rows if r[0]))
+        beets_artist_names.extend(dict.fromkeys(solo_names or (r[0] for r in rows if r[0])))
 
     prefetched = {}
     if beets_artist_names:
         with flask.g.lib.transaction() as tx:
-            placeholders = ','.join(['?'] * len(beets_artist_names))
-            sql = f"""
-                   SELECT albumartist, COUNT(*), mb_albumartistid, albumartist_sort, albumartists
-                   FROM albums
-                   WHERE albumartist IN ({placeholders})
-                   GROUP BY albumartist
-                   """
+            sql = """
+                  SELECT albumartist, COUNT(*), mb_albumartistid, albumartist_sort, albumartists
+                  FROM albums
+                  WHERE albumartist IN ({q})
+                  GROUP BY albumartist
+                  """
             rows = chunked_query(db_obj=tx, query_template=sql, chunked_values=beets_artist_names)
             for r in rows:
                 prefetched[r[0]] = {

@@ -163,7 +163,6 @@ def start_import(path: str, quiet: bool = False, incremental: bool = False, rese
 
             except Exception as e:
                 os.close(master_fd)
-                os.close(slave_fd)
                 bsn_logger.error(f'Failed to start beets import: {e}')
                 return False, 'Failed to start the import process.'
 
@@ -285,6 +284,8 @@ def _finish_import(log_file, exit_code: int) -> None:
 
 
 def _pump_output_posix(proc: subprocess.Popen, master_fd: int) -> None:
+    global _master_fd
+
     with open(BEETS_IMPORT_LOG_PATH, 'a', encoding='utf-8') as log_file:
         try:
             while True:
@@ -296,10 +297,13 @@ def _pump_output_posix(proc: subprocess.Popen, master_fd: int) -> None:
                     break
                 _handle_output_chunk(log_file, chunk.decode('utf-8', errors='replace'))
         finally:
-            try:
-                os.close(master_fd)
-            except OSError:
-                pass
+            with _lock:
+                if _master_fd == master_fd:
+                    _master_fd = None
+                try:
+                    os.close(master_fd)
+                except OSError:
+                    pass
             _finish_import(log_file, proc.wait())
 
 
@@ -316,10 +320,14 @@ def _pump_output_windows(proc) -> None:
                 _handle_output_chunk(log_file, text)
         finally:
             try:
-                exit_code = proc.exitstatus
+                exit_code = proc.wait()
             except Exception:
                 exit_code = None
-            _finish_import(log_file, 0 if exit_code is None else exit_code)
+
+            if exit_code is None:
+                bsn_logger.warning('Could not get the beets import exit status.')
+                exit_code = 1
+            _finish_import(log_file, exit_code)
 
 
 def send_import_input(text: str) -> Tuple[bool, str]:
@@ -327,21 +335,18 @@ def send_import_input(text: str) -> Tuple[bool, str]:
     global _state
 
     with _lock:
-        if _proc is None or _state not in ('running', 'needs_input'):
+        if _proc is None or _state not in ('running', 'needs_input') or (not IS_WINDOWS and _master_fd is None):
             return False, 'No import is waiting for input.'
-        proc = _proc
-        fd = _master_fd
 
-    try:
-        if IS_WINDOWS:
-            proc.write(text + '\r\n')
-        else:
-            os.write(fd, (text + '\n').encode('utf-8'))
-    except (OSError, EOFError) as e:
-        bsn_logger.warning(f'Failed to write to beets import stdin: {e}')
-        return False, 'Failed to send input.'
+        try:
+            if IS_WINDOWS:
+                _proc.write(text + '\r\n')
+            else:
+                os.write(_master_fd, (text + '\n').encode('utf-8'))
+        except (OSError, EOFError) as e:
+            bsn_logger.warning(f'Failed to write to beets import stdin: {e}')
+            return False, 'Failed to send input.'
 
-    with _lock:
         if _state == 'needs_input':
             _state = 'running'   # Assume this answers whatever prompt was up
 

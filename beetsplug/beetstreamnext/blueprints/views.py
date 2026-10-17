@@ -89,8 +89,11 @@ def render_channels(scope: str, username: Optional[str] = None, message: Optiona
     pm = flask.current_app.config['podcast_manager']
     channels, total_size = pm.channels_overview(username if scope == 'account' else None)
 
+    import_notices, importing = pm.opml_import_messages(flask.session.get('username') if scope == 'admin' else username)
+
     return flask.render_template('partials/podcast_channels.html', scope=scope, channels=channels,
-                                 total_size=total_size, message=message, ok=ok, notices=notices)
+                                 total_size=total_size, message=message, ok=ok,
+                                 notices=[*(notices or []), *import_notices], importing=importing)
 
 
 def render_episodes(scope: str, channel_id: int, username: Optional[str] = None) -> str:

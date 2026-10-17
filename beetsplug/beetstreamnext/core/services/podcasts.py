@@ -11,7 +11,7 @@ from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
-    AUDIO_EXTENSIONS, DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES,
+    AUDIO_EXTENSIONS, DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES, MAX_OPML_FEEDS,
     MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC,
     PODCAST_MAX_CONCURRENT_DOWNLOADS
 )
@@ -26,7 +26,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import read_upload
 from beetsplug.beetstreamnext.utils.system import AUDIO_MIMETYPES, purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes, format_duration, short_error
-from beetsplug.beetstreamnext.utils.concurrency import Throttle, WorkerPool
+from beetsplug.beetstreamnext.utils.concurrency import KeyedLimiter, Throttle, WorkerPool
 
 
 ##
@@ -143,6 +143,13 @@ class PodcastManager:
 
         self._refreshing_channels: set = set()
         self._downloading_episodes: set = set()
+
+        self._opml_lock = Lock()
+        self._opml_imports: dict[str, dict] = {}    # keyed per user
+
+        # Only one import at a time, other users wait
+        self._opml_limit = KeyedLimiter(1)
+        self._opml_pool = WorkerPool(1, name='podcast-opml')
 
         self._cancel_events: dict[int, Event] = {}
         self._download_progress: dict[int, int] = {}
@@ -821,7 +828,10 @@ class PodcastManager:
         return ET.tostring(root, encoding='utf-8', xml_declaration=True)
 
     def import_opml_upload(self, username: str) -> List[Tuple[str, str]]:
-        """Import the OPML file from the current request. Returns (message, flash category) for the outcome."""
+        """
+        Starts importing the OPML file from the current request in the background.
+        Returns (message, flash category) for what happened so far
+        """
 
         try:
             data = read_upload('opml_file', MAX_OPML_BYTES)
@@ -835,7 +845,6 @@ class PodcastManager:
     def import_opml(self, username: str, data: bytes) -> List[Tuple[str, str]]:
         """
         Subscribes username to every feed found in an OPML document.
-        Returns (message, flash category) for the outcome.
         """
 
         if not FEEDPARSER:
@@ -843,53 +852,104 @@ class PodcastManager:
 
         urls = _parse_opml(data)
 
-        added: List[str] = []
-        already_subscribed: List[str] = []
-        failed: List[Tuple[str, str]] = []
-
-        for url in urls:
-            try:
-                norm = normalize_url(url)
-            except ValueError as e:
-                failed.append((url, str(e)))
-                continue
-            alt = https_variant(norm)
-
-            with database() as db:
-                subscribed = db.execute(
-                    """
-                    SELECT 1
-                    FROM podcast_subscriptions ps
-                    JOIN podcast_channels pc ON pc.id = ps.channel_id
-                    WHERE ps.username = ? AND (pc.url = ? OR pc.url = ?)
-                    """, (username, norm, alt)
-                ).fetchone()
-
-            if subscribed:
-                already_subscribed.append(url)
-                continue
-
-            channel_id, error = self.create_channel(username, url, download_recents=False)
-            if channel_id is None:
-                failed.append((url, error or 'unknown error'))
-            else:
-                added.append(url)
-
-        if not (added or already_subscribed or failed):
+        if not urls:
             return [('No podcast feeds found in that OPML file.', 'error')]
 
+        if len(urls) > MAX_OPML_FEEDS:
+            raise ValueError(f'{len(urls)} feeds is too many for one import (max is {MAX_OPML_FEEDS}).')
+
+        if not self._opml_limit.try_acquire(username):
+            return [('An OPML import is already running, wait for it to finish.', 'error')]
+
+        with self._opml_lock:
+            self._opml_imports[username] = {'total': len(urls), 'done': 0, 'added': 0, 'already': 0, 'failed': []}
+
+        self._opml_pool.submit(self._worker_import_opml, username, urls)
+
+        return [(f"Importing {len(urls)} feed{'s' if len(urls) != 1 else ''}.", 'info')]
+
+    def opml_import_messages(self, username: str) -> Tuple[List[Tuple[str, str]], bool]:
+        """
+        What to show about username's OPML import: (messages, still running).
+        """
+
+        with self._opml_lock:
+            job = self._opml_imports.get(username)
+            if job is None:
+                return [], False
+
+            if self._opml_limit.held(username):
+                return [(f"Importing OPML: {job['done']}/{job['total']} feeds processed...", 'info')], True
+
+            del self._opml_imports[username]
+
         parts = []
-        if added:
-            parts.append(f'{len(added)} added')
-        if already_subscribed:
-            parts.append(f'{len(already_subscribed)} already subscribed')
-        if failed:
-            parts.append(f'{len(failed)} failed')
+        if job['added']:
+            parts.append(f"{job['added']} added")
+        if job['already']:
+            parts.append(f"{job['already']} already subscribed")
+        if job['failed']:
+            parts.append(f"{len(job['failed'])} failed")
 
         return [
-            (f"OPML import: {', '.join(parts)}.", 'success' if added else 'info'),
-            *((f"Could not subscribe to '{url}': {error}", 'error') for url, error in failed),
-        ]
+            (f"OPML import done: {', '.join(parts)}.", 'success' if job['added'] else 'info'),
+            *((f"Could not subscribe to '{url}': {error}", 'error') for url, error in job['failed']),
+        ], False
+
+    @with_app_context
+    def _worker_import_opml(self, username: str, urls: List[str]) -> None:
+
+        try:
+            self._import_opml_feeds(username, urls)
+        finally:
+            self._opml_limit.release(username)
+            self.push_status()
+
+    def _import_opml_feeds(self, username: str, urls: List[str]) -> None:
+
+        for url in urls:
+            outcome, error = 'failed', 'unexpected error'
+            try:
+                outcome, error = self._import_opml_feed(username, url)
+            except Exception as e:
+                bsn_logger.warning(f"OPML import of '{url}' failed: {e}")
+                error = 'unexpected error'
+
+            with self._opml_lock:
+                job = self._opml_imports[username]
+                job['done'] += 1
+                if outcome == 'failed':
+                    job['failed'].append((url, error))
+                else:
+                    job[outcome] += 1
+
+    def _import_opml_feed(self, username: str, url: str) -> Tuple[str, str]:
+        """Subscribes username to one feed. Returns ('added' | 'already' | 'failed', error)."""
+
+        try:
+            norm = normalize_url(url)
+        except ValueError as e:
+            return 'failed', str(e)
+        alt = https_variant(norm)
+
+        with database() as db:
+            subscribed = db.execute(
+                """
+                SELECT 1
+                FROM podcast_subscriptions ps
+                JOIN podcast_channels pc ON pc.id = ps.channel_id
+                WHERE ps.username = ? AND (pc.url = ? OR pc.url = ?)
+                """, (username, norm, alt)
+            ).fetchone()
+
+        if subscribed:
+            return 'already', ''
+
+        channel_id, error = self.create_channel(username, url, download_recents=False)
+        if channel_id is None:
+            return 'failed', error or 'unknown error'
+
+        return 'added', ''
 
     def unsubscribe(self, username: str, channel_id: int, force: bool = False) -> None:
         """

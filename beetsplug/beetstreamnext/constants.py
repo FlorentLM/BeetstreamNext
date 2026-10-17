@@ -240,6 +240,7 @@ MAX_PODCAST_IMAGE_DIM: int = 1024
 
 MAX_PODCAST_FEED_BYTES: int = 30 * 1024 * 1024   # 30 MB cap on a fetched podcast rss feed body
 MAX_OPML_BYTES: int = 2 * 1024 * 1024            # 2 MB cap on an uploaded OPML subscriptions export
+MAX_OPML_FEEDS: int = 500                        # most feeds in one OPML import
 MAX_REQUEST_BYTES: int = 4 * 1024 * 1024         # Request body above this are denied
 MAX_PAGE_SIZE: int = 1000                        # most items one API call returns
 MAX_REST_IDS: int = 500                          # most ids one API call can carry (scrobble, star, share, playlist...)

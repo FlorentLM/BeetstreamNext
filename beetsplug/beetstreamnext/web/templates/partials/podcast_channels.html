@@ -11,6 +11,10 @@
 {% for text, category in notices or [] %}
     <div class="flash flash-{{ category }}">{{ text }}</div>
 {% endfor %}
+{% if importing %}
+    <div hx-get="{{ url_for('admin.route_podcast_channels' if scope == 'admin' else 'account.route_my_podcasts') }}"
+         hx-trigger="load delay:2s" hx-target="{{ target }}" hx-swap="innerHTML"></div>
+{% endif %}
 {% for ch in channels %}
     <div class="channel-row">
         <div class="channel-row-header">

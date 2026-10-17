@@ -132,6 +132,7 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
     # Update version in db
     _set_version(cursor, curr_version)
 
+
 def _make_radios_per_user(cursor: sqlite3.Cursor) -> None:
 
     columns = [row[1] for row in cursor.execute("""PRAGMA table_info(internet_radio_stations)""")]
@@ -196,6 +197,7 @@ def _rebuild_play_queue_entries(conn: sqlite3.Connection) -> None:
     finally:
         conn.execute("""PRAGMA foreign_keys = ON""")
 
+
 def _rebuild_chat_messages(conn: sqlite3.Connection) -> None:
     """
     Recreate chat_messages without the foreign key to users(username)
@@ -229,6 +231,7 @@ def _rebuild_chat_messages(conn: sqlite3.Connection) -> None:
         raise
     finally:
         conn.execute("""PRAGMA foreign_keys = ON""")
+
 
 def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version: int) -> None:
     """
@@ -435,6 +438,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
         except sqlite3.Error:
             pass
         conn.execute("""PRAGMA foreign_keys = ON""")
+
 
 def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, version: int) -> None:
     """

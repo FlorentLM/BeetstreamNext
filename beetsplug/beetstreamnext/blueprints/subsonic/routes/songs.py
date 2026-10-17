@@ -1,17 +1,17 @@
 from __future__ import annotations
-from typing import List, Tuple, Dict
+
+from typing import Dict
 import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, validate_mbid
-from beetsplug.beetstreamnext.utils.db import get_beets_schema, escape_like
+from beetsplug.beetstreamnext.utils.db import get_beets_schema, sql_conditions_for
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -26,39 +26,6 @@ def song_payload(subsonic_song_id: str) -> dict:
         'song': Serialise.song(song_item)
     }
     return payload
-
-
-def _sql_conditions_for(name: str, name_fields: List) -> Tuple[List[str], List[str]]:
-    """
-    Build OR-conditions and params matching `name` across all name columns.
-    `artists` is treated as a multi-value beets field with delimiters, everything else is exact-matched.
-    """
-
-    conditions = []
-    params = []
-    escaped = escape_like(name)
-    delim = BEETS_MULTI_DELIM
-
-    for field in name_fields:
-        if field in ('artists', 'composers', 'lyricists'):
-            # Four shapes: sole value, first, last, or somewhere in the middle.
-            conditions.extend([
-                f"{field} = ?",
-                f"{field} LIKE ? ESCAPE '!'",
-                f"{field} LIKE ? ESCAPE '!'",
-                f"{field} LIKE ? ESCAPE '!'",
-            ])
-            params.extend([
-                name,
-                f"{escaped}{delim}%",
-                f"%{delim}{escaped}",
-                f"%{delim}{escaped}{delim}%",
-            ])
-        else:
-            # artist / composer / lyricist are single-valued in older beets schema
-            conditions.append(f"{field} = ?")
-            params.append(name)
-    return conditions, params
 
 
 ##
@@ -212,7 +179,7 @@ def endpoint_get_top_songs() -> flask.Response:
         if lastfm_track_names:
             placeholders = ','.join(['?'] * len(lastfm_track_names))
             columns = get_beets_schema('items')
-            name_conditions, name_params = _sql_conditions_for(artist_name, [f for f in ('artist', 'artists') if f in columns])
+            name_conditions, name_params = sql_conditions_for(artist_name, [f for f in ('artist', 'artists') if f in columns])
             sql = f"""
                    SELECT * FROM items 
                    WHERE (albumartist = ? OR {' OR '.join(name_conditions)})
@@ -385,7 +352,7 @@ def endpoint_get_similar_songs() -> flask.Response:
                     params.append(mbid)
 
             if name:
-                name_conds, name_params = _sql_conditions_for(name, name_fields)
+                name_conds, name_params = sql_conditions_for(name, name_fields)
                 sub_conditions.extend(name_conds)
                 params.extend(name_params)
 

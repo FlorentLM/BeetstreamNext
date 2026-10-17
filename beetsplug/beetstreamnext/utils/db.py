@@ -2,10 +2,12 @@ from __future__ import annotations
 import os
 import threading
 from sqlite3 import Connection
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 import flask
 from beets.dbcore.db import Transaction
+
+from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 
 
 ##
@@ -105,3 +107,36 @@ def chunked_execute(
 def escape_like(s: str, escape: str = '!') -> str:
     """Escape SQL LIKE wildcards. Use with `LIKE ? ESCAPE '!'`."""
     return s.replace(escape, escape * 2).replace('%', escape + '%').replace('_', escape + '_')
+
+
+def sql_conditions_for(name: str, name_fields: List[str]) -> Tuple[List[str], List[str]]:
+    """
+    Build OR-conditions and params matching `name` across all name columns.
+    `artists`, `composers` and `lyricists` are multi-value beets fields with delimiters, everything else is exact-matched.
+    """
+
+    conditions = []
+    params = []
+    escaped = escape_like(name)
+    delim = BEETS_MULTI_DELIM
+
+    for field in name_fields:
+        if field in ('artists', 'composers', 'lyricists'):
+            # Four shapes: just the value, first, last, or somewhere in the middle
+            conditions.extend([
+                f"{field} = ?",
+                f"{field} LIKE ? ESCAPE '!'",
+                f"{field} LIKE ? ESCAPE '!'",
+                f"{field} LIKE ? ESCAPE '!'",
+            ])
+            params.extend([
+                name,
+                f"{escaped}{delim}%",
+                f"%{delim}{escaped}",
+                f"%{delim}{escaped}{delim}%",
+            ])
+        else:
+            # artist / composer / lyricist are single-valued in older beets schema
+            conditions.append(f"{field} = ?")
+            params.append(name)
+    return conditions, params

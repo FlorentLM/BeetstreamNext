@@ -26,6 +26,16 @@ if TYPE_CHECKING:
     from beetsplug.beetstreamnext.core.media.playlists import Playlist
 
 
+def _r128_to_rg(value: Any) -> float:
+    """
+    A beets r128 gain (LU relative to -23 LUFS) as a ReplayGain gain (dB relative to -18 LUFS).
+    """
+    gain = float(value)
+    if abs(gain) > 64 and gain.is_integer():
+        gain /= 256.0
+    return gain + 5.0
+
+
 def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
     """
     Split a song/album's raw artist/composer/lyricist/etc. fields into Subsonic ID3 artist refs.
@@ -499,24 +509,19 @@ class Serialise:
         tg = data.get('rg_track_gain')
         ag = data.get('rg_album_gain')
 
-        # r128 fields are stored as LU/dB * 256
-        if tg is None:
-            r128_tg = data.get('r128_track_gain')
-            if r128_tg is not None:
-                tg = float(r128_tg) / 256.0
+        if tg is None and data.get('r128_track_gain') is not None:
+            tg = _r128_to_rg(data['r128_track_gain'])
 
-        if ag is None:
-            r128_ag = data.get('r128_album_gain')
-            if r128_ag is not None:
-                ag = float(r128_ag) / 256.0
+        if ag is None and data.get('r128_album_gain') is not None:
+            ag = _r128_to_rg(data['r128_album_gain'])
 
-        # Peaks are stored as linear ratios 0.0 to 1.0
+        # Peaks are linear ratios
         tp = data.get('rg_track_peak')
         ap = data.get('rg_album_peak')
 
         if tg is not None or ag is not None:
-            track_peak = min(max(float(tp or 1.0), 0.0), 1.0)
-            album_peak = min(max(float(ap or 1.0), 0.0), 1.0)
+            track_peak = max(float(tp or 1.0), 0.0)
+            album_peak = max(float(ap or 1.0), 0.0)
 
             subsonic_song['replayGain'] = {
                 'trackGain': round(float(tg or 0.0), 2),

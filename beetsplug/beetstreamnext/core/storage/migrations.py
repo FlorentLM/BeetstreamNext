@@ -8,6 +8,14 @@ import flask
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
 
+def _set_version(conn_or_cursor, version: int) -> None:
+    conn_or_cursor.execute(
+        """
+        INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('version', ?)
+        """, (version,)
+    )
+
+
 def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
     # Read current version stored in db
@@ -28,6 +36,7 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
     if curr_version < MIGRATION_1_VER:
         cursor.execute("""DROP TABLE IF EXISTS now_playing""")
         curr_version = MIGRATION_1_VER
+        _set_version(cursor, curr_version)
 
     ## _________ Migration 2: Version 1 -> 2 (add ON DELETE CASCADE to play_queue_entries), 09/08/2026, 01:00
     MIGRATION_2_VER = 2
@@ -39,6 +48,7 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
         if have_table:
             _rebuild_play_queue_entries(cursor.connection)
         curr_version = MIGRATION_2_VER
+        _set_version(cursor, curr_version)
 
     ## _________ Migration 3: Version 2 -> 3 (bookmarks/play_queue*/play_stats switch from the
     ##            raw beets row id to a stable subsonic song id, same as likes/ratings), 23/08/2026
@@ -53,13 +63,15 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
             # Fresh install: bookmarks/likes/ratings/play_queue*/play_stats are all created further
             # below, already in their current (post-migration) shape - nothing to migrate.
             curr_version = MIGRATION_3_VER
+            _set_version(cursor, curr_version)
         else:
             beets_db_path = flask.current_app.config.get('BEETS_DB_PATH')
             if beets_db_path and Path(beets_db_path).is_file():
-                _migrate_to_stable_song_ids(cursor.connection, beets_db_path)
+                _migrate_to_stable_song_ids(cursor.connection, beets_db_path, MIGRATION_3_VER)
                 curr_version = MIGRATION_3_VER
             else:
                 bsn_logger.warning('Beets database not found - stable song id migration deferred to next startup.')
+                return
 
     ## _________ Migration 4: Version 3 -> 4 (drop the Foreign Key on chat_messages.username
     MIGRATION_4_VER = 4
@@ -76,6 +88,7 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
     if curr_version < MIGRATION_4_VER:
         curr_version = MIGRATION_4_VER
+        _set_version(cursor, curr_version)
 
     ## _________ Migration 5: Version 4 -> 5 (likes/ratings/share_entries switch album ids
     ##            from the raw beets row id to a stable subsonic album id, same as song ids), 30/08/2026
@@ -89,13 +102,15 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
         if not have_table:
             # fresh install, nothing to migrate
             curr_version = MIGRATION_5_VER
+            _set_version(cursor, curr_version)
         else:
             beets_db_path = flask.current_app.config.get('BEETS_DB_PATH')
             if beets_db_path and Path(beets_db_path).is_file():
-                _migrate_to_stable_album_ids(cursor.connection, beets_db_path)
+                _migrate_to_stable_album_ids(cursor.connection, beets_db_path, MIGRATION_5_VER)
                 curr_version = MIGRATION_5_VER
             else:
                 bsn_logger.warning('Beets database not found... Stable album id migration deferred to next startup.')
+                return
 
     ## _________ Migration 6: Version 5 -> 6 (radio stations become per-user: the shared stations
     ##            are copied to every user, then removed), 04/10/2026
@@ -114,11 +129,7 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
     ## ___________________________________________________________________
 
     # Update version in db
-    cursor.execute(
-        """
-        INSERT OR REPLACE INTO db_metadata (key, value) VALUES ('version', ?)
-        """, (curr_version,)
-    )
+    _set_version(cursor, curr_version)
 
 def _make_radios_per_user(cursor: sqlite3.Cursor) -> None:
 
@@ -218,7 +229,7 @@ def _rebuild_chat_messages(conn: sqlite3.Connection) -> None:
     finally:
         conn.execute("""PRAGMA foreign_keys = ON""")
 
-def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None:
+def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version: int) -> None:
     """
     bookmarks/play_queue/play_queue_entries/play_stats were keyed on the raw beets row id,
     which a delete+reimport broke.
@@ -396,6 +407,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
                     # a row for (username, new_id) already exists: drop the stale duplicate
                     conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))
 
+        _set_version(conn, version)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -407,7 +419,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path) -> None
             pass
         conn.execute("""PRAGMA foreign_keys = ON""")
 
-def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path) -> None:
+def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, version: int) -> None:
     """
     likes/ratings/share_entries could hold album ids keyed on the raw beets row id
     ('al-<id>'), which a delete+reimport could repoint at a different album.
@@ -470,6 +482,7 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path) -> Non
                 continue
             conn.execute("""UPDATE share_entries SET item_id = ? WHERE rowid = ?""", (new_id, rowid))
 
+        _set_version(conn, version)
         conn.commit()
     except Exception:
         conn.rollback()

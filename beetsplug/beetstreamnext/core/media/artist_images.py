@@ -60,7 +60,7 @@ def artist_keys(name: str, mbid: Optional[str] = None) -> List[str]:
 
     keys = [IDs.encode_artist(name, is_mbid=False)]     # image uploaded before the artist had an mbid
     if mbid:
-        keys.insert(0, IDs.encode_artist(mbid))
+        keys.insert(0, IDs.encode_artist(mbid, is_mbid=True))
     return keys
 
 
@@ -211,7 +211,7 @@ def library_keys() -> set[str]:
                 keys.add(IDs.encode_artist(n, is_mbid=False))
         for m in split_beets_multi(mbids or ''):
             if validate_mbid(m):
-                keys.add(IDs.encode_artist(m))
+                keys.add(IDs.encode_artist(m, is_mbid=True))
 
     sources = (
         ('albums', (('albumartist', 'mb_albumartistid'), ('albumartists', 'mb_albumartistids'))),

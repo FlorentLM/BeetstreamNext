@@ -165,16 +165,20 @@ class IDs:
         return sid[len(cls._PLY_ID_PREF):]
 
     @classmethod
-    def encode_artist(cls, name_or_mbid: Any, is_mbid: bool = True, *, joint_credit: bool = False) -> str:
+    def encode_artist(cls, name_or_mbid: Any, is_mbid: Optional[bool] = None, *, joint_credit: bool = False) -> str:
         """
         Mint an artist ID from a mbid or a plain name.
 
+            is_mbid: whether name_or_mbid is an MBID or a plain name. Required (unless joint_credit).
             joint_credit: hash the full credit text to avoid colliding with the first artists's solo MBid
         """
 
         if joint_credit:
             digest = hashlib.sha1(str(name_or_mbid).encode('utf-8')).hexdigest()[:16]
             return f"{cls._ART_HASH_PREF}{digest}"
+
+        if is_mbid is None:
+            raise TypeError("encode_artist() needs is_mbid=True/False (unless joint_credit=True)")
 
         encoded = base64.urlsafe_b64encode(str(name_or_mbid).encode('utf-8')).rstrip(b'=').decode('utf-8')
         prefix = cls._ART_MBID_PREF if is_mbid else cls._ART_NAME_PREF

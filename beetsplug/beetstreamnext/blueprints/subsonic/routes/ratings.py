@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
+from beetsplug.beetstreamnext.blueprints.subsonic.routes.likes import item_exists
 from beetsplug.beetstreamnext.core.library.beets_interaction import commit_likes
 
 
@@ -28,6 +29,9 @@ def endpoint_set_rating() -> flask.Response:
 
     if not (0 <= rating <= 5):
         return subsonic_error(10, resp_fmt=resp_fmt)
+
+    if rating and not item_exists(req_id):
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     username = flask.g.username
 

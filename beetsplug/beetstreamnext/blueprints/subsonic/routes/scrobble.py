@@ -4,7 +4,9 @@ import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.constants import MAX_SCROBBLE_IDS, NOW_PLAYING_TIMEOUT_SEC
+from beetsplug.beetstreamnext.constants import (
+    MAX_CLIENT_NAME_CHAR, MAX_ITEM_ID_CHAR, NOW_PLAYING_TIMEOUT_SEC, PLAYBACK_STATES
+)
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -20,7 +22,7 @@ from beetsplug.beetstreamnext.core.library.serialise import Serialise
 def endpoint_scrobble() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    client = r.get('c', default='', type=safe_str)
+    client = r.get('c', default='', type=safe_str)[:MAX_CLIENT_NAME_CHAR]
     playing_ids = cap_ids(r.getlist('id', type=safe_str))       # Required
     times_ms = r.getlist('time', type=int)
     submission = r.get('submission', default=True, type=api_bool)
@@ -34,6 +36,8 @@ def endpoint_scrobble() -> flask.Response:
     if not submission:
         # if submission=false, this is a "now playing" notification
         p_id = playing_ids[0]
+        if len(p_id) > MAX_ITEM_ID_CHAR or Resolve.any(p_id)[1] is None:
+            return subsonic_error(70, resp_fmt=resp_fmt)
 
         with database() as db:
             db.execute(
@@ -150,10 +154,13 @@ def endpoint_report_playback() -> flask.Response:
     state = r.get('state', default='playing', type=safe_str)                    # Required
     playback_rate = r.get('playbackRate', default=1.0, type=float)              # Required (only in OpenSubsonic)
     ignore_scrobble = r.get('ignoreScrobble', default=False, type=api_bool)     # Required (only in OpenSubsonic)
-    client = r.get('c', default='', type=safe_str)
+    client = r.get('c', default='', type=safe_str)[:MAX_CLIENT_NAME_CHAR]
 
-    if not media_id or not state:
+    if not media_id or not state or state not in PLAYBACK_STATES:
         return subsonic_error(10, resp_fmt=resp_fmt)
+
+    if len(media_id) > MAX_ITEM_ID_CHAR or Resolve.any(media_id)[1] is None:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     username = flask.g.username
     now = time.time()

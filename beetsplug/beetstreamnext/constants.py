@@ -243,6 +243,9 @@ CHAT_RATE_WINDOW_SEC: int = 60
 CHAT_RETENTION_SEC: int = 30 * 86400        # Messages deleted after 30 days
 CHAT_MAX_STORED: int = 2000                 # Most messages kept
 
+MAX_ITEM_ID_CHAR: int = 256                 # longest id string stored from a client
+MAX_CLIENT_NAME_CHAR: int = 64              # longest client name (`c`) stored from a client
+PLAYBACK_STATES = ('starting', 'playing', 'paused', 'stopped')
 
 HTTP_ERROR_LABELS = {
     400: 'bad request',

@@ -3,6 +3,7 @@ import flask
 
 from .. import subsonic_bp
 
+from beetsplug.beetstreamnext.constants import MAX_ITEM_ID_CHAR
 from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.core.config.store import settings_store
@@ -13,6 +14,20 @@ from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.library.beets_interaction import commit_likes
+
+
+def item_exists(item_id: str) -> bool:
+    """
+    Whether a song / album / artist / radio / podcast id points at something real.
+    """
+
+    if not item_id or len(item_id) > MAX_ITEM_ID_CHAR:
+        return False
+
+    if IDs.decode_type(item_id) == 'artist':
+        return Resolve.artist(item_id) is not None
+
+    return Resolve.any(item_id)[1] is not None
 
 
 def _set_liked(username: str, item_id: str, liked: bool) -> None:
@@ -60,6 +75,9 @@ def endpoint_star_or_unstar() -> flask.Response:
     username = flask.g.username
 
     to_like = cap_ids(song_ids + album_ids + artist_ids)
+    if liked:       # unstarring is not checked so IDs of removed items can be cleaned up
+        to_like = [id_ for id_ in to_like if item_exists(id_)]
+
     for id_ in to_like:
         _set_liked(username, id_,  liked)
 

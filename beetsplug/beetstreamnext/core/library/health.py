@@ -24,6 +24,8 @@ from beetsplug.beetstreamnext.utils.system import find_binary, binary_version, r
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_duration, format_elapsed
 from beetsplug.beetstreamnext.utils.db import chunked_execute
+from beetsplug.beetstreamnext.utils.concurrency import SingleAccess, Throttle
+
 
 DECODE_ERRORS_CHECK = 'decode_errors'
 MISSING_FILE_CHECK = 'missing_file'
@@ -33,29 +35,8 @@ _KIND_LABELS = {
     MISSING_FILE_CHECK: 'Missing file',
 }
 
-_scan_lock = threading.Lock()
-_scanning = False
-_last_push = 0.0
-
-
-def _push_health_status(throttle: float = 0.0) -> None:
-    """
-    Tells connected admin sessions to re read scan status
-    (but throttled while a scan is underway)
-    """
-
-    global _last_push
-
-    now = time.monotonic()
-    if throttle and now - _last_push < throttle:
-        return
-
-    _last_push = now
-    admin_events.publish('health-scan', '')
-
-
-def is_health_scanning() -> bool:
-    return _scanning
+health_scan = SingleAccess()
+_status_push = Throttle()
 
 
 _DTS_WARNING_RE = re.compile(r'non monotonically increasing dts to muxer in stream \d+: (\d+) >=')
@@ -193,20 +174,17 @@ def scan_library(full: bool = False) -> Dict[str, int]:
     Args:
         - full: True to force checking everything
     """
-    global _scanning
-
     counts = {'checked': 0, 'flagged': 0, 'skipped': 0, 'pruned': 0}
 
     if not find_binary('ffmpeg'):
         bsn_logger.warning('Health scan skipped: ffmpeg not found.')
         return counts
 
-    if not _scan_lock.acquire(blocking=False):
+    if not health_scan.try_acquire():
         bsn_logger.info('Health scan already running, skipping this trigger.')
         return counts
 
-    _scanning = True
-    _push_health_status()
+    admin_events.publish('health-scan', '')
     music_root = app.config['music_root']
 
     try:
@@ -230,7 +208,8 @@ def scan_library(full: bool = False) -> Dict[str, int]:
             seen_song_ids: set[str] = set()
 
             for beets_id, mb_trackid, mb_releasetrackid, raw_path, samplerate in item_rows:
-                _push_health_status(throttle=1.0)
+                if _status_push.allow(1.0):
+                    admin_events.publish('health-scan', '')
                 path = os.fsdecode(raw_path or b'')
                 if not path:
                     continue
@@ -317,9 +296,8 @@ def scan_library(full: bool = False) -> Dict[str, int]:
                 db.commit()
                 counts['pruned'] = len(stale_ids)
     finally:
-        _scanning = False
-        _scan_lock.release()
-        _push_health_status()
+        health_scan.release()
+        admin_events.publish('health-scan', '')
 
     return counts
 
@@ -416,7 +394,7 @@ def start_health_scan(full: bool = False) -> Tuple[bool, str]:
     """
     Starts a health scan on a background thread. Returns (started, message).
     """
-    if is_health_scanning():
+    if health_scan.running:
         return False, 'A health scan is already running.'
 
     def _run():

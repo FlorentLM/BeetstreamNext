@@ -20,9 +20,9 @@ from beetsplug.beetstreamnext.core.accounts.sessions import purge_expired_sessio
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.utils.system import purge, dir_size
 from beetsplug.beetstreamnext.utils.db import chunked_execute
+from beetsplug.beetstreamnext.utils.concurrency import Throttle
 
-_cleanup_lock = threading.Lock()
-_last_cleanup: float = 0.0
+_cleanup_throttle = Throttle()
 
 
 def cache_breakdown(thumb_dir: str | Path, http_cache: str | Path) -> dict[str, int]:
@@ -232,21 +232,10 @@ def run_periodic():
     Deletes old cached thumbnails, purges rate limiting store.
     """
 
-    global _last_cleanup
-
-    now = time.time()
-    if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
+    if not _cleanup_throttle.allow(CLEANUP_INTERVAL_SEC):
         return
 
-    if not _cleanup_lock.acquire(blocking=False):
-        return  # another thread already doing it
-
-    try:
-        if now - _last_cleanup < CLEANUP_INTERVAL_SEC:
-            return
-        _last_cleanup = now
-    finally:
-        _cleanup_lock.release()
+    now = time.time()
 
     def _background_maintenance():
         bsn_logger.info(f"[{datetime.fromtimestamp(now)}] Starting background maintenance...")

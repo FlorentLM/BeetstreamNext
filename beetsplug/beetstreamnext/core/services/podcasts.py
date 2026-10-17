@@ -25,6 +25,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import read_upload
 from beetsplug.beetstreamnext.utils.system import AUDIO_MIMETYPES, purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes, format_duration, short_error
+from beetsplug.beetstreamnext.utils.concurrency import Throttle
 
 
 ##
@@ -138,11 +139,14 @@ class PodcastManager:
 
         self._refresh_lock = Lock()
         self._download_lock = Lock()
+
         self._refreshing_channels: set = set()
         self._downloading_episodes: set = set()
+
         self._cancel_events: dict[int, Event] = {}
         self._download_progress: dict[int, int] = {}
-        self._last_push = 0.0
+
+        self._status_throttle = Throttle()
 
     @staticmethod
     def storage_dir() -> Path:
@@ -208,11 +212,8 @@ class PodcastManager:
         if not admin_events.has_subscribers():
             return
 
-        now = time.monotonic()
-        with self._download_lock:
-            if throttle and now - self._last_push < throttle:
-                return
-            self._last_push = now
+        if not self._status_throttle.allow(throttle):
+            return
 
         try:
             admin_events.publish('podcast-status', self.status_snapshot())

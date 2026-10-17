@@ -1,9 +1,51 @@
 from __future__ import annotations
 
+import queue
 import threading
 import time
 from collections import Counter, defaultdict, deque
-from typing import Hashable, Optional
+from typing import Callable, Hashable, Optional
+
+
+class WorkerPool:
+    """
+    Run submitted jobs on max `size` daemon threads, queue extra jobs.
+    """
+
+    def __init__(self, size: int, name: str = 'worker') -> None:
+        self._size = size
+        self._name = name
+
+        self._jobs: queue.Queue = queue.Queue()
+
+        self._lock = threading.Lock()
+
+        self._threads: list[threading.Thread] = []
+
+    def submit(self, fn: Callable, *args) -> None:
+
+        self._jobs.put((fn, args))
+
+        with self._lock:
+            if len(self._threads) < self._size:
+
+                thread = threading.Thread(
+                    target=self._run,
+                    name=f'{self._name}-{len(self._threads)}',
+                    daemon=True
+                )
+                self._threads.append(thread)
+                thread.start()
+
+    def _run(self) -> None:
+        while True:
+            fn, args = self._jobs.get()
+            try:
+                fn(*args)
+            except Exception:
+                pass    # Jobs shoudl report their own errors
+            finally:
+                self._jobs.task_done()
 
 
 class SingleAccess:
@@ -107,5 +149,3 @@ class DoOnce:
                 return False
             self._claimed = True
             return True
-
-

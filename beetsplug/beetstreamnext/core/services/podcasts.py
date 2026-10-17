@@ -12,7 +12,8 @@ from typing import Optional, List, Tuple
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
     AUDIO_EXTENSIONS, DATA_LOCATION, FEEDPARSER, PODCASTINDEX, MAX_OPML_BYTES,
-    MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC
+    MAX_PODCAST_FEED_BYTES, MAX_PODCAST_IMAGE_DIM, PART_MAX_AGE_SEC,
+    PODCAST_MAX_CONCURRENT_DOWNLOADS
 )
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.events import admin_events
@@ -25,7 +26,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import read_upload
 from beetsplug.beetstreamnext.utils.system import AUDIO_MIMETYPES, purge
 from beetsplug.beetstreamnext.utils.text import parse_duration, strip_html, format_bytes, format_duration, short_error
-from beetsplug.beetstreamnext.utils.concurrency import Throttle
+from beetsplug.beetstreamnext.utils.concurrency import Throttle, WorkerPool
 
 
 ##
@@ -147,6 +148,7 @@ class PodcastManager:
         self._download_progress: dict[int, int] = {}
 
         self._status_throttle = Throttle()
+        self._download_pool = WorkerPool(PODCAST_MAX_CONCURRENT_DOWNLOADS, name='podcast-download')
 
     @staticmethod
     def storage_dir() -> Path:
@@ -1105,7 +1107,7 @@ class PodcastManager:
         Reserve and download an episode to server storage, synchronously, for route handlers.
         (when this returns, the DB shows 'downloading' or it already reached 'completed' on its own).
 
-        Actual fetch + write happens in the background thread.
+        Actual fetch + write happens on the download pool.
 
         Returns True if the episode is downloading, returns False only when it can't be downloaded at all.
         """
@@ -1129,12 +1131,7 @@ class PodcastManager:
         if not self._reserve_download(episode_id):
             return True   # was claimed between the check above and here, that's fine
 
-        thread = Thread(
-            target=self._worker_download_episode,
-            args=(episode_id, row['channel_id'], row['audio_url']),
-            daemon=True
-        )
-        thread.start()
+        self._download_pool.submit(self._worker_download_episode, episode_id, row['channel_id'], row['audio_url'])
 
         return True
 

@@ -204,21 +204,22 @@ WEB_SESSION_MAX_AGE_SEC: int = 24 * 3600     # Web UI login never lasts longer t
 WEB_SESSION_LASTSEEN_SEC: int = 60           # How often to check if a session is active
 
 # Max age for leftover tmp/session files
-TRANSCODE_MAX_AGE_SEC: int = 3600        # leaked transcode tempfiles (should be seconds/minutes old, not this)
-HLS_MAX_AGE_SEC: int = 6 * 3600          # abandoned HLS session directories
-ZIP_MAX_AGE_SEC: int = 86400             # album zip downloads
-STREAM_TOKEN_TTL_SEC: int = 12 * 3600    # Tokenised stream URLs since last use
-IMAGE_TOKEN_TTL_SEC: int = 24 * 3600     # Tokenised image URLs since last use
-STREAM_TOKEN_MAX: int = 5000             # Most live tokens kept (oldest dropped first)
+TRANSCODE_MAX_AGE_SEC: int = 3600           # leaked transcode tempfiles (should be seconds/minutes old, not this)
+HLS_MAX_AGE_SEC: int = 6 * 3600             # abandoned HLS session directories
+ZIP_MAX_AGE_SEC: int = 86400                # album zip downloads
+STREAM_TOKEN_TTL_SEC: int = 12 * 3600       # Tokenised stream URLs since last use
+IMAGE_TOKEN_TTL_SEC: int = 24 * 3600        # Tokenised image URLs since last use
+STREAM_TOKEN_MAX: int = 5000                # Most live tokens kept (oldest dropped first)
 IMAGE_TOKEN_MAX: int = 20000
-HLS_MAX_VARIANTS: int = 4                # bitrate variants per HLS session
-HLS_MAX_CONCURRENT: int = 2              # HLS sessions being encoded at once
-HLS_MAX_CACHE_BYTES: int = 2 * 1024 ** 3 # Total size of all HLS sessions on disk
-ZIP_MAX_CONCURRENT: int = 2              # album zips being built at once
-TRANSCODE_MAX_CONCURRENT: int = 16       # max ffmpeg transcodes at once
+HLS_MAX_VARIANTS: int = 4                   # bitrate variants per HLS session
+HLS_MAX_CONCURRENT: int = 2                 # HLS sessions being encoded at once
+HLS_MAX_CACHE_BYTES: int = 2 * 1024 ** 3    # Total size of all HLS sessions on disk
+ZIP_MAX_CONCURRENT: int = 2                 # album zips being built at once
+TRANSCODE_MAX_CONCURRENT: int = 16          # max ffmpeg transcodes at once
 TRANSCODE_MAX_PER_USER: int = 4
-COVER_EXTRACT_MAX_CONCURRENT: int = 8    # max ffmpeg cover art extractions at once
-PART_MAX_AGE_SEC: int = 86400            # interrupted podcast '.part' downloads
+COVER_EXTRACT_MAX_CONCURRENT: int = 8       # max ffmpeg cover art extractions at once
+PODCAST_MAX_CONCURRENT_DOWNLOADS: int = 3   # episode downloads running at once
+PART_MAX_AGE_SEC: int = 86400               # interrupted podcast '.part' downloads
 
 
 ## Images

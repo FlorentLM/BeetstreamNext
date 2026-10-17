@@ -145,9 +145,7 @@ def _add_security_headers(response):
     if is_webui or (response.mimetype == 'text/html' and 'Content-Security-Policy' not in response.headers):
         nonce = getattr(flask.g, 'csp_nonce', '')
         response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "      # no inline styles so only need 'self' and Google Fonts
-            "font-src 'self' https://fonts.gstatic.com; "
-            "style-src 'self' https://fonts.googleapis.com; "
+            "default-src 'self'; "      # no inline styles and fonts are self-hosted
             f"script-src 'self' 'nonce-{nonce}'; "
             "img-src 'self' data: blob:; "
             "connect-src 'self'; "

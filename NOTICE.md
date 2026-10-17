@@ -27,3 +27,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## Inter font
+
+SIL Open Font License 1.1. Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter).
+
+The full license text is in `LICENSE-inter-font.txt` next to the font files.
+
+---
+
+## Material Symbols
+
+Apache License 2.0. Copyright Google LLC (https://github.com/google/material-design-icons).
+
+The full license text is in `LICENSE-material-symbols.txt` next to the font files.

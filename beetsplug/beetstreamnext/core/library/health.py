@@ -94,7 +94,13 @@ def check_decode_errors(file_path: str | Path, samplerate: int = 0) -> tuple[boo
     error_count = stderr.count('Decoding error:')
 
     if not error_count:
-        return True, ''
+        if result.returncode == 0:
+            return True, ''
+
+        # ffmpeg can't open or map the file (corrupt header, no audio stream...)
+        last_line = next((line.strip() for line in reversed(stderr.splitlines()) if line.strip()), '')
+        detail = f'ffmpeg failed (exit {result.returncode})'
+        return False, f'{detail}: {last_line[:200]}' if last_line else detail
 
     detail = f'{error_count} decode error{"s" if error_count != 1 else ""}'
 

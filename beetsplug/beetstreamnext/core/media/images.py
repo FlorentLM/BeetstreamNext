@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.constants import (
-    MAX_DECODE_PIXELS, FFMPEG_PYTHON, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
+    MAX_DECODE_PIXELS, FFMPEG_INPUT_ARGS, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
 )
 from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, COVER_EXTRACT_MAX_CONCURRENT, IMAGE_EXTENSIONS
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -260,23 +260,10 @@ def image_from_song(path: str | Path) -> bytes | None:
         return None
 
     try:
-        if FFMPEG_PYTHON:
-            import ffmpeg
-
-            try:
-                img_bytes, _ = (
-                    ffmpeg
-                    .input(os.fsdecode(path))
-                    # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
-                    .output('pipe:', vframes=1, format='image2pipe', vcodec='mjpeg', **{'q:v': 2})
-                    .run(capture_stdout=True, capture_stderr=False, quiet=True, cmd=ffmpeg_bin or 'ffmpeg')
-                )
-            except ffmpeg.Error:
-                img_bytes = b''
-
-        elif ffmpeg_bin:
+        if ffmpeg_bin:
             command = [
                 ffmpeg_bin,
+                *FFMPEG_INPUT_ARGS,
                 '-i', os.fsdecode(path),
                 # extract only 1 frame, format image2pipe, jpeg in quality 2 (lower is better)
                 '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',

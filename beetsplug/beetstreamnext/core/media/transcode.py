@@ -12,7 +12,8 @@ from typing import Generator, Optional, Any
 import flask
 
 from beetsplug.beetstreamnext.constants import (
-    FFMPEG_PYTHON, TRANSCODE_MAX_CONCURRENT, TRANSCODE_MAX_PER_USER, TRANSCODE_TMP_DIR
+    FFMPEG_INPUT_ARGS, TRANSCODE_MAX_CONCURRENT, TRANSCODE_MAX_PER_USER,
+    TRANSCODE_TMP_DIR
 )
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
@@ -150,39 +151,13 @@ def _send_transcode(
     target_lossless = target['lossless']
     ffmpeg_bin = find_binary('ffmpeg')
 
-    if FFMPEG_PYTHON:
-        import ffmpeg
-        input_stream = ffmpeg.input(str(file_path), ss=start_at) if start_at > 0 else ffmpeg.input(str(file_path))
-
-        output_args = {
-            'format': target['f'],
-            'acodec': target['c'],
-            'map_metadata': '-1'
-        }
-
-        if 'flags' in target:
-            output_args['movflags'] = target['flags']
-
-        if not target.get('lossless'):
-            output_args['audio_bitrate'] = f'{max_bitrate}k'
-
-        if audio_filters:
-            output_args['af'] = audio_filters
-
-        output_stream = (
-            input_stream
-            .audio
-            .output('pipe:', **output_args)
-            .run_async(pipe_stdout=True, quiet=True, cmd=ffmpeg_bin or 'ffmpeg')
-        )
-
-    elif ffmpeg_bin:
+    if ffmpeg_bin:
         command = [ffmpeg_bin, '-hide_banner', '-loglevel', 'error']
 
         if start_at > 0:
             command.extend(["-ss", f"{start_at:.2f}"])
 
-        command.extend(['-i', str(file_path)])
+        command.extend([*FFMPEG_INPUT_ARGS, '-i', str(file_path)])
 
         # Apply optional audio filters
         if audio_filters:
@@ -307,7 +282,7 @@ def _send_transcode_tempfile(
     if start_at > 0:
         command.extend(['-ss', f'{start_at:.2f}'])
 
-    command.extend(['-i', str(file_path)])
+    command.extend([*FFMPEG_INPUT_ARGS, '-i', str(file_path)])
 
     if audio_filters:
         command.extend(['-af', audio_filters])
@@ -367,7 +342,7 @@ def try_transcode(
         exact_length: bool = False
     ) -> flask.Response | None:
 
-    if not (FFMPEG_PYTHON or find_binary('ffmpeg')):
+    if not find_binary('ffmpeg'):
         return send_file(file_path)
 
     username = getattr(flask.g, 'username', None)

@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.core.storage.connection import database, dual_data
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.constants import START_TIME, SERVER_VERSION
+from beetsplug.beetstreamnext.constants import FFMPEG_INPUT_ARGS, START_TIME, SERVER_VERSION
 from beetsplug.beetstreamnext.core.library.beets_interaction import config_path
 from beetsplug.beetstreamnext.utils.system import find_binary, binary_version, resolve_path
 from beetsplug.beetstreamnext.utils.general import subprocess_env
@@ -86,7 +86,7 @@ def check_decode_errors(file_path: str | Path, samplerate: int = 0) -> tuple[boo
 
     try:
         result = subprocess.run(
-            [ffmpeg_bin, '-v', 'error', '-i', str(file_path), '-map', '0:a', '-f', 'null', '-'],
+            [ffmpeg_bin, '-v', 'error', *FFMPEG_INPUT_ARGS, '-i', str(file_path), '-map', '0:a', '-f', 'null', '-'],
             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=300, env=subprocess_env()
         )
     except (subprocess.TimeoutExpired, OSError) as e:

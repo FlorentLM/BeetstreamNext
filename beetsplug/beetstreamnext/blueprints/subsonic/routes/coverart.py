@@ -5,7 +5,6 @@ import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.constants import FFMPEG_PYTHON
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import make_hidden, find_binary, resolve_path
@@ -60,7 +59,7 @@ def endpoint_get_cover_art() -> flask.Response:
                 return response
 
         # Fallback: try to extract cover from the song file
-        if FFMPEG_PYTHON or find_binary('ffmpeg'):
+        if find_binary('ffmpeg'):
             song_path = str(resolve_path(item.path, app.config['music_root']))
             try:
                 song_mtime = os.path.getmtime(song_path)

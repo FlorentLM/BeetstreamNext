@@ -14,7 +14,8 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import (
-    ALLOWED_BITRATES, FFMPEG_PYTHON, HLS_CACHE_DIR, HLS_MAX_CACHE_BYTES, HLS_MAX_CONCURRENT, HLS_MAX_VARIANTS
+    ALLOWED_BITRATES, FFMPEG_INPUT_ARGS, HLS_CACHE_DIR, HLS_MAX_CACHE_BYTES, HLS_MAX_CONCURRENT,
+    HLS_MAX_VARIANTS
 )
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
@@ -307,7 +308,7 @@ def endpoint_stream_song() -> flask.Response | None:
 
     song_filename = Path(song_path).name
 
-    if needs_transcode and (FFMPEG_PYTHON or find_binary('ffmpeg')):
+    if needs_transcode and find_binary('ffmpeg'):
         bsn_logger.warning(f"Transcode of song '{song_filename}' failed.")
         return subsonic_error(0, message='Transcoding failed.', resp_fmt=resp_fmt)
 
@@ -412,11 +413,10 @@ def endpoint_get_transcode_decision() -> flask.Response:
                         reasons.append(f'{attr}LimitExceeded')
 
     # Transcoding selection
-    can_transcode = bool(find_binary('ffmpeg')) or FFMPEG_PYTHON
     transcode_stream = None
     tx_params = ''
 
-    if not can_direct_play and can_transcode:
+    if not can_direct_play and bool(find_binary('ffmpeg')):
         tx_profiles = client_info.get('transcodingProfiles', [])
         selected_profile = None
 
@@ -588,7 +588,7 @@ def endpoint_hls() -> flask.Response | None:
     # If this specific one doesn't exist build it
     if not stream_dir.exists():
         hls_ffmpeg_bin = find_binary('ffmpeg')
-        if not (hls_ffmpeg_bin or FFMPEG_PYTHON):
+        if not hls_ffmpeg_bin:
             return subsonic_error(0, message='FFmpeg is required for HLS streaming.', resp_fmt=resp_fmt)
 
         if not _hls_slots.acquire(blocking=False):
@@ -613,7 +613,7 @@ def endpoint_hls() -> flask.Response | None:
 
                 command = [
                     hls_ffmpeg_bin or 'ffmpeg', '-hide_banner', '-loglevel', 'error',
-                    '-i', str(song_path)
+                    *FFMPEG_INPUT_ARGS, '-i', str(song_path)
                 ]
 
                 if norm_filter:

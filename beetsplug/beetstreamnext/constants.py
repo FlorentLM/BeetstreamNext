@@ -31,7 +31,6 @@ USER_AGENT: str = f'{SERVER_NAME}/{SERVER_VERSION} ( {REPO_URL} )'
 
 ## Paths and deps
 
-FFMPEG_PYTHON: bool = is_installed('ffmpeg-python')
 WIKI_API: bool = is_installed('wikipedia-api')
 RADIO_BROWSER: bool = is_installed('radios')
 FEEDPARSER: bool = is_installed('feedparser')
@@ -157,6 +156,14 @@ AUDIO_EXTENSIONS = frozenset(f'.{ext}' for ext in mediafile.TYPES)
 
 
 ## Security
+
+FFMPEG_INPUT_ARGS: tuple = (
+    # Protocols are restricted to plain files
+    '-protocol_whitelist', 'file,pipe',
+
+    # Only demuxers of audio containers are allowed (one alias is enough: 'mov' also covers mp4/m4a)
+    '-format_whitelist', 'mp3,flac,ogg,mov,aac,ape,wv,mpc,mpc8,asf,aiff,wav,w64,rf64,dsf,matroska,webm,tta,caf,ac3,eac3,dts',
+)
 
 LOOPBACK_IPS: frozenset[str] = frozenset({'127.0.0.1', 'localhost', '::1'})
 

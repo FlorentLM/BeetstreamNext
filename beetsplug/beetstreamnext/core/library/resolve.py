@@ -123,7 +123,7 @@ def get_artist_metadata(name: str) -> dict:
                 params.extend(col_params)
 
             found = tx.query(f"""SELECT {', '.join(selects)} FROM items""", params)[0]
-            roles.extend(role for (role, _), hit in zip(checks, found) if hit)
+            roles.extend(role for (role, _), hit in zip(checks, found, strict=True) if hit)
 
     result = {
         'mbid': mbid,

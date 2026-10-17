@@ -120,8 +120,7 @@ def _before_request() -> flask.Response | None:
 
 @app.before_request
 def _csp_nonce() -> None:
-    if flask.request.path.startswith(WEBUI_PREFIXES):
-        flask.g.csp_nonce = secrets.token_urlsafe(16)
+    flask.g.csp_nonce = secrets.token_urlsafe(16)
 
 
 @app.after_request
@@ -138,8 +137,12 @@ def _add_security_headers(response):
     if flask.request.path.startswith(('/rest', '/tokenised-')):
         response.headers['Content-Security-Policy'] = "sandbox; default-src 'none'"
 
-    if flask.request.path.startswith(WEBUI_PREFIXES):
+    is_webui = flask.request.path.startswith(WEBUI_PREFIXES)
+
+    if is_webui:
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+
+    if is_webui or (response.mimetype == 'text/html' and 'Content-Security-Policy' not in response.headers):
         nonce = getattr(flask.g, 'csp_nonce', '')
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "      # no inline styles so only need 'self' and Google Fonts

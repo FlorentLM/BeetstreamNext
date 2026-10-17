@@ -130,3 +130,82 @@ h1 {
         box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
     }
 }
+
+.btn-icon {
+    margin-right: 6px;
+}
+
+.now-playing-container {
+    margin: 1rem auto 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    text-align: left;
+    max-width: 500px;
+}
+
+.now-playing-cover {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    object-fit: cover;
+}
+
+.now-playing-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.now-playing-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--primary);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+}
+
+.now-playing-title,
+.now-playing-artist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.now-playing-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.now-playing-artist {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.now-playing-player {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.link-row {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.github-link.flush {
+    margin-top: 0;
+}

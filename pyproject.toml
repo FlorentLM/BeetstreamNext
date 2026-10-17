@@ -50,6 +50,8 @@ all = ["beetstreamnext[wiki,podcasts,podcast-discovery,radio-discovery,sonos,chr
 
 [dependency-groups]
 dev = [
+    "brotli==1.2.0",
+    "fonttools==4.67.0",
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",

@@ -12,9 +12,9 @@ jobs:
   linting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
@@ -23,3 +23,37 @@ jobs:
 
       - name: Lint (ruff, includes pyflakes rules)
         run: uv run ruff check .
+
+  vendored-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Vendored JavaScript matches the pinned releases
+        run: uv run tools/vendor_js.py --check
+
+      - name: Vendored fonts match the pinned sources
+        run: uv run tools/vendor_fonts.py --check
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Audit locked dependencies (pip-audit)
+        run: |
+          uv export --locked --no-emit-project --extra all -o requirements-audit.txt
+          uvx pip-audit -r requirements-audit.txt --no-deps --disable-pip
+
+      # Advisory for now: the remaining findings still need triage (MD5 is required by the Subsonic token auth)
+      - name: SAST (bandit)
+        continue-on-error: true
+        run: uvx bandit -r beetsplug -ll

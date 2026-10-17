@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import ipaddress
 import shutil
+import sys
 from pathlib import Path
 from typing import Any, Callable, List
 from uuid import UUID
 
+from beetsplug.beetstreamnext.constants import UNIX_SOCKET_PREFIX
 from beetsplug.beetstreamnext.utils.net import parse_host
 
 
@@ -104,7 +106,27 @@ def validate_jukebox_device(x: Any) -> str:
 
 
 def validate_host_list(hosts: List[str]) -> List[str]:
-    """Each entry must be a bare hostname/IP to bind to, no scheme or port."""
+    """
+    Each entry must be a bare hostname/IP to bind to (no scheme or port),
+    or a single `unix:/absolute/path` socket.
+    """
+
+    if any(h.startswith(UNIX_SOCKET_PREFIX) for h in hosts):
+
+        if len(hosts) > 1:
+            raise ValueError('A unix socket cannot be combined with other hosts.')
+
+        path = hosts[0][len(UNIX_SOCKET_PREFIX):]
+
+        if sys.platform == 'win32':
+            raise ValueError('Unix sockets are not available on Windows.')
+        if not path.startswith('/') or path.endswith('/'):
+            raise ValueError(f"'{hosts[0]}' must be 'unix:' followed by the absolute path of the socket file.")
+        if len(path.encode()) > 100:        # sockaddr_un.sun_path is 104 bytes on macOS, 108 on Linux
+            raise ValueError('That socket path is too long.')
+
+        return [hosts[0]]
+
     result = []
     for h in hosts:
         parsed = parse_host(h)

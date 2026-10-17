@@ -160,6 +160,9 @@ AUDIO_EXTENSIONS = frozenset(f'.{ext}' for ext in mediafile.TYPES)
 
 LOOPBACK_IPS: frozenset[str] = frozenset({'127.0.0.1', 'localhost', '::1'})
 
+UNIX_SOCKET_PREFIX: str = 'unix:'
+UNIX_SOCKET_PERMS: str = '660'
+
 RATE_LIMIT_MAX_FAILURES: int = 5
 RATE_LIMIT_BLOCK_WINDOW: int = 300
 

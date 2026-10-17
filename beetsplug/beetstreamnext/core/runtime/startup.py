@@ -14,7 +14,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
-from beetsplug.beetstreamnext.constants import CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS, MAX_REQUEST_BYTES
+from beetsplug.beetstreamnext.constants import (
+    CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS, MAX_REQUEST_BYTES, UNIX_SOCKET_PERMS, UNIX_SOCKET_PREFIX
+)
 from beetsplug.beetstreamnext.core.accounts.commands import check_onboarding
 from beetsplug.beetstreamnext.core.storage.encryption import ensure_secret, rotate_session_key
 from beetsplug.beetstreamnext.core.library.import_watcher import ImportWatcher
@@ -73,6 +75,10 @@ def restart_server(delay: float = 1.5) -> None:
 
 def _bindable(host: str, port: int) -> bool:
     """Check if `host` can be bound at all on this machine now."""
+    if host.startswith(UNIX_SOCKET_PREFIX):
+        folder = Path(host[len(UNIX_SOCKET_PREFIX):]).parent
+        return folder.is_dir() and os.access(folder, os.W_OK | os.X_OK)
+
     try:
         family = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)[0][0]
     except socket.gaierror:
@@ -87,7 +93,7 @@ def _bindable(host: str, port: int) -> bool:
             return False
 
 
-def _write_runtime_port(port: int) -> None:
+def _write_runtime_port(port: int | str) -> None:
     try:
         (CACHE_LOCATION / 'runtime_port').write_text(str(port))
     except OSError:
@@ -107,7 +113,7 @@ def run_server(
     Start BeetsreamNext :)))
     """
 
-    app.config['HOST_LIST'] = host  # WebUI uses them as external_hostname suggestions
+    app.config['HOST_LIST'] = [h for h in host if not h.startswith(UNIX_SOCKET_PREFIX)]  # WebUI uses them as external_hostname suggestions
 
     if len(host) == 1:
         if not _bindable(host[0], port):
@@ -138,12 +144,24 @@ def run_server(
             sys.exit(1)
 
     host = bindable_host
-    netlocs = [parse_host(h)._replace(port=port).netloc for h in host]      # IPv6 gets its brackets
+    socket_path = host[0][len(UNIX_SOCKET_PREFIX):] if host[0].startswith(UNIX_SOCKET_PREFIX) else None
+    netlocs = [parse_host(h)._replace(port=port).netloc for h in host] if not socket_path else []     # IPv6 gets its brackets
+    exposed = not socket_path and any(h not in LOOPBACK_IPS for h in host)
+
+    if socket_path and (debug or not settings_store.get('reverse_proxy')):
+        print_box([
+            '',
+            f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
+            '',
+            'A unix socket needs `reverse_proxy` enabled (and debug mode disabled).',
+            '',
+        ], color=TermColors.FAIL)
+        sys.exit(1)
 
     with app.app_context():
-        check_onboarding(app.config.get('STANDALONE_MODE', False), host=host, port=port)
+        check_onboarding(app.config.get('STANDALONE_MODE', False), host=[] if socket_path else host, port=port)
 
-    if debug and any(h not in LOOPBACK_IPS for h in host):
+    if debug and exposed:
         if force_trust_host:
             print_box([
                 '',
@@ -168,7 +186,7 @@ def run_server(
             sys.exit(1)
 
     if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
-        if any(h not in LOOPBACK_IPS for h in host):
+        if exposed:
             print_box([
                 '',
                 f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
@@ -183,7 +201,7 @@ def run_server(
             ], color=TermColors.WARNING)
 
     if settings_store.get('reverse_proxy'):
-        if any(h not in LOOPBACK_IPS for h in host):
+        if exposed:
             if is_docker():
                 print_box([
                     '',
@@ -289,7 +307,7 @@ def run_server(
         bsn_logger.info('CORS is disabled. Web-based OpenSubsonic clients will be blocked by browsers.')
 
     apply_logs_redaction()
-    _write_runtime_port(port)
+    _write_runtime_port(host[0] if socket_path else port)
 
     if debug:
         if len(host) > 1:
@@ -306,13 +324,20 @@ def run_server(
         connection_limit = settings_store.get('connection_limit')
 
         if LOG_LEVEL > logging.INFO:
-            urls = ', '.join(f'http://{n}' for n in netlocs)
+            urls = host[0] if socket_path else ', '.join(f'http://{n}' for n in netlocs)
             print(f'BeetstreamNext server running on {urls}...')
 
         logged_app = RedactingTransLogger(app, setup_console_handler=True)
 
+        listen_options = {
+            'unix_socket': socket_path,
+            'unix_socket_perms': UNIX_SOCKET_PERMS
+        } if socket_path else {
+            'listen': netlocs
+        }
+
         serve(
-            logged_app, listen=netlocs, threads=threads,
+            logged_app, **listen_options, threads=threads,
             channel_timeout=channel_timeout, connection_limit=connection_limit,
             max_request_body_size=MAX_REQUEST_BYTES,
             clear_untrusted_proxy_headers=not settings_store.get('reverse_proxy'),

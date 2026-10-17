@@ -50,6 +50,7 @@ WORKDIR /app
 COPY --from=builder --chown=beetstream:beetstream /app/.venv /app/.venv
 COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY healthcheck.py /usr/local/bin/healthcheck.py
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # User-installed beets plugins
@@ -71,12 +72,7 @@ VOLUME ["/config", "/cache"]
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "\
-import os, pathlib, urllib.request; \
-p = pathlib.Path(os.environ.get('XDG_CACHE_HOME', '/cache')) / 'runtime_port'; \
-port = p.read_text().strip() if p.is_file() else '8080'; \
-urllib.request.urlopen(f'http://127.0.0.1:{port}/healthz', timeout=3)" \
-    || exit 1
+    CMD python /usr/local/bin/healthcheck.py || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["run"]

@@ -90,7 +90,10 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'list[str]',
         'default': DEFAULT_HOST,
         'category': 'server',
-        'description': 'Host(s) to listen on (comma-separated for multiple).',
+        'description': (
+            'Host(s) to listen on (comma-separated for multiple), or <code>unix:/path/to/socket</code> '
+            '(to use a Unix socket, <code>reverse_proxy</code> has to be enabled)'
+        ),
         'requires_restart': True,
         'env_var': 'BSN_HOST',
         'validator': validate_host_list,

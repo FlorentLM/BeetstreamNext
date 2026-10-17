@@ -1,26 +1,14 @@
 (function () {
     'use strict';
 
-    // Modal forms swap the list behind them on success
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        if (target?.id !== 'radioList' || !target.querySelector('.flash-success')) return;
-        const store = Alpine.store('modal');
-        for (const [modalId, formId] of [['createRadioModal', 'createRadioForm'], ['editRadioModal', null]]) {
-            if (store.current !== modalId) continue;
-            const form = formId && document.getElementById(formId);
-            if (form) {
-                form.reset();
-                form.querySelector('.modal-result').innerHTML = '';
-            }
-            store.hide(modalId);
-        }
+    bsnCommon.closeModalsOnSuccess({
+        radioList: [['createRadioModal', 'createRadioForm'], ['editRadioModal', null]],
     });
 
     // Edit form
-    document.body.addEventListener('htmx:after:swap', event => {
-        if (event.detail.ctx.target?.id === 'editRadioModalBody') Alpine.store('modal').show('editRadioModal');
-    });
+    bsnCommon.onSwap('editRadioModalBody', () => Alpine.store('modal').show('editRadioModal'));
+
+    let iconController = null;
 
     async function useRadioResult(target) {
         const nameInput = document.getElementById('createRadioName');
@@ -42,6 +30,10 @@
         const sendIcon = blob => window.dispatchEvent(new CustomEvent('radio-icon', {detail: {blob}}));
         sendIcon(null);
 
+        if (iconController) iconController.abort();
+        iconController = new AbortController();
+        const {signal} = iconController;
+
         const searchButton = document.querySelector('[data-action="discover-radios"]');
         const proxyBase = searchButton ? searchButton.dataset.faviconProxy : '';
         const name = target.dataset.name || '';
@@ -54,9 +46,10 @@
         if (homepage) params.set('homepage', homepage);
 
         try {
-            const resp = await fetch(`${proxyBase}?${params.toString()}`, {credentials: 'same-origin'});
+            const resp = await fetch(`${proxyBase}?${params.toString()}`, {credentials: 'same-origin', signal});
             if (!resp.ok) return;
-            sendIcon(await resp.blob());
+            const blob = await resp.blob();
+            if (!signal.aborted) sendIcon(blob);
         } catch (err) {
             // empty, favicon_url passed to create_station() to try server-side
         }

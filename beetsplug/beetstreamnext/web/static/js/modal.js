@@ -38,6 +38,7 @@
             },
 
             confirm(message) {
+                this.settleConfirm(false);
                 return new Promise(resolve => {
                     this.confirmResolve = resolve;
                     this.message = message;
@@ -46,6 +47,7 @@
             },
 
             prompt(message, defaultValue) {
+                this.settlePrompt(null);
                 return new Promise(resolve => {
                     this.promptResolve = resolve;
                     this.message = message;

@@ -17,10 +17,7 @@
     function toggleTheme() {
         const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
         const next = current === 'light' ? 'dark' : 'light';
-        try {
-            document.cookie = 'bsn-theme=' + next + '; Path=/; Max-Age=31536000; SameSite=Lax';
-        } catch (e) {
-        }
+        document.cookie = 'bsn-theme=' + next + '; Path=/; Max-Age=31536000; SameSite=Lax';
         applyTheme(next);
     }
 
@@ -49,7 +46,7 @@
     // Copies text then calls done() on success
     function copyText(text, done) {
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(done).catch(() => {
+            navigator.clipboard.writeText(text).then(done, () => {
                 if (copySel(text)) done();
             });
         } else {
@@ -96,7 +93,7 @@
     // htmx's `keyup[key=='Enter']` trigger filters compile the condition with `new Function()`,
     // which our CSP blocks (no 'unsafe-eval') so enter-to-search is defined here
     document.addEventListener('keydown', event => {
-        if (event.key !== 'Enter') return;
+        if (event.key !== 'Enter' || event.isComposing) return;
         const input = event.target.closest('#podcastDiscoveryQuery, #radioDiscoveryQuery');
         if (!input) return;
         event.preventDefault();
@@ -118,11 +115,55 @@
         if (input) input.value = '';
     });
 
+    // Runs handler(target, event) after htmx swaps into the element(s) with the given id(s)
+    function onSwap(ids, handler) {
+        ids = [].concat(ids);
+        document.body.addEventListener('htmx:after:swap', event => {
+            const target = event.detail.ctx.target;
+            if (target && ids.includes(target.id)) handler(target, event);
+        });
+    }
+
+    // Runs handler(target) after a swap into the element if the new content holds a success flash
+    function onSwapSuccess(id, handler) {
+        onSwap(id, target => {
+            if (target.querySelector('.flash-success')) handler(target);
+        });
+    }
+
+    // Modal forms swap the list behind them on success -> reset the form and close the modal
+    function closeModalsOnSuccess(modals) {
+        for (const [listId, pairs] of Object.entries(modals)) {
+            onSwapSuccess(listId, () => {
+                const store = Alpine.store('modal');
+                for (const [modalId, formId] of pairs) {
+                    if (store.current !== modalId) continue;
+                    const form = formId && document.getElementById(formId);
+                    if (form) {
+                        form.reset();
+                        form.querySelector('.modal-result').innerHTML = '';
+                    }
+                    store.hide(modalId);
+                }
+            });
+        }
+    }
+
+    function usePodcastResult(target) {
+        const urlInput = document.getElementById('podcastFeedUrl');
+        if (urlInput) urlInput.value = target.dataset.url || '';
+        const results = document.getElementById('podcastDiscoveryResults');
+        if (results) results.innerHTML = '';
+    }
+
     document.addEventListener('click', event => {
         const target = event.target.closest('[data-action]');
         if (!target) return;
 
         switch (target.dataset.action) {
+            case 'use-podcast-result':
+                usePodcastResult(target);
+                break;
             case 'toggle-theme':
                 toggleTheme();
                 break;
@@ -137,7 +178,7 @@
         }
     });
 
-    window.bsnCommon = {copyText};
+    window.bsnCommon = {copyText, onSwap, onSwapSuccess, closeModalsOnSuccess};
 
     document.addEventListener('alpine:init', () => {
         // Image picker (radio icons, user avatars)
@@ -178,8 +219,12 @@
 
             onDrop(event) {
                 this.dragging = false;
-                const file = Array.from(event.dataTransfer.files)
-                    .find(f => this.$refs.file.accept.split(',').includes(f.type));
+                const accepted = this.$refs.file.accept.split(',').map(a => a.trim().toLowerCase()).filter(Boolean);
+                const file = Array.from(event.dataTransfer.files).find(f => accepted.some(a => {
+                    if (a.startsWith('.')) return f.name.toLowerCase().endsWith(a);
+                    if (a.endsWith('/*')) return f.type.startsWith(a.slice(0, -1));
+                    return f.type === a;
+                }));
                 if (!file) return;
                 const dt = new DataTransfer();
                 dt.items.add(file);

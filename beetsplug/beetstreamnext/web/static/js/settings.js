@@ -1,21 +1,19 @@
 (function () {
     'use strict';
 
-    // Alpine components (tabs, checkbox-group toggles)
-    // (registered on 'alpine:init' so they exist before CSP build parses x-data)
+    const {onSwap, onSwapSuccess} = bsnCommon;
 
     // Artist image modal
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
+    onSwap('artistImageModalBody', () => Alpine.store('modal').show('artistImageModal'));
+    onSwapSuccess('artistImageList', () => {
         const store = Alpine.store('modal');
-        if (target?.id === 'artistImageModalBody') store.show('artistImageModal');
-        else if (target?.id === 'artistImageList' && target.querySelector('.flash-success')
-            && store.current === 'artistImageModal') {
-            store.hide('artistImageModal');
-            document.getElementById('artistImageModalBody').innerHTML = '';     // no stale preview next time
-        }
+        if (store.current !== 'artistImageModal') return;
+        store.hide('artistImageModal');
+        document.getElementById('artistImageModalBody').innerHTML = '';     // no stale preview next time
     });
 
+    // Alpine components (tabs, notification cards, beets import, checkbox-group toggles)
+    // (registered on 'alpine:init' so they exist before CSP build parses x-data)
     document.addEventListener('alpine:init', () => {
         Alpine.data('tabs', () => ({
             active: 'users',
@@ -90,6 +88,7 @@
                     },
                     body: new URLSearchParams(body)
                 });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 return resp.json();
             }
 
@@ -128,11 +127,14 @@
                     if (d.statusUrl) {
                         fetch(d.statusUrl, {credentials: 'same-origin'})
                             .then(resp => resp.ok ? resp.json() : null)
-                            .then(status => { if (status) this.applyStatus(status); })
-                            .catch(() => {});
+                            .then(status => {
+                                if (status) this.applyStatus(status);
+                            })
+                            .catch(() => {
+                            });
                     }
                     if (d.logUrl) {
-                        refreshLogs({dataset: {url: d.logUrl, target: 'beetsImportLogText'}});
+                        refreshLogs(d.logUrl, 'beetsImportLogText');
                     }
                 },
 
@@ -186,7 +188,8 @@
                     try {
                         this.applyStatus(await post(this.$el.dataset.inputUrl, {text}));
                     } catch (err) {
-                        // next SSE push will hopefully correct the view
+                        // Not sent: give the text back (unless the user already started typing something else)
+                        if (!input.value) input.value = text;
                     }
                     input.focus();
                 }
@@ -221,10 +224,18 @@
         bsnCommon.copyText(text, done);
     }
 
-    async function refreshLogs(button) {
-        const url = button.dataset.url;
-        const target = document.getElementById(button.dataset.target);
+
+    const logRefreshes = new Map();
+
+    async function refreshLogs(url, targetId) {
+        const target = document.getElementById(targetId);
         if (!target || !url) return;
+        if (logRefreshes.has(targetId)) {
+            logRefreshes.get(targetId).again = true;
+            return;
+        }
+        const state = {again: false};
+        logRefreshes.set(targetId, state);
         try {
             const resp = await fetch(url, {credentials: 'same-origin'});
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -236,6 +247,9 @@
             if (wasAtBottom) target.scrollTop = target.scrollHeight;
         } catch (err) {
             target.textContent = 'Failed to load log: ' + err.message;
+        } finally {
+            logRefreshes.delete(targetId);
+            if (state.again) refreshLogs(url, targetId);
         }
     }
 
@@ -255,8 +269,8 @@
         if (!Array.isArray(batch) || !batch.length) return;
 
         const count = parseInt(target.dataset.lines) || 0;
-        if (count >= SERVER_LOG_MAX_LINES) {
-            refreshLogs({dataset: {url: target.dataset.url, target: target.id}});
+        if (count >= SERVER_LOG_MAX_LINES || logRefreshes.has(target.id)) {
+            refreshLogs(target.dataset.url, target.id);
             return;
         }
 
@@ -312,7 +326,10 @@
 
                 const sizeEl = document.getElementById(`podcast-episode-size-${id}`);
                 if (sizeEl && info.file_size) {
-                    sizeEl.innerHTML = `<span class="badge badge-limit">${formatBytes(info.file_size)}</span>`;
+                    const sizeBadge = document.createElement('span');
+                    sizeBadge.className = 'badge badge-limit';
+                    sizeBadge.textContent = formatBytes(info.file_size);
+                    sizeEl.replaceChildren(sizeBadge);
                 }
             }
 
@@ -369,16 +386,13 @@
         el.textContent = isNaN(ms) ? '—' : new Date(ms).toLocaleTimeString();
     }
 
-    document.body.addEventListener('htmx:after:swap', event => {
-        if (event.detail.ctx.target?.id !== 'beetsConfigEditorWrap') return;
+    onSwap('beetsConfigEditorWrap', () => {
         const footer = document.getElementById('beetsConfigFooter');
         if (footer) footer.querySelectorAll('.config-time').forEach(formatConfigTime);
     });
 
     // only fill the field when it's empty and discovery found exactly one device
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        if (target?.id !== 'jukebox-devices-list') return;
+    onSwap('jukebox-devices-list', target => {
         const input = document.getElementById('set-jukebox_hardware_device');
         const options = target.querySelectorAll('option');
         if (input && !input.value && options.length === 1) {
@@ -387,52 +401,17 @@
     });
 
     // Clear feed URL box after successful subscribe
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        if (target?.id !== 'podcastChannels') return;
-        if (target.querySelector('.flash-success')) document.getElementById('addPodcastForm')?.reset();
-    });
+    onSwapSuccess('podcastChannels', () => document.getElementById('addPodcastForm')?.reset());
 
-    // Modal forms swap the list behind them on success
-    const MODAL_FORMS = {
+    bsnCommon.closeModalsOnSuccess({
         usersTable: [['createModal', 'createForm'], ['editModal', null]],
-    };
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        const modals = MODAL_FORMS[target?.id];
-        if (!modals || !target.querySelector('.flash-success')) return;
-        const store = Alpine.store('modal');
-        for (const [modalId, formId] of modals) {
-            if (store.current !== modalId) continue;
-            const form = formId && document.getElementById(formId);
-            if (form) {
-                form.reset();
-                form.querySelector('.modal-result').innerHTML = '';
-            }
-            store.hide(modalId);
-        }
     });
 
     // Clear announcement box after successful post
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        if (target?.id !== 'chatModeration') return;
-        if (target.querySelector('.flash-success')) document.getElementById('announceForm')?.reset();
-    });
+    onSwapSuccess('chatModeration', () => document.getElementById('announceForm')?.reset());
 
     // Edit user forms, lazy-loaded
-    document.body.addEventListener('htmx:after:swap', event => {
-        const id = event.detail.ctx.target?.id;
-        if (id === 'editModalBody') Alpine.store('modal').show('editModal');
-    });
-
-    function usePodcastResult(target) {
-        const urlInput = document.getElementById('podcastFeedUrl');
-        if (urlInput) urlInput.value = target.dataset.url || '';
-
-        const results = document.getElementById('podcastDiscoveryResults');
-        if (results) results.innerHTML = '';
-    }
+    onSwap('editModalBody', () => Alpine.store('modal').show('editModal'));
 
     function useBeetsPathResult(target) {
         const results = document.getElementById('beetsImportPathResults');
@@ -461,13 +440,10 @@
             case 'copy-log':
                 copyLogs(target);
                 break;
-            case 'use-podcast-result':
-                usePodcastResult(target);
-                break;
             case 'use-beets-path-result':
                 useBeetsPathResult(target);
                 break;
-            case 'edit-chat':
+            case 'edit-chat': {
                 const oldText = target.dataset.text;
                 Alpine.store('modal').prompt("Edit user's chat message:", oldText).then(newText => {
                     if (newText !== null && newText.trim() !== "") {
@@ -479,6 +455,7 @@
                     }
                 });
                 break;
+            }
         }
     });
 
@@ -515,6 +492,35 @@
         return s.includes(':') && /^[0-9a-fA-F:]+(\/\d{1,3})?$/.test(s);
     }
 
+    // IPv4/IPv6 text -> {bits, n}, null if unparsable
+    function parseIp(s) {
+        if (!s.includes(':')) {
+            const octets = s.split('.');
+            if (octets.length !== 4 || !octets.every(o => /^\d{1,3}$/.test(o) && Number(o) <= 255)) return null;
+            return {bits: 32, n: octets.reduce((acc, o) => (acc << 8n) | BigInt(o), 0n)};
+        }
+        const halves = s.split('::');
+        if (halves.length > 2) return null;
+        const head = halves[0] ? halves[0].split(':') : [];
+        const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+        const fill = 8 - head.length - tail.length;
+        if (halves.length === 1 ? fill !== 0 : fill < 1) return null;   // '::' stands for at least one group
+        const groups = [...head, ...Array(Math.max(fill, 0)).fill('0'), ...tail];
+        if (!groups.every(g => /^[0-9a-f]{1,4}$/i.test(g))) return null;
+        return {bits: 128, n: groups.reduce((acc, g) => (acc << 16n) | BigInt(parseInt(g, 16)), 0n)};
+    }
+
+    // Is the IP inside the entry (a single address or a CIDR range)?
+    function entryCovers(entry, ip) {
+        const [addr, prefixStr] = entry.split('/');
+        const net = parseIp(addr), client = parseIp(ip);
+        if (!net || !client || net.bits !== client.bits) return false;
+        const prefix = prefixStr === undefined ? net.bits : Number(prefixStr);
+        if (prefix > net.bits) return false;
+        const shift = BigInt(net.bits - prefix);
+        return (net.n >> shift) === (client.n >> shift);
+    }
+
     // Warn before adding the first whitelist entry/entries if current IP not in there
     document.addEventListener('submit', event => {
         const form = event.target.closest('form.ip-add-form[data-list-type="whitelist"][data-first-entry="true"]');
@@ -526,13 +532,13 @@
 
         const entries = raw.split(',').map(s => s.trim()).filter(Boolean).filter(looksLikeIpOrCidr);
         if (entries.length === 0) return;          // garbage, let server reject it
-        if (entries.includes(clientIp)) return;    // current IP is one of the entries: no problemo
+        if (entries.some(e => entryCovers(e, clientIp))) return;    // current IP is inside one of the entries: no problemo
 
         event.preventDefault();
         event.stopPropagation();   // Keep htmx from sending the unconfirmed submit
         const listed = entries.map(e => `'${e}'`).join(', ');
         Alpine.store('modal').confirm(
-            `Warning: Your current IP (${clientIp || 'unknown'}) is NOT ${entries.length === 1 ? "" : "listed in"} ${listed}. ` +
+            `Warning: Your current IP (${clientIp || 'unknown'}) is NOT covered by ${listed}. ` +
             `\n\nAccess will be restricted to ${entries.length === 1 ? "that IP" : "these IPs"} and the current IP will lose access immediately.\n\nContinue?`
         ).then(ok => {
             if (ok) htmx.trigger(form, 'confirmed');

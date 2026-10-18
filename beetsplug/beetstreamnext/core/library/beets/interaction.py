@@ -16,10 +16,13 @@ import confuse
 import yaml
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import BEETS_IMPORT_LOG_PATH, ALPHANUM_CHARS, DEFAULT_CONFIG_PATH
+from beetsplug.beetstreamnext.constants import (
+    BEETS_IMPORT_LOG_PATH, BEETS_IMPORT_RESULTS_PATH, ALPHANUM_CHARS, DEFAULT_CONFIG_PATH
+)
 from beetsplug.beetstreamnext.core.storage.connection import dual_database
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.services.events import admin_events
+from beetsplug.beetstreamnext.core.library.beets import import_results
 from beetsplug.beetstreamnext.core.library.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.notifications import (
@@ -34,6 +37,7 @@ from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_elapsed
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
+from beetsplug.beetstreamnext_events import EVENTS_ENV_VAR
 
 IS_WINDOWS = sys.platform == 'win32'
 
@@ -165,6 +169,16 @@ class ImportSession:
 
             command = [sys.executable, '-m', 'beets', '-P', 'beetstreamnext']
 
+            reporting = import_results.reset(BEETS_IMPORT_RESULTS_PATH)
+
+            if reporting:
+                try:
+                    plugins = [p for p in beets.config['plugins'].as_str_seq() if p != 'beetstreamnext']
+                except confuse.ConfigError:
+                    reporting = False
+                else:
+                    command += ['-p', ','.join([*plugins, import_results.EVENTS_PLUGIN])]
+
             config_path = app.config.get('BEETS_CONFIG_PATH')
             if config_path:
                 command += ['-c', str(config_path)]
@@ -176,6 +190,8 @@ class ImportSession:
 
             env = subprocess_env('NO_COLOR')
             env.setdefault('TERM', 'xterm-256color')
+            if reporting:
+                env[EVENTS_ENV_VAR] = str(BEETS_IMPORT_RESULTS_PATH)
 
             if reset_log:
                 try:
@@ -309,8 +325,10 @@ class ImportSession:
 
         bsn_logger.info(f'Beets import finished (exit {exit_code})')
 
-        notify(IMPORT_COMPLETED if exit_code == 0 else IMPORT_FAILED,
-               path=path, exit_code=exit_code, duration=duration)
+        event = IMPORT_COMPLETED if exit_code == 0 else IMPORT_FAILED
+        results = import_results.summarize(import_results.read_results(BEETS_IMPORT_RESULTS_PATH))
+
+        notify(event, path=path, exit_code=exit_code, duration=duration, **results)
 
         self._start_next_queued()
 

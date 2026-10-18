@@ -64,6 +64,7 @@ JUKEBOX_SOCK_DIR: Path = CACHE_TMP_DIR / 'jukebox'
 JUKEBOX_SOCK_DIR.mkdir(parents=True, exist_ok=True)
 
 BEETS_IMPORT_LOG_PATH: Path = CACHE_LOCATION / 'last_import.log'
+BEETS_IMPORT_RESULTS_PATH: Path = CACHE_LOCATION / 'last_import_results.jsonl'
 
 
 ## Text constants

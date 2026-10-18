@@ -34,7 +34,7 @@ IMPORT_COMPLETED = Event(
     key='import_completed',
     label='Import completed',
     status='completed',
-    body='Imported {path} in {duration}')
+    body='Imported {path} in {duration}: {albums_imported} imported, {albums_skipped} skipped')
 
 IMPORT_FAILED = Event(
     key='import_failed',
@@ -64,6 +64,10 @@ VARIABLES: Dict[str, str] = {
     'status': 'Started, Completed, Failed, Needs input or Aborted',
     'exit_code': 'Exit code of the beets import (empty until it finishes)',
     'duration': 'How long the import ran for',
+    'albums_imported': 'Albums added to the library (empty until it finishes)',
+    'albums_skipped': 'Albums skipped: no match, duplicates, or skipped by you (empty until it finishes)',
+    'imported_list': 'Names of the imported albums',
+    'skipped_list': 'Names of the skipped albums',
     'time': 'When the notification was sent',
 }
 
@@ -302,7 +306,12 @@ def notify(event: Event, **variables: Any) -> None:
     threading.Thread(target=_dispatch, args=(event, variables), name='notify', daemon=True).start()
 
 
-_SAMPLE_VARIABLES = {'path': '/music/Example Album', 'exit_code': 0, 'duration': '1m 23s'}
+_SAMPLE_VARIABLES = {
+    'path': '/music/Example Album', 'exit_code': 0, 'duration': '1m 23s',
+    'albums_imported': 2, 'albums_skipped': 1,
+    'imported_list': 'Example Artist - First Album\nExample Artist - Second Album',
+    'skipped_list': 'Unknown Artist - Mystery Album',
+}
 
 
 def send_test(event: str, title: str, body: str, urls: List[str]) -> Tuple[bool, str]:

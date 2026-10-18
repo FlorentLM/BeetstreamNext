@@ -23,6 +23,7 @@ from beetsplug.beetstreamnext.core.storage.connection import dual_database
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.library.beets import import_results
+from beetsplug.beetstreamnext.core.library import import_history
 from beetsplug.beetstreamnext.core.library.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.notifications import (
@@ -37,7 +38,7 @@ from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_elapsed
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
-from beetsplug.beetstreamnext_events import EVENTS_ENV_VAR
+from beetsplug.beetstreamnext_events import EVENTS_ENV_VAR, RETRY_ENV_VAR
 
 IS_WINDOWS = sys.platform == 'win32'
 
@@ -185,13 +186,21 @@ class ImportSession:
 
             command += ['-l', library_path, 'import']
             if quiet:
-                command += ['-q', '--incremental' if incremental else '--noincremental']
+                command.append('-q')
+
+            # Always record skipped (or imported) folders no matter what `incremental_skip_later` says
+            if quiet and not incremental:
+                command.append('--noincremental')       # Pinned path: non-incremental
+            else:
+                command += ['--incremental', '--noincremental-skip-later']
             command.append(str(candidate))
 
             env = subprocess_env('NO_COLOR')
             env.setdefault('TERM', 'xterm-256color')
             if reporting:
                 env[EVENTS_ENV_VAR] = str(BEETS_IMPORT_RESULTS_PATH)
+            if not quiet:     # Manual imports: force no skip (companion plugin makes beets forget it)
+                env[RETRY_ENV_VAR] = '1'
 
             if reset_log:
                 try:
@@ -326,13 +335,19 @@ class ImportSession:
         bsn_logger.info(f'Beets import finished (exit {exit_code})')
 
         event = IMPORT_COMPLETED if exit_code == 0 else IMPORT_FAILED
-        results = import_results.summarize(import_results.read_results(BEETS_IMPORT_RESULTS_PATH))
 
-        notify(event, path=path, exit_code=exit_code, duration=duration, **results)
+        results = import_results.read_results(BEETS_IMPORT_RESULTS_PATH)
+        results_summary = import_results.summarize(results)
+
+        if import_history.record_run(path, results):
+            admin_events.publish('import-history', '')
+
+        notify(event, path=path, exit_code=exit_code, duration=duration, **results_summary)
 
         self._start_next_queued()
 
     def _pump_output_posix(self, proc: subprocess.Popen, master_fd: int) -> None:
+
         with open(BEETS_IMPORT_LOG_PATH, 'a', encoding='utf-8') as log_file:
             try:
                 while True:
@@ -354,6 +369,7 @@ class ImportSession:
                 self._finish(log_file, proc.wait())
 
     def _pump_output_windows(self, proc) -> None:
+
         with open(BEETS_IMPORT_LOG_PATH, 'a', encoding='utf-8') as log_file:
             try:
                 while True:

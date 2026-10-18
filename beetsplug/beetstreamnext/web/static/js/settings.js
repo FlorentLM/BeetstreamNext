@@ -112,6 +112,10 @@
                 starting: false,
                 startMessage: '',
                 startOk: true,
+                inputMessage: '',
+                inputOk: true,
+                startUrl: '',       // inside a handler, $el is what fired the event
+                inputUrl: '',
 
                 get live() {
                     return this.state === 'running' || this.state === 'needs_input';
@@ -128,6 +132,10 @@
                 get startDisabled() {
                     return this.starting;
                 },
+                get inputResultClass() {
+                    if (!this.inputMessage) return 'test-result';
+                    return 'test-result ' + (this.inputOk ? 'test-result-ok' : 'test-result-fail');
+                },
                 get startResultClass() {
                     if (!this.startMessage) return 'test-result';
                     return 'test-result ' + (this.startOk ? 'test-result-ok' : 'test-result-fail');
@@ -138,6 +146,8 @@
                     if (dash) dash.addEventListener('beets-import', event => this.onSse(event));
 
                     const d = this.$el.dataset;
+                    this.startUrl = d.startUrl;
+                    this.inputUrl = d.inputUrl;
                     if (d.statusUrl) {
                         fetch(d.statusUrl, {credentials: 'same-origin'})
                             .then(resp => resp.ok ? resp.json() : null)
@@ -160,7 +170,7 @@
                 applyLines(lines) {
                     const target = this.$refs.log;
                     const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-                    target.innerHTML = lines.length ? lines.join('\n') : '(no import run yet)';
+                    target.innerHTML = lines.length ? lines.join('\n') : (this.live ? 'Running import…' : '(no import run yet)');
                     if (wasAtBottom) target.scrollTop = target.scrollHeight;
                 },
 
@@ -181,7 +191,7 @@
 
                     this.starting = true;
                     try {
-                        const payload = await post(this.$el.dataset.startUrl, {path});
+                        const payload = await post(this.startUrl, {path});
                         this.startOk = !!payload.ok;
                         this.startMessage = payload.ok ? '' : payload.message;
                         this.applyStatus(payload);
@@ -200,9 +210,15 @@
                     const text = input.value;
                     input.value = '';
                     try {
-                        this.applyStatus(await post(this.$el.dataset.inputUrl, {text}));
+                        const payload = await post(this.inputUrl, {text});
+                        this.applyStatus(payload);
+                        this.inputOk = !!payload.ok;
+                        this.inputMessage = payload.ok ? '' : payload.message;
+                        if (!payload.ok && !input.value) input.value = text;
                     } catch (err) {
                         // Not sent: give the text back (unless the user already started typing something else)
+                        this.inputOk = false;
+                        this.inputMessage = 'Could not send: ' + err.message;
                         if (!input.value) input.value = text;
                     }
                     input.focus();

@@ -1,0 +1,87 @@
+{% if message and not ok %}
+    <p class="test-result test-result-fail">{{ message }}</p>
+{% endif %}
+
+{% if rows %}
+    <div class="pinned-paths-frame history-frame history-extra-{{ extra_groups }}">
+        <table class="rate-limit-table history-table">
+            <thead>
+            <tr>
+                <th>When</th>
+                <th>Album</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                {% if row.kind == 'group' %}
+                    <tr class="history-group">
+                        <td colspan="3" class="history-cell-path">
+                            <span class="history-sub"
+                                  title="{{ row.count }} skipped albums in this folder">{{ row.parent }}</span>
+                        </td>
+                        <td class="history-cell-actions">
+                            <button type="button" class="pinned-path-remove"
+                                    hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=row.entry_id) }}"
+                                    hx-vals='{"csrf_token": "{{ csrf_token() }}", "parent": "1"}'
+                                    hx-target="#importHistory" hx-swap="innerHTML"
+                                    {{ 'disabled' if running }}
+                                    title="Reimport this folder and all its subfolders"
+                                    aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
+                            </button>
+                        </td>
+                    </tr>
+                {% else %}
+                    {% set e = row.entry %}
+                    <tr {% if row.grouped %}class="history-child"{% endif %}>
+                        <td class="history-sub history-cell-when">{{ e.when }}</td>
+                        <td class="history-cell-album">
+                            {{ e.label }}
+                            <p class="history-sub">{{ e.path }}</p>
+                            {% if e.reason %}<p class="history-sub history-reason">{{ e.reason }}</p>{% endif %}
+                        </td>
+                        <td class="history-cell-status">
+                            {% if e.outcome == 'imported' %}
+                                <span class="badge badge-success">Imported{% if e.tracks %} ({{ e.tracks }}
+                                    ){% endif %}</span>
+                            {% else %}
+                                <span class="badge badge-warning">Skipped</span>
+                            {% endif %}
+                        </td>
+                        <td class="history-cell-actions">
+                            <div class="history-actions">
+                                {% if e.outcome == 'skipped' %}
+                                    <button type="button" class="btn btn-outline btn-icon"
+                                            hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=e.id) }}"
+                                            hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                            hx-target="#importHistory" hx-swap="innerHTML"
+                                            {{ 'disabled' if running or not e.exists }}
+                                            title="{{ 'The folder is gone' if not e.exists else 'Reimport this folder interactively' }}"
+                                            aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
+                                    </button>
+                                {% endif %}
+                                <button type="button" class="pinned-path-remove" title="Remove from the list"
+                                        aria-label="Remove from the list"
+                                        hx-post="{{ url_for('admin.route_import_history_remove', entry_id=e.id) }}"
+                                        hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                        hx-target="#importHistory" hx-swap="innerHTML"><span
+                                        class="material-symbols-outlined">close</span></button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <form class="card-body-form"
+          hx-post="{{ url_for('admin.route_import_history_clear') }}"
+          hx-confirm="Clear the whole import history?"
+          hx-target="#importHistory"
+          hx-swap="innerHTML">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">Clear history</button>
+    </form>
+{% endif %}

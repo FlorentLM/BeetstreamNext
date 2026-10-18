@@ -354,6 +354,10 @@
                      hx-get="{{ url_for('admin.route_pinned_paths') }}"
                      hx-trigger="load, pinned-paths from:#adminDashboard throttle:1s"
                      hx-swap="innerHTML"></div>
+                <div id="importHistory"
+                     hx-get="{{ url_for('admin.route_import_history') }}"
+                     hx-trigger="load, import-history from:#adminDashboard throttle:1s"
+                     hx-swap="innerHTML"></div>
                 <dl class="kv-grid">
                     <dt>Status</dt>
                     <dd x-text="label">Idle</dd>
@@ -367,6 +371,7 @@
                         <button type="button" class="btn btn-outline" @click="sendInput()" :disabled="!live">Send
                         </button>
                     </div>
+                    <p class="test-result" :class="inputResultClass" x-text="inputMessage"></p>
                 </form>
             </div>
         </section>

@@ -187,6 +187,25 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS import_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts REAL NOT NULL,
+            run_path TEXT NOT NULL,        -- folder the import was started on
+            outcome TEXT NOT NULL,         -- imported or skipped
+            cause TEXT,                    -- why skipped (user, no_candidates, weak_match, duplicate, cataloghint)
+            reason TEXT,
+            artist TEXT NOT NULL DEFAULT '',
+            album TEXT NOT NULL DEFAULT '',
+            path TEXT NOT NULL,            -- album subfolder
+            tracks INTEGER
+        )
+        """
+    )
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_import_history_ts ON import_history (ts DESC)""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_import_history_path ON import_history (path)""")
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event TEXT NOT NULL,           -- event type

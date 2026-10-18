@@ -7,6 +7,7 @@ import flask
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.library.beets.interaction import htmlify_log, import_session, read_config
+from beetsplug.beetstreamnext.core.library import import_history
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths, add_pinned_path, remove_pinned_path, set_pinned_incremental, set_pinned_watch
 
 
@@ -118,3 +119,52 @@ def route_pinned_paths_watch(path_id: int) -> str:
 def route_pinned_paths_scan() -> str:
     ok, message = import_session.start_pinned(list_pinned_paths())
     return _pinned_paths_partial(message, ok)
+
+
+def _history_partial(message: str = '', ok: bool = True) -> str:
+    rows = import_history.group_rows(import_history.list_history())
+    return flask.render_template(
+        'partials/import_history.html',
+        rows=rows, extra_groups=import_history.visible_groups(rows),
+        message=message, ok=ok, running=import_session.is_running(),
+    )
+
+
+@admin_bp.route('/beets/history', methods=['GET'])
+@admin_required
+def route_import_history() -> str:
+    return _history_partial()
+
+
+@admin_bp.route('/beets/history/<int:entry_id>/reimport', methods=['POST'])
+@admin_required
+def route_import_history_reimport(entry_id: int) -> str:
+    """Interactive, non-incremental import of one album folder (or its parent, for multi-disc sets)."""
+
+    entry = import_history.get_entry(entry_id)
+    if entry is None:
+        return _history_partial('That entry no longer exists.', False)
+
+    path = entry['path']
+    if flask.request.values.get('parent') == '1':
+        path = import_history.reimport_parent(entry)
+        if path is None:
+            return _history_partial('There is no parent folder to import.', False)
+
+    ok, message = import_session.start(path)
+
+    return _history_partial('' if ok else message, ok)
+
+
+@admin_bp.route('/beets/history/<int:entry_id>/remove', methods=['POST'])
+@admin_required
+def route_import_history_remove(entry_id: int) -> str:
+    import_history.delete_entry(entry_id)
+    return _history_partial()
+
+
+@admin_bp.route('/beets/history/clear', methods=['POST'])
+@admin_required
+def route_import_history_clear() -> str:
+    import_history.clear_history()
+    return _history_partial()

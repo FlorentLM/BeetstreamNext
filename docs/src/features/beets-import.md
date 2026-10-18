@@ -66,6 +66,30 @@ Beets' option `incremental_skip_later` turns that off, and makes every increment
 > The helper plugin records each folder separately so the watcher doesn't look at them again.
 
 
+## Using other Beets import plugins
+
+**BeetstreamNext** runs `beet import` with your configured plugins, so import plugins like [**beets-cataloghint**](https://github.com/FlorentLM/beets-cataloghint) and [**beets-unskipper**](https://github.com/FlorentLM/beets-unskipper) can be used.
+
+A few things to know regarding these two plugins:
+
+- When `cataloghint` is what triggered a skip, the import history and notifications will show the explanation it gives.
+
+- `cataloghint` tracks which release was picked for a multi-disc album, but _only during one import run_. A disc that arrives in a later watched run (or a later reimport) is matched on its own.
+
+- Imports started from inside `unskipper` are independent from **BeetstreamNext**: they don't appear in the import history, send no notifications, and may conflict with a running watched import. 
+
+- `unskipper` keeps its own record next to the state file. Albums that **BeetstreamNext** retried or recorded are detected by `unskipper` at its next start.
+
+### Moving your library
+
+`beet unskipper --remap OLD=NEW --migrate-db` only updates what Beets and unskipper store. So if you are moving your music, also remember to update **BeetstreamNext**:
+
+- [Pinned folders](#pinned-folders) (remove and add them again with the new path)
+- The import history: entries will still point to the old path, so their reimport button will fail. Use "Clear history" and let new imports repopulate it
+- File-based playlists (Beets `playlist`/`smartplaylist` files) that contain absolute paths
+
+Stop **BeetstreamNext** while `--migrate-db` runs, since it rewrites the Beets database.
+
 ## Editing the Beets config
 
 The Beets tab shows your Beets `config.yaml`.

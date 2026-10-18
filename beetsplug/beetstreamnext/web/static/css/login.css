@@ -89,3 +89,6 @@ input:focus {
 .btn-submit:hover {
     background: var(--primary-hover);
 }
+.top-nav .btn svg {
+    margin-right: 6px;
+}

@@ -1856,3 +1856,195 @@ input:focus, select:focus {
 .notification-remove-url .material-symbols-outlined {
     font-size: 1rem;
 }
+
+/* Mobile dashboard layout */
+.tab-menu {
+    display: none;
+}
+
+@media (max-width: 720px) {
+    body {
+        padding: 1rem;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .brand-section {
+        gap: 0.6rem;
+    }
+
+    h1 {
+        font-size: 1.25rem;
+        white-space: nowrap;
+    }
+
+    .brand-subtitle {
+        margin-left: 2px;
+    }
+
+    .header-actions {
+        gap: 0.6rem;
+    }
+
+    .session-user {
+        flex: 1;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-card {
+        padding: 0.6rem 0.25rem;
+        border-radius: 10px;
+        box-shadow: none;
+    }
+
+    .stat-value {
+        font-size: 1.1rem;
+    }
+
+    .stat-label {
+        font-size: 0.6rem;
+        letter-spacing: 0.05em;
+        margin-top: 0;
+    }
+
+    .tabs {
+        display: none;
+    }
+
+    .tab-menu {
+        display: block;
+        position: relative;
+        margin-bottom: 1rem;
+    }
+
+    .tab-menu-toggle,
+    .tab-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+        border: none;
+        background: none;
+        color: var(--text);
+        font: inherit;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .tab-menu-toggle {
+        padding: 0.7rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--card-bg);
+    }
+
+    .tab-menu-current {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .tab-menu-toggle .material-symbols-outlined,
+    .tab-menu-item .material-symbols-outlined {
+        font-size: 1.1rem;
+    }
+
+    .tab-menu-toggle .tab-menu-caret {
+        margin-left: auto;
+        color: var(--text-muted);
+    }
+
+    .tab-menu-list {
+        position: absolute;
+        z-index: 20;
+        top: calc(100% + 0.25rem);
+        left: 0;
+        right: 0;
+        padding: 0.35rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--card-bg);
+        box-shadow: 0 10px 30px var(--shadow-strong);
+    }
+
+    .tab-menu-item {
+        padding: 0.65rem 0.75rem;
+        border-radius: 8px;
+        color: var(--text-muted);
+    }
+
+    .tab-menu-item.active {
+        color: var(--text);
+        background: var(--overlay-weak);
+    }
+
+    .table-header {
+        padding: 1rem;
+    }
+
+    /* Users table: one stacked card per row */
+    #usersTable thead {
+        display: none;
+    }
+
+    #usersTable table,
+    #usersTable tbody {
+        display: block;
+    }
+
+    /* Name, You, Admin and role pills share a line, wrapping only if they don't fit */
+    #usersTable tr:not(:has(.empty-state)) {
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 0.75rem;
+        padding: 0.9rem 5rem 0.9rem 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    #usersTable tr:last-child {
+        border-bottom: none;
+    }
+
+    #usersTable td {
+        padding: 0;
+        border-bottom: none;
+        background: none;
+    }
+
+    #usersTable .user-cell {
+        min-width: 0;
+    }
+
+    #usersTable .email-cell {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #usersTable .actions-cell {
+        position: absolute;
+        top: 50%;
+        right: 0.5rem;
+        transform: translateY(-50%);
+    }
+
+    #usersTable td > .roles-cell {
+        min-width: 0;
+    }
+}

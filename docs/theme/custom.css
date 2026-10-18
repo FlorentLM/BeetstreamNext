@@ -43,10 +43,10 @@
 }
 
 .coal {
-    --bg: #180100;
+    --bg: #2f0e0b;
     --fg: #f8fafc;
 
-    --sidebar-bg: #260201;
+    --sidebar-bg: #3b1017;
     --sidebar-fg: #f8fafc;
     --sidebar-non-existant: #94a3b8;
     --sidebar-active: #b34d45;
@@ -61,7 +61,7 @@
     --links: #b34d45;
     --inline-code-color: #b34d45;
 
-    --theme-popup-bg: #260201;
+    --theme-popup-bg: #3b1017;
     --theme-popup-border: rgba(255, 255, 255, 0.1);
     --theme-hover: rgba(255, 255, 255, 0.05);
 
@@ -73,7 +73,7 @@
     --table-alternate-bg: rgba(255, 255, 255, 0.02);
 
     --searchbar-border-color: rgba(255, 255, 255, 0.1);
-    --searchbar-bg: #260201;
+    --searchbar-bg: #3b1017;
     --searchbar-fg: #f8fafc;
     --searchbar-shadow-color: rgba(0, 0, 0, 0.5);
     --searchresults-header-fg: #94a3b8;

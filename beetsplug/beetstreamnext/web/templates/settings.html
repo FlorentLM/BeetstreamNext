@@ -89,51 +89,32 @@
             'notifications': 'notifications',
             'maintenance': 'build',
         } %}
+        {% set tab_order = ['users'] + settings_categories|reject('equalto', 'podcasts')|list
+            + (['podcasts'] if 'podcasts' in settings_categories else [])
+            + ['radios', 'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <nav class="tabs" role="tablist">
-            <button class="tab" role="tab" data-tab="users" :class="{ active: active === 'users' }"
-                    :aria-selected="active === 'users' ? 'true' : 'false'" @click="set('users')"
-                    aria-controls="tab-users"><span class="material-symbols-outlined">{{ tab_icons.get('users', 'circle') }}</span>Users
-            </button>
-            {% for cat in settings_categories if cat != 'podcasts' %}
+            {% for cat in tab_order %}
                 <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
                         :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')"
                         aria-controls="tab-{{ cat }}"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
             {% endfor %}
-            {% if 'podcasts' in settings_categories %}
-                <button class="tab" role="tab" data-tab="podcasts" :class="{ active: active === 'podcasts' }"
-                        :aria-selected="active === 'podcasts' ? 'true' : 'false'" @click="set('podcasts')"
-                        aria-controls="tab-podcasts"><span class="material-symbols-outlined">{{ tab_icons.get('podcasts', 'circle') }}</span>Podcasts
-                </button>
-            {% endif %}
-            <button class="tab" role="tab" data-tab="radios" :class="{ active: active === 'radios' }"
-                    :aria-selected="active === 'radios' ? 'true' : 'false'" @click="set('radios')"
-                    aria-controls="tab-radios"><span class="material-symbols-outlined">{{ tab_icons.get('radios', 'circle') }}</span>Radios
-            </button>
-            <button class="tab" role="tab" data-tab="artists" :class="{ active: active === 'artists' }"
-                    :aria-selected="active === 'artists' ? 'true' : 'false'" @click="set('artists')"
-                    aria-controls="tab-artists"><span class="material-symbols-outlined">{{ tab_icons.get('artists', 'circle') }}</span>Artists
-            </button>
-            <button class="tab" role="tab" data-tab="shares" :class="{ active: active === 'shares' }"
-                    :aria-selected="active === 'shares' ? 'true' : 'false'" @click="set('shares')"
-                    aria-controls="tab-shares"><span class="material-symbols-outlined">{{ tab_icons.get('shares', 'circle') }}</span>Shares
-            </button>
-            <button class="tab" role="tab" data-tab="chat" :class="{ active: active === 'chat' }"
-                    :aria-selected="active === 'chat' ? 'true' : 'false'" @click="set('chat')" aria-controls="tab-chat"><span class="material-symbols-outlined">{{ tab_icons.get('chat', 'circle') }}</span>
-                Chat
-            </button>
-            <button class="tab" role="tab" data-tab="beets" :class="{ active: active === 'beets' }"
-                    :aria-selected="active === 'beets' ? 'true' : 'false'" @click="set('beets')"
-                    aria-controls="tab-beets"><span class="material-symbols-outlined">{{ tab_icons.get('beets', 'circle') }}</span>Beets
-            </button>
-            <button class="tab" role="tab" data-tab="notifications" :class="{ active: active === 'notifications' }"
-                    :aria-selected="active === 'notifications' ? 'true' : 'false'" @click="set('notifications')"
-                    aria-controls="tab-notifications"><span class="material-symbols-outlined">{{ tab_icons.get('notifications', 'circle') }}</span>Notifications
-            </button>
-            <button class="tab" role="tab" data-tab="maintenance" :class="{ active: active === 'maintenance' }"
-                    :aria-selected="active === 'maintenance' ? 'true' : 'false'" @click="set('maintenance')"
-                    aria-controls="tab-maintenance"><span class="material-symbols-outlined">{{ tab_icons.get('maintenance', 'circle') }}</span>Maintenance
-            </button>
         </nav>
+        <div class="tab-menu" @click.outside="closeMenu" @keydown.escape="closeMenu">
+            <button type="button" class="tab-menu-toggle" aria-haspopup="listbox"
+                    :aria-expanded="menuOpen ? 'true' : 'false'" @click="toggleMenu">
+                {% for cat in tab_order %}
+                    <span class="tab-menu-current" x-show="active === '{{ cat }}'"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</span>
+                {% endfor %}
+                <span class="material-symbols-outlined tab-menu-caret">keyboard_arrow_down</span>
+            </button>
+            <div class="tab-menu-list" role="listbox" aria-label="Section" x-cloak x-show="menuOpen">
+                {% for cat in tab_order %}
+                    <button type="button" class="tab-menu-item" role="option" :class="{ active: active === '{{ cat }}' }"
+                            :aria-selected="active === '{{ cat }}' ? 'true' : 'false'"
+                            @click="pickTab('{{ cat }}')"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
+                {% endfor %}
+            </div>
+        </div>
 
         {# Users tab #}
         <section class="tab-content" id="tab-users" :class="{ active: active === 'users' }" role="tabpanel">

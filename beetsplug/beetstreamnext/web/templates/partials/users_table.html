@@ -16,7 +16,7 @@
         <tbody>
         {% for u in users %}
             <tr>
-                <td>
+                <td class="user-cell">
                     <div class="avatar-cell">
                         {% if u.avatarLastChanged %}
                             <img class="user-avatar"
@@ -36,15 +36,17 @@
                         </div>
                     </div>
                 </td>
-                <td>
+                <td class="roles-td">
+                    {% set role_labels = [] %}
+                    {% for name, label, _ in USER_ROLES_SCHEMA %}
+                        {% if name != 'adminRole' and u[name] %}{% set _ = role_labels.append(label) %}{% endif %}
+                    {% endfor %}
                     <div class="roles-cell">
                         {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
-                        {% for name, label, _ in USER_ROLES_SCHEMA %}
-                            {% if name != 'adminRole' and u[name] %}
-                                <span class="badge">{{ label }}</span>{% endif %}
-                        {% endfor %}
+                        {% if role_labels %}
+                            <span class="badge" title="{{ role_labels|join(', ') }}">{{ role_labels|length }} role{{ '' if role_labels|length == 1 else 's' }}</span>{% endif %}
                         {% if u.maxBitRate %}
-                            <span class="badge badge-limit">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
+                            <span class="badge">&le; {{ u.maxBitRate }} kbps</span>{% endif %}
                     </div>
                 </td>
                 <td class="actions-cell">

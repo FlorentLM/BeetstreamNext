@@ -1,8 +1,8 @@
 :root {
     --primary: #954039;
     --primary-hover: #b34d45;
-    --bg: #180100;
-    --card-bg: #260201;
+    --bg: #2f0e0b;
+    --card-bg: #3b1017;
     --input-bg: rgba(0, 0, 0, 0.4);
     --text: #f8fafc;
     --text-muted: #94a3b8;
@@ -256,4 +256,9 @@ pre code {
 
 .material-icons {
     font-size: 1.25em
+}
+@media (max-width: 720px) {
+    html {
+        font-size: 15px;
+    }
 }

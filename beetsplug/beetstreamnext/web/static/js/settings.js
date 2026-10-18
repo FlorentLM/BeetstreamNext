@@ -18,6 +18,7 @@
         Alpine.data('tabs', () => ({
             active: 'users',
             validTabs: [],
+            menuOpen: false,
 
             init() {
                 this.validTabs = Array.from(this.$el.querySelectorAll('.tab[data-tab]')).map(t => t.dataset.tab);
@@ -33,6 +34,19 @@
             set(name) {
                 this.active = name;
                 history.replaceState(null, '', '#' + name);
+            },
+
+            pickTab(name) {
+                this.set(name);
+                this.menuOpen = false;
+            },
+
+            toggleMenu() {
+                this.menuOpen = !this.menuOpen;
+            },
+
+            closeMenu() {
+                this.menuOpen = false;
             },
 
             closeModal() {

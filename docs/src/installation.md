@@ -329,7 +329,7 @@ services:
     # You need to build the image locally if you want to pin BEETS_VERSION to match Betanin (see note below)
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile    # required if you build from another location (the Dockerfile isn't at the repo root)
       args:
         BEETS_VERSION: 2.11.0    # Betanin currently uses beets 2.11.0
     container_name: beetstreamnext

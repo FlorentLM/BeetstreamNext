@@ -15,7 +15,7 @@ services:
     image: ghcr.io/florentlm/beetstreamnext:latest
     # build:
     #   context: ..
-    #   dockerfile: docker/Dockerfile
+    #   dockerfile: docker/Dockerfile   # required if you build from another location (the Dockerfile isn't at the repo root)
     container_name: beetstreamnext
     restart: unless-stopped
     ports:

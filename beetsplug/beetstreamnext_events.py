@@ -89,11 +89,6 @@ class BeetstreamNextEvents(BeetsPlugin):
     def _skip_reason(session, task) -> Tuple[str, str]:
         """Returns (cause, human-readable reason) for a skipped album."""
 
-        # Set by cataloghint plugin when it is what made the match unconfident
-        hint = getattr(task, 'cataloghint_reason', None)
-        if hint:
-            return 'cataloghint', str(hint)
-
         try:
             quiet = bool(session.config['quiet'].get(bool))
         # We should not break the import for this so all exceptions are caught
@@ -102,6 +97,11 @@ class BeetstreamNextEvents(BeetsPlugin):
 
         if not quiet:
             return 'user', 'Skipped by you'
+
+        # Set by cataloghint plugin when it is what made the match unconfident
+        hint = getattr(task, 'cataloghint_reason', None)
+        if hint:
+            return 'cataloghint', str(hint)
 
         candidates = getattr(task, 'candidates', None) or []
         if not candidates:

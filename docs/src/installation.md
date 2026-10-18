@@ -191,12 +191,12 @@ docker run -d --name beetstreamnext \
   ghcr.io/florentlm/beetstreamnext:latest
 ```
 
-If you need something the default image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific pinned `beets` version, debug tools, etc), you should build it yourself instead using the `Dockerfile` available at the repository root.
+If you need something the default image doesn't give you (a non-default [feature-set extra](#1-clone-and-install), a specific pinned `beets` version, debug tools, etc), you should build it yourself instead using the `Dockerfile` available in the [`docker`](https://github.com/FlorentLM/BeetstreamNext/tree/main/docker) folder of the repository.
 
 Example:
 
 ```bash
-docker build -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
+docker build -f docker/Dockerfile -t beetstreamnext --build-arg BEETS_VERSION=2.11.0 .
 ```
 
 Build-time options (`--build-arg`):
@@ -281,7 +281,7 @@ You can also use `/config/plugins/requirements.txt` file to list your wanted plu
 
 ## Run via docker-compose
 
-There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker-compose.yml) at the repository root equivalent to the `docker run` command above (**BeetstreamNext** only, pulling the published image by default).
+There's a [`docker-compose.yml`](https://github.com/FlorentLM/BeetstreamNext/blob/main/docker/docker-compose.yml) in the `docker` folder of the repository, equivalent to the `docker run` command above (**BeetstreamNext** only, pulling the published image by default).
 
 Edit the two host paths in it, then:
 
@@ -289,7 +289,7 @@ Edit the two host paths in it, then:
 docker compose up -d
 ```
 
-To build locally instead, comment out the `image:` line and uncomment `build: .`.
+To build locally instead, comment out the `image:` line and uncomment the `build:` block.
 
 ### Example stack: BeetstreamNext + Betanin
 
@@ -305,7 +305,7 @@ The two containers need to share:
 > 
 > If Betanin and BeetstreamNext are on different hosts, do **_not_** mount `library.db` over NFS/SMB, SQLite's file locking isn't reliable over most network filesystem protocols.
 
-This example assumes it is saved as `docker-compose.yml` at the root of a BeetstreamNext checkout (`build: .` needs the `Dockerfile` there).
+This example assumes it is saved as `docker-compose.yml` inside the `docker` folder of a BeetstreamNext checkout (the `build:` section needs the `Dockerfile` there).
 
 ```yaml
 services:
@@ -328,7 +328,8 @@ services:
   beetstreamnext:
     # You need to build the image locally if you want to pin BEETS_VERSION to match Betanin (see note below)
     build:
-      context: .
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         BEETS_VERSION: 2.11.0    # Betanin currently uses beets 2.11.0
     container_name: beetstreamnext

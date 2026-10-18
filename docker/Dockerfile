@@ -49,8 +49,8 @@ RUN groupadd --gid 1000 beetstream && \
 WORKDIR /app
 COPY --from=builder --chown=beetstream:beetstream /app/.venv /app/.venv
 COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
-COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY healthcheck.py /usr/local/bin/healthcheck.py
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/healthcheck.py /usr/local/bin/healthcheck.py
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # User-installed beets plugins

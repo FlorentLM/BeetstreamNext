@@ -29,7 +29,7 @@
                         {% if is_new %}
                         hx-get="{{ url_for('admin.route_notifications_new') }}"
                         hx-trigger="change"
-                        hx-include="[name='url']"
+                        hx-include="closest form"
                         hx-target="closest .notification-row"
                         hx-swap="outerHTML"
                         {% endif %}>
@@ -72,7 +72,7 @@
             </div>
 
             <div class="setting-input-row notification-actions">
-                <button type="submit" class="btn btn-primary">{{ 'Add' if is_new else 'Save' }}</button>
+                <button type="submit" class="btn btn-primary">Save</button>
                 <button type="button" class="btn btn-outline"
                         hx-post="{{ url_for('admin.route_notifications_test') }}"
                         hx-include="closest form"

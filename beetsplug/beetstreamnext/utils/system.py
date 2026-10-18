@@ -28,8 +28,6 @@ def is_writable(path: bytes | str | Path) -> bool:
     """True if path exists and the process can write to it."""
     if not path:
         return False
-    if isinstance(path, bytes):
-        path = os.fsdecode(path)
     return os.access(path, os.W_OK)
 
 
@@ -111,10 +109,7 @@ def data_location() -> Path:
 def creation_date(filepath: bytes | str | Path) -> float:
     """Get a file's creation date."""
 
-    if isinstance(filepath, bytes):
-        filepath = os.fsdecode(filepath)
-
-    stat = Path(filepath).stat()
+    stat = Path(os.fsdecode(filepath)).stat()
 
     if platform.system() == 'Windows':
         return stat.st_ctime
@@ -140,10 +135,8 @@ def get_mimetype(path: bytes | str | Path) -> str:
 
     if not path:
         return 'application/octet-stream'
-    if isinstance(path, bytes):
-        path = os.fsdecode(path)
 
-    path = Path(path)
+    path = Path(os.fsdecode(path))
 
     if '.' not in path.name or path.name.startswith('.'):
         # Assume the passed arg is just an extension
@@ -169,23 +162,16 @@ def _remap_mount(path_obj: Path, music_root: bytes | str | Path) -> Path:
     except ValueError:
         return path_obj
 
-    if isinstance(music_root, bytes):
-        music_root = os.fsdecode(music_root)
-    return Path(music_root) / rel
+    return Path(os.fsdecode(music_root)) / rel
 
 
 def resolve_path(path: bytes | str | Path, music_root: bytes | str | Path) -> Path:
     """Absolute Path for a beets-stored path, which may be bytes and/or relative to music_root."""
 
-    if isinstance(path, bytes):
-        path = os.fsdecode(path)
-    path_obj = Path(path)
-
-    if isinstance(music_root, bytes):
-        music_root = os.fsdecode(music_root)
+    path_obj = Path(os.fsdecode(path))
 
     if not path_obj.is_absolute():
-        path_obj = Path(music_root) / path_obj
+        path_obj = Path(os.fsdecode(music_root)) / path_obj
 
     return _remap_mount(path_obj, music_root)
 
@@ -227,22 +213,17 @@ def path_hash(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
     """Short hash of a file's path relative to music_root."""
     if not path:
         return ''
-    if isinstance(path, bytes):
-        path = os.fsdecode(path)
-    if isinstance(music_root, bytes):
-        music_root = os.fsdecode(music_root)
+    path = Path(os.fsdecode(path))
     try:
-        rel = Path(path).relative_to(str(music_root)).as_posix()
+        rel = path.relative_to(os.fsdecode(music_root)).as_posix()
     except ValueError:
-        rel = Path(path).as_posix()
+        rel = path.as_posix()
     return hashlib.sha1(rel.encode('utf-8'), usedforsecurity=False).hexdigest()[:16]
 
 
 def make_hidden(filepath: bytes | str | Path) -> None:
     """Marks a file as hidden on Windows."""
-    if isinstance(filepath, bytes):
-        filepath = os.fsdecode(filepath)
-    filepath = str(filepath)
+    filepath = os.fsdecode(filepath)
 
     if platform.system() == 'Windows':
         try:

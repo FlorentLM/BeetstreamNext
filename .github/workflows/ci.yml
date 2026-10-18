@@ -53,7 +53,5 @@ jobs:
           uv export --locked --no-emit-project --extra all -o requirements-audit.txt
           uvx pip-audit -r requirements-audit.txt --no-deps --disable-pip
 
-      # Advisory for now: the remaining findings still need triage (MD5 is required by the Subsonic token auth)
       - name: SAST (bandit)
-        continue-on-error: true
-        run: uvx bandit -r beetsplug -ll
+        run: uvx bandit -q -r beetsplug -ll

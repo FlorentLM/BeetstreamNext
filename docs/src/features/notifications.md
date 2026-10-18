@@ -38,19 +38,40 @@ You can create as many notifications as you like, including several of the same 
 | **Pinned scan aborted**   | A queued [pinned folder](./beets-import.md) scan couldn't be started, and the rest of the queue was dropped             |
 
 > [!NOTE]
-> Notifications are currently about full runs, not albums: a quiet watched-folder import exits with `0` even when Beets skipped albums, and is reported as completed. Per-album results are planned.
+> A quiet watched-folder import exits with `0` even when Beets skipped albums, so _Import completed_ doesn't mean everything was imported.
+> 
+> Use the album counts below (`{albums_imported}`, `{albums_skipped}`) to tell.
 
 ### Variables
 
 Titles and bodies can contain `{variables}`, replaced when the notification is sent:
 
-| Variable      | Value                                                                    |
-|---------------|--------------------------------------------------------------------------|
-| `{path}`      | The folder being imported                                                |
-| `{status}`    | `started`, `completed`, `failed`, `needs input` or `aborted`             |
-| `{exit_code}` | The exit code of the import (empty until it has finished)                |
-| `{duration}`  | How long the import ran for, e.g. `1m 23s` (empty until it has finished) |
-| `{time}`      | When the notification was sent                                           |
+| Variable            | Value                                                                            |
+|---------------------|----------------------------------------------------------------------------------|
+| `{path}`            | The folder being imported                                                        |
+| `{status}`          | `started`, `completed`, `failed`, `needs input` or `aborted`                     |
+| `{exit_code}`       | The exit code of the import (empty until it has finished)                        |
+| `{duration}`        | How long the import ran for, e.g. `1m 23s` (empty until it has finished)         |
+| `{albums_imported}` | How many albums were added to the library (`Import completed` / `Import failed`) |
+| `{albums_skipped}`  | How many albums were skipped: no match, duplicates, or skipped by you            |
+| `{imported_list}`   | Names of the imported albums (`Artist - Album`), one per line (first 5 only)     |
+| `{skipped_list}`    | Names of the skipped albums, one per line (first 5 only)                         |
+| `{time}`            | When the notification was sent                                                   |
+
+### Album results
+
+**BeetstreamNext** loads a small helper plugin (`beetstreamnext_events`) in the `beet import` process, which reports each album's outcome
+
+- Only albums are counted, not singletons (`beet import -s`).
+
+- This only covers imports run by **BeetstreamNext**, not the ones you run from your commandline or other tools.
+
+- Skipped albums are listed with a reason: skipped by you, no match found, best match not confident enough, or already in the library.
+
+- If you use my [`cataloghint`](https://github.com/FlorentLM/beets-cataloghint) plugin, its explanation is used when it is what made the match unconfident.
+
+> [!NOTE]
+> This companion plugin is automatically injected in the `beets import` process started by **BeetstreamNext**, no change are made to your beets config.
 
 ## Remarks
 

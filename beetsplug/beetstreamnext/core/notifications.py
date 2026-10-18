@@ -251,10 +251,24 @@ def render(notification: Dict[str, Any], **variables: Any) -> Tuple[str, str]:
     return expand(notification['title']), expand(notification['body'])
 
 
+LOGO_URL = 'https://raw.githubusercontent.com/FlorentLM/BeetstreamNext/main/beetsplug/beetstreamnext/web/static/images/logo.png'
+
+
+def _asset():
+    """Apprise asset using the BSN logo."""
+
+    import apprise
+    return apprise.AppriseAsset(
+        image_path_mask=str(app.config['IMAGES_PATH'] / 'logo.png'),    # for services that embed the image
+        image_url_mask=LOGO_URL,                                        # for services that fetch it by URL
+        image_url_logo=LOGO_URL
+    )
+
+
 def _send(url: str, title: str, body: str) -> bool:
 
     import apprise
-    client = apprise.Apprise()
+    client = apprise.Apprise(asset=_asset())
     if not client.add(url):
         return False
 

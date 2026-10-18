@@ -46,6 +46,26 @@ A pinned folder marked as **watched** is monitored ,and whenever new audio files
 
 - Watched imports are always [quiet](https://beets.readthedocs.io/en/stable/reference/config.html#quiet) and [incremental](https://beets.readthedocs.io/en/stable/reference/config.html#incremental)
 
+## Skipped folders and retries
+
+Beets' `incremental` import remembers the folders it has seen (to avoid retrying them). By default, that includes folders that were _skipped_ (manually or automatically).
+
+Beets' option `incremental_skip_later` turns that off, and makes every incremental run retry all the folders that were skipped.
+
+**BeetstreamNext** does not depend on that option:
+
+- **Watched folders, pinned scans and `startScan`** always remember the folders they skip, so an album that couldn't be matched is not retried over and over.
+
+- **Manual imports and Reimports** (see below) always retry the folder they correspond to, even if it was imported or skipped before. Note that when a folder _contains_ several already-imported albums, Beets will ask about each of them (as it would do for any non-incremental import).
+
+- **The import history** allows you to retry skipped albums (as an interactive import) so you can choose the match yourself.
+
+> [!IMPORTANT]
+> When Beets merges a disc into an album already in the library (`merge` duplicate action), it saves the result under a weird list of folders and files. Single disc folders are not remembered.
+>
+> The helper plugin records each folder separately so the watcher doesn't look at them again.
+
+
 ## Editing the Beets config
 
 The Beets tab shows your Beets `config.yaml`.

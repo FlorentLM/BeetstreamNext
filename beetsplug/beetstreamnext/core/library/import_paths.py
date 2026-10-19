@@ -30,8 +30,11 @@ def list_pinned_paths() -> list[dict]:
     ]
 
 
-def validate_pinned_path(candidate: Path) -> Optional[str]:
+def validate_pinned_path(candidate: str | Path) -> Optional[str]:
     """Returns an error message if the path can't be used for a non-interactive import."""
+
+    candidate = Path(candidate)
+
     if not candidate.is_absolute():
         return 'Use an absolute path.'
 

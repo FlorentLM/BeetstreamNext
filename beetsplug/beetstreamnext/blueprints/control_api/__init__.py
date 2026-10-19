@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hmac
-from pathlib import Path
 
 import flask
 from flask import Blueprint
@@ -12,7 +11,6 @@ from beetsplug.beetstreamnext.core.library.beets.interaction import import_sessi
 from beetsplug.beetstreamnext.core.library.import_paths import validate_pinned_path
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import api_bool
-from beetsplug.beetstreamnext.utils.system import safe_join
 
 control_api_bp = Blueprint('control_api', __name__, url_prefix='/control-api')
 
@@ -30,7 +28,6 @@ def route_trigger_import() -> flask.Response:
 
     Fields:
         - 'path': folder to import
-        - 'torrent_name' (optional): for clients that give the download directory and the torrent name separately
         - 'interactive': true/false (defaults to false -> quiet import)
     Auth:
         - `Authorization: Bearer <token>`
@@ -56,25 +53,20 @@ def route_trigger_import() -> flask.Response:
 
     rate_limiter.reset(client_ip, 'control-api')
 
-    path, torrent_name = (flask.request.form.get(k, '').strip() for k in ('path', 'torrent_name'))
+    path = flask.request.form.get('path', '').strip()
     if not path:
         return _json(400, message="Provide 'path'.")
 
-    try:
-        req_path = str(safe_join(Path(path), torrent_name)) if torrent_name else path
-    except ValueError:
-        return _json(400, message="'torrent_name' must stay inside 'path'.")
-
     interactive = flask.request.form.get('interactive', default=False, type=api_bool)
 
-    error = validate_pinned_path(req_path)
+    error = validate_pinned_path(path)
     if error:
         return _json(400, message=error)
 
-    ok, message = import_session.enqueue(req_path, quiet=not interactive)
+    ok, message = import_session.enqueue(path, quiet=not interactive)
     if not ok:
         return _json(409, message=message)
 
-    bsn_logger.info(f"Control API: '{req_path}' ({'interactive' if interactive else 'quiet'}): {message}")
+    bsn_logger.info(f"Control API: '{path}' ({'interactive' if interactive else 'quiet'}): {message}")
 
     return _json(202, message=message, **import_session.status())

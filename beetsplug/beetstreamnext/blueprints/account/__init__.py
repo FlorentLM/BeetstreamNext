@@ -26,6 +26,7 @@ def account_required(f) -> Callable:
         flask.g.account_user = flask.session['username']
         return f(*args, **kwargs)
 
+    decorated.requires_auth = True
     return decorated
 
 

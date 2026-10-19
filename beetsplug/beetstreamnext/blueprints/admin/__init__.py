@@ -32,6 +32,7 @@ def admin_required(f) -> Callable:
             return flask.redirect(flask.url_for('account.route_account'))
         return f(*args, **kwargs)
 
+    decorated.requires_auth = True
     return decorated
 
 

@@ -46,7 +46,10 @@ A pinned folder marked as **watched** is monitored ,and whenever new audio files
 
 - Watched imports are always [quiet](https://beets.readthedocs.io/en/stable/reference/config.html#quiet) and [incremental](https://beets.readthedocs.io/en/stable/reference/config.html#incremental)
 
-## Triggering an import from a download client
+> [!WARNING]
+> Avoid [triggering imports](#triggering-an-import) from a download client inside a watched folder (or a subfolder of one). It's safer to use one *or* the other.
+
+## Triggering an import
 
 An import can be triggered by a download client (qBittorrent, Deluge, Transmission, etc) when a download finishes.
 
@@ -64,6 +67,9 @@ The token can be sent as the `X-Api-Key` header value, `Authorization: Bearer <t
 - By default the import follows the same rules as [pinned folders](#pinned-folders). If another import is running, the request is queued.
 
 - With `interactive=true`, Beets waits for you in the **Beets** tab when it needs a decision (and sends an _Import needs input_ [notification](./notifications.md)). Other imports (queued and watched folders) wait behind it until you answer.
+
+> [!WARNING]
+> Don't trigger imports inside a [watched folder](#watched-folders-auto-import) (or a subfolder of one). It's safer to use one *or* the other.
 
 ### Client scripts examples
 

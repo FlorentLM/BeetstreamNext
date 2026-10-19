@@ -14,12 +14,17 @@ from .blueprints.public import public_bp
 from .blueprints.admin import admin_bp
 from .blueprints.account import account_bp
 from .blueprints.auth import auth_bp
-app.register_blueprint(subsonic_bp)
+
+app.register_blueprint(subsonic_bp)     # /rest
 csrf.exempt(subsonic_bp)
-app.register_blueprint(public_bp)
-app.register_blueprint(admin_bp)
-app.register_blueprint(account_bp)
-app.register_blueprint(auth_bp)
+
+app.register_blueprint(public_bp)       # /
+
+app.register_blueprint(admin_bp)        # /admin
+
+app.register_blueprint(account_bp)      # /account
+
+app.register_blueprint(auth_bp)         # /
 
 # And import the beets hook
 from .entrypoints.beetsplugin_hook import BeetstreamNextPlugin

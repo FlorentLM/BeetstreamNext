@@ -98,6 +98,10 @@ def _before_request() -> flask.Response | None:
     if flask.request.path.startswith(WEBUI_PREFIXES):
         return
 
+    # Control API has its own token auth
+    if flask.request.path.startswith('/control-api/'):
+        return
+
     # Attempt authentication
     ok, error_code, username = authenticate_subsonic(r)
     if not ok:

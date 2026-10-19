@@ -194,7 +194,7 @@ def _settings_ui(only: str | None = None) -> tuple[dict[str, dict[str, dict]], d
             setting_pills[key] = ('beets library is read-only', 'danger')
 
     if is_import_safe():
-        setting_pills['allow_disk_writes'] = ('move/copy/write and file-writing plugins are all off', 'info')
+        setting_pills['allow_disk_writes'] = ('beets imports are afe', 'info')
 
         if 'allow_disk_writes' in settings_by_category.get('library', {}):
             settings_by_category['library']['allow_disk_writes']['locked'] = True

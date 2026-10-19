@@ -354,6 +354,21 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'env_var': 'BSN_ALLOW_BEETS_CONFIG_EDIT',
         'web_editable': False,
     },
+    'control_api_token': {
+        'type': 'str',
+        'default': '',
+        'category': 'library',
+        'description': (
+            "Token for the control API (<code>/control-api</code>), which lets external tools and scripts "
+            "trigger actions on this server (e.g. a Beets import triggered by a download client "
+            "(qBittorrent, Deluge, Transmission, etc) when a download finishes). "
+            "<br/>"
+            "The control API is disabled while this is empty. "
+        ),
+        'requires_restart': False,
+        'sensitive': True,
+        'env_var': 'BSN_CONTROL_API_TOKEN',
+    },
     'import_watch_enabled': {
         'type': 'bool',
         'default': False,

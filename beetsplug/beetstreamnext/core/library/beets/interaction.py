@@ -293,12 +293,30 @@ class ImportSession:
 
             return self.start(entry['path'], quiet=True, incremental=True)
 
+    def enqueue(self, path: str, quiet: bool = True, incremental: bool = False) -> Tuple[bool, str]:
+        """
+        Queue `path` (or start import immediately if queue empty).
+        """
+        with self._lock:
+            if self.is_running():
+                if path != self._current_path and not any(q['path'] == path for q in self._queue):
+                    self._queue.append({'path': path, 'incremental': incremental, 'quiet': quiet})
+                return True, 'Queued.'
+
+            return self.start(path, quiet=quiet, incremental=incremental)
+
     def _start_next_queued(self) -> None:
         with self._lock:
             if not self._queue:
                 return
             entry = self._queue.pop(0)
-            ok, message = self.start(entry['path'], quiet=True, incremental=entry['incremental'], reset_log=False)
+            ok, message = self.start(
+                entry['path'],
+                quiet=entry.get('quiet', True),
+                incremental=entry['incremental'],
+                reset_log=False
+            )
+
             if not ok:
                 bsn_logger.warning(f"Pinned scan stopped at '{entry['path']}': {message}")
                 self._queue = []

@@ -46,6 +46,82 @@ A pinned folder marked as **watched** is monitored ,and whenever new audio files
 
 - Watched imports are always [quiet](https://beets.readthedocs.io/en/stable/reference/config.html#quiet) and [incremental](https://beets.readthedocs.io/en/stable/reference/config.html#incremental)
 
+## Triggering an import from a download client
+
+An import can be triggered by a download client (qBittorrent, Deluge, Transmission, etc) when a download finishes.
+
+1. Set [`control_api_token`](../configuration.md#library--metadata) (or `BSN_CONTROL_API_TOKEN`) to a long random value (e.g. use `openssl rand -hex 24`).
+
+2. Call `POST /control-api/trigger-import` when a download completes (see examples [below](#client-scripts-examples)).
+
+| Field            | Description                                                                  |
+|------------------|------------------------------------------------------------------------------|
+| `path`           | Absolute path of the folder to import (as seen by **BeetstreamNext**)        |
+| `interactive`    | Optional, `false` by default (see [interactive](#manually-selected-folders)) |
+
+The token can be sent as the `X-Api-Key` header value, `Authorization: Bearer <token>` or a `token` form field. Wrong tokens count towards the [rate limiter](./security.md).
+
+- By default the import follows the same rules as [pinned folders](#pinned-folders). If another import is running, the request is queued.
+
+- With `interactive=true`, Beets waits for you in the **Beets** tab when it needs a decision (and sends an _Import needs input_ [notification](./notifications.md)). Other imports (queued and watched folders) wait behind it until you answer.
+
+### Client scripts examples
+
+The download clients run the script for every finished torrent, so the scripts below only keep music (the `music` label, category, or folder).
+
+**Transmission**: set `script-torrent-done-enabled` and `script-torrent-done-filename` in `settings.json` and use this script.
+
+```bash
+#!/bin/sh
+echo "$TR_TORRENT_LABELS" | grep -qw music || exit 0    # Only the "music" label
+
+curl -fsS -X POST "https://bsn.example.com/control-api/trigger-import" \
+  -H "X-Api-Key: <your_token>" \
+  --data-urlencode "path=$TR_TORRENT_DIR/$TR_TORRENT_NAME"
+```
+
+**Deluge**: enable the `Execute` plugin and add this script for _Torrent Complete_ event.
+
+Deluge passes the torrent ID, name and directory as `$1`, `$2`, `$3`.
+
+```bash
+#!/bin/sh
+case "$3" in /downloads/music*) ;; *) exit 0 ;; esac    # Only what arrives in /downloads/music
+
+curl -fsS -X POST "https://bsn.example.com/control-api/trigger-import" \
+  -H "X-Api-Key: <your_token>" \
+  --data-urlencode "path=$3/$2"
+```
+
+**qBittorrent**: call `/path/to/torrent-finished.sh "%L" "%F"` in _Run external program on torrent finished_.
+
+qBittorrent passes the category and content path as `%L`, `%F`.
+
+```bash
+#!/bin/sh
+[ "$1" = "music" ] || exit 0    # Only the "music" category
+
+curl -fsS -X POST "https://bsn.example.com/control-api/trigger-import" \
+  -H "X-Api-Key: <your_token>" \
+  --data-urlencode "path=$2"
+```
+
+> [!IMPORTANT]
+> The torrent path must be _the path as **BeetstreamNext** sees_. If your download client sees that folder under a different path, rewrite the prefix in the script.
+> For example:
+>
+> ```bash
+> #!/bin/sh
+> CLIENT_DIR="/downloads"         # As seen by the download client
+> BSN_DIR="/media/imports"        # As seen by BeetstreamNext
+> 
+> path="$BSN_DIR${1#"$CLIENT_DIR"}"   # This replaces "/downloads" with "/media/imports"
+> 
+> curl -fsS -X POST "https://bsn.example.com/control-api/trigger-import" \
+>   -H "X-Api-Key: <your_token>" \
+>   --data-urlencode "path=$path"
+> ```
+
 ## Skipped folders and retries
 
 Beets' `incremental` import remembers the folders it has seen (to avoid retrying them). By default, that includes folders that were _skipped_ (manually or automatically).

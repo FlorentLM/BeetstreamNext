@@ -7,7 +7,7 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.library.indexes import _ArtistIndex, _SongIndex
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex, SongIndex
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
@@ -64,18 +64,7 @@ def get_artist_metadata(name: str) -> dict:
     if not name:
         return {'mbid': '', 'sort_name': '', 'roles': []}
 
-    cache = library_cache('artist_index')
-    if 'index' not in cache:
-        cache['index'] = _ArtistIndex(flask.g.lib)
-    return cache['index'].metadata(name)
-
-
-def _song_index() -> _SongIndex:
-    music_root = app.config['music_root']
-    cache = library_cache(f'song_index:{music_root}')
-    if 'index' not in cache:
-        cache['index'] = _SongIndex(flask.g.lib, music_root)
-    return cache['index']
+    return ArtistIndex.get().metadata(name)
 
 
 ##
@@ -249,7 +238,7 @@ class Resolve:
             return flask.g.lib.get_item(rows[0][0]) if rows else None
 
         if kind == 'hash':
-            item_id = _song_index().by_hash.get(value)
+            item_id = SongIndex.get().by_hash.get(value)
             return flask.g.lib.get_item(item_id) if item_id is not None else None
 
         if kind == 'legacy_int':
@@ -284,7 +273,7 @@ class Resolve:
         if not subsonic_ids:
             return {}
 
-        index = _song_index()
+        index = SongIndex.get()
         result: Dict[str, int] = {}
 
         for raw in subsonic_ids:

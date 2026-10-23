@@ -384,13 +384,15 @@ class Resolve:
         Batched song resolving. Returns {id: song_object},
         """
 
-        items: Dict[int, Item] = {}
+        items: Dict[int, Optional[Item]] = {}
         result: Dict[str, Item] = {}
 
         for sid, beets_id in cls.song_ids(subsonic_ids).items():
             if beets_id not in items:
                 items[beets_id] = flask.g.lib.get_item(beets_id)
-            result[sid] = items[beets_id]
+
+            if items[beets_id] is not None:
+                result[sid] = items[beets_id]
 
         return result
 

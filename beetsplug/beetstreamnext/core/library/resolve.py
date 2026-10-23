@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import path_hash, resolve_path
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, library_cache
 
+
 def beets_abspath(item: Dict | Item | Any) -> Path:
     """
     Beets sometimes stores paths relative to its 'directory' config.
@@ -53,108 +54,148 @@ def standardise_datadict(obj: Dict | LibModel | Item | Any) -> dict:
         return {}
 
 
+class _ArtistIndex:
+    """
+    Artist credits of the whole beets library, read in one pass.
+
+    Answers per-name metadata lookups without querying the db: no index serves a name inside
+    a multi-value field, so each role check would be a full scan of the items table.
+    """
+
+    def __init__(self, lib):
+        cols = get_beets_schema('items')
+
+        def column(*names: str) -> str:
+            return next((n for n in names if n in cols), 'NULL')
+
+        # name -> (mbid, sort name) of the first album/song credited to it
+        self._album_artists: Dict[str, Tuple[str, str]] = {}
+        self._song_artists: Dict[str, Tuple[str, str]] = {}
+        multi_artists, composers, lyricists = set(), set(), set()
+
+        with lib.transaction() as tx:
+            for name, mbid, sort_name in tx.query(
+                    """
+                    SELECT albumartist, mb_albumartistid, albumartist_sort
+                    FROM albums
+                    ORDER BY id
+                    """):
+                self._album_artists.setdefault(name, (mbid, sort_name))
+
+            for name, mbid, sort_name, artists, comp, lyr in tx.query(
+                    f"""
+                    SELECT artist, mb_artistid, artist_sort, {column('artists')},
+                           {column('composers', 'composer')}, {column('lyricists', 'lyricist')}
+                    FROM items
+                    ORDER BY id
+                    """):  # nosec B608
+                self._song_artists.setdefault(name, (mbid, sort_name))
+                multi_artists.add(artists)
+                composers.add(comp)
+                lyricists.add(lyr)
+
+        self._multi_artists = self._names(multi_artists)
+        self._composers = self._names(composers)
+        self._lyricists = self._names(lyricists)
+
+        self._metadata: Dict[str, dict] = {}
+
+    @staticmethod
+    def _names(values: set) -> set:
+        """Every name in the distinct values of a multi-value field."""
+        return {name for value in values for name in split_beets_multi(value)}
+
+    def metadata(self, name: str) -> dict:
+        result = self._metadata.get(name)
+        if result is None:
+            result = self._metadata[name] = self._lookup(name)
+        return result
+
+    def _lookup(self, name: str) -> dict:
+        mbid = ''
+        sort_name = ''
+        roles = []
+
+        album_row = self._album_artists.get(name)
+        if album_row is not None:
+            roles.append('albumartist')
+            if album_row[0]:
+                mbid = validate_mbid(album_row[0])
+            if album_row[1]:
+                sort_name = album_row[1]
+
+        song_row = self._song_artists.get(name)
+        if song_row is not None:
+            roles.append('artist')
+            if not mbid and song_row[0]:
+                mbid = validate_mbid(song_row[0])
+            if not sort_name and song_row[1]:
+                sort_name = song_row[1]
+
+        # Check for secondary roles
+        if not roles and name in self._multi_artists:
+            roles.append('artist')
+        if name in self._composers:
+            roles.append('composer')
+        if name in self._lyricists:
+            roles.append('lyricist')
+
+        return {
+            'mbid': mbid,
+            'sort_name': sort_name or name,
+            'roles': roles if roles else ['artist']
+        }
+
+
 def get_artist_metadata(name: str) -> dict:
     """
     Lookup MBID, sort name and roles for a given artist name.
+    The returned dict is shared: don't mutate it.
     """
 
     if not name:
         return {'mbid': '', 'sort_name': '', 'roles': []}
 
-    cache = library_cache('artist_metadata')
-    if name in cache:
-        return cache[name]
-
-    mbid = ''
-    sort_name = ''
-    roles = []
-
-    with flask.g.lib.transaction() as tx:
-        album_rows = tx.query(
-            """
-            SELECT mb_albumartistid, albumartist_sort 
-            FROM albums 
-            WHERE albumartist = ? LIMIT 1
-            """, (name,)
-        )
-        if album_rows:
-            roles.append('albumartist')
-
-            row = album_rows[0]
-            if row[0]:
-                mbid = validate_mbid(row[0])
-            if row[1]:
-                sort_name = row[1]
-
-        item_rows = tx.query(
-            """
-            SELECT mb_artistid, artist_sort 
-            FROM items 
-            WHERE artist = ? LIMIT 1
-            """, (name,)
-        )
-        if item_rows:
-            roles.append('artist')
-
-            row = item_rows[0]
-            if not mbid and row[0]:
-                mbid = validate_mbid(row[0])
-            if not sort_name and row[1]:
-                sort_name = row[1]
-
-        # Check for secondary roles
-        cols = get_beets_schema('items')
-
-        checks = []     # (role, column)
-        if not roles:
-            checks.append(('artist', 'artists'))
-
-        checks.append(('composer', 'composers' if 'composers' in cols else 'composer'))
-        checks.append(('lyricist', 'lyricists' if 'lyricists' in cols else 'lyricist'))
-        checks = [(role, col) for role, col in checks if col in cols]
-
-        if checks:
-            selects = []
-            params = []
-            for _, col in checks:
-                conditions, col_params = sql_conditions_for(name, [col])
-                selects.append(f"MAX({' OR '.join(conditions)})")
-                params.extend(col_params)
-
-            found = tx.query(f"""SELECT {', '.join(selects)} FROM items""", params)[0]  # nosec B608
-            roles.extend(role for (role, _), hit in zip(checks, found, strict=True) if hit)
-
-    result = {
-        'mbid': mbid,
-        'sort_name': sort_name or name,
-        'roles': roles if roles else ['artist']
-    }
-
-    cache[name] = result
-    return result
-
-
-def _song_hash_index() -> Dict[str, int]:
-    """
-    Path hash -> beets id mapping for songs that have no mbid.
-    """
-
-    music_root = app.config['music_root']
-    cache = library_cache(f'song_hash:{music_root}')
-
+    cache = library_cache('artist_index')
     if 'index' not in cache:
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                """
-                SELECT id, path
-                FROM items
-                WHERE (mb_releasetrackid IS NULL OR mb_releasetrackid = '')
-                  AND (mb_trackid IS NULL OR mb_trackid = '')
-                ORDER BY id DESC
-                """
-            )
-        cache['index'] = {path_hash(row[1], music_root): row[0] for row in rows}    # lowest id wins a collision
+        cache['index'] = _ArtistIndex(flask.g.lib)
+    return cache['index'].metadata(name)
 
+
+class _SongIndex:
+    """
+    Song IDs of the whole beets library, read in one pass.
+
+    MBIDs aren't indexed in the items table and hash IDs need every candidate's path
+    hashed, so resolving either per request is a full scan of the items table.
+    """
+
+    def __init__(self, lib, music_root):
+        # Several songs can share one ID: the lowest beets id answers for it
+        self.by_mbid: Dict[str, int] = {}
+        self.by_hash: Dict[str, int] = {}
+        self.ids: set = set()
+
+        with lib.transaction() as tx:
+            for beets_id, path, release_track_id, track_id in tx.query(
+                    """
+                    SELECT id, path, mb_releasetrackid, mb_trackid
+                    FROM items
+                    ORDER BY id DESC
+                    """):
+                self.ids.add(beets_id)
+                if release_track_id or track_id:
+                    for mbid in filter(None, (release_track_id, track_id)):
+                        self.by_mbid[mbid] = beets_id
+                else:
+                    self.by_hash[path_hash(path, music_root)] = beets_id
+
+
+def _song_index() -> _SongIndex:
+    music_root = app.config['music_root']
+    cache = library_cache(f'song_index:{music_root}')
+    if 'index' not in cache:
+        cache['index'] = _SongIndex(flask.g.lib, music_root)
     return cache['index']
 
 
@@ -329,7 +370,7 @@ class Resolve:
             return flask.g.lib.get_item(rows[0][0]) if rows else None
 
         if kind == 'hash':
-            item_id = _song_hash_index().get(value)
+            item_id = _song_index().by_hash.get(value)
             return flask.g.lib.get_item(item_id) if item_id is not None else None
 
         if kind == 'legacy_int':
@@ -343,65 +384,43 @@ class Resolve:
         Batched song resolving. Returns {id: song_object},
         """
 
+        items: Dict[int, Item] = {}
         result: Dict[str, Item] = {}
 
-        by_mbid: Dict[str, List[str]] = {}
-        by_hash: Dict[str, List[str]] = {}
-        by_int: Dict[int, List[str]] = {}
+        for sid, beets_id in cls.song_ids(subsonic_ids).items():
+            if beets_id not in items:
+                items[beets_id] = flask.g.lib.get_item(beets_id)
+            result[sid] = items[beets_id]
+
+        return result
+
+    @classmethod
+    def song_ids(cls, subsonic_ids: Sequence[str]) -> Dict[str, int]:
+        """
+        Batched song resolving, without loading the songs. Returns {id: beets_id}.
+        """
+
+        if not subsonic_ids:
+            return {}
+
+        index = _song_index()
+        result: Dict[str, int] = {}
 
         for raw in subsonic_ids:
             sid = str(raw)
             value, kind = IDs.decode_song(sid)
 
             if kind == 'mbid':
-                by_mbid.setdefault(value, []).append(sid)
+                beets_id = index.by_mbid.get(value)
             elif kind == 'hash':
-                by_hash.setdefault(value, []).append(sid)
+                beets_id = index.by_hash.get(value)
             elif kind == 'legacy_int':
-                by_int.setdefault(value, []).append(sid)
+                beets_id = value if value in index.ids else None
+            else:
+                beets_id = None
 
-        if by_mbid:
-            mbids = list(by_mbid)
-            with flask.g.lib.transaction() as tx:
-                rows = chunked_query(tx,
-                    """
-                    SELECT id, mb_releasetrackid, mb_trackid 
-                    FROM items 
-                    WHERE mb_releasetrackid IN ({q})
-                    """, mbids
-                )
-                rows += chunked_query(tx,
-                    """
-                    SELECT id, mb_releasetrackid, mb_trackid 
-                    FROM items 
-                    WHERE mb_trackid IN ({q})
-                    """, mbids
-                )
-            seen_rows = set()
-            for row in rows:
-                if row[0] in seen_rows:
-                    continue
-                seen_rows.add(row[0])
-                item = flask.g.lib.get_item(row[0])
-                for key in {row[1], row[2]}:
-                    for sid in by_mbid.get(key, []):
-                        result[sid] = item
-
-        if by_hash:
-            index = _song_hash_index()
-            for h, sids in by_hash.items():
-                if h in index:
-                    item = flask.g.lib.get_item(index[h])
-                    for sid in sids:
-                        result[sid] = item
-
-        if by_int:
-            with flask.g.lib.transaction() as tx:
-                rows = chunked_query(tx, 'SELECT id FROM items WHERE id IN ({q})', list(by_int))
-            for row in rows:
-                item = flask.g.lib.get_item(row[0])
-                for sid in by_int.get(row[0], []):
-                    result[sid] = item
+            if beets_id is not None:
+                result[sid] = beets_id
 
         return result
 

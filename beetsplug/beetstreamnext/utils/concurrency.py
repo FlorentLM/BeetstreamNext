@@ -136,6 +136,25 @@ class KeyedLimiter:
             return self._held.get(key, 0)
 
 
+class BuildOnce:
+    """Builds a value once per cache. Other threads wait for it."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+
+    def get(self, cache: dict, key: Hashable, build: Callable):
+        value = cache.get(key)
+
+        if value is None:
+            with self._lock:
+                value = cache.get(key)  # check again if another thread built it
+
+                if value is None:
+                    value = cache[key] = build()
+
+        return value
+
+
 class DoOnce:
     """Hands out a single True from `claim()`, to do something (like warn) only the first time."""
 

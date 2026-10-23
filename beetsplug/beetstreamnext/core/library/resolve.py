@@ -7,13 +7,12 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex, SongIndex
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex, SongIndex, ArtistHashIndex, AlbumHashIndex
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid, sha1_hex
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import resolve_path
-from beetsplug.beetstreamnext.utils.db import library_cache
 
 
 def beets_abspath(item: Dict | Item | Any) -> Path:
@@ -152,20 +151,7 @@ class Resolve:
             return artist_name, value  # value is the mbid
 
         elif kind == 'hash':
-            cache = library_cache('artist_hash')
-            if 'index' not in cache:
-                with flask.g.lib.transaction() as tx:
-                    rows = tx.query(
-                        """
-                        SELECT albumartist
-                        FROM albums
-                        WHERE albumartist IS NOT NULL
-                        GROUP BY albumartist
-                        """
-                    )
-                cache['index'] = {sha1_hex(r[0])[:16]: r[0] for r in rows if r[0]}
-
-            name = cache['index'].get(value)
+            name = ArtistHashIndex.get().by_hash.get(value)
             return (name, '') if name else None
 
         else:
@@ -193,23 +179,7 @@ class Resolve:
             return flask.g.lib.get_album(rows[0][0]) if rows else None
 
         if kind == 'hash':
-            cache = library_cache('album_hash')
-            if 'index' not in cache:
-                with flask.g.lib.transaction() as tx:
-                    rows = tx.query(
-                        """
-                        SELECT id, albumartist, album
-                        FROM albums
-                        WHERE mb_albumid IS NULL OR mb_albumid = ''
-                        ORDER BY id DESC
-                        """
-                    )
-                cache['index'] = {      # descending (lowest id wins a collision)
-                    sha1_hex(f"{r[1] or ''}\x1f{r[2] or ''}")[:16]: r[0]
-                    for r in rows
-                }
-
-            album_id = cache['index'].get(value)
+            album_id = AlbumHashIndex.get().by_hash.get(value)
             return flask.g.lib.get_album(album_id) if album_id is not None else None
 
         if kind == 'legacy_int':

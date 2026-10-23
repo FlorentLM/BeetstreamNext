@@ -190,3 +190,62 @@ class SongIndex(Index):
     def _build(cls) -> SongIndex:
         return cls(flask.g.lib, app.config['music_root'])
 
+
+class ArtistHashIndex(Index):
+    """
+    Artist names mapped from the hash IDs.
+    """
+
+    def __init__(self, lib):
+        super().__init__()
+
+        with lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT albumartist
+                FROM albums
+                WHERE albumartist IS NOT NULL
+                GROUP BY albumartist
+                """)
+
+        self.by_hash: Dict[str, str] = {sha1_hex(r[0])[:16]: r[0] for r in rows if r[0]}
+
+    @classmethod
+    def _cache_name(cls) -> str:
+        return 'artist_hash'
+
+    @classmethod
+    def _build(cls) -> ArtistHashIndex:
+        return cls(flask.g.lib)
+
+
+class AlbumHashIndex(Index):
+    """
+    Beets IDs of the albums without an MBID.
+    """
+
+    def __init__(self, lib):
+        super().__init__()
+
+        with lib.transaction() as tx:
+            rows = tx.query(
+                """
+                SELECT id, albumartist, album
+                FROM albums
+                WHERE mb_albumid IS NULL OR mb_albumid = ''
+                ORDER BY id DESC
+                """)
+
+        # Descending so lowest ID wins
+        self.by_hash: Dict[str, int] = {
+            sha1_hex(f"{r[1] or ''}\x1f{r[2] or ''}")[:16]: r[0]
+            for r in rows
+        }
+
+    @classmethod
+    def _cache_name(cls) -> str:
+        return 'album_hash'
+
+    @classmethod
+    def _build(cls) -> AlbumHashIndex:
+        return cls(flask.g.lib)

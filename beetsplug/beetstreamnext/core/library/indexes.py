@@ -166,18 +166,6 @@ class SongIndex(Index):
         self.ids: set = set()
 
         with lib.transaction() as tx:
-            for beets_id, path, release_track_id, track_id in tx.query(
-                    """
-                    SELECT id, path, mb_releasetrackid, mb_trackid
-                    FROM items
-                    ORDER BY id DESC
-                    """):
-                self.ids.add(beets_id)
-                if release_track_id or track_id:
-                    for mbid in filter(None, (release_track_id, track_id)):
-                        self.by_mbid[mbid] = beets_id
-                else:
-                    self.by_hash[path_hash(path, music_root)] = beets_id
             rows = tx.query(
                 """
                 SELECT id, path, mb_releasetrackid, mb_trackid

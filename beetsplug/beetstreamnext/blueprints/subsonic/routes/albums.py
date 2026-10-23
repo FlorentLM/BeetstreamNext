@@ -6,7 +6,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.db import get_beets_schema
+from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -174,15 +174,20 @@ def endpoint_get_album_list() -> flask.Response:
                 """, (flask.g.username,)
             ).fetchall()
 
+        beets_ids = Resolve.song_ids([row['song_id'] for row in rows])
+        with flask.g.lib.transaction() as tx:
+            album_of = dict(chunked_query(
+                tx, 'SELECT id, album_id FROM items WHERE id IN ({q})', list(set(beets_ids.values()))
+            ))
+
         # Play stats per song added per album
-        songs = Resolve.songs([row['song_id'] for row in rows])
         per_album: dict = {}
         for row in rows:
-            song = songs.get(row['song_id'])
-            if song is None or not song.get('album_id'):
+            album_id = album_of.get(beets_ids.get(row['song_id']))
+            if not album_id:
                 continue
-            plays, latest = per_album.get(song['album_id'], (0, 0.0))
-            per_album[song['album_id']] = (plays + row['play_count'], max(latest, row['last_played'] or 0.0))
+            plays, latest = per_album.get(album_id, (0, 0.0))
+            per_album[album_id] = (plays + row['play_count'], max(latest, row['last_played'] or 0.0))
 
         ranking = 0 if sort_by == 'frequent' else 1
         ranked = sorted(per_album, key=lambda album_id: per_album[album_id][ranking], reverse=True)

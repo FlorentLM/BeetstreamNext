@@ -22,7 +22,6 @@ def export_user_data(username: str) -> Dict[str, Any]:
         raise ValueError(f"User '{username}' does not exist.")
 
     has_avatar = bool(profile.pop('avatarLastChanged', None))
-    profile.pop('api_key_hash', None)
     profile['hasAvatar'] = has_avatar
 
     with database() as db:

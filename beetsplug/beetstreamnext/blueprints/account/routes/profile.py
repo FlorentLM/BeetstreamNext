@@ -9,16 +9,14 @@ from .. import account_bp, account_required
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
-from beetsplug.beetstreamnext.core.storage.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.accounts.users_crud import (
-    get_userdata, update_user, session_stamp, regenerate_api_key, set_user_avatar, delete_user
+    get_userdata, update_user, session_stamp, set_user_avatar, delete_user
 )
 from beetsplug.beetstreamnext.core.accounts.credentials import webui_login
-from beetsplug.beetstreamnext.core.accounts.sessions import count_active_sessions, revoke_user_sessions
 from beetsplug.beetstreamnext.core.accounts.export import export_user_data
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
-from beetsplug.beetstreamnext.blueprints.forms import RadioStationForm, AccountProfileForm, ChangePasswordForm, DeleteAccountForm, form_error_messages
+from beetsplug.beetstreamnext.blueprints.forms import RadioStationForm, AppPasswordForm, AccountProfileForm, ChangePasswordForm, DeleteAccountForm, form_error_messages
 from beetsplug.beetstreamnext.core.media.avatars import save_uploaded_avatar, avatar_response
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, allowed_bitrates
 
@@ -28,12 +26,6 @@ from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 def route_account() -> str:
 
     username = flask.g.account_user
-
-    token = flask.session.pop('_api_key_token', None)
-    new_api_key = temporary_store.claim(token)
-
-    if new_api_key and new_api_key.get('username') != username:
-        new_api_key = None
 
     user = get_userdata(username, fields=[
         'username', 'email', 'maxBitRate', 'avatarLastChanged', *[r[0] for r in USER_ROLES_SCHEMA]
@@ -47,14 +39,13 @@ def route_account() -> str:
         user=user,
         profile_form=form,
         password_form=ChangePasswordForm(formdata=None),
+        app_password_form=AppPasswordForm(formdata=None),
         delete_form=DeleteAccountForm(formdata=None),
-        new_api_key=new_api_key,
         podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,
         radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
         radio_form=RadioStationForm(formdata=None),
         radio_ep=radio_endpoints('account'),
         current_username=username,
-        other_sessions=count_active_sessions(username, exclude=flask.session.get('sid')),
     )
 
 
@@ -118,32 +109,6 @@ def route_change_password() -> str:
     # Other sessions now invalid, current one stays because it has the new stamp
     flask.session['pv'] = session_stamp(username)
     return flask.render_template('partials/action_result.html', message='Password changed.', ok=True)
-
-
-@account_bp.route('/sessions/revoke-others', methods=['POST'])
-@account_required
-def route_revoke_other_sessions() -> str:
-    """Sign out every other browser logged in to current account."""
-
-    count = revoke_user_sessions(flask.g.account_user, keep=flask.session.get('sid'))
-    message = f"Signed out {count} other session{'s' if count != 1 else ''}." if count else 'No other active sessions.'
-    return flask.render_template('partials/action_result.html', message=message, ok=True)
-
-
-@account_bp.route('/apikey', methods=['POST'])
-@account_required
-def route_regenerate_api_key() -> str:
-
-    username = flask.g.account_user
-
-    try:
-        raw_api_key = regenerate_api_key(username)
-    except ValueError as e:
-        return flask.render_template('partials/action_result.html', message=str(e), ok=False)
-
-    card = flask.render_template('partials/account_api_key.html', new_api_key={'username': username, 'key': raw_api_key})
-    return (flask.render_template('partials/action_result.html', message='API key regenerated. The old key no longer works.', ok=True)
-            + f'<div id="newApiKey" hx-swap-oob="innerHTML">{card}</div>')
 
 
 def _avatar_partial(message: str | None = None, ok: bool = True) -> str:

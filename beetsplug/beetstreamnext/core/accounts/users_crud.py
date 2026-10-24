@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import secrets
 import time
 from io import BytesIO
 from typing import Sequence, Optional, Dict, Tuple, List
@@ -13,7 +12,7 @@ from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, 
 from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import filter_dict
-from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 
 
@@ -118,42 +117,8 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
 ##
 # Core logic used by endpoints and CLI
 
-def _set_api_key(username: str, db: Optional[sqlite3.Connection] = None) -> str:
-    """
-    Generate a new API key for a user, store its hash, return the raw key.
-    If `db` is given, executes on that connection without
-    opening/committing here (caller owns the transaction).
-    """
-    raw_api_key = secrets.token_urlsafe(32)
-    api_key_hash = sha256_hex(raw_api_key)
-
-    def _execute(conn: sqlite3.Connection) -> None:
-        conn.execute(
-            """
-            UPDATE users
-            SET api_key_hash = ?
-            WHERE username = ?
-            """, (api_key_hash, username)
-        )
-
-    if db is not None:
-        _execute(db)
-    else:
-        with database() as conn:
-            _execute(conn)
-
-    return raw_api_key
-
-
-def regenerate_api_key(username: str) -> str:
-    """Rotate a user's API key (invalidating the previous one), return the raw key."""
-    if not get_userdata(username, fields=['username']):
-        raise ValueError(f"User '{username}' does not exist.")
-    return _set_api_key(username)
-
-
 def create_user(username, password, admin=False, **kwargs):
-    """Core logic to create a user. Returns the raw API key."""
+    """Core logic to create a user."""
 
     if len(password) < MIN_PASSWORD_LEN:
         raise ValueError(f'Password must be at least {MIN_PASSWORD_LEN} characters.')
@@ -185,12 +150,7 @@ def create_user(username, password, admin=False, **kwargs):
     user_data.update(filtered_roles)
 
 
-    with database() as db:
-        _store_userdata(user_data, insert_only=True, db=db)
-        # api_key_hash is set separately because _store_userdata excludes it (for safety)
-        raw_api_key = _set_api_key(username, db=db)
-
-    return raw_api_key
+    _store_userdata(user_data, insert_only=True)
 
 
 def update_user(username: str, **updates):
@@ -221,18 +181,6 @@ def delete_user(username: str) -> bool:
             """, (username,)
         )
     return cursor.rowcount > 0
-
-
-def load_username(api_key_hash: str) -> str:
-    with database() as db:
-        row = db.execute(
-            """
-            SELECT username 
-            FROM users 
-            WHERE api_key_hash = ?
-            """, (api_key_hash,)
-        ).fetchone()
-    return row[0] if row else None
 
 
 def list_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:

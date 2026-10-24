@@ -7,13 +7,18 @@ from flask import Blueprint
 
 from beetsplug.beetstreamnext.blueprints.auth import session_roles, admin_here
 from beetsplug.beetstreamnext.blueprints.shared.radio import register_radio_routes
+from beetsplug.beetstreamnext.blueprints.shared.app_passwords import register_app_password_routes
+from beetsplug.beetstreamnext.blueprints.shared.sessions import register_session_routes
 
 
 account_bp = Blueprint('account', __name__, url_prefix='/account')
 
 
 def account_required(f) -> Callable:
-    """Decorator: redirect to login unless session belongs to a user allowed to manage their account."""
+    """
+    Decorator: redirect to login unless session belongs to a user allowed to manage their account.
+    """
+
     @wraps(f)
     def decorated(*args, **kwargs) -> flask.Response:
         roles = session_roles()
@@ -37,3 +42,5 @@ from .routes import (
 
 # Admin panel and account page expose the same routes, only the auth decorator differs
 register_radio_routes(account_bp, account_required)
+register_app_password_routes(account_bp, account_required)
+register_session_routes(account_bp, account_required)

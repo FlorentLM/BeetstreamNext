@@ -1,0 +1,56 @@
+{% from '_macros.html' import icon %}
+{% set others = sessions | rejectattr('id', 'equalto', current_id) | list %}
+{% if others %}
+    <div class="list-header">
+        <span></span>
+        <form class="form-inline"
+              hx-post="{{ url_for(bp_name ~ '.route_revoke_other_sessions') }}"
+              hx-trigger="confirmed"
+              hx-target="#webSessionList"
+              hx-swap="innerHTML"
+              data-confirm="Sign out all other sessions? The current one stays open.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-warning btn-small">Sign all out</button>
+        </form>
+    </div>
+{% endif %}
+<div class="table-container">
+    <table>
+        <thead>
+        <tr>
+            <th>Browser</th>
+            <th>IP</th>
+            <th>Signed in</th>
+            <th>Last active</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for s in sessions %}
+            <tr>
+                <td class="session-agent"><code>{{ s.user_agent or 'Unknown' }}</code></td>
+                <td>{{ s.ip or '' }}</td>
+                <td><span class="chat-time" data-timestamp="{{ (s.created * 1000) | int }}">Loading...</span></td>
+                <td><span class="chat-time" data-timestamp="{{ (s.last_seen * 1000) | int }}">Loading...</span></td>
+                <td class="actions-cell">
+                    {% if s.id == current_id %}
+                        <span class="badge badge-you">Current</span>
+                    {% else %}
+                        <button class="icon-btn icon-btn-delete" title="Sign out" aria-label="Sign out this session"
+                                hx-post="{{ url_for(bp_name ~ '.route_revoke_session', session_id=s.id) }}"
+                                hx-target="#webSessionList"
+                                hx-swap="innerHTML"
+                                hx-confirm="Sign out this session?">
+                            {{ icon('delete') }}
+                        </button>
+                    {% endif %}
+                </td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="5" class="empty-state">No active sessions.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -7,18 +7,29 @@ from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import filter_dict
-from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, update_user, regenerate_api_key, get_userdata, list_users, set_user_avatar, session_stamp
-from beetsplug.beetstreamnext.core.accounts.sessions import revoke_user_sessions
+from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, update_user, get_userdata, list_users, set_user_avatar, session_stamp
+from beetsplug.beetstreamnext.core.accounts.sessions import current_session_id, revoke_user_sessions
+from beetsplug.beetstreamnext.core.accounts.app_passwords import list_app_passwords, revoke_app_password
 from beetsplug.beetstreamnext.core.media.images import read_uploaded_image
 from beetsplug.beetstreamnext.core.media.avatars import avatar_response
 from beetsplug.beetstreamnext.blueprints.forms import UserForm, EditUserForm, collect_form_data, form_error_messages
 from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
 
 
-def _api_key_modal(username: str, raw_api_key: str) -> str:
-    modal = flask.render_template('partials/api_key_modal.html', new_api_key={'username': username, 'key': raw_api_key})
-    return f'<div id="apiKeySlot" hx-swap-oob="innerHTML">{modal}</div>'
+def _user_app_passwords(username: str) -> str:
+    """
+    Compact list of a user's app passwords for the edit-user modal.
+    """
+
+    return flask.render_template(
+        'partials/app_passwords.html',
+        app_passwords=list_app_passwords(username),
+        revoke_endpoint='admin.route_revoke_user_app_password',
+        url_args={'username': username},
+        target='#editUserAppPasswords',
+        title='App passwords',
+        compact=True,
+    )
 
 
 @admin_bp.route('/users/create', methods=['POST'])
@@ -34,7 +45,7 @@ def route_create_user() -> str | flask.Response:
         is_admin = data.pop('adminRole', False)
         # username/password are passed positionally and csrf_token isn't a user field
         data = filter_dict(data, drop=('username', 'password', 'csrf_token'))
-        raw_api_key = create_user(
+        create_user(
             form.username.data,
             form.password.data,
             admin=is_admin,
@@ -47,8 +58,7 @@ def route_create_user() -> str | flask.Response:
         bsn_logger.error(f'Unexpected error creating user: {e}')
         return modal_error('An unexpected error occurred while creating the user.', 'createUserResult')
 
-    return _users_partial(f"User '{form.username.data}' created successfully.") + \
-        _api_key_modal(safe_str(form.username.data), raw_api_key)
+    return _users_partial(f"User '{form.username.data}' created successfully.")
 
 
 @admin_bp.route('/users/edit/<username>', methods=['GET'])
@@ -65,7 +75,21 @@ def route_edit_user(username) -> str:
         user=user,
         edit_form=EditUserForm(formdata=None, data=user),
         current_username=flask.session.get('username'),
+        app_passwords_html=_user_app_passwords(username) if username != flask.session.get('username') else '',
     )
+
+
+@admin_bp.route('/users/<username>/app-passwords/<app_pwd_id>/revoke', methods=['POST'])
+@admin_required
+def route_revoke_user_app_password(username: str, app_pwd_id: str) -> str:
+
+    if app_pwd_id != 'all':
+        if not app_pwd_id.isdigit():
+            flask.abort(404)
+        app_pwd_id = int(app_pwd_id)
+
+    revoke_app_password(username, app_pwd_id)
+    return _user_app_passwords(username)
 
 
 @admin_bp.route('/users/update/<username>', methods=['POST'])
@@ -138,18 +162,6 @@ def route_delete_user(username) -> str:
     return _users_partial(f"User '{username}' not found.", ok=False)
 
 
-@admin_bp.route('/users/apikey/<username>', methods=['POST'])
-@admin_required
-def route_regenerate_api_key(username) -> str | flask.Response:
-    try:
-        raw_api_key = regenerate_api_key(username)
-    except ValueError as e:
-        return modal_error(str(e), 'editUserResult')
-
-    return _users_partial(f"API key for '{username}' regenerated. The old key no longer works.") + \
-        _api_key_modal(username, raw_api_key)
-
-
 @admin_bp.route('/users/<username>/sessions/revoke', methods=['POST'])
 @admin_required
 def route_revoke_user_sessions(username: str) -> str:
@@ -158,7 +170,7 @@ def route_revoke_user_sessions(username: str) -> str:
     if not get_userdata(username, fields=['username']):
         return _users_partial(f"User '{username}' not found.", ok=False)
 
-    keep = flask.session.get('sid') if username == flask.session.get('username') else None
+    keep = current_session_id() if username == flask.session.get('username') else None
     count = revoke_user_sessions(username, keep=keep)
     return _users_partial(f"Signed '{username}' out of {count} web session{'s' if count != 1 else ''}.")
 

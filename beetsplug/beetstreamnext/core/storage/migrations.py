@@ -163,6 +163,7 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
                 WHERE api_key_hash IS NOT NULL
                 """
             )
+            cursor.execute("""UPDATE users SET api_key_hash = NULL""")    # column stays (UNIQUE) but is no longer used
 
         curr_version = MIGRATION_7_VER
 

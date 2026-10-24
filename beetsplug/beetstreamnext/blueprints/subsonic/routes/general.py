@@ -5,7 +5,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import genres_formatter
-from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.albums import album_payload
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.artists import artist_payload
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.songs import song_payload
-from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
+from beetsplug.beetstreamnext.core.accounts.app_passwords import authenticate_api_key
 from beetsplug.beetstreamnext.core.library.beets.interaction import import_session
 from beetsplug.beetstreamnext.core.library.import_paths import list_pinned_paths
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -296,15 +296,14 @@ def endpoint_token_info() -> flask.Response:
     if not api_key:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    api_key_hash = sha256_hex(api_key)
-    username = load_username(api_key_hash)
+    matched = authenticate_api_key(api_key, ip=flask.request.remote_addr)
 
-    if not username:
+    if not matched:
         return subsonic_error(40, resp_fmt=resp_fmt)
 
     payload = {
         'tokenInfo': {
-            'username': username
+            'username': matched[0]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

@@ -58,7 +58,7 @@
     // One-time API key copy
 
     function copyApiKey(button) {
-        const el = document.getElementById('apiKeyValue');
+        const el = document.getElementById(button.dataset.target || 'apiKeyValue');
         if (!el) return;
 
         copyText(el.textContent.trim(), () => {
@@ -74,15 +74,15 @@
     function formatTimes(root = document) {
         root.querySelectorAll('.chat-time').forEach(el => {
             const ms = parseInt(el.dataset.timestamp);
-            if (!isNaN(ms)) el.textContent = new Date(ms).toLocaleString();
+            if (isNaN(ms)) return;
+            const date = new Date(ms);
+            el.textContent = el.dataset.dateOnly ? date.toLocaleDateString() : date.toLocaleString();
         });
     }
 
     formatTimes();
 
-    document.body.addEventListener('htmx:after:swap', event => {
-        formatTimes(event.detail.ctx.target || document);
-    });
+    document.body.addEventListener('htmx:after:swap', () => formatTimes());
 
     // htmx requests are same-origin -> attach the CSRF token to every one
     document.body.addEventListener('htmx:config:request', event => {

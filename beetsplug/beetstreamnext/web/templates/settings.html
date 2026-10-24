@@ -76,6 +76,7 @@
 
         {% set tab_icons = {
             'users': 'group',
+            'connections': 'devices',
             'server': 'dns',
             'library': 'library_music',
             'audio': 'graphic_eq',
@@ -89,7 +90,7 @@
             'notifications': 'notifications',
             'maintenance': 'build',
         } %}
-        {% set tab_order = ['users'] + settings_categories|reject('equalto', 'podcasts')|list
+        {% set tab_order = ['users', 'connections'] + settings_categories|reject('equalto', 'podcasts')|list
             + (['podcasts'] if 'podcasts' in settings_categories else [])
             + ['radios', 'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <nav class="tabs" role="tablist">
@@ -130,6 +131,13 @@
                     {% include 'partials/users_table.html' %}
                 </div>
             </div>
+        </section>
+
+        {# Connections tab #}
+        <section class="tab-content" id="tab-connections" :class="{ active: active === 'connections' }" role="tabpanel">
+            {% with bp_name = 'admin' %}{% include 'partials/app_passwords_card.html' %}{% endwith %}
+
+            {% with bp_name = 'admin' %}{% include 'partials/web_sessions_card.html' %}{% endwith %}
         </section>
 
         {# Chat moderation tab #}
@@ -705,8 +713,6 @@
         </div>
     </div>
 
-    {# One-time API key display #}
-    <div id="apiKeySlot"></div>
 {% endblock %}
 
 {% block scripts %}

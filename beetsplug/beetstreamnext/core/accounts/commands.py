@@ -61,7 +61,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
             raise SystemExit(1)
 
         try:
-            api_key = create_user(env_user, env_password, admin=True)
+            create_user(env_user, env_password, admin=True)
         except ValueError as e:
             print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
             raise SystemExit(1) from e
@@ -71,10 +71,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
             f"{TermColors.OKGREEN + TermColors.BOLD}Admin user '{safe_str(env_user)}' created "
             f"from BSN_ADMIN_USER/BSN_ADMIN_PASSWORD.{TermColors.ENDC}",
             '',
-            f'USER API KEY: {api_key}',
-            '',
-            '  ▶  You can use this in your Subsonic client instead of a password.',
-            "  ▶  It won't be shown again. Store it safely.",
+            '  ▶  Create an app password for your Subsonic clients from the web UI (Passwords tab).',
             '',
         ])
         return
@@ -99,7 +96,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
     is_admin = True if force_admin else input('Admin? [y/n]: ').lower() == 'y'
 
     try:
-        api_key = create_user(username, password, admin=is_admin)
+        create_user(username, password, admin=is_admin)
     except ValueError as e:
         print(f'\n[ERROR] {e}')
         return
@@ -108,10 +105,7 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
         '',
         f"{TermColors.OKGREEN + TermColors.BOLD}User '{username_cleaned}' created successfully.{TermColors.ENDC}",
         '',
-        f'USER API KEY: {api_key}',
-        '',
-        '  ▶  Enter this key in your Subsonic client instead of a password.',
-        "  ▶  It won't be shown again. Store it safely.",
+        '  ▶  Create an app password for your Subsonic clients from the web UI.',
         '',
     ])
 

@@ -5,7 +5,7 @@ import hmac
 import secrets
 import time
 from enum import StrEnum
-from typing import Optional, List, Tuple
+from typing import Literal, Optional, List, Tuple
 
 from beetsplug.beetstreamnext.constants import MAX_APP_PASSWORDS
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -90,27 +90,14 @@ def list_app_passwords(username: str) -> List[dict]:
     return app_pwds
 
 
-def revoke_app_password(username: str, app_pwd_id: int) -> bool:
+def revoke_app_password(username: str, app_password_id: int | Literal['all']) -> int:
 
     with database() as db:
         cur = db.execute(
             """
             DELETE FROM app_passwords 
-            WHERE id = ? AND username = ?
-            """, (app_pwd_id, username)
-        )
-
-    return cur.rowcount > 0
-
-
-def revoke_all_app_passwords(username: str) -> int:
-
-    with database() as db:
-        cur = db.execute(
-            """
-            DELETE FROM app_passwords 
-            WHERE username = ?
-            """, (username,)
+            WHERE username = ? AND (? = 'all' OR id = ?)
+            """, (username, app_password_id, app_password_id)
         )
 
     return cur.rowcount

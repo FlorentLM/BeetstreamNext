@@ -7,8 +7,7 @@ import flask
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.app_passwords import authenticate_api_key, authenticate_legacy
 from beetsplug.beetstreamnext.core.accounts.credentials import check_password
-from beetsplug.beetstreamnext.core.accounts.users_crud import load_username
-from beetsplug.beetstreamnext.utils.text import safe_str, sha256_hex
+from beetsplug.beetstreamnext.utils.text import safe_str
 
 if TYPE_CHECKING:
     from werkzeug.datastructures import CombinedMultiDict
@@ -36,11 +35,6 @@ def authenticate_subsonic(flask_req_values: 'CombinedMultiDict'):
         matched = authenticate_api_key(api_key, ip=flask.request.remote_addr)
         if matched:
             return True, 0, matched[0]
-
-        api_key_hash = sha256_hex(api_key)
-        found_user = load_username(api_key_hash)
-        if found_user:
-            return True, 0, found_user
 
         # 40: "Wrong username or password."
         return False, 40, None

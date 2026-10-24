@@ -21,7 +21,7 @@ from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import APPRISE, RADIO_BROWSER
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA, SETTINGS_CATEGORIES
 from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
-from beetsplug.beetstreamnext.blueprints.forms import UserForm, RadioStationForm
+from beetsplug.beetstreamnext.blueprints.forms import UserForm, RadioStationForm, AppPasswordForm
 from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
@@ -241,6 +241,7 @@ def route_settings() -> flask.Response:
             beets_schema_drift=flask.current_app.config.get('BEETS_SCHEMA_DRIFT', {}),
             beets_config=read_config(),
             create_form=UserForm(formdata=None),
+            app_password_form=AppPasswordForm(formdata=None),
             radio_form=RadioStationForm(formdata=None),
             server_info=get_server_info(extended=True),
             current_username=flask.session.get('username'),

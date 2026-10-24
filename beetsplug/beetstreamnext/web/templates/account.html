@@ -37,10 +37,6 @@
             {% endfor %}
         {% endwith %}
 
-        <div id="newApiKey">
-            {% if new_api_key %}{% include 'partials/account_api_key.html' %}{% endif %}
-        </div>
-
         {# Profile #}
         <div class="card">
             <div class="table-header"><h2><span class="material-symbols-outlined">person</span>Profile</h2></div>
@@ -105,44 +101,9 @@
             </form>
         </div>
 
-        {# Sessions #}
-        <div class="card">
-            <div class="table-header"><h2><span class="material-symbols-outlined">devices</span>Sessions</h2></div>
-            <p class="card-hint">
-                {% if other_sessions %}
-                    You are also signed in on <strong>{{ other_sessions }}</strong> other browser{{ 's' if other_sessions != 1 }} or device{{ 's' if other_sessions != 1 }}.
-                {% else %}
-                    No other browser or device is signed in to this account.
-                {% endif %}
-            </p>
-            <form hx-post="{{ url_for('account.route_revoke_other_sessions') }}"
-                  hx-trigger="confirmed"
-                  hx-target="#sessionsResult"
-                  hx-swap="innerHTML"
-                  class="card-body-form" data-confirm="Sign out everywhere else? This session stays open.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-warning">Sign out other sessions</button>
-            </form>
-            <div id="sessionsResult"></div>
-        </div>
+        {% with bp_name = 'account' %}{% include 'partials/web_sessions_card.html' %}{% endwith %}
 
-        {# API key #}
-        <div class="card">
-            <div class="table-header"><h2><span class="material-symbols-outlined">key</span>API key</h2></div>
-            <p class="card-hint">
-                Subsonic clients can authenticate with an API key instead of a password.
-                Regenerating it immediately invalidates the old one.
-            </p>
-            <form hx-post="{{ url_for('account.route_regenerate_api_key') }}"
-                  hx-trigger="confirmed"
-                  hx-target="#apiKeyResult"
-                  hx-swap="innerHTML"
-                  class="card-body-form" data-confirm="Regenerate your API key? Clients using the old key will stop working.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-warning">Regenerate API key</button>
-            </form>
-            <div id="apiKeyResult"></div>
-        </div>
+        {% with bp_name = 'account' %}{% include 'partials/app_passwords_card.html' %}{% endwith %}
 
         {# Shares #}
         {% if user.shareRole %}

@@ -7,7 +7,7 @@ from .. import auth_bp
 from beetsplug.beetstreamnext.blueprints.auth import can_login, home_for, session_roles
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.credentials import start_session
-from beetsplug.beetstreamnext.core.accounts.sessions import revoke_session
+from beetsplug.beetstreamnext.core.accounts.sessions import current_session_id, revoke_session
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.accounts.credentials import webui_login
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles
@@ -45,6 +45,6 @@ def route_login() -> flask.Response:
 
 @auth_bp.route('/logout', methods=['POST'])
 def route_logout() -> flask.Response:
-    revoke_session(flask.session.get('sid'))
+    revoke_session(current_session_id())
     flask.session.clear()
     return flask.redirect(flask.url_for('public.home'))

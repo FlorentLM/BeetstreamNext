@@ -54,28 +54,27 @@
     <button type="submit" class="btn btn-primary btn-full">Save changes</button>
 </form>
 
+{% if user.username != current_username %}
 <hr class="modal-separator">
 
 <div class="form-group">
-    <form class="form-inline"
-          hx-trigger="confirmed"
-          hx-post="{{ url_for('admin.route_regenerate_api_key', username=user.username) }}"
-          hx-target="#usersTable"
-          hx-swap="innerHTML"
-          data-confirm="Generate a new API key for {{ user.username | e }}? The current key will stop working immediately.">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-warning btn-small">Update API key</button>
-    </form>
+    <div id="editUserAppPasswords">{{ app_passwords_html | safe }}</div>
 </div>
 
+<hr class="modal-separator">
+
 <div class="form-group">
-    <form class="form-inline"
-          hx-trigger="confirmed"
-          hx-post="{{ url_for('admin.route_revoke_user_sessions', username=user.username) }}"
-          hx-target="#usersTable"
-          hx-swap="innerHTML"
-          data-confirm="Sign {{ user.username | e }} out of every web session{% if user.username == current_username %} (except this one){% endif %}?">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-warning btn-small">Sign out web sessions</button>
-    </form>
+    <div class="list-header">
+        <label>Web sessions</label>
+        <form class="form-inline"
+              hx-trigger="confirmed"
+              hx-post="{{ url_for('admin.route_revoke_user_sessions', username=user.username) }}"
+              hx-target="#usersTable"
+              hx-swap="innerHTML"
+              data-confirm="Sign {{ user.username | e }} out of every web session?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-warning btn-small">Sign all out</button>
+        </form>
+    </div>
 </div>
+{% endif %}

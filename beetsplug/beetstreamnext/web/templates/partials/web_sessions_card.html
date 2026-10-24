@@ -1,0 +1,8 @@
+<div class="card">
+    <div class="table-header"><h2><span class="material-symbols-outlined">web_asset</span>Web sessions</h2></div>
+    <p class="card-hint">Browsers currently signed in to your account.</p>
+    <div id="webSessionList"
+         hx-get="{{ url_for(bp_name ~ '.route_list_sessions') }}"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
+</div>

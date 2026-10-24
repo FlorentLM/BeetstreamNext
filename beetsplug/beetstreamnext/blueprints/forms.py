@@ -5,6 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, SelectField, StringField
 from wtforms.validators import DataRequired, EqualTo, Length, Optional, Email
 
+from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.constants import BITRATE_CHOICES_STR
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
@@ -82,6 +83,15 @@ class DeleteAccountForm(FlaskForm):
     Form for a user deleting their own account: requires the current password.
     """
     current_password = PasswordField('Current password', validators=[DataRequired()])
+
+
+class AppPasswordForm(FlaskForm):
+    """
+    Form for creating an app password.
+    """
+    name = StringField('Name', validators=[DataRequired(), Length(max=64)])
+    role = SelectField('Access', choices=[(AppPasswordRole.FULL.value, 'Full access'), (AppPasswordRole.READONLY.value, 'Read only')])
+    expires_days = SelectField('Expires', choices=[('', 'Never'), ('30', 'In 30 days'), ('90', 'In 90 days'), ('365', 'In a year')])
 
 
 class RadioStationForm(FlaskForm):

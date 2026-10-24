@@ -34,5 +34,5 @@ ALL_USER_FIELDS = frozenset({
     'folder', 'maxBitRate'
 } | _ROLE_NAMES)
 
-PRIVATE_USER_FIELDS = frozenset({'password', 'avatar', 'api_key_hash'})
+PRIVATE_USER_FIELDS = frozenset({'password', 'avatar'})
 PUBLIC_USER_FIELDS = ALL_USER_FIELDS - PRIVATE_USER_FIELDS

@@ -81,7 +81,6 @@ def initialise_db() -> None:
         (
             username            TEXT PRIMARY KEY,
             password            BLOB NOT NULL,
-            api_key_hash        TEXT UNIQUE,
             email               TEXT,
             avatar              BLOB,
             avatarLastChanged   REAL,

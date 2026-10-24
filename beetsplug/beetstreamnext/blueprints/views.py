@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Dict
 import flask
 
+from beetsplug.beetstreamnext.core.accounts.app_passwords import list_app_passwords
+from beetsplug.beetstreamnext.core.accounts.sessions import current_session_id, list_user_sessions
 from beetsplug.beetstreamnext.core.media.shares import list_shares
 from beetsplug.beetstreamnext.core.services.radio import list_radios
 from beetsplug.beetstreamnext.core.services.external.radio_browser import query_radio_browser
@@ -31,9 +33,36 @@ def render_shares(username: Optional[str] = None) -> str:
 
 
 ##
+# App passwords and web sessions
+
+
+def render_app_passwords(username: str, bp_name: str) -> str:
+
+    return flask.render_template(
+        'partials/app_passwords.html',
+        app_passwords=list_app_passwords(username),
+        revoke_endpoint=f'{bp_name}.route_revoke_app_password',
+        url_args={},
+        target='#appPasswordList',
+        title='',
+        compact=False,
+    )
+
+
+def render_sessions(username: str, bp_name: str) -> str:
+
+    return flask.render_template(
+        'partials/web_sessions.html',
+        bp_name=bp_name,
+        sessions=list_user_sessions(username),
+        current_id=current_session_id()
+    )
+
+
+##
 # Radios
 
-def radio_endpoints(bp_name: str) -> dict[str, str]:
+def radio_endpoints(bp_name: str) -> Dict[str, str]:
     """Endpoint names of the radio routes registered on blueprint `bp_name`, for the templates."""
     return {
         key: f'{bp_name}.route_{key}_radio' for key in ('create', 'update', 'edit', 'delete')} | {
@@ -45,11 +74,14 @@ def radio_endpoints(bp_name: str) -> dict[str, str]:
 
 
 def render_radios(username: str, message: Optional[str] = None, bp_name: str = 'admin') -> str:
-    return flask.render_template('partials/radio_list.html',
-                                 radios=list_radios(username),
-                                 message=message,
-                                 ok=True,
-                                 radio_ep=radio_endpoints(bp_name))
+
+    return flask.render_template(
+        'partials/radio_list.html',
+        radios=list_radios(username),
+        message=message,
+        ok=True,
+        radio_ep=radio_endpoints(bp_name)
+    )
 
 
 def render_radio_discovery(query: Optional[str]) -> str:
@@ -83,17 +115,28 @@ def render_radio_discovery(query: Optional[str]) -> str:
 # Podcasts
 
 
-def render_channels(scope: str, username: Optional[str] = None, message: Optional[str] = None,
-                    ok: bool = True, notices: Optional[list] = None) -> str:
+def render_channels(
+        scope: str,
+        username: Optional[str] = None,
+        message: Optional[str] = None,
+        ok: bool = True,
+        notices: Optional[list] = None
+    ) -> str:
 
     pm = flask.current_app.config['podcast_manager']
     channels, total_size = pm.channels_overview(username if scope == 'account' else None)
 
     import_notices, importing = pm.opml_import_messages(flask.session.get('username') if scope == 'admin' else username)
 
-    return flask.render_template('partials/podcast_channels.html', scope=scope, channels=channels,
-                                 total_size=total_size, message=message, ok=ok,
-                                 notices=[*(notices or []), *import_notices], importing=importing)
+    return flask.render_template(
+        'partials/podcast_channels.html',
+        scope=scope, channels=channels,
+        total_size=total_size,
+        message=message,
+        ok=ok,
+        notices=[*(notices or []), *import_notices],
+        importing=importing
+    )
 
 
 def render_episodes(scope: str, channel_id: int, username: Optional[str] = None) -> str:
@@ -116,8 +159,7 @@ def download_recents_message(count: int) -> str:
     if count:
         return f"Downloading {count} recent episode{'s' if count != 1 else ''}."
 
-    return ("No episodes to download (already downloaded/downloading, or "
-            "'podcast_auto_download_count' is set to 0).")
+    return "No episodes to download (already downloaded/downloading, or 'podcast_auto_download_count' is set to 0)."
 
 
 def delete_downloads_message(count: int) -> str:
@@ -129,6 +171,7 @@ def delete_downloads_message(count: int) -> str:
 
 def opml_response(username: Optional[str] = None) -> flask.Response:
     """OPML export as a file download: every channel, or only `username`'s subscriptions."""
+
     pm = flask.current_app.config['podcast_manager']
 
     return flask.Response(

@@ -7,7 +7,6 @@ from .. import admin_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.credentials import start_session
-from beetsplug.beetstreamnext.core.storage.tempstore import temporary_store
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, list_users
 from beetsplug.beetstreamnext.blueprints.forms import OnboardingForm, flash_form_errors
 
@@ -29,16 +28,13 @@ def route_setup() -> flask.Response:
 
         try:
             username = safe_str(form.username.data)
-            raw_api_key = create_user(username, form.password.data, admin=True)
+            create_user(username, form.password.data, admin=True)
         except ValueError as e:
             flask.flash(str(e), 'error')
 
         else:
-            token = temporary_store.put({'username': username, 'key': raw_api_key})
-
-            # Auto-login into settings and show API key modal
-
-            start_session(username, _api_key_token=token)
+            # Auto-login into settings
+            start_session(username)
 
             return flask.redirect(flask.url_for('admin.route_settings'))
 

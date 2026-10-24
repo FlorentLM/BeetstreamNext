@@ -180,6 +180,7 @@ RATE_LIMIT_IP_MAX_FAILURES: int = 20
 RATE_LIMIT_IP_BLOCK_WINDOW: int = 3600
 
 MIN_PASSWORD_LEN: int = 8
+MAX_APP_PASSWORDS = 20  # per user
 
 
 ## Server defaults

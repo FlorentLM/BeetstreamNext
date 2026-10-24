@@ -94,6 +94,26 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS app_passwords
+        (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            username         TEXT NOT NULL,
+            name             TEXT NOT NULL,
+            secret_encrypted BLOB,             -- migrated rows that were apiKey-only can be NULL
+            api_key_hash     TEXT UNIQUE,      -- sha256 of the secret
+            role             TEXT NOT NULL DEFAULT 'readonly' CHECK (role IN ('full', 'readonly')),
+            created          REAL NOT NULL DEFAULT (unixepoch()),
+            last_used        REAL,
+            last_ip          TEXT,
+            expires_at       REAL,
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_app_passwords_username ON app_passwords (username)""")
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS web_sessions
         (
             id         TEXT PRIMARY KEY,   -- SHA-256 of the session id from the browser's cookie

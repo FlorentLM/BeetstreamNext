@@ -127,6 +127,45 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_6_VER
 
+    ## _________ Migration 7: Version 6 -> 7 (app passwords: the single users.api_key_hash moves
+    ##            to an app password named "Default API key"), 24/10/2026
+    MIGRATION_7_VER = 7
+
+    if curr_version < MIGRATION_7_VER:
+        have_users = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"""
+        ).fetchone()
+
+        if have_users:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS app_passwords
+                (
+                    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username         TEXT NOT NULL,
+                    name             TEXT NOT NULL,
+                    secret_encrypted BLOB,                 -- migrated rows that were apiKey-only can be NULL
+                    api_key_hash     TEXT UNIQUE,          -- sha256 of the secret
+                    role             TEXT NOT NULL DEFAULT 'readonly' CHECK (role IN ('full', 'readonly')),
+                    created          REAL NOT NULL DEFAULT (unixepoch()),
+                    last_used        REAL,
+                    last_ip          TEXT,
+                    expires_at       REAL,
+                    FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                )
+                """
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO app_passwords (username, name, api_key_hash, role)
+                SELECT username, 'Default API key', api_key_hash, 'full'
+                FROM users
+                WHERE api_key_hash IS NOT NULL
+                """
+            )
+
+        curr_version = MIGRATION_7_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

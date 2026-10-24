@@ -191,14 +191,14 @@ def _hash_for(key: str) -> str:
     return hashlib.sha256(base64.urlsafe_b64decode(key)).hexdigest()
 
 
-def get_cipher() -> Fernet | None:
+def get_cipher() -> Fernet:
     """
     Cipher for BEETSTREAMNEXT_KEY.
-    Raises InvalidKeyError if the key absent or is malformed.
+    Raises InvalidKeyError if the key is absent or malformed.
     """
     key = os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
-        return None
+        raise InvalidKeyError('BEETSTREAMNEXT_KEY is not set')
     return _cipher_for(key)
 
 

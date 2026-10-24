@@ -93,8 +93,6 @@ class SettingsStore:
 
         # Load from db
         db_values = {}
-        cipher = get_cipher()
-
         with database() as db:
             rows = db.execute(
                 """
@@ -109,8 +107,8 @@ class SettingsStore:
                 continue
 
             try:
-                if is_enc and cipher:
-                    db_values[key] = json.loads(cipher.decrypt(raw.encode()).decode())
+                if is_enc:
+                    db_values[key] = json.loads(get_cipher().decrypt(raw.encode()).decode())
                 else:
                     db_values[key] = json.loads(raw) if raw is not None else None
             except Exception:
@@ -238,15 +236,10 @@ class SettingsStore:
         serializable_value = list(to_store) if isinstance(to_store, set) else to_store
 
         # Persist to db
-        cipher = get_cipher()
-        is_sensitive = spec.get('sensitive', False)
-
-        if is_sensitive and cipher:
-            stored_val = cipher.encrypt(json.dumps(serializable_value).encode()).decode()
+        if spec.get('sensitive', False):
+            stored_val = get_cipher().encrypt(json.dumps(serializable_value).encode()).decode()
             encrypted_flag = 1
         else:
-            if is_sensitive:
-                bsn_logger.warning(f"Storing sensitive setting '{key}' unencrypted (no key).")
             stored_val = json.dumps(serializable_value)
             encrypted_flag = 0
 

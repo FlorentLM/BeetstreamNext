@@ -48,15 +48,8 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
 
     user_dict = dict(zip(column_names, row, strict=True))
 
-    cipher = get_cipher()
-
-    if 'password' in user_dict.keys():
-        password = user_dict.pop('password')
-
-        if cipher:
-            user_dict['password'] = cipher.decrypt(password).decode("utf-8")
-        else:
-            user_dict['password'] = password.decode('utf-8') if isinstance(password, bytes) else password
+    if 'password' in user_dict:
+        user_dict['password'] = get_cipher().decrypt(user_dict['password']).decode('utf-8')
 
     return user_dict
 
@@ -74,9 +67,8 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
 
     filtered_dict = filter_dict(_user_dict, keep=ALL_USER_FIELDS)
 
-    cipher = get_cipher()
-    if 'password' in filtered_dict and cipher:
-        filtered_dict['password'] = cipher.encrypt(filtered_dict['password'].encode("utf-8"))
+    if 'password' in filtered_dict:
+        filtered_dict['password'] = get_cipher().encrypt(filtered_dict['password'].encode('utf-8'))
 
     if insert_only:
         # Creating a new user

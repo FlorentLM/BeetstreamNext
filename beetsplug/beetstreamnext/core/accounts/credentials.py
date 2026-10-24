@@ -25,9 +25,7 @@ def _dummy_token(cipher: Fernet) -> bytes:
 def _dummy_stored_password() -> str:
     """Decrypt a dummy Fernet token to mimic the cost of real password retrieval."""
 
-    cipher = get_cipher()      # may not exist yet
-    if cipher is None:
-        return _DUMMY_PASSWORD
+    cipher = get_cipher()
 
     try:
         return cipher.decrypt(_dummy_token(cipher)).decode('utf-8')

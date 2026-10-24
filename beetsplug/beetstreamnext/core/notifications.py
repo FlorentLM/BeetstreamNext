@@ -76,18 +76,13 @@ VARIABLES: Dict[str, str] = {
 
 def _encode_urls(urls: List[str]) -> Tuple[str, int]:
     raw = json.dumps(urls)
-    cipher = get_cipher()
-    if cipher:
-        return cipher.encrypt(raw.encode()).decode(), 1
-    bsn_logger.warning('Storing notification URLs unencrypted (no key).')
-    return raw, 0
+    return get_cipher().encrypt(raw.encode()).decode(), 1
 
 
 def _decode_urls(stored: str, encrypted: int) -> List[str]:
     if encrypted:
-        cipher = get_cipher()
         try:
-            stored = cipher.decrypt(stored.encode()).decode() if cipher else ''
+            stored = get_cipher().decrypt(stored.encode()).decode()
         except InvalidToken:
             bsn_logger.warning('Could not decrypt notification URLs (BEETSTREAMNEXT_KEY changed?).')
             return []

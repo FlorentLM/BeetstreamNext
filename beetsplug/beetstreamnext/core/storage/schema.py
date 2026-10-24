@@ -4,7 +4,7 @@ import sqlite3
 import flask
 
 from beetsplug.beetstreamnext.constants import DB_BUSY_TIMEOUT_MS
-from beetsplug.beetstreamnext.core.storage.encryption import get_cipher, get_key_hash
+from beetsplug.beetstreamnext.core.storage.encryption import get_key_hash
 from beetsplug.beetstreamnext.core.storage.migrations import apply_db_migrations
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 
@@ -36,7 +36,6 @@ def initialise_db() -> None:
         """
     )
 
-    cipher = get_cipher()
     existing = cur.execute(
         """
         SELECT value FROM encryption WHERE key = 'key_hash'
@@ -44,41 +43,20 @@ def initialise_db() -> None:
     ).fetchone()
 
     if existing is None:
-        # First run: record current key hash (if encryption is configured)
-        if cipher is not None:
-            cur.execute(
-                """
-                INSERT INTO encryption (key, value) VALUES ('key_hash', ?)
-                """, (get_key_hash(),),
-            )
-    else:
-        stored_hash = existing[0]   # could be NULL from a pre-encryption install
+        cur.execute(
+            """
+            INSERT INTO encryption (key, value) VALUES ('key_hash', ?)
+            """, (get_key_hash(),),
+        )
 
-        if cipher is not None:
-            if stored_hash is None:
-                # Upgrading a clear DB to encrypted: record new hash
-                cur.execute(
-                    """
-                    UPDATE encryption SET value = ? WHERE key = 'key_hash'
-                    """, (get_key_hash(),),
-                )
-
-            elif stored_hash != get_key_hash():
-                conn.close()
-                raise RuntimeError(
-                    'BEETSTREAMNEXT_KEY has changed since the database was initialised. '
-                    'Stored passwords are unrecoverable with the current key.\n'
-                    f'Restore the original key, or delete the database '
-                    f"(`{flask.current_app.config['BSN_DB_PATH']}`) and run initial setup again."
-                )
-
-        elif stored_hash is not None:
-            # Cipher gone but db has encrypted passwords: no good
-            conn.close()
-            raise RuntimeError(
-                'Database contains encrypted passwords but BEETSTREAMNEXT_KEY is not set. '
-                'Passwords cannot be decrypted.'
-            )
+    elif existing[0] != get_key_hash():
+        conn.close()
+        raise RuntimeError(
+            'BEETSTREAMNEXT_KEY has changed since the database was initialised. '
+            'Stored passwords are unrecoverable with the current key.\n'
+            f'Restore the original key, or delete the database '
+            f"(`{flask.current_app.config['BSN_DB_PATH']}`) and run initial setup again."
+        )
 
     cur.execute(
         """

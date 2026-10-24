@@ -11,6 +11,7 @@ from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.core.library.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users, get_user_roles
 from beetsplug.beetstreamnext.blueprints.subsonic.auth import authenticate_subsonic
+from beetsplug.beetstreamnext.blueprints.subsonic.permissions import app_role_allows
 from beetsplug.beetstreamnext.utils.text import safe_str, split_list
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_error
 
@@ -103,7 +104,7 @@ def _before_request() -> flask.Response | None:
         return
 
     # Attempt authentication
-    ok, error_code, username = authenticate_subsonic(r)
+    ok, error_code, username, app_role = authenticate_subsonic(r)
     if not ok:
         rate_limiter.record(client_ip, attempted_user)
         if is_api:
@@ -113,8 +114,15 @@ def _before_request() -> flask.Response | None:
     # On success: clear pair
     rate_limiter.reset(client_ip, attempted_user or username)
 
+    if app_role is not None and not app_role_allows(app_role, flask.request.path):
+        bsn_logger.warning(f"Blocking '{flask.request.path}' for {app_role} app password of '{username}'")
+        if is_api:
+            return subsonic_error(50, message=f'This app password ({app_role}) is not allowed to do that.', resp_fmt=resp_fmt)
+        flask.abort(403)
+
     flask.g.lib = app.config['lib']
     flask.g.username = username
+    flask.g.app_role = app_role
     flask.g.user_data = get_user_roles(username)
     flask.g.playlist_provider = app.config['playlist_provider']
     flask.g.podcast_manager = app.config['podcast_manager']

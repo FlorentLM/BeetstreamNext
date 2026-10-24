@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 
 
 def authenticate_subsonic(flask_req_values: 'CombinedMultiDict'):
+    """
+    Returns (ok, error_code, username, app_password_role).
+    Role is None for the main (non-app_ password.
+    """
     r = flask_req_values
     api_key = r.get('apiKey', default='', type=str)
     user = r.get('u', default='', type=safe_str)
@@ -30,31 +34,32 @@ def authenticate_subsonic(flask_req_values: 'CombinedMultiDict'):
     if api_key:
         if user or token or salt or clearpass:
             # 43: "Multiple conflicting authentication mechanisms provided."
-            return False, 43, None
+            return False, 43, None, None
 
         matched = authenticate_api_key(api_key, ip=flask.request.remote_addr)
         if matched:
-            return True, 0, matched[0]
+            return True, 0, matched[0], matched[1]
 
         # 40: "Wrong username or password."
-        return False, 40, None
+        return False, 40, None, None
 
     # Legacy (MD5 / password)
     else:
         if clearpass and (token or salt):
             # 43: "Multiple conflicting authentication mechanisms provided."
-            return False, 43, None
+            return False, 43, None, None
 
         if not app.config.get('legacy_auth', True):
             # 42: "Provided authentication mechanism not supported."
-            return False, 42, None
+            return False, 42, None, None
 
         if not user:
             # 10: "Required parameter is missing."
-            return False, 10, None
+            return False, 10, None, None
         
-        if authenticate_legacy(user, token, salt, clearpass, ip=flask.request.remote_addr) is not None:
-            return True, 0, user
+        role = authenticate_legacy(user, token, salt, clearpass, ip=flask.request.remote_addr)
+        if role is not None:
+            return True, 0, user, role
 
         success, code, username = check_password(user, token, salt, clearpass)
-        return success, code, username
+        return success, code, username, None

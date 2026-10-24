@@ -25,9 +25,13 @@ See [Configuration reference](../configuration.md) for the precedence rules.
 
 ### Users
 
-Create/update/delete users, toggle their [roles](../features/accounts-and-permissions.md#roles), regenerate an API key, and manage avatars.
+Create/update/delete users, toggle their [roles](../features/accounts-and-permissions.md#roles), manage avatars, and see or revoke their [app passwords](../features/app-passwords.md).
 
 <img class="screenshot" src="../images/light/screenshot_users.png" alt="Users">
+
+### Connections
+
+Your existing [app passwords](../features/app-passwords.md) and signed-in web sessions.
 
 ### Server
 

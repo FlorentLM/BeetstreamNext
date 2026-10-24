@@ -129,5 +129,5 @@ Alongside the base spec, **BeetstreamNext** implements all the [OpenSubsonic ext
 
 Both authentication schemes from the spec are supported:
 
-- **API-key authentication** Always available, and recommended.
+- **API-key authentication** Always available, and recommended. See [app passwords](./features/app-passwords.md).
 - **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](./configuration.md#legacy_auth) if your client needs it.

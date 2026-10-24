@@ -234,7 +234,7 @@ Allowed Host headers (domain names/IPs, comma-separated).<br>If empty, all hosts
 
 ### `legacy_auth`
 
-Allow legacy MD5 token / cleartext password authentication. API-key authentication always works.
+Allow legacy MD5 token / cleartext password authentication. API-key authentication (see [app passwords](./features/app-passwords.md)) always works.
 
 *type:* `bool`
 

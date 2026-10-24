@@ -13,9 +13,11 @@
   - A `Host` header that isn't just a `hostname[:port]` (scheme, path, `user@`, spaces, control characters...) is always refused (with HTTP 400).
 
 - **Legacy authentication**: [`legacy_auth`](../configuration.md#legacy_auth) controls whether the older MD5-token/cleartext Subsonic authentication mode is accepted. Many clients still need it.
-  - **Remark:** API-key authentication is always available regardless of this setting.
+  - **Remark:** API-key authentication is always available regardless of this setting, so clients that support `apiKey` can use an [app password](./app-passwords.md) with this turned off.
   
   - **Remark:** The Subsonic protocol sends credentials in the URL query string, so they can end up in **reverse-proxy access logs**. See [Credentials in proxy logs](../reverse-proxy.md#credentials-in-proxy-logs).
+
+- **App passwords**: clients should use [app passwords](./app-passwords.md), which can be revoked, limited to read-only access and set to expire, instead of the account password.
 
 - **User management over the API**: [`api_user_management`](../configuration.md#api_user_management) controls whether admins can create, update and delete users, and change other users' passwords, through the Subsonic API. It is off by default. The admin panel is not affected.
 

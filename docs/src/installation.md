@@ -563,7 +563,7 @@ The first time the server starts with no users in the database, it walks you thr
 
 - **Fully unattended** (for instance a Docker container with no TTY and nobody to click through a setup page): *before* starting the server, run once `create-user --noinput` (with `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` set). See [below](#unattended-first-run).
 
-Either way, the admin user account's API key is shown _once_. **Save it**. It's what you'll enter into a Subsonic client instead of a password when using API-key authentication.
+Creating a user doesn't create any credential for Subsonic clients. Once signed in, create an [app password](./features/app-passwords.md).
 
 Once at least one user exists, use `--create-user`/`create-user` (or the admin panel's Users tab) to create other user accounts.
 
@@ -571,7 +571,7 @@ Once at least one user exists, use `--create-user`/`create-user` (or the admin p
 
 You can setup the first admin account in a completely unattended way by using `--noinput` with the `create-user` command.
 
-This reads the `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` env vars, creates that admin account, prints its API-key, and exits immediately (it doesn't start the server).
+This reads the `BSN_ADMIN_USER`/`BSN_ADMIN_PASSWORD` env vars, creates that admin account, and exits immediately (it doesn't start the server).
 
 You can also add `BSN_NO_KEY_FILE=1` to prevent it from writing the `.env` file containing the `BEETSTREAMNEXT_KEY` server key.
 
@@ -594,4 +594,4 @@ Point any Subsonic/OpenSubsonic/Navidrome client (see [tested clients](./clients
 
 ---
 
-See the [configuration reference](../configuration.md) for any of the settings mentioned here.
+See the [configuration reference](./configuration.md) for any of the settings mentioned here.

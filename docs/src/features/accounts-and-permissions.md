@@ -4,9 +4,12 @@
 
 Both authentication schemes from the Subsonic/OpenSubsonic spec are supported:
 
-- **API-key authentication**: This scheme is always supported and is the recommended one.
+- **API-key authentication**: This scheme is always supported and is the recommended one. See [app passwords](./app-passwords.md).
 
-- **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](../configuration.md#server--network) if you need it.
+- **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](../configuration.md#server--network) if you need it. It accepts either an [app password](./app-passwords.md) or the account password.
+
+> [!IMPORTANT]
+> Clients should be given an [app password](./app-passwords.md) rather than the account password. The account password will stop being accepted in a coming update.
 
 ## Multi-user system
 
@@ -40,7 +43,7 @@ A new user account starts with the defaults above unless overridden at creation.
 
 ## User account page
 
-Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, API key, and internet radio stations, and (if they are allowed) their public shares and podcast subscriptions.
+Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, [app passwords](./app-passwords.md), and internet radio stations, and (if they are allowed) their public shares and podcast subscriptions.
 
 > [!IMPORTANT]
 > Unlike the admin panel, this is **not** restrictable by host (see [`admin_hostname`](../configuration.md#admin_hostname)). Admins who sign in from a hostname other than `admin_hostname` will see the non-admin view of their account.

@@ -95,10 +95,10 @@ example.com {
 }
 ```
 
-Prefer clients that support [API keys](./features/accounts-and-permissions.md) (`apiKey`) over passwords where possible: an API key can be revoked on its own, whereas a leaked password is also the user's web UI login (and, for admins, the admin panel login).
+Prefer clients that support API keys (`apiKey`) over passwords where possible, and give them an [app password](./features/app-passwords.md) rather than the account password: an app password can be revoked (and limited to read-only access), whereas a leaked account password is also the user's web UI login (and, for admins, the admin panel login).
 
 > [!TIP]
-> Avoid using an account with the **Admin** role in a Subsonic client. Create a separate non-admin account for streaming, and keep the admin account for the browser only. That way, whatever ends up in a log can't open the admin panel or manage users.
+> You should also just avoid using an account with the **Admin** role in a Subsonic client (create a non-admin account for that).
 
 Also, use HTTPS so the URLs aren't readable on the network.
 

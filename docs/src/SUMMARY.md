@@ -7,6 +7,7 @@
 - [Features overview](./features/index.md)
 - [Library augmentation](features/library-augmentation.md)
 - [Accounts, permissions & chat](./features/accounts-and-permissions.md)
+- [App passwords](./features/app-passwords.md)
 - [Streaming & audio quality](./features/streaming.md)
 - [Playlists](./features/playlists.md)
 - [Security](features/security.md)

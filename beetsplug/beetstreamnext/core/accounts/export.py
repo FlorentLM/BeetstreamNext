@@ -37,9 +37,14 @@ def export_user_data(username: str) -> Dict[str, Any]:
                 "SELECT song_id FROM play_queue_entries WHERE username = ? ORDER BY position", (username,)
             ).fetchall()]
 
+        app_passwords = _get_rows(db, """
+            SELECT name, role, created, last_used, expires_at FROM app_passwords WHERE username = ?
+        """, (username,))
+
         return {
             'exported_at': time.time(),
             'profile': profile,
+            'app_passwords': app_passwords,
             'likes': _get_rows(db, "SELECT item_id, starred_at FROM likes WHERE username = ?", (username,)),
             'ratings': _get_rows(db, "SELECT item_id, rating, rated_at FROM ratings WHERE username = ?", (username,)),
             'bookmarks': _get_rows(db, "SELECT song_id, position, comment, created, changed FROM bookmarks WHERE username = ?", (username,)),

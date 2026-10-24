@@ -57,7 +57,7 @@
 
     // One-time API key copy
 
-    function copyApiKey(button) {
+    function copyAppPassword(button) {
         const el = document.getElementById(button.dataset.target || 'apiKeyValue');
         if (!el) return;
 
@@ -167,8 +167,8 @@
             case 'toggle-theme':
                 toggleTheme();
                 break;
-            case 'copy-api-key':
-                copyApiKey(target);
+            case 'copy-app-password':
+                copyAppPassword(target);
                 break;
             case 'pick-file': {
                 const fileInput = document.getElementById(target.dataset.target);

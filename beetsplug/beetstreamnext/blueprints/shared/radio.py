@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import Callable
+from typing import Callable, Optional
 import flask
 
 from beetsplug.beetstreamnext.blueprints import views
+from beetsplug.beetstreamnext.blueprints.shared import route_registrar
 from beetsplug.beetstreamnext.blueprints.views import modal_error, radio_endpoints
 from beetsplug.beetstreamnext.blueprints.forms import RadioStationForm, form_error_messages
 from beetsplug.beetstreamnext.core.media.images import sniff_image, send_stored_art, read_uploaded_image
@@ -15,18 +16,13 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 
 def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None:
     """
-    Admin panel and account page expose the same routes, only the auth decorator differs.
+    Admin panel and account page expose the same radio routes,
+    only the auth decorator differs.
     """
-
     bp_name = bp.name
+    route = route_registrar(bp, login_required)
 
-    def route(rule: str, endpoint: str, methods: list[str]) -> Callable:
-        def register(view: Callable) -> Callable:
-            bp.add_url_rule(rule, endpoint=endpoint, view_func=login_required(view), methods=methods)
-            return view
-        return register
-
-    def render(message: str | None = None) -> str:
+    def render(message: Optional[str] = None) -> str:
         return views.render_radios(flask.session['username'], message, bp_name=bp_name)
 
     def own_station_or_404(station_id: int) -> dict:
@@ -44,11 +40,11 @@ def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None
 
         return dict(row)
 
-    @route('/radios', 'route_radios', ['GET'])
+    @route('/radios', ['GET'])
     def radios() -> str:
         return render()
 
-    @route('/radios/create', 'route_create_radio', ['POST'])
+    @route('/radios/create', ['POST'])
     def create_radio() -> str | flask.Response:
         form = RadioStationForm()
 
@@ -71,7 +67,7 @@ def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None
 
         return render(f"Radio station '{form.name.data}' created.")
 
-    @route('/radios/update/<int:station_id>', 'route_update_radio', ['POST'])
+    @route('/radios/update/<int:station_id>', ['POST'])
     def update_radio(station_id: int) -> str | flask.Response:
         station = own_station_or_404(station_id)
         form = RadioStationForm()
@@ -94,7 +90,7 @@ def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None
 
         return render(f"Radio station '{form.name.data}' updated.")
 
-    @route('/radios/<int:station_id>/edit', 'route_edit_radio', ['GET'])
+    @route('/radios/<int:station_id>/edit', ['GET'])
     def edit_radio(station_id: int) -> str:
         """Pre-filled edit form for a radio station, lazy-loaded."""
         station = own_station_or_404(station_id)
@@ -110,16 +106,16 @@ def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None
             }),
         )
 
-    @route('/radios/delete/<int:station_id>', 'route_delete_radio', ['POST'])
+    @route('/radios/delete/<int:station_id>', ['POST'])
     def delete_radio(station_id: int) -> str:
         delete_station(station_id, owner=flask.session['username'])
         return render('Radio station deleted.')
 
-    @route('/radios/discover', 'route_discover_radios', ['GET'])
+    @route('/radios/discover', ['GET'])
     def discover_radios() -> str:
         return views.render_radio_discovery(flask.request.args.get('q'))
 
-    @route('/radios/favicon-proxy', 'route_radio_favicon_proxy', ['GET'])
+    @route('/radios/favicon-proxy', ['GET'])
     def radio_favicon_proxy() -> flask.Response:
         """Same-origin preview of a radio search result's icon."""
         name = (flask.request.args.get('name') or '').strip()
@@ -135,7 +131,7 @@ def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None
 
         return flask.send_file(BytesIO(image), mimetype=mimetype)
 
-    @route('/radios/<int:station_id>/image', 'route_serve_radio_image', ['GET'])
+    @route('/radios/<int:station_id>/image', ['GET'])
     def serve_radio_image(station_id: int) -> flask.Response:
         own_station_or_404(station_id)
 

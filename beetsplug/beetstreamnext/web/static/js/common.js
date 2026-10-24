@@ -167,6 +167,9 @@
             case 'toggle-theme':
                 toggleTheme();
                 break;
+            case 'reset-app-password-form':
+                document.getElementById('appPasswordForm')?.reset();
+                break;
             case 'copy-app-password':
                 copyAppPassword(target);
                 break;

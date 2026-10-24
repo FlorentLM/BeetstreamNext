@@ -134,6 +134,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument('--expires', type=int, metavar='DAYS',
                         help='With create-app-password: expire after this many days (default: never)')
 
+    parser.add_argument('--as-password', action='store_true', default=False,
+                        help='With create-app-password: also allow it as a password for legacy clients (stores a reversible copy)')
+
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
     if args.command in _USER_ARG_COMMANDS and not args.username:
@@ -247,7 +250,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 cmd_change_passwd(args.username)
 
             elif args.command == 'create-app-password':
-                cmd_create_app_password(args.username, args.name, args.access, args.expires)
+                cmd_create_app_password(args.username, args.name, args.access, args.expires, args.as_password)
 
             else:
                 cmd_list_users()

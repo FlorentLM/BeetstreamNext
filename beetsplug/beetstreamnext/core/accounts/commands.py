@@ -235,7 +235,8 @@ def cmd_create_app_password(
         username: str,
         name: str,
         access: str = AppPasswordRole.FULL,
-        expires_days: int | None = None
+        expires_days: int | None = None,
+        as_password: bool = False
 ) -> None:
     """
     CLI command: Create an app password for a user.
@@ -248,7 +249,7 @@ def cmd_create_app_password(
     expires_at = time.time() + expires_days * 86400 if expires_days else None
 
     try:
-        secret = create_app_password(username, name, AppPasswordRole(access), expires_at)
+        secret = create_app_password(username, name, AppPasswordRole(access), expires_at, as_password)
     except ValueError as e:
         print(f'[ERROR] {e}', file=sys.stderr)
         raise SystemExit(1) from e

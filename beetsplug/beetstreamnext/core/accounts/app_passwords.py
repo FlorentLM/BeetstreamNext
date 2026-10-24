@@ -39,9 +39,15 @@ def create_app_password(
         username: str,
         name: str,
         role: 'AppPasswordRole' = AppPasswordRole.FULL,
-        expires_at: Optional[float] = None
+        expires_at: Optional[float] = None,
+        as_password: bool = False
 ) -> str:
-    """Create and return a new secret. It is only available now."""
+    """
+    Create and return a new secret. It is only available now.
+
+    Without `as_password` only a hash of the secret is stored:
+        it works as an API key but cannot be used for legacy (t+s / p) logins.
+    """
 
     name = (name or '').strip()
     if not name:
@@ -57,16 +63,26 @@ def create_app_password(
             """, (username,)
         ).fetchone()[0]
 
+        if db.execute(
+            """
+            SELECT 1 
+            FROM app_passwords 
+            WHERE username = ? AND name = ? COLLATE NOCASE
+            """, (username, name)
+        ).fetchone():
+            raise ValueError(f"You already have an app password named '{name}'.")
+
         if count >= MAX_APP_PASSWORDS:
             raise ValueError(f'Maximum of {MAX_APP_PASSWORDS} app passwords reached.')
 
         secret = secrets.token_urlsafe(32)
+        encrypted = get_cipher().encrypt(secret.encode('utf-8')) if as_password else None
 
         db.execute(
             """
             INSERT INTO app_passwords (username, name, secret_encrypted, api_key_hash, role, expires_at)
             VALUES (?, ?, ?, ?, ?, ?)
-            """, (username, name, get_cipher().encrypt(secret.encode('utf-8')), sha256_hex(secret), AppPasswordRole(role).value, expires_at)
+            """, (username, name, encrypted, sha256_hex(secret), AppPasswordRole(role).value, expires_at)
         )
 
     return secret
@@ -78,7 +94,7 @@ def list_app_passwords(username: str) -> List[dict]:
     with database() as db:
         rows = db.execute(
             """
-            SELECT id, name, role, created, last_used, last_ip, expires_at
+            SELECT id, name, role, created, last_used, last_ip, expires_at, secret_encrypted IS NOT NULL AS as_password
             FROM app_passwords
             WHERE username = ?
             ORDER BY created, id

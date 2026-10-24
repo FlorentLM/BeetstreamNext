@@ -106,6 +106,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('--name', dest='app_password_name', metavar='NAME', help='With --create-app-password: name of the app password')
         cmd.parser.add_option('--access', dest='app_password_access', choices=['full', 'readonly'], default='full', help='With --create-app-password: access level (default: full)')
         cmd.parser.add_option('--expires', dest='app_password_expires', type='int', metavar='DAYS', help='With --create-app-password: expire after this many days (default: never)')
+        cmd.parser.add_option('--as-password', dest='app_password_as_password', action='store_true', default=False, help='With --create-app-password: also allow it as a password for legacy clients (stores a reversible copy)')
         cmd.parser.add_option('--list-users', action='store_true',  default=False, help='List all registered users')
 
         # Maintenance
@@ -165,7 +166,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
                         username=opts.app_password_user,
                         name=opts.app_password_name,
                         access=opts.app_password_access,
-                        expires_days=opts.app_password_expires
+                        expires_days=opts.app_password_expires,
+                        as_password=opts.app_password_as_password
                     )
 
                 return

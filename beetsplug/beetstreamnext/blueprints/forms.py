@@ -92,6 +92,7 @@ class AppPasswordForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(max=64)])
     role = SelectField('Access', choices=[(AppPasswordRole.FULL.value, 'Full access'), (AppPasswordRole.READONLY.value, 'Read only')])
     expires_days = SelectField('Expires', choices=[('', 'Never'), ('30', 'In 30 days'), ('90', 'In 90 days'), ('365', 'In a year')])
+    as_password = BooleanField('Usable as password')
 
 
 class RadioStationForm(FlaskForm):

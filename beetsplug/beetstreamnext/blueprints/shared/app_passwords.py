@@ -4,6 +4,7 @@ import time
 from typing import Callable
 import flask
 
+from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.blueprints import views
 from beetsplug.beetstreamnext.blueprints.forms import AppPasswordForm, form_error_messages
 from beetsplug.beetstreamnext.blueprints.shared import route_registrar
@@ -34,8 +35,10 @@ def register_app_password_routes(bp: flask.Blueprint, login_required: Callable) 
 
         expires_at = time.time() + int(form.expires_days.data) * 86400 if form.expires_days.data else None
 
+        as_password = bool(form.as_password.data) and app.config.get('legacy_auth', True)
+
         try:
-            secret = store.create_app_password(username, form.name.data, AppPasswordRole(form.role.data), expires_at)
+            secret = store.create_app_password(username, form.name.data, AppPasswordRole(form.role.data), expires_at, as_password)
         except ValueError as e:
             return flask.render_template('partials/action_result.html', message=str(e), ok=False)
 

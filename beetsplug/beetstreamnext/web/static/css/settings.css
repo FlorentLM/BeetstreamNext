@@ -648,6 +648,11 @@ input:focus, select:focus {
     margin-bottom: 0;
 }
 
+.role-item-hint {
+    margin-left: 0.4rem;
+    color: var(--text-muted);
+}
+
 .role-item input {
     margin-right: 8px;
     accent-color: var(--primary);

@@ -67,6 +67,7 @@ beetstreamnext [command] [username] [options]
 | `--threads N`           | `BSN_THREADS`      | Waitress worker threads                                                                                          |
 | `--debug`               | —                  | Run in Flask debug mode                                                                                          |
 | `--force-trust-host`    | —                  | Force debug mode even when not bound to localhost (_NOT RECOMMENDED_)                                            |
+| `--as-password`         | —                  | With `create-app-password`: also usable as a password by legacy clients                                          |
 | `--noinput`             | —                  | With `create-user`: non-interactive, see [Unattended first run](../installation.md#unattended-first-run)         |
 
 See the [configuration reference](../configuration.md) for the full settings precedence rules, or [Installation](../installation.md#standalone-mode) for more on `library-db`/`music-root` specifically.

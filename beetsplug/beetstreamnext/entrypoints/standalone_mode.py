@@ -18,15 +18,17 @@ from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
 from beetsplug.beetstreamnext.core.runtime.startup import prestartup_config, run_server
 from beetsplug.beetstreamnext.core.accounts.commands import (
-    cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd
+    cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd,
+    cmd_create_app_password
 )
+from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
 from beetsplug.beetstreamnext.core.storage.schema import initialise_db
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.system import get_env, is_docker
 
 
-_USER_ARG_COMMANDS = {'update-user', 'delete-user', 'passwd'}
+_USER_ARG_COMMANDS = {'update-user', 'delete-user', 'passwd', 'create-app-password'}
 
 
 def _cascade_value(*values: Any, default: Any = None) -> Any:
@@ -97,11 +99,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     )
     parser.add_argument(
         'command', nargs='?', default='run',
-        choices=['run', 'create-user', 'update-user', 'delete-user', 'passwd', 'list-users', 'clear-cache'],
+        choices=['run', 'create-user', 'update-user', 'delete-user', 'passwd', 'create-app-password', 'list-users', 'clear-cache'],
         help='Action to perform (default: run)',
     )
     parser.add_argument('username', nargs='?',
-                        help='Username, for update-user/delete-user/passwd')
+                        help='Username, for update-user/delete-user/passwd/create-app-password')
     parser.add_argument('--config', metavar='PATH',
                         help=f'YAML config file (default: {DEFAULT_CONFIG_PATH} if present)')
     parser.add_argument('--library-db', metavar='PATH',
@@ -125,10 +127,20 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument('--noinput', action='store_true', default=False,
                         help="With create-user: non-interactive one-time setup, requires BSN_ADMIN_USER/BSN_ADMIN_PASSWORD")
 
+    parser.add_argument('--name', metavar='NAME',
+                        help='With create-app-password: a name for the app password')
+    parser.add_argument('--access', choices=[r.value for r in AppPasswordRole], default=AppPasswordRole.FULL.value,
+                        help='With create-app-password: access level (default: full)')
+    parser.add_argument('--expires', type=int, metavar='DAYS',
+                        help='With create-app-password: expire after this many days (default: never)')
+
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
     if args.command in _USER_ARG_COMMANDS and not args.username:
         parser.error(f"'{args.command}' requires a USERNAME argument.")
+
+    if args.command == 'create-app-password' and not args.name:
+        parser.error("'create-app-password' requires --name.")
 
     if args.noinput and args.command != 'create-user':
         parser.error("--noinput is only valid with the 'create-user' command")
@@ -217,7 +229,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         cmd_clear_cache()
         return
 
-    if args.command in ('create-user', 'update-user', 'delete-user', 'passwd', 'list-users'):
+    if args.command in ('create-user', 'update-user', 'delete-user', 'passwd', 'create-app-password', 'list-users'):
 
         with app.app_context():
             initialise_db()
@@ -233,6 +245,9 @@ def main(argv: Optional[List[str]] = None) -> None:
 
             elif args.command == 'passwd':
                 cmd_change_passwd(args.username)
+
+            elif args.command == 'create-app-password':
+                cmd_create_app_password(args.username, args.name, args.access, args.expires)
 
             else:
                 cmd_list_users()

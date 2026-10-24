@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import getpass
 import sys
+import time
 from typing import Sequence
 
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -12,6 +13,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches
+from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole, create_app_password
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, list_users, get_user_roles, update_user
 
 
@@ -71,7 +73,11 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
             f"{TermColors.OKGREEN + TermColors.BOLD}Admin user '{safe_str(env_user)}' created "
             f"from BSN_ADMIN_USER/BSN_ADMIN_PASSWORD.{TermColors.ENDC}",
             '',
-            '  ▶  Create an app password for your Subsonic clients from the web UI (Passwords tab).',
+            'Create an app password for your Subsonic clients with:',
+            '',
+            '  ▶  create-app-password USERNAME --name NAME',
+            '',
+            'or from the web UI.',
             '',
         ])
         return
@@ -105,7 +111,11 @@ def cmd_create_user(force_admin: bool = False, noinput: bool = False) -> None:
         '',
         f"{TermColors.OKGREEN + TermColors.BOLD}User '{username_cleaned}' created successfully.{TermColors.ENDC}",
         '',
-        '  ▶  Create an app password for your Subsonic clients from the web UI.',
+        'Create an app password for your Subsonic clients with:',
+        '',
+        '  ▶  create-app-password USERNAME --name NAME',
+        '',
+        'or from the web UI.',
         '',
     ])
 
@@ -219,6 +229,31 @@ def cmd_change_passwd(username: str) -> None:
 
     except ValueError as e:
         print(f'Error: {e}')
+
+
+def cmd_create_app_password(
+        username: str,
+        name: str,
+        access: str = AppPasswordRole.FULL,
+        expires_days: int | None = None
+) -> None:
+    """
+    CLI command: Create an app password for a user.
+    """
+
+    if not get_user_roles(username):
+        print(f"[ERROR] User '{username}' not found.", file=sys.stderr)
+        raise SystemExit(1)
+
+    expires_at = time.time() + expires_days * 86400 if expires_days else None
+
+    try:
+        secret = create_app_password(username, name, AppPasswordRole(access), expires_at)
+    except ValueError as e:
+        print(f'[ERROR] {e}', file=sys.stderr)
+        raise SystemExit(1) from e
+
+    print(secret)
 
 
 def cmd_clear_cache() -> None:

@@ -30,7 +30,8 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.runtime.startup import run_server, prestartup_config
 from beetsplug.beetstreamnext.core.storage.schema import initialise_db
 from beetsplug.beetstreamnext.core.accounts.commands import (
-    cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd
+    cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd,
+    cmd_create_app_password
 )
 from beetsplug.beetstreamnext.utils.system import get_env
 
@@ -101,6 +102,10 @@ class BeetstreamNextPlugin(BeetsPlugin):
         cmd.parser.add_option('-u', '--update-user', dest='update_user', metavar='USERNAME', help='Update roles for a user')
         cmd.parser.add_option('-d', '--delete-user', dest='delete_user', metavar='USERNAME', help='Delete a user')
         cmd.parser.add_option('-p', '--password', dest='passwd_user', metavar='USERNAME', help='Change password for a user')
+        cmd.parser.add_option('--create-app-password', dest='app_password_user', metavar='USERNAME', help='Create an app password for a user (prints the secret only)')
+        cmd.parser.add_option('--name', dest='app_password_name', metavar='NAME', help='With --create-app-password: name of the app password')
+        cmd.parser.add_option('--access', dest='app_password_access', choices=['full', 'readonly'], default='full', help='With --create-app-password: access level (default: full)')
+        cmd.parser.add_option('--expires', dest='app_password_expires', type='int', metavar='DAYS', help='With --create-app-password: expire after this many days (default: never)')
         cmd.parser.add_option('--list-users', action='store_true',  default=False, help='List all registered users')
 
         # Maintenance
@@ -147,6 +152,22 @@ class BeetstreamNextPlugin(BeetsPlugin):
             if opts.delete_user:
                 with app.app_context():
                     cmd_delete_user(opts.delete_user)
+                return
+
+            # Create an app password
+            if opts.app_password_user:
+
+                if not opts.app_password_name:
+                    cmd.parser.error('--create-app-password requires --name')
+
+                with app.app_context():
+                    cmd_create_app_password(
+                        username=opts.app_password_user,
+                        name=opts.app_password_name,
+                        access=opts.app_password_access,
+                        expires_days=opts.app_password_expires
+                    )
+
                 return
 
             # List all users

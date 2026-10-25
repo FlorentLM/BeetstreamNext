@@ -239,9 +239,9 @@
 
                 applyLines(lines) {
                     const target = this.$refs.log;
-                    const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+                    const follow = isFollowing(target);
                     target.innerHTML = lines.length ? lines.join('') : (this.live ? 'Running import…' : '(no import run yet)');
-                    if (wasAtBottom) target.scrollTop = target.scrollHeight;
+                    if (follow) target.scrollTop = target.scrollHeight;
                 },
 
                 onSse(event) {
@@ -325,6 +325,9 @@
     }
 
 
+    const atBottom = el => el.scrollHeight - el.scrollTop - el.clientHeight < 20;
+    const isFollowing = el => 'follow' in el.dataset ? el.dataset.follow === '1' : atBottom(el);
+
     const logRefreshes = new Map();
 
     async function refreshLogs(url, targetId) {
@@ -341,10 +344,10 @@
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const payload = await resp.json();
             const lines = payload.lines || [];
-            const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+            const follow = isFollowing(target);
             target.innerHTML = lines.length ? lines.join('') : '(no log output yet)';
             target.dataset.lines = lines.length;
-            if (wasAtBottom) target.scrollTop = target.scrollHeight;
+            if (follow) target.scrollTop = target.scrollHeight;
         } catch (err) {
             target.textContent = 'Failed to load log: ' + err.message;
         } finally {
@@ -374,14 +377,14 @@
             return;
         }
 
-        const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+        const follow = isFollowing(target);
         if (count === 0) {
             target.innerHTML = batch.join('');
         } else {
             target.insertAdjacentHTML('beforeend', batch.join(''));
         }
         target.dataset.lines = count + batch.length;
-        if (wasAtBottom) target.scrollTop = target.scrollHeight;
+        if (follow) target.scrollTop = target.scrollHeight;
     }
 
     // Podcast channel/episode status
@@ -540,10 +543,24 @@
 
     // Events
 
+    // Scrolling up pauses following and going back to bottom resumes it
+    document.addEventListener('scroll', event => {
+        const log = event.target;
+        if (!log.dataset || !('follow' in log.dataset)) return;
+        const follow = atBottom(log);
+        log.dataset.follow = follow ? '1' : '0';
+        document.querySelector(`[data-log-follow="${log.id}"]`).checked = follow;
+    }, true);
+
     document.addEventListener('change', event => {
         const level = event.target.closest('[data-log-level]');
         const wrap = event.target.closest('[data-log-wrap]');
-        if (level) {
+        const follow = event.target.closest('[data-log-follow]');
+        if (follow) {
+            const log = document.getElementById(follow.dataset.logFollow);
+            log.dataset.follow = follow.checked ? '1' : '0';
+            if (follow.checked) log.scrollTop = log.scrollHeight;
+        } else if (level) {
             const log = document.getElementById(level.dataset.logLevel);
             if (level.value) log.dataset.level = level.value;
             else delete log.dataset.level;

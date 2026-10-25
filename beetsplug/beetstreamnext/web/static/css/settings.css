@@ -655,7 +655,6 @@ input:focus, select:focus {
 
 .role-item input {
     margin-right: 8px;
-    accent-color: var(--primary);
     cursor: pointer;
 }
 
@@ -1027,7 +1026,6 @@ input:focus, select:focus {
 }
 
 .setting-toggle input {
-    accent-color: var(--primary);
     cursor: pointer;
 }
 
@@ -1183,6 +1181,10 @@ input:focus, select:focus {
 .log-view.log-nowrap {
     white-space: pre;
     word-break: normal;
+}
+
+.log-nowrap .log-line {
+    min-width: max-content;
 }
 
 .log-line {

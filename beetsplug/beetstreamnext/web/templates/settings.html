@@ -604,13 +604,16 @@
                         </select>
                     </label>
                     <label class="log-toolbar-item">
-                        <input type="checkbox" data-log-wrap="serverLogText" checked> Wrap lines
+                        <input type="checkbox" data-log-wrap="serverLogText"> Wrap lines
+                    </label>
+                    <label class="log-toolbar-item">
+                        <input type="checkbox" data-log-follow="serverLogText" checked> Follow
                     </label>
                     <button type="button" class="btn btn-outline" data-action="copy-log"
                             data-target="serverLogText">{{ macros.icon('copy') }} <span
                             class="btn-label">Copy</span></button>
                 </div>
-                <pre class="log-view" id="serverLogText" data-lines="{{ log_lines|length }}"
+                <pre class="log-view log-nowrap" id="serverLogText" data-follow="1" data-lines="{{ log_lines|length }}"
                      data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}{{ log_lines|map('safe')|join('') }}{% else %}(no log output yet){% endif %}</pre>
             </div>
         </section>

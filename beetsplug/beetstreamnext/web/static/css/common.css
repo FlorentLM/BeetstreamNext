@@ -78,6 +78,11 @@
     box-sizing: border-box;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: var(--primary);
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg);

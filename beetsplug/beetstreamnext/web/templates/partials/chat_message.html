@@ -1,0 +1,44 @@
+{% import '_macros.html' as macros %}
+
+{% set system = m.username == 'Server' %}
+
+<div class="chat-msg{{ ' chat-system' if system else (' chat-own' if m.username == me else '') }}"
+     id="chat-msg-{{ m.id }}" data-id="{{ m.id }}" data-user="{{ m.username }}" data-time="{{ m.time | int }}">
+    {% if system %}
+        <div class="chat-system-line">
+            <span class="chat-bubble">{{ m.message }}</span>
+            <span class="chat-time" data-timestamp="{{ m.time | int }}" data-time-only="1"></span>
+        </div>
+    {% else %}
+        {% if m.avatar %}
+            <img class="chat-avatar" alt="" loading="lazy"
+                 src="{{ url_for(bp_name ~ '.route_chat_avatar', username=m.username) }}?v={{ m.avatar }}">
+        {% else %}
+            <span class="chat-avatar" aria-hidden="true">{{ m.username[0]|upper }}</span>
+        {% endif %}
+        <div class="chat-body">
+            <div class="chat-meta">
+                <strong class="chat-user">{{ m.username }}</strong>
+                <span class="chat-time" data-timestamp="{{ m.time | int }}" data-time-only="1"></span>
+            </div>
+            <div class="chat-bubble">{{ m.message }}</div>
+        </div>
+    {% endif %}
+    {% if moderator %}
+        <div class="chat-actions">
+            <button type="button" class="icon-btn" title="Edit" aria-label="Edit message from {{ m.username }}"
+                    hx-get="{{ url_for(bp_name ~ '.route_chat_edit_form', msg_id=m.id) }}"
+                    hx-target="#chat-msg-{{ m.id }}"
+                    hx-swap="outerHTML">{{ macros.icon('edit') }}</button>
+
+            <button type="button" class="icon-btn icon-btn-delete" title="Delete"
+                    aria-label="Delete message from {{ m.username }}"
+                    hx-post="{{ url_for(bp_name ~ '.route_delete_chat_message', msg_id=m.id) }}"
+                    hx-target="#chat-msg-{{ m.id }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="Delete this message? This action is permanent.">{{ macros.icon('delete') }}</button>
+        </div>
+
+    {% endif %}
+
+</div>

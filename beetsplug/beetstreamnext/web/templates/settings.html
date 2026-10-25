@@ -140,32 +140,15 @@
             {% with bp_name = 'admin' %}{% include 'partials/web_sessions_card.html' %}{% endwith %}
         </section>
 
-        {# Chat moderation tab #}
+        {# Chat tab #}
         <section class="tab-content" id="tab-chat" :class="{ active: active === 'chat' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
-                    <h2>Post Announcement</h2>
+                    <h2>Chat</h2>
                 </div>
-                <p class="card-hint">Posted to chat as &ldquo;Server&rdquo;, visible to every connected client.</p>
-                <form class="announce-form" id="announceForm"
-                      hx-post="{{ url_for('admin.route_add_announcement') }}"
-                      hx-target="#chatModeration"
-                      hx-swap="innerHTML"
-                      hx-disable="find button">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="text" name="message" placeholder="e.g. Server restarting for maintenance at 22:00 UTC"
-                           maxlength="1000" required>
-                    <button type="submit" class="btn btn-primary">Post</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <div class="table-header">
-                    <h2>Chat moderation</h2>
-                </div>
-                <div id="chatModeration">
-                    {% include 'partials/chat_table.html' %}
-                </div>
+                <p class="card-hint">Tick &ldquo;Server&rdquo; in the composer to post as the Server announcer, or untick it to post under your own name.</p>
+                <div id="chatModeration" hx-get="{{ url_for('admin.route_chat_panel') }}" hx-trigger="intersect once"
+                     hx-swap="innerHTML"></div>
             </div>
         </section>
 
@@ -732,6 +715,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/hx-sse.min.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/yaml_editor.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>

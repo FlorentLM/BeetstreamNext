@@ -76,7 +76,10 @@
             const ms = parseInt(el.dataset.timestamp);
             if (isNaN(ms)) return;
             const date = new Date(ms);
-            el.textContent = el.dataset.dateOnly ? date.toLocaleDateString() : date.toLocaleString();
+            el.title = date.toLocaleString();
+            if (el.dataset.dateOnly) el.textContent = date.toLocaleDateString();
+            else if (el.dataset.timeOnly) el.textContent = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            else el.textContent = date.toLocaleString();
         });
     }
 

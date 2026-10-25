@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.blueprints.auth import session_roles, admin_here
 from beetsplug.beetstreamnext.blueprints.shared.radio import register_radio_routes
 from beetsplug.beetstreamnext.blueprints.shared.app_passwords import register_app_password_routes
 from beetsplug.beetstreamnext.blueprints.shared.sessions import register_session_routes
+from beetsplug.beetstreamnext.blueprints.shared.chat import register_chat_routes
 
 
 account_bp = Blueprint('account', __name__, url_prefix='/account')
@@ -44,3 +45,4 @@ from .routes import (
 register_radio_routes(account_bp, account_required)
 register_app_password_routes(account_bp, account_required)
 register_session_routes(account_bp, account_required)
+register_chat_routes(account_bp, account_required)

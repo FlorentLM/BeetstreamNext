@@ -1,20 +1,13 @@
 from __future__ import annotations
 
-import time
 import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.constants import (
-    CHAT_MAX_STORED, CHAT_RATE_MAX, CHAT_RATE_WINDOW_SEC, CHAT_RETENTION_SEC, CHAT_MAX_CHARS
-)
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
-from beetsplug.beetstreamnext.utils.concurrency import RollingLimiter
+from beetsplug.beetstreamnext.core.services.chat import ChatError, post_message
 from beetsplug.beetstreamnext.utils.text import safe_str
-
-
-_chat_limiter = RollingLimiter(CHAT_RATE_MAX, CHAT_RATE_WINDOW_SEC)
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/addchatmessage/
@@ -28,39 +21,10 @@ def endpoint_add_chat_message() -> flask.Response:
     if not message:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    if len(message) > CHAT_MAX_CHARS:
-        return subsonic_error(0, message=f'Message exceeds maximum length ({CHAT_MAX_CHARS} characters).', resp_fmt=resp_fmt)
-
-    username = flask.g.username
-    now = time.time()
-    now_ms = int(now * 1000)
-
-    if not _chat_limiter.allow(username, now):
-        return subsonic_error(0, message='Too many messages, slow down.', resp_fmt=resp_fmt)
-
-    with database() as db:
-        db.execute(
-            """
-            INSERT INTO chat_messages (username, time, message)
-            VALUES (?, ?, ?)
-            """, (username, now_ms, message)
-        )
-
-        # Drop messages older than 30 days
-        db.execute(
-            """
-            DELETE FROM chat_messages 
-            WHERE time < ?
-            """, (now_ms - CHAT_RETENTION_SEC * 1000,)
-        )
-
-        # Drop any messages if over 2000 / user
-        db.execute(
-            """
-            DELETE FROM chat_messages
-            WHERE id NOT IN (SELECT id FROM chat_messages ORDER BY time DESC, id DESC LIMIT ?)
-            """, (CHAT_MAX_STORED,)
-        )
+    try:
+        post_message(flask.g.username, message)
+    except ChatError as e:
+        return subsonic_error(0, message=str(e), resp_fmt=resp_fmt)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

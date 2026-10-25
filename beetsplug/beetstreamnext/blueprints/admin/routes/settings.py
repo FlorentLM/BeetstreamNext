@@ -5,7 +5,6 @@ import flask
 
 from .. import admin_bp, admin_required, back_to
 
-from beetsplug.beetstreamnext.blueprints.admin.routes.chat import chat_page_context
 from beetsplug.beetstreamnext.blueprints.admin.routes.security import IP_LIST_META
 from beetsplug.beetstreamnext.core.library.health import get_server_info
 from beetsplug.beetstreamnext.utils.text import format_bytes
@@ -230,7 +229,6 @@ def route_settings() -> flask.Response:
         flask.render_template(
             'settings.html',
             users=users,
-            **chat_page_context(flask.request.args.get('chat_page', default=1, type=int)),
             cache_size=cache_size,
             cache_sizes=cache_sizes,
             radios=list_radios(flask.session['username']),

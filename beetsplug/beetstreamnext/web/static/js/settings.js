@@ -518,9 +518,6 @@
         usersTable: [['createModal', 'createForm'], ['editModal', null]],
     });
 
-    // Clear announcement box after successful post
-    onSwapSuccess('chatModeration', () => document.getElementById('announceForm')?.reset());
-
     // Edit user forms, lazy-loaded
     onSwap('editModalBody', () => Alpine.store('modal').show('editModal'));
 
@@ -581,19 +578,6 @@
             case 'use-beets-path-result':
                 useBeetsPathResult(target);
                 break;
-            case 'edit-chat': {
-                const oldText = target.dataset.text;
-                Alpine.store('modal').prompt("Edit user's chat message:", oldText).then(newText => {
-                    if (newText !== null && newText.trim() !== "") {
-                        htmx.ajax('post', target.dataset.url, {
-                            target: '#chatModeration',
-                            swap: 'innerHTML',
-                            values: {message: newText},
-                        });
-                    }
-                });
-                break;
-            }
         }
     });
 

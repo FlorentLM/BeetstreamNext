@@ -1,0 +1,5 @@
+<div class="chat-poll"
+     hx-get="{{ url_for(bp_name ~ '.route_chat_messages', after=(messages[-1].id if messages else (last_id or 0))) }}"
+     hx-trigger="{{ 'chat from:#adminDashboard, ' if moderator else 'every 8s, ' }}bsn-chat-refresh from:body"
+     hx-target="this"
+     hx-swap="outerHTML"></div>

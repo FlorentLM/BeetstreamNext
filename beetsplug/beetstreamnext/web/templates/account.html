@@ -105,6 +105,15 @@
 
         {% with bp_name = 'account' %}{% include 'partials/app_passwords_card.html' %}{% endwith %}
 
+        {# Chat #}
+        <div class="card">
+            <div class="table-header"><h2><span class="material-symbols-outlined">chat</span>Chat</h2></div>
+            <div id="accountChat"
+                 hx-get="{{ url_for('account.route_chat_panel') }}"
+                 hx-trigger="intersect once"
+                 hx-swap="innerHTML"></div>
+        </div>
+
         {# Shares #}
         {% if user.shareRole %}
             <div class="card">
@@ -247,6 +256,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>

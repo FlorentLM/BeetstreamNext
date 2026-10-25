@@ -1,0 +1,50 @@
+<div class="chat-panel" x-data="chatPanel" data-max="{{ CHAT_MAX_CHARS }}">
+
+    <div class="chat-scroll" x-ref="scroll" @scroll.passive="onScroll">
+        <div class="chat-list" id="chatList" x-ref="list">
+            {% if has_older and messages %}
+                <div class="chat-older"
+                     hx-get="{{ url_for(bp_name ~ '.route_chat_messages', before=messages[0].id) }}"
+                     hx-trigger="intersect once"
+                     hx-target="this"
+                     hx-swap="outerHTML"></div>
+            {% endif %}
+            {% for m in messages %}
+                {% include 'partials/chat_message.html' %}
+            {% else %}
+                <p class="empty-state chat-empty">No chat messages yet.</p>
+            {% endfor %}
+            {% with last_id = messages[-1].id if messages else 0 %}{% include 'partials/chat_poll.html' %}{% endwith %}
+        </div>
+        <button type="button" class="chat-pill" x-show="unseen > 0" x-text="pillText" @click="scrollToBottom"></button>
+    </div>
+
+    <form class="chat-composer" x-ref="form"
+          hx-post="{{ url_for(bp_name ~ '.route_send_chat_message') }}"
+          hx-target="#chatError"
+          hx-swap="innerHTML"
+          hx-disable="find button">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if moderator %}
+            <label class="chat-as-server" title="Post as the Server announcer instead of {{ me }}">
+                <span class="switch switch-primary">
+                    <input type="checkbox" name="as_server" value="1" x-model="asServer" aria-label="Post as Server">
+                    <span class="switch-track"></span>
+                </span>
+                <span>Server announce</span>
+            </label>
+        {% endif %}
+
+        <label class="sr-only" for="chatInput">Message</label>
+
+        <textarea id="chatInput" name="message" rows="1" maxlength="{{ CHAT_MAX_CHARS }}" x-ref="input"
+                  x-model="draft" @keydown.enter="onEnter" @input="autosize"
+                  {% if moderator %}x-bind:placeholder="placeholder"
+                  {% else %}placeholder="Write a message…"{% endif %}></textarea>
+
+        <span class="chat-counter" x-text="counter" :class="{ over: remaining < 50 }"></span>
+        <button type="submit" class="btn btn-primary" :disabled="!canSend">Send</button>
+    </form>
+    <div id="chatError" x-ref="error"></div>
+
+</div>

@@ -108,6 +108,16 @@ VARIABLES = {
     'songs_checked': ('Songs checked by the health scan', 1200),
     'songs_flagged': ('Songs flagged as unhealthy in the whole library', 3),
     'songs_unchanged': ('Songs skipped by the health scan because they were unchanged', 800),
+    'task': ('Name of the maintenance task', 'Database cleanup'),
+    'details': ('What the task did, or why it failed', 'Purged stale references: 3 bookmarks.'),
+    'share_owner': ('User who created the share', 'alice'),
+    'share_description': ('Description of the share', 'Holiday playlist'),
+    'share_url': ('Public link to the share', 'https://music.example.com/share/AbC123'),
+    'share_entries': ('Number of songs or albums in the share', 4),
+    'visit_count': ('How many times the share has been opened, including this one', 1),
+    'music_root': ('The music folder', '/music'),
+    'songs_sampled': ('Library songs whose files were checked', 20),
+    'songs_missing': ('Sampled songs whose files were not found', 20),
     'time': ('When the notification was sent', None),
 }
 
@@ -181,6 +191,66 @@ EVENTS = {
                 help='Skips the notification when no song in the library is flagged'),
         ),
         should_send=lambda options, v: not (options['only_if_flagged'] and not v.get('songs_flagged'))),
+
+    'health_scan_failed': Event(
+        label='Health scan failed',
+        status='failed',
+        body='The health scan failed: {details}',
+        variables=('details', 'status', 'time'),
+        notify_type='failure'),
+
+    'maintenance_completed': Event(
+        label='Maintenance task completed',
+        status='completed',
+        body='{task} completed: {details}',
+        variables=('task', 'details', 'status', 'time'),
+        notify_type='success'),
+
+    'maintenance_failed': Event(
+        label='Maintenance task failed',
+        status='failed',
+        body='{task} failed: {details}',
+        variables=('task', 'details', 'status', 'time'),
+        notify_type='failure'),
+
+    'share_created': Event(
+        label='Share created',
+        status='created',
+        body='{share_owner} shared {share_entries} item(s): {share_url}',
+        variables=('share_owner', 'share_description', 'share_url', 'share_entries', 'status', 'time')),
+
+    'share_accessed': Event(
+        label='Share accessed',
+        status='accessed',
+        body="{share_owner}'s share was opened ({visit_count} visit(s) so far): {share_url}",
+        variables=('share_owner', 'share_description', 'share_url', 'visit_count', 'status', 'time'),
+        options=(
+            EventOption(
+                key='first_visit_only',
+                label='Only the first visit',
+                default=True,
+                help='Skips the notification when the share has already been opened before'),
+        ),
+        should_send=lambda options, v: not (options['first_visit_only'] and v.get('visit_count') != 1)),
+
+    'storage_problem': Event(
+        label='Storage problem',
+        status='problem',
+        body='{songs_missing} of {songs_sampled} sampled songs were not found under {music_root}. Is the drive mounted?',
+        variables=('music_root', 'songs_sampled', 'songs_missing', 'status', 'time'),
+        notify_type='failure',
+        options=(
+            EventOption(
+                key='min_missing_percent',
+                label='Minimum % of sampled songs missing',
+                kind=int,
+                default=50,
+                min=1,
+                max=100,
+                help='Only send when at least this share of the checked files is missing'),
+        ),
+        should_send=lambda options, v: v.get('songs_sampled') and (
+            100 * v.get('songs_missing', 0) / v['songs_sampled'] >= options['min_missing_percent'])),
 
     'server_started': Event(
         label='Server started',

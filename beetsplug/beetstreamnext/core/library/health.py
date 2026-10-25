@@ -179,6 +179,7 @@ def scan_library(full: bool = False) -> Dict[str, int]:
 
     if not find_binary('ffmpeg'):
         bsn_logger.warning('Health scan skipped: ffmpeg not found.')
+        notify('health_scan_failed', details='ffmpeg not found')
         return counts
 
     if not health_scan.try_acquire():
@@ -296,9 +297,16 @@ def scan_library(full: bool = False) -> Dict[str, int]:
                 )
                 db.commit()
                 counts['pruned'] = len(stale_ids)
+    except Exception as e:
+        notify('health_scan_failed', details=str(e))
+        raise
     finally:
         health_scan.release()
         admin_events.publish('health-scan', '')
+
+    checked, missing = startup_path_check(music_root)
+    if missing:
+        notify('storage_problem', music_root=music_root, songs_sampled=checked, songs_missing=missing)
 
     notify('health_scan_completed',
            songs_checked=counts['checked'],

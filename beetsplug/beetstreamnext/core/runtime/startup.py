@@ -248,6 +248,9 @@ def run_server(
     )
 
     checked_paths, missing_paths = startup_path_check(music_root)
+    if missing_paths:
+        notify('storage_problem', music_root=music_root, songs_sampled=checked_paths, songs_missing=missing_paths)
+
     if checked_paths and missing_paths == checked_paths:
         print_box([
             '',

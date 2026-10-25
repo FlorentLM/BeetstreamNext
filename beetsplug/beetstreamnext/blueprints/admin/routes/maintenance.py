@@ -5,6 +5,7 @@ import flask
 from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
+from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
 from beetsplug.beetstreamnext.core.library.health import start_health_scan, health_scan, health_stats, flagged_songs
 from beetsplug.beetstreamnext.core.services.external.audiomuse import start_audiomuse_analysis
@@ -44,10 +45,17 @@ def route_clear_cache() -> str:
             flask.current_app.config['HTTP_CACHE_PATH']
         )
     except RuntimeError as e:
+        notify('maintenance_failed', task='Clear caches', details=str(e))
         return flask.render_template('partials/action_result.html', message=str(e), ok=False)
 
     if cleared:
-        return flask.render_template('partials/action_result.html', message=f"Cleared: {', '.join(cleared)}.", ok=True)
+        message = f"Cleared: {', '.join(cleared)}."
+        notify('maintenance_completed', task='Clear caches', details=message)
+
+        return flask.render_template('partials/action_result.html', message=message, ok=True)
+
+    notify('maintenance_completed', task='Clear caches', details='Nothing to clear.')
+
     return flask.render_template('partials/action_result.html', message='Nothing to clear.', ok=None)
 
 
@@ -59,11 +67,19 @@ def route_database_cleanup() -> str:
     except Exception as e:
         err = f'{SERVER_NAME} database cleanup failed: {e}'
         bsn_logger.error(err)
+        notify('maintenance_failed', task='Database cleanup', details=err)
+
         return flask.render_template('partials/action_result.html', message=err, ok=False)
 
     if purged:
         details = ', '.join(f'{n} {label}' for label, n in purged.items())
-        return flask.render_template('partials/action_result.html', message=f'Purged stale references: {details}.', ok=True)
+        message = f'Purged stale references: {details}.'
+        notify('maintenance_completed', task='Database cleanup', details=message)
+
+        return flask.render_template('partials/action_result.html', message=message, ok=True)
+
+    notify('maintenance_completed', task='Database cleanup', details='No stale references found.')
+
     return flask.render_template('partials/action_result.html', message='No stale references found.', ok=None)
 
 
@@ -75,11 +91,18 @@ def route_cleanup_offlines() -> str:
     except Exception as e:
         err = f'{SERVER_NAME} cache sweep failed: {e}'
         bsn_logger.error(err)
+        notify('maintenance_failed', task='Offline files cleanup', details=err)
         return flask.render_template('partials/action_result.html', message=err, ok=False)
 
     if purged:
         details = ', '.join(f'{n} {label}' for label, n in purged.items())
-        return flask.render_template('partials/action_result.html', message=f'Swept: {details}.', ok=True)
+        message = f'Swept: {details}.'
+        notify('maintenance_completed', task='Offline files cleanup', details=message)
+
+        return flask.render_template('partials/action_result.html', message=message, ok=True)
+
+    notify('maintenance_completed', task='Offline files cleanup', details='Nothing to sweep.')
+
     return flask.render_template('partials/action_result.html', message='Nothing to sweep.', ok=None)
 
 

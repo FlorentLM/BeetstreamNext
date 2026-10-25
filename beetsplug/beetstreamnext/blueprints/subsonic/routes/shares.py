@@ -7,6 +7,8 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
+from beetsplug.beetstreamnext.core.notifications import notify
+from beetsplug.beetstreamnext.core.runtime.web import external_url
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -85,6 +87,9 @@ def endpoint_create_share() -> flask.Response:
                 VALUES (?, ?)
                 """, (share_id, item_id)
             )
+
+    notify('share_created', share_owner=flask.g.username, share_description=description, share_entries=len(ids),
+           share_url=external_url(flask.url_for('public.share_view', share_id=share_id)))
 
     # Refetch for response
     with database() as db:

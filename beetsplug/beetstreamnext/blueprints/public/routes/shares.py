@@ -17,7 +17,8 @@ from .. import public_bp
 from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR, ZIP_MAX_CONCURRENT
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.runtime.web import send_file
+from beetsplug.beetstreamnext.core.notifications import notify
+from beetsplug.beetstreamnext.core.runtime.web import external_url, send_file
 from beetsplug.beetstreamnext.utils.system import safe_filename
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -164,6 +165,10 @@ def share_view(share_id: str) -> str | Tuple[str, str]:
             WHERE id = ?
             """, (share_id,)
         )
+
+    notify('share_accessed', share_owner=share['username'], share_description=share['description'],
+           share_url=external_url(flask.url_for('public.share_view', share_id=share_id)),
+           visit_count=share['visit_count'] + 1)
 
     with database() as db:
         entry_rows = db.execute(

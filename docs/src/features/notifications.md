@@ -1,6 +1,6 @@
 # Notifications
 
-**BeetstreamNext** can send a notification when something happens (a [Beets import](./beets-import.md), a blocked login, a finished health scan...), through [**Apprise**](https://github.com/caronc/apprise).
+**BeetstreamNext** can send a notification when something happens (a [Beets import](./beets-import.md), a blocked login, a finished health scan, a new share, a missing music folder...), through [**Apprise**](https://github.com/caronc/apprise).
 
 Apprise supports most chat, push and email services (Discord, Telegram, Slack, Matrix, ntfy, Pushover, Gotify, email, generic webhooks, and [many more](https://appriseit.com/services/)).
 
@@ -29,16 +29,22 @@ You can create as many notifications as you like, including several of the same 
 
 ### Types
 
-| Type                      | Sent when                                                                                                              |
-|---------------------------|------------------------------------------------------------------------------------------------------------------------|
-| **Import started**        | A `beet import` run starts (from the admin panel, a pinned scan, a Subsonic client's `startScan`, or a watched folder) |
-| **Import completed**      | An import finishes with exit code `0`                                                                                  |
-| **Import failed**         | An import finishes with a non-zero exit code                                                                           |
-| **Import needs input**    | An interactive import is waiting for an answer (once each time it starts waiting)                                      |
-| **Pinned scan aborted**   | A queued [pinned folder](./beets-import.md) scan couldn't be started, and the rest of the queue was dropped            |
-| **Login blocked**         | Too many failed logins locked out a user / IP                                                                          |
-| **Health scan completed** | A library health scan finishes (can be limited to scans where songs are flagged)                                       |
-| **Server started**        | **BeetstreamNext** finished starting up (also after a restart)                                                         |
+| Type                                        | Sent when                                                                                                              |
+|---------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Import started**                          | A `beet import` run starts (from the admin panel, a pinned scan, a Subsonic client's `startScan`, or a watched folder) |
+| **Import completed**                        | An import finishes with exit code `0`                                                                                  |
+| **Import failed**                           | An import finishes with a non-zero exit code                                                                           |
+| **Import needs input**                      | An interactive import is waiting for an answer (once each time it starts waiting)                                      |
+| **Pinned scan aborted**                     | A queued [pinned folder](./beets-import.md) scan couldn't be started, and the rest of the queue was dropped            |
+| **Login blocked**                           | Too many failed logins locked out a user / IP                                                                          |
+| **Health scan completed**                   | A library health scan finishes (can be limited to scans where songs are flagged)                                       |
+| **Health scan failed**                      | A library health scan couldn't run, or crashed                                                                         |
+| **Maintenance task completed**              | A maintenance action from the admin panel (clear caches, database cleanup, offline files cleanup) succeeded            |
+| **Maintenance task failed**                 | A maintenance action from the admin panel failed                                                                       |
+| **Share created**                           | A user creates a share (from a Subsonic client)                                                                        |
+| **Share accessed**                          | A share's public page is opened                                                                                        |
+| **Storage problem**                         | Library files can't be found on disk (checked on startup and after each health scan)                                   |
+| **Server started**                          | **BeetstreamNext** finished starting up (also after a restart)                                                         |
 
 > [!NOTE]
 > A quiet watched-folder import exits with `0` even when Beets skipped albums, so _Import completed_ doesn't mean everything was imported.

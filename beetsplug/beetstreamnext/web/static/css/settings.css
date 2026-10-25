@@ -1377,25 +1377,49 @@ input:focus, select:focus {
     font-weight: 600;
 }
 
+.code-editor-box {
+    position: relative;
+    border-radius: 8px;
+    background: #000;
+}
+
+:root[data-theme="light"] .code-editor-box {
+    background: #fff;
+}
+
+.code-editor,
+.code-editor-highlight {
+    margin: 0;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    tab-size: 4;
+    white-space: pre;
+}
+
 .code-editor {
+    position: relative;
     display: block;
     width: 100%;
     height: 50vh;
     max-height: 800px;
-    padding: 1rem;
-    background: #000;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: ui-monospace, monospace;
-    font-size: 0.85rem;
-    line-height: 1.5;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--text);
     resize: vertical;
-    tab-size: 4;
 }
 
-:root[data-theme="light"] .code-editor {
-    background: #fff;
+.code-editor-highlight {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    padding-bottom: calc(1rem + 20px);
+    border-color: transparent;
+    color: var(--text);
+    pointer-events: none;
 }
 
 .code-editor:focus {
@@ -1404,8 +1428,51 @@ input:focus, select:focus {
 }
 
 .code-editor[readonly] {
-    color: var(--text-muted);
     cursor: default;
+}
+
+.code-editor-box:has(.code-editor[readonly]) .code-editor-highlight {
+    opacity: 0.65;
+}
+
+.yaml-line {
+    min-width: max-content;
+}
+
+.yaml-line:empty::before {
+    content: " ";
+}
+
+.yaml-line-error {
+    background: color-mix(in srgb, var(--ansi-red) 18%, transparent);
+    box-shadow: -3px 0 0 var(--ansi-red);
+}
+
+.yaml-line-locked {
+    background: color-mix(in srgb, var(--ansi-yellow) 14%, transparent);
+    box-shadow: -3px 0 0 var(--ansi-yellow);
+}
+
+.yaml-line-locked::after {
+    content: "editing blocked (can only be deleted)";
+    margin-left: 2rem;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--ansi-yellow);
+}
+
+.yaml-key { color: var(--ansi-blue); }
+.yaml-str { color: var(--ansi-green); }
+.yaml-num { color: var(--ansi-yellow); }
+.yaml-bool { color: var(--ansi-magenta); }
+.yaml-anchor { color: var(--ansi-cyan); }
+.yaml-var { color: var(--ansi-cyan); }
+.yaml-punct { color: var(--text-muted); }
+.yaml-comment { color: var(--ansi-bright-black); font-style: italic; }
+
+.config-editor-status {
+    margin: 0.6rem 0 0;
+    white-space: pre-wrap;
 }
 
 .config-locked {

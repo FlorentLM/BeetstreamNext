@@ -10,7 +10,7 @@ import threading
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Optional, Tuple, Any, List
+from typing import Optional, Tuple, Any, List, Dict
 import beets
 import confuse
 import yaml
@@ -482,7 +482,7 @@ def read_config() -> dict:
     edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
 
     try:
-        locked = sorted(_exec_violations(content)) if edit_allowed else []
+        locked = sorted(_exec_entries(content)) if edit_allowed else []
     except yaml.YAMLError:
         locked = []
 
@@ -498,33 +498,130 @@ def read_config() -> dict:
     }
 
 
-def _exec_violations(content: str) -> dict:
+def _line_of(root: Optional[yaml.Node], *path: str) -> int | None:
+    """line of the deepest entry in `path` in the YAML."""
+
+    line = None
+    node = root
+
+    for name in path:
+        if not isinstance(node, yaml.MappingNode):
+            break
+
+        # Last one wins, like in the loaded data
+        match = None
+        for key, value in node.value:
+            if key.value == name:
+                match = (key, value)
+
+        if match is None:
+            break
+
+        key, node = match
+        line = key.start_mark.line + 1
+
+    return line
+
+
+def _exec_entries(content: str) -> Dict[str, Tuple[Any, Optional[int]]]:
     """
-    Config entries in `content` that would let beets run code or commands, as {name: value}.
+    Config entries in `content` that would let beets run code or commands, as {name: (value, line)}.
     Raises yaml.YAMLError on invalid YAML.
     """
 
-    data = yaml.safe_load(content)     # safe_load: no python/object tags
+    loader = yaml.SafeLoader(content)
+
+    try:
+        root = loader.get_single_node()
+        data = loader.construct_document(root) if root is not None else None
+    finally:
+        loader.dispose()
 
     if data is None:
         return {}
-    if not isinstance(data, dict):
-        return {'<top-level is not a mapping>': None}
 
-    found = {key: data[key] for key in CODE_EXECUTION_KEYS if key in data}
+    if not isinstance(data, dict):
+        return {'<top-level is not a mapping>': (None, 1)}
+
+    # name: (value, path to it in the YAML)
+    found: Dict[str, Tuple[Any, Tuple[str, ...]]] = {}
+
+    for key in CODE_EXECUTION_KEYS:
+        if key in data:
+            found[key] = (data[key], (key,))
 
     plugins = data.get('plugins')
+
     if isinstance(plugins, str):
         plugins = plugins.split()
+
     if isinstance(plugins, list):
-        found.update({f'plugins: {p}': True for p in plugins if p in CODE_EXECUTION_PLUGINS})
+        for plugin in plugins:
+            if isinstance(plugin, str) and plugin in CODE_EXECUTION_PLUGINS:
+                found[f'plugins: {plugin}'] = (True, ('plugins',))
 
     for plugin, options in COMMAND_OPTIONS.items():
         section = data.get(plugin)
-        if isinstance(section, dict):
-            found.update({f'{plugin}.{option}': section[option] for option in options if option in section})
 
-    return found
+        if not isinstance(section, dict):
+            continue
+
+        for option in options:
+            if option in section:
+                found[f'{plugin}.{option}'] = (section[option], (plugin, option))
+
+    entries = {}
+
+    for name, (value, path) in found.items():
+        entries[name] = (value, _line_of(root, *path))
+
+    return entries
+
+
+def _entries_by_trust(content: str) -> Tuple[dict, dict]:
+    """
+    The dangerous entries of `content` as (new or changed, unchanged), the latter being what the config file
+    already has. Those are trusted as long as they are left as they are (and can still be deleted).
+    """
+
+    found = _exec_entries(content)
+    try:
+        existing = _exec_entries(config_path().read_text(encoding='utf-8'))
+    except (OSError, yaml.YAMLError):
+        existing = {}
+
+    unchanged = {name: entry for name, entry in found.items() if name in existing and existing[name][0] == entry[0]}
+    return {name: entry for name, entry in found.items() if name not in unchanged}, unchanged
+
+
+def locked_lines(content: str) -> List[int]:
+    """Lines of the dangerous entries that are left unchanged (they can only be deleted)."""
+
+    try:
+        return sorted(line for _, line in _entries_by_trust(content)[1].values() if line)
+    except yaml.YAMLError:
+        return []
+
+
+def validate_config(content: str) -> Optional[Tuple[str, Optional[int]]]:
+    """
+    Why `content` can't be saved as the beets config, as (message, line).
+    None when it's fine.
+    """
+
+    try:
+        refused = _entries_by_trust(content)[0]
+    except yaml.YAMLError as e:
+        mark = getattr(e, 'problem_mark', None)
+        if mark is None:
+            return f'Invalid YAML: {e}', None
+        return f'Invalid YAML at line {mark.line + 1}, column {mark.column + 1}: {e.problem}', mark.line + 1
+
+    if refused:
+        return ('Refused: these settings can execute code, so they cannot be modified '
+                f'from the admin panel: {", ".join(sorted(refused))}'), min((line for _, line in refused.values() if line), default=None)
+
+    return None
 
 
 def write_config(content: str) -> Tuple[bool, str]:
@@ -532,30 +629,16 @@ def write_config(content: str) -> Tuple[bool, str]:
     edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
 
     if not edit_allowed:
-        return False, 'Editing the beets config from the admin panel is disabled (see `allow_beets_config_edit`).'
+        return False, 'Editing the beets config from the admin panel is disabled (setting `allow_beets_config_edit`).'
 
     path = config_path()
 
     if not is_writable(path):
         return False, 'Config file is read-only.'
 
-    try:
-        violations = _exec_violations(content)
-    except yaml.YAMLError as e:
-        return False, f'Invalid YAML: {e}'
-
-    # Entries the operator already had in the file are trusted as long as they are left unchanged
-    try:
-        existing = _exec_violations(path.read_text(encoding='utf-8'))
-    except (OSError, yaml.YAMLError):
-        existing = {}
-
-    violations = {name for name, value in violations.items()
-                  if name not in existing or existing[name] != value}
-
-    if violations:
-        return False, ('Refused: these settings can execute code, so they cannot be modified '
-                       f'from the admin panel: {", ".join(sorted(violations))}')
+    issue = validate_config(content)
+    if issue:
+        return False, issue[0]
 
     target = path.resolve()
 

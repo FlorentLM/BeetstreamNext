@@ -696,5 +696,6 @@
         const start = editor.selectionStart, end = editor.selectionEnd;
         editor.value = editor.value.slice(0, start) + '  ' + editor.value.slice(end);
         editor.selectionStart = editor.selectionEnd = start + 2;
+        editor.dispatchEvent(new Event('input', {bubbles: true}));
     });
 })();

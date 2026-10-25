@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
 from beetsplug.beetstreamnext.core.library.health import start_health_scan, health_scan, health_stats, flagged_songs
 from beetsplug.beetstreamnext.core.services.external.audiomuse import start_audiomuse_analysis
-from beetsplug.beetstreamnext.core.library.beets.interaction import read_config, write_config
+from beetsplug.beetstreamnext.core.library.beets.interaction import read_config, write_config, validate_config, locked_lines
 from beetsplug.beetstreamnext.core.runtime.startup import restart_server
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import SERVER_NAME
@@ -22,6 +22,17 @@ def route_save_beets_config() -> str:
     return flask.render_template(
         'partials/beets_config.html', beets_config=read_config(), ok=ok, message=message
     )
+
+
+@admin_bp.route('/beets/config/validate', methods=['POST'])
+@admin_required
+def route_validate_beets_config() -> flask.Response:
+    """Live check of the editor's content (nothing saved)."""
+
+    content = flask.request.form.get('content', '')
+    issue = validate_config(content)
+    message, line = issue or ('', None)
+    return flask.jsonify({'ok': issue is None, 'message': message, 'line': line, 'locked': locked_lines(content)})
 
 
 @admin_bp.route('/maintenance/clear-cache', methods=['POST'])

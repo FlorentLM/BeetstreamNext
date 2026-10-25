@@ -18,9 +18,13 @@
 {% endif %}
 
 <div class="card-section" id="beetsConfigEditorWrap">
-    <textarea id="beetsConfigEditor" name="content" class="code-editor" spellcheck="false" autocomplete="off"
-              autocapitalize="off" wrap="off"
-              {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+    <div class="code-editor-box">
+        <pre class="code-editor-highlight" id="beetsConfigHighlight" aria-hidden="true"></pre>
+        <textarea id="beetsConfigEditor" name="content" class="code-editor" spellcheck="false" autocomplete="off"
+                  autocapitalize="off" wrap="off" data-validate-url="{{ url_for('admin.route_validate_beets_config') }}"
+                  {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+    </div>
+    <p class="test-result test-result-fail config-editor-status" id="beetsConfigStatus" role="status" hidden></p>
     {% if beets_config.locked %}
     <div class="config-locked">
         <p class="card-hint">Pre-existing dangerous keys that can't be modified from here (only deleted):</p>
@@ -47,7 +51,7 @@
                 hx-swap="outerHTML"
                 hx-disable="this">Reload
         </button>
-        <button type="button" class="btn btn-primary"
+        <button type="button" class="btn btn-primary" id="beetsConfigSave"
                 hx-post="{{ url_for('admin.route_save_beets_config') }}"
                 hx-include="#beetsConfigEditor"
                 hx-target="#beetsConfigEditorWrap"

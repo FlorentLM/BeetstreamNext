@@ -6,10 +6,10 @@ Both authentication schemes from the Subsonic/OpenSubsonic spec are supported:
 
 - **API-key authentication**: This scheme is always supported and is the recommended one. See [app passwords](./app-passwords.md).
 
-- **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](../configuration.md#server--network) if you need it. It accepts either an [app password](./app-passwords.md) or the account password.
+- **Legacy MD5-token / cleartext password authentication**: For older clients. Can be enabled server-wide via [`legacy_auth`](../configuration.md#server--network) if you need it. It only accepts [app passwords](./app-passwords.md) created with _Usable as a password_.
 
 > [!IMPORTANT]
-> Clients should be given an [app password](./app-passwords.md) rather than the account password. The account password will stop being accepted in a coming update.
+> Subsonic clients need an [app password](./app-passwords.md): the account password is only for the Web UI.
 
 ## Multi-user system
 

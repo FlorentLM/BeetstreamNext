@@ -8,7 +8,7 @@
 
 Everything stays in your Beets library and BeetstreamNext's own database, on your machine:
 
-- User accounts (usernames and password hashes, or the credentials needed for Subsonic authentication),
+- User accounts (usernames, password hashes, and app passwords),
 
 - Ratings, likes, playlists, bookmarks, play queues, play counts and chat messages
 

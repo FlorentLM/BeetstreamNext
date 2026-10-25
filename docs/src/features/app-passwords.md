@@ -34,6 +34,6 @@ By default an app password is API-key only (so that the server can just keep a h
 - Upgrading from a **BeetstreamNext** version with a single API key per user: that key becomes an app password named **Default API key** with full access. It **only** works as an `apiKey` (not as a legacy password), since its secret was never stored in a recoverable form.
 
 > [!IMPORTANT]
-> Your account password still works with Subsonic clients (for now).
-> 
-> But giving it to clients is not ideal, and will be disabled in a future update. You should use app passwords instead.
+> Your account password is only for the Web UI.
+>
+> If you are upgrading, every client that used your account password now needs an app password.

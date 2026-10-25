@@ -533,9 +533,9 @@ pids_limit: 100
 
 ## Encryption key
 
-User passwords aren't hashed, they are stored _reversibly encrypted_, because Subsonic's legacy MD5-token auth requires the server to recompute `md5(password + salt)` on every login, which needs the plaintext password to be recoverable...
+User passwords are stored as one-way hashes (scrypt).
 
-The server key `BEETSTREAMNEXT_KEY` is that database encryption key.
+The server key `BEETSTREAMNEXT_KEY` is the database encryption key for everything else: sensitive settings (such as third-party API keys) and the secrets of [app passwords](./features/app-passwords.md) created with _Usable as a password_ (Subsonic's legacy MD5-token auth needs to recompute `md5(secret + salt)` on every login).
 
 This is meant to protect against the database file leaking on its own: a backup that includes `library.db`/`beetstreamnext.db` but not the dotfiles, a misconfigured endpoint serving the db file, a db copied to a new host without also copying its key ...this sort of thing.
 
@@ -548,7 +548,7 @@ Given that, how the server key is provisioned matters:
 > [!NOTE]
 > If `BEETSTREAMNEXT_KEY` is set but isn't valid, **BeetstreamNext** will refuse to start.
 
-If the key is lost, stored passwords become unrecoverable and you will need to delete the **BeetstreamNext** database and set up again (of course your Beets library stays perfectly fine).
+If the key is lost, the stored secrets become unrecoverable and you will need to delete the **BeetstreamNext** database and set up again (of course your Beets library stays perfectly fine).
 
 > [!IMPORTANT]
 > You also need this server key during the first-run admin account creation if using the Web UI (see below).

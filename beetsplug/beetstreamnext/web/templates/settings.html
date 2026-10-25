@@ -90,7 +90,7 @@
             'notifications': 'notifications',
             'maintenance': 'build',
         } %}
-        {% set tab_order = ['users', 'connections'] + settings_categories|reject('equalto', 'podcasts')|list
+        {% set tab_order = ['users', 'connections'] + settings_categories|reject('in', ['podcasts', 'connections'])|list
             + (['podcasts'] if 'podcasts' in settings_categories else [])
             + ['radios', 'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <nav class="tabs" role="tablist">
@@ -138,6 +138,12 @@
             {% with bp_name = 'admin' %}{% include 'partials/app_passwords_card.html' %}{% endwith %}
 
             {% with bp_name = 'admin' %}{% include 'partials/web_sessions_card.html' %}{% endwith %}
+
+            <div class="card">
+                <div class="table-header"><h2><span class="material-symbols-outlined">cloud</span>External services</h2></div>
+                {{ render_settings_form('connections', settings_by_category.connections, users, host_suggestions, setting_pills) }}
+            </div>
+
         </section>
 
         {# Chat tab #}
@@ -164,7 +170,7 @@
         </section>
 
         {# Settings tabs #}
-        {% for cat in settings_categories %}
+        {% for cat in settings_categories if cat != 'connections' %}
             <section class="tab-content" id="tab-{{ cat }}" :class="{ active: active === '{{ cat }}' }" role="tabpanel">
                 <div class="card">
                     <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
@@ -494,7 +500,7 @@
                 <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
                 <p class="card-hint">
                     Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
-                    <code>audiomuse_url</code> to be configured under Library settings.
+                    <code>audiomuse_url</code> to be configured under Connections.
                 </p>
                 <p class="card-hint">
                     Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)

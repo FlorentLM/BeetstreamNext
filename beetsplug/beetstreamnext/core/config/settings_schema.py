@@ -398,7 +398,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     'lastfm_api_key': {
         'type': 'str',
         'default': '',
-        'category': 'library',
+        'category': 'connections',
         'description': 'Last.fm API key for fetching metadata.',
         'requires_restart': False,
         'sensitive': True,
@@ -546,7 +546,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     'audiomuse_api_token': {
         'type': 'str',
         'default': '',
-        'category': 'library',
+        'category': 'connections',
         'description': 'API token for your AudioMuse-AI instance.',
         'requires_restart': False,
         'sensitive': True,
@@ -555,7 +555,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     'audiomuse_url': {
         'type': 'str',
         'default': '',
-        'category': 'library',
+        'category': 'connections',
         'description': 'URL to your AudioMuse-AI instance (e.g. <code>http://localhost:8000</code>) to enable sonic similarity endpoints.',
         'requires_restart': False,
     },
@@ -593,7 +593,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     'podcastindex_api_key': {
         'type': 'str',
         'default': '',
-        'category': 'podcasts',
+        'category': 'connections',
         'description': (
             'API key for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, '
             'used for podcast channel discovery.'
@@ -605,7 +605,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     'podcastindex_api_secret': {
         'type': 'str',
         'default': '',
-        'category': 'podcasts',
+        'category': 'connections',
         'description': 'API secret for the Podcast Index.',
         'requires_restart': False,
         'sensitive': True,

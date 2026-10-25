@@ -48,6 +48,72 @@ Settings marked <span style="color:#fab915">**requires restart**</span> only tak
 > 
 > If either isn't (for example when they're bind-mounted `:ro`, as in the [Betanin example stack](./installation.md#example-stack-beetstreamnext--betanin)), the WebUI will show a red "read-only" pill next to any setting that would otherwise need write access.
 
+## External services
+
+### `lastfm_api_key`
+
+Last.fm API key for fetching metadata.
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_LASTFM_API_KEY`
+
+---
+
+### `audiomuse_api_token`
+
+API token for your AudioMuse-AI instance.
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_AUDIOMUSE_API_TOKEN`
+
+---
+
+### `audiomuse_url`
+
+URL to your AudioMuse-AI instance (e.g. <code>http://localhost:8000</code>) to enable sonic similarity endpoints.
+
+*type:* `str`
+
+*default:* *(empty)*
+
+---
+
+### `podcastindex_api_key`
+
+API key for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, used for podcast channel discovery.
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_PODCASTINDEX_API_KEY`
+
+---
+
+### `podcastindex_api_secret`
+
+API secret for the Podcast Index.
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_PODCASTINDEX_API_SECRET`
+
 ## Server & network
 
 ### `admin_hostname`
@@ -434,20 +500,6 @@ Never transcode files, always stream the original.
 
 ---
 
-### `lastfm_api_key`
-
-Last.fm API key for fetching metadata.
-
-<span style="color:#6b5c58">**sensitive**</span>
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_LASTFM_API_KEY`
-
----
-
 ### `fetch_artists_images`
 
 Fetch missing artist images from external services.
@@ -602,30 +654,6 @@ Automatically fetch station icon when adding a new radio station.
 
 *default:* `True`
 
----
-
-### `audiomuse_api_token`
-
-API token for your AudioMuse-AI instance.
-
-<span style="color:#6b5c58">**sensitive**</span>
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_AUDIOMUSE_API_TOKEN`
-
----
-
-### `audiomuse_url`
-
-URL to your AudioMuse-AI instance (e.g. <code>http://localhost:8000</code>) to enable sonic similarity endpoints.
-
-*type:* `str`
-
-*default:* *(empty)*
-
 ## Podcasts
 
 ### `podcast_storage_dir`
@@ -655,34 +683,6 @@ Enable Podcast Index API for channel discovery.
 *type:* `bool`
 
 *default:* `False`
-
----
-
-### `podcastindex_api_key`
-
-API key for the <a href="https://podcastindex.org/" target="_blank" rel="noopener">Podcast Index</a>, used for podcast channel discovery.
-
-<span style="color:#6b5c58">**sensitive**</span>
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_PODCASTINDEX_API_KEY`
-
----
-
-### `podcastindex_api_secret`
-
-API secret for the Podcast Index.
-
-<span style="color:#6b5c58">**sensitive**</span>
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_PODCASTINDEX_API_SECRET`
 
 ## Audio & jukebox
 

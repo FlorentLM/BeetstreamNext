@@ -21,6 +21,7 @@ OUT_PATH = ROOT / 'docs' / 'src' / 'configuration.md'
 
 # (Schema category key, Doc heading) in display order
 CATEGORIES = [
+    ('connections', 'External services'),
     ('server', 'Server & network'),
     ('library', 'Library & metadata'),
     ('podcasts', 'Podcasts'),

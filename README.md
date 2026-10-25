@@ -20,7 +20,7 @@ Fully-featured music server for Beets.io music libraries implementing the OpenSu
 
 > [!IMPORTANT]
 > **version 2.2.0 breaking changes**
-> - **Subsonic clients can no longer sign in with the account password.** Create an [app passwords](https://florentlm.github.io/BeetstreamNext/features/app-passwords.html) instead. The account password only works in the web UI.
+> - **Subsonic clients can no longer sign in with the account password.** Create an [app password](https://florentlm.github.io/BeetstreamNext/features/app-passwords.html) instead. The account password only works in the web UI.
 > - **Account passwords are now stored as scrypt hashes.** The upgrade migrates them automatically (using your `BEETSTREAMNEXT_KEY`, so keep the same key for the first start after upgrading).
 
 BeetstreamNext exposes your [Beets](https://beets.io) music library over the [OpenSubsonic API](https://opensubsonic.netlify.app/), letting you stream your music to any Subsonic/OpenSubsonic/Navidrome client. It supports essentially the whole specification (only video-streaming is left out), and adds a bunch of its own extras :)

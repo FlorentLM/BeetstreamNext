@@ -595,14 +595,23 @@
             <div class="card">
                 <div class="table-header"><h2>Server Log</h2></div>
                 <div class="log-toolbar">
+                    <label class="log-toolbar-item">Level
+                        <select data-log-level="serverLogText" aria-label="Minimum log level">
+                            <option value="">All</option>
+                            <option value="info">Info and above</option>
+                            <option value="warning">Warnings and errors</option>
+                            <option value="error">Errors only</option>
+                        </select>
+                    </label>
+                    <label class="log-toolbar-item">
+                        <input type="checkbox" data-log-wrap="serverLogText" checked> Wrap lines
+                    </label>
                     <button type="button" class="btn btn-outline" data-action="copy-log"
                             data-target="serverLogText">{{ macros.icon('copy') }} <span
                             class="btn-label">Copy</span></button>
                 </div>
                 <pre class="log-view" id="serverLogText" data-lines="{{ log_lines|length }}"
-                     data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}
-                    {{ log_lines|map('safe')|join('\n') }}{% else %}(no log
-                    output yet){% endif %}</pre>
+                     data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}{{ log_lines|map('safe')|join('') }}{% else %}(no log output yet){% endif %}</pre>
             </div>
         </section>
     </div>

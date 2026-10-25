@@ -4,7 +4,9 @@
 
 <div class="notification-row">
     <form id="{{ form_id }}" class="notification-card {{ 'notification-card-new' if is_new }}"
-          x-data="notificationCard" :class="{ 'notification-card-dirty': dirty }" @input="markDirty" @change="markDirty"
+          x-data="notificationCard" data-dirty="{{ 1 if dirty }}"
+          data-samples='{{ events[item.event].examples() | tojson }}' :class="{ 'notification-card-dirty': dirty }"
+          @input="markDirty" @change="markDirty" @focusin="rememberField"
             {% if is_new %}
           hx-post="{{ url_for('admin.route_notifications_add') }}"
           hx-target="closest .notification-row"
@@ -17,7 +19,7 @@
           hx-disable="find button[type=submit]">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <details class="notification-details" {{ 'open' if is_new or message or open }}>
+        <details class="notification-details" {{ 'open' if is_new or message or open or dirty }}>
             <summary class="notification-head">
                 <h3>{{ 'New notification' if is_new else (item.title or 'Untitled') }}</h3>
                 <span class="notification-kind">Type: {{ events[item.event].label }}</span>
@@ -28,11 +30,13 @@
                 <select name="event" class="notification-type"
                         {% if is_new %}
                         hx-get="{{ url_for('admin.route_notifications_new') }}"
+                        {% else %}
+                        hx-post="{{ url_for('admin.route_notifications_retype', notification_id=item.id) }}"
+                        {% endif %}
                         hx-trigger="change"
                         hx-include="closest form"
                         hx-target="closest .notification-row"
-                        hx-swap="outerHTML"
-                        {% endif %}>
+                        hx-swap="outerHTML">
                     {% for key, e in events.items() %}
                         <option value="{{ key }}" {{ 'selected' if key == item.event }}>{{ e.label }}</option>
                     {% endfor %}
@@ -48,15 +52,22 @@
             <div class="form-group">
                 <label>Body <span class="label-hint">(can use variables)</span></label>
                 <textarea name="body" class="notification-template" rows="3">{{ item.body }}</textarea>
+                <div class="variable-chips" role="group" aria-label="Insert a variable">
+                    {% for name in events[item.event].variables %}
+                        <button type="button" class="variable-chip" data-variable="{{ name }}"
+                                title="{{ variables[name][0] }}" @click="insertVariable">{{ '{' ~ name ~ '}' }}</button>
+                    {% endfor %}
+                </div>
                 <details class="notification-variables">
-                    <summary>Available variables</summary>
-                    {% set names = events[item.event].variables %}
-                    {% set pad = (names | map('length') | max) + 4 %}
-                    <pre class="setting-help"><code>{% for name in names -%}
-{{ ('{' ~ name ~ '}').ljust(pad) }}{{ variables[name][0] }}
-{% endfor -%}
-</code></pre>
+                    <summary>What are these?</summary>
+                    <dl class="variable-help">
+                        {% for name in events[item.event].variables %}
+                            <dt>{{ '{' ~ name ~ '}' }}</dt>
+                            <dd>{{ variables[name][0] }}</dd>
+                        {% endfor %}
+                    </dl>
                 </details>
+                <div class="notification-preview" aria-live="polite"></div>
             </div>
 
             {% set event_options = events[item.event].options %}

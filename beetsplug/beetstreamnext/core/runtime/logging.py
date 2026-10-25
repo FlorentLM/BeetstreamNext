@@ -9,7 +9,7 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from paste.translogger import TransLogger
 
 from beetsplug.beetstreamnext.core.services.events import admin_events
-from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
+from beetsplug.beetstreamnext.utils.ansi import log_line
 
 
 # Matched case-insensitively
@@ -137,11 +137,12 @@ class MemLogBuffer(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         try:
             line = self.format(record)
-            self.buffer.append(line)
+            entry = (line, record.levelname, record.name)
+            self.buffer.append(entry)
 
             if admin_events.has_subscribers():
                 with self._pending_lock:
-                    self._pending.append(ansi_to_html(line))
+                    self._pending.append(log_line(*entry))
                     if self._flush_timer is None:
                         self._flush_timer = threading.Timer(self.PUSH_INTERVAL, self._flush)
                         self._flush_timer.daemon = True
@@ -151,7 +152,7 @@ class MemLogBuffer(logging.Handler):
 
     @property
     def recents(self) -> List[str]:
-        return [ansi_to_html(line) for line in self.buffer]
+        return [log_line(*entry) for entry in self.buffer]
 
 
 class TracebackFilter(logging.Filter):

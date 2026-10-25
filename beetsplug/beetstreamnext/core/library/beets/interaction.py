@@ -32,7 +32,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.library.beets.config_policy import (
     CODE_EXECUTION_PLUGINS, CODE_EXECUTION_KEYS, COMMAND_OPTIONS, DISK_WRITING_PLUGINS,
 )
-from beetsplug.beetstreamnext.utils.ansi import ansi_to_html
+from beetsplug.beetstreamnext.utils.ansi import log_line
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_elapsed
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
@@ -79,7 +79,7 @@ def is_import_safe() -> bool:
 
 def htmlify_log() -> List[str]:
     """Import log as HTML lines (escaped, ANSI converted)."""
-    return [ansi_to_html(line) for line in read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)]
+    return [log_line(line) for line in read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)]
 
 
 class ImportSession:

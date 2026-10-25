@@ -72,6 +72,12 @@ class Event:
     options: Tuple[EventOption, ...] = ()
     should_send: Optional[Callable[[Dict[str, Any], Dict[str, Any]], bool]] = None
 
+    def examples(self) -> Dict[str, str]:
+        """Example values for current event's variables."""
+        values = {k: '' if VARIABLES[k][1] is None else str(VARIABLES[k][1]) for k in self.variables}
+        values['status'] = self.status
+        return values
+
     def default_options(self) -> Dict[str, Any]:
         return {o.key: o.default for o in self.options}
 
@@ -422,7 +428,7 @@ def send_test(event: str, title: str, body: str, urls: List[str],
 
     try:
         kind, title, body, urls = _validate(event, title, body, urls)
-        samples = {k: VARIABLES[k][1] for k in kind.variables}
+        samples = kind.examples()
         samples['time'] = time.strftime('%Y-%m-%d %H:%M:%S')
         title, body = render({'event': event, 'title': title, 'body': body}, **samples)
     except ValueError as e:

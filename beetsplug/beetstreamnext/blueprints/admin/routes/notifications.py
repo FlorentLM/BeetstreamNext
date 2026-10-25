@@ -160,3 +160,23 @@ def route_notifications_delete(notification_id: int) -> flask.Response:
 def route_notifications_test() -> str:
     ok, message = notifications.send_test(**_get_fields())
     return flask.render_template('partials/test_result.html', result_id='', ok=ok, message=message)
+
+
+@admin_bp.route('/notifications/<int:notification_id>/retype', methods=['POST'])
+@admin_required
+def route_notifications_retype(notification_id: int) -> str:
+    """Saved card after type change: new variables and options but text kept (unsaved)."""
+
+    current = notifications.get_notification(notification_id)
+    if not current:
+        flask.abort(404)
+
+    fields = _get_fields()
+    event = EVENTS.get(fields['event'])
+    if event is None:
+        flask.abort(400)
+
+    item = {'id': notification_id, 'enabled': current['enabled'], **fields, 'options': event.default_options()}
+
+    return flask.render_template('partials/notification_form.html',
+                                 item=item, dirty=True, open=True, events=EVENTS, variables=VARIABLES)

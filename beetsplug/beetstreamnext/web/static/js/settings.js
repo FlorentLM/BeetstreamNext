@@ -58,13 +58,83 @@
 
         Alpine.data('notificationCard', () => {
             const clearResult = card => card.querySelector('.notification-result')?.replaceChildren();
+            let lastField = null;   // last title/body field user was in
 
             return {
                 dirty: false,
 
+                init() {
+                    this.sync();
+                },
+
+                sync() {
+                    this.dirty = this.$root.dataset.dirty === '1';   // e.g. card re-rendered after a type change
+                    this.renderPreview();
+                },
+
+                renderPreview() {
+                    const card = this.$root;
+                    const samples = JSON.parse(card.dataset.samples);
+                    if ('time' in samples) samples.time = new Date().toLocaleString('sv');
+                    const unknown = new Set();
+
+                    const fill = (el, text) => {
+                        let pos = 0;
+                        for (const m of text.matchAll(/\{(\w+)\}/g)) {
+                            if (!(m[1] in samples)) {
+                                unknown.add(m[1]);
+                                continue;
+                            }
+                            el.append(text.slice(pos, m.index));
+                            const mark = document.createElement('mark');
+                            mark.className = 'variable-sample';
+                            mark.textContent = samples[m[1]];
+                            el.append(mark);
+                            pos = m.index + m[0].length;
+                        }
+                        el.append(text.slice(pos));
+                        return el;
+                    };
+                    const block = (cls, text) => {
+                        const el = document.createElement('div');
+                        el.className = cls;
+                        return fill(el, text);
+                    };
+
+                    const title = card.querySelector('textarea[name="title"]').value.split(/\s+/).filter(Boolean).join(' ');
+                    const body = card.querySelector('textarea[name="body"]').value.trim();
+                    const box = document.createElement('div');
+                    box.className = 'notification-preview-card';
+                    box.append(block('notification-preview-title', title));
+                    if (body) box.append(block('notification-preview-body', body));
+
+                    const nodes = [box];
+                    if (unknown.size) {
+                        const warn = document.createElement('p');
+                        warn.className = 'test-result test-result-fail';
+                        warn.textContent = 'Unknown variable' + (unknown.size > 1 ? 's' : '') + ': '
+                            + [...unknown].map(name => '{' + name + '}').join(', ') + ' (will be sent as written)';
+                        nodes.push(warn);
+                    }
+                    card.querySelector('.notification-preview').replaceChildren(...nodes);
+                },
+
+                rememberField(event) {
+                    if (event.target.matches('.notification-template')) lastField = event.target;
+                },
+
+                insertVariable(event) {
+                    const card = event.currentTarget.closest('.notification-card');
+                    const field = lastField?.isConnected ? lastField : card.querySelector('textarea[name="body"]');
+                    field.focus();
+                    field.setRangeText('{' + event.currentTarget.dataset.variable + '}', field.selectionStart, field.selectionEnd, 'end');
+                    field.dispatchEvent(new Event('input', {bubbles: true}));   // dirty + refresh preview
+                },
+
                 markDirty(event) {
                     this.dirty = true;
                     clearResult(event.currentTarget);
+                    this.renderPreview();
                 },
 
                 // Cancel on a never-saved notification -> delete
@@ -170,7 +240,7 @@
                 applyLines(lines) {
                     const target = this.$refs.log;
                     const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-                    target.innerHTML = lines.length ? lines.join('\n') : (this.live ? 'Running import…' : '(no import run yet)');
+                    target.innerHTML = lines.length ? lines.join('') : (this.live ? 'Running import…' : '(no import run yet)');
                     if (wasAtBottom) target.scrollTop = target.scrollHeight;
                 },
 
@@ -239,7 +309,7 @@
     function copyLogs(button) {
         const el = document.getElementById(button.dataset.target);
         if (!el) return;
-        const text = el.textContent;
+        const text = el.innerText;   // visible lines only (respects the level filter)
         const label = button.querySelector('.btn-label');
 
         const done = () => {
@@ -272,7 +342,7 @@
             const payload = await resp.json();
             const lines = payload.lines || [];
             const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
-            target.innerHTML = lines.length ? lines.join('\n') : '(no log output yet)';
+            target.innerHTML = lines.length ? lines.join('') : '(no log output yet)';
             target.dataset.lines = lines.length;
             if (wasAtBottom) target.scrollTop = target.scrollHeight;
         } catch (err) {
@@ -306,9 +376,9 @@
 
         const wasAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
         if (count === 0) {
-            target.innerHTML = batch.join('\n');
+            target.innerHTML = batch.join('');
         } else {
-            target.insertAdjacentHTML('beforeend', '\n' + batch.join('\n'));
+            target.insertAdjacentHTML('beforeend', batch.join(''));
         }
         target.dataset.lines = count + batch.length;
         if (wasAtBottom) target.scrollTop = target.scrollHeight;
@@ -402,6 +472,14 @@
     adminDashboard?.addEventListener('podcast-status', handlePodcastStatusSse);
     adminDashboard?.addEventListener('server-log', handleServerLogSse);
 
+    document.body.addEventListener('htmx:after:settle', event => {
+        for (const node of event.detail.newContent ?? []) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            const cards = node.matches('.notification-card') ? [node] : node.querySelectorAll('.notification-card');
+            cards.forEach(card => Alpine.$data(card).sync?.());
+        }
+    });
+
     // Episodes lists are lazy-loaded htmx
     document.body.addEventListener('htmx:after:swap', event => {
         const target = event.detail.ctx.target;
@@ -461,6 +539,19 @@
     }
 
     // Events
+
+    document.addEventListener('change', event => {
+        const level = event.target.closest('[data-log-level]');
+        const wrap = event.target.closest('[data-log-wrap]');
+        if (level) {
+            const log = document.getElementById(level.dataset.logLevel);
+            if (level.value) log.dataset.level = level.value;
+            else delete log.dataset.level;
+            log.scrollTop = log.scrollHeight;
+        } else if (wrap) {
+            document.getElementById(wrap.dataset.logWrap)?.classList.toggle('log-nowrap', !wrap.checked);
+        }
+    });
 
     document.addEventListener('click', event => {
         const target = event.target.closest('[data-action]');

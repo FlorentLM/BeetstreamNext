@@ -1142,7 +1142,10 @@ input:focus, select:focus {
 
 .log-toolbar {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
     padding: 1rem 1.5rem 0.75rem;
 }
 
@@ -1161,6 +1164,95 @@ input:focus, select:focus {
     color: var(--text-muted);
     white-space: pre-wrap;
     word-break: break-all;
+}
+
+.log-toolbar-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.log-toolbar-item select {
+    width: auto;
+}
+
+.log-view.log-nowrap {
+    white-space: pre;
+    word-break: normal;
+}
+
+.log-line {
+    padding: 0 0.4rem;
+    border-left: 2px solid transparent;
+}
+
+.log-line:empty::before {
+    content: " ";
+}
+
+.log-level {
+    display: inline-block;
+    min-width: 5.5em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.log-name {
+    margin-right: 0.6em;
+    opacity: 0.55;
+}
+
+.log-debug .log-level {
+    color: var(--ansi-bright-black);
+}
+
+.log-info .log-level {
+    color: var(--ansi-blue);
+}
+
+.log-warning {
+    border-left-color: var(--ansi-yellow);
+    background: color-mix(in srgb, var(--ansi-yellow) 8%, transparent);
+}
+
+.log-warning .log-level {
+    color: var(--ansi-yellow);
+}
+
+.log-error,
+.log-critical {
+    border-left-color: var(--ansi-red);
+    background: color-mix(in srgb, var(--ansi-red) 10%, transparent);
+    color: var(--text);
+}
+
+.log-error .log-level,
+.log-critical .log-level {
+    color: var(--ansi-red);
+}
+
+/* Message tokens */
+.tok-str { color: var(--ansi-green); }
+.tok-path { color: var(--ansi-cyan); }
+.tok-key { color: var(--ansi-magenta); }
+.tok-num,
+.tok-ip { color: var(--ansi-yellow); }
+.tok-method { color: var(--ansi-blue); font-weight: 600; }
+.tok-status { font-weight: 600; }
+.tok-status-2xx { color: var(--ansi-green); }
+.tok-status-3xx { color: var(--ansi-cyan); }
+.tok-status-4xx { color: var(--ansi-yellow); }
+.tok-status-5xx { color: var(--ansi-red); }
+
+/* Log level filter */
+.log-view[data-level="info"] .log-debug,
+.log-view[data-level="warning"] :is(.log-debug, .log-info),
+.log-view[data-level="error"] :is(.log-debug, .log-info, .log-warning) {
+    display: none;
 }
 
 /* ANSI colors for beets/server log output */
@@ -2018,6 +2110,96 @@ input:focus, select:focus {
 .switch input:focus-visible ~ .switch-track {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
+}
+
+.variable-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.variable-chip {
+    padding: 0.15rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--overlay-sunken-2);
+    color: var(--text-muted);
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.variable-chip:hover,
+.variable-chip:focus-visible {
+    border-color: var(--primary);
+    color: var(--text);
+}
+
+.notification-preview:empty {
+    display: none;
+}
+
+.notification-preview {
+    margin-top: 0.8rem;
+}
+
+.notification-preview::before {
+    content: "Notification preview";
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.notification-preview-card {
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    background: var(--overlay-sunken-2);
+}
+
+.notification-preview-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.notification-preview-body {
+    margin-top: 0.3rem;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--text-muted);
+}
+
+.variable-sample {
+    padding: 0 0.25em;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    color: inherit;
+}
+
+.variable-help {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.2rem 1.5rem;
+    margin: 0.6rem 0 0;
+    padding: 0.7rem 0.9rem;
+    background: var(--overlay-sunken-2);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+.variable-help dt {
+    font-family: ui-monospace, monospace;
+}
+
+.variable-help dd {
+    margin: 0;
 }
 
 .notification-variables summary {

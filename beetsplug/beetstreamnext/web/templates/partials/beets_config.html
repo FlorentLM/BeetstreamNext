@@ -23,13 +23,16 @@
         <textarea id="beetsConfigEditor" name="content" class="code-editor" spellcheck="false" autocomplete="off"
                   autocapitalize="off" wrap="off" data-validate-url="{{ url_for('admin.route_validate_beets_config') }}"
                   {% if beets_config.read_only %}readonly{% endif %}>{{ beets_config.content }}</textarea>
+        <pre class="code-editor-gutter" id="beetsConfigGutter" aria-hidden="true"></pre>
     </div>
     <p class="test-result test-result-fail config-editor-status" id="beetsConfigStatus" role="status" hidden></p>
     {% if beets_config.locked %}
     <div class="config-locked">
         <p class="card-hint">Pre-existing dangerous keys that can't be modified from here (only deleted):</p>
         <ul class="config-locked-list">
-            {% for entry in beets_config.locked %}<li><code>{{ entry }}</code></li>{% endfor %}
+            {% for name, line in beets_config.locked %}
+                <li><code>{{ name }}</code>{% if line %} <span class="label-hint">(line {{ line }})</span>{% endif %}</li>
+            {% endfor %}
         </ul>
     </div>
     {% endif %}

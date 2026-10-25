@@ -60,8 +60,19 @@
         const layer = document.getElementById('beetsConfigHighlight');
         if (!textarea || !layer) return;
         layer.innerHTML = highlightYaml(textarea.value, errorLine, lockedLines);
+
+        const gutter = document.getElementById('beetsConfigGutter');
+        const count = textarea.value.split('\n').length;
+        gutter.textContent = Array.from({length: count}, (_, i) => i + 1).join('\n');
+
+        syncScroll(textarea);
+    }
+
+    function syncScroll(textarea) {
+        const layer = document.getElementById('beetsConfigHighlight');
         layer.scrollTop = textarea.scrollTop;
         layer.scrollLeft = textarea.scrollLeft;
+        document.getElementById('beetsConfigGutter').scrollTop = textarea.scrollTop;
     }
 
     function showStatus(ok, message) {
@@ -112,10 +123,7 @@
     });
 
     document.addEventListener('scroll', event => {
-        if (event.target.id !== 'beetsConfigEditor') return;
-        const layer = document.getElementById('beetsConfigHighlight');
-        layer.scrollTop = event.target.scrollTop;
-        layer.scrollLeft = event.target.scrollLeft;
+        if (event.target.id === 'beetsConfigEditor') syncScroll(event.target);
     }, true);
 
     bsnCommon.onSwap('beetsConfigEditorWrap', refresh);   // after Save / Reload

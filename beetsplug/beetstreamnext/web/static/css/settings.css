@@ -1378,7 +1378,10 @@ input:focus, select:focus {
 }
 
 .code-editor-box {
+    --gutter: 3.4rem;
     position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
     border-radius: 8px;
     background: #000;
 }
@@ -1387,17 +1390,26 @@ input:focus, select:focus {
     background: #fff;
 }
 
+.code-editor-box:focus-within {
+    border-color: var(--primary);
+}
+
 .code-editor,
-.code-editor-highlight {
+.code-editor-highlight,
+.code-editor-gutter {
     margin: 0;
     padding: 1rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border: 0;
     font-family: ui-monospace, monospace;
     font-size: 0.85rem;
     line-height: 1.5;
     tab-size: 4;
     white-space: pre;
+}
+
+.code-editor,
+.code-editor-highlight {
+    padding-left: calc(var(--gutter) + 1.25rem);
 }
 
 .code-editor {
@@ -1410,21 +1422,34 @@ input:focus, select:focus {
     color: transparent;
     caret-color: var(--text);
     resize: vertical;
+    outline: none;
 }
 
 .code-editor-highlight {
     position: absolute;
     inset: 0;
     overflow: hidden;
-    padding-bottom: calc(1rem + 20px);
-    border-color: transparent;
+    padding-bottom: calc(1rem + 20px);      /* the textarea can scroll further when it has a horizontal scrollbar */
     color: var(--text);
     pointer-events: none;
 }
 
-.code-editor:focus {
-    outline: none;
-    border-color: var(--primary);
+
+.code-editor-gutter {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--gutter);
+    overflow: hidden;
+    padding: 1rem 0.8rem calc(1rem + 20px) 0;
+    background: inherit;
+    border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    color: var(--text-muted);
+    opacity: 0.6;
+    text-align: right;
+    user-select: none;
+    pointer-events: none;
 }
 
 .code-editor[readonly] {
@@ -1437,6 +1462,8 @@ input:focus, select:focus {
 
 .yaml-line {
     min-width: max-content;
+    margin-left: -0.75rem;
+    padding-left: 0.75rem;
 }
 
 .yaml-line:empty::before {
@@ -1445,16 +1472,16 @@ input:focus, select:focus {
 
 .yaml-line-error {
     background: color-mix(in srgb, var(--ansi-red) 18%, transparent);
-    box-shadow: -3px 0 0 var(--ansi-red);
+    box-shadow: inset 3px 0 0 var(--ansi-red);
 }
 
 .yaml-line-locked {
     background: color-mix(in srgb, var(--ansi-yellow) 14%, transparent);
-    box-shadow: -3px 0 0 var(--ansi-yellow);
+    box-shadow: inset 3px 0 0 var(--ansi-yellow);
 }
 
 .yaml-line-locked::after {
-    content: "editing blocked (can only be deleted)";
+    content: "locked: can only be deleted";
     margin-left: 2rem;
     font-size: 0.75rem;
     font-style: italic;

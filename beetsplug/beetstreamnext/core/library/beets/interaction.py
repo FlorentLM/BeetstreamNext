@@ -482,9 +482,17 @@ def read_config() -> dict:
     edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
 
     try:
-        locked = sorted(_exec_entries(content)) if edit_allowed else []
+        entries = _exec_entries(content) if edit_allowed else {}
     except yaml.YAMLError:
-        locked = []
+        entries = {}
+
+    # (name, line) of dangerous entries
+    locked = []
+
+    for name, (_, line) in entries.items():
+        locked.append((name, line))
+
+    locked.sort(key=lambda entry: (entry[1] is None, entry[1] or 0, entry[0]))
 
     return {
         'path': str(path),

@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.utils.concurrency import DoOnce
 from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.core.services.events import admin_events
+from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.constants import (
     LOOPBACK_IPS, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
@@ -124,7 +125,17 @@ class RateLimiter:
             self._store[key].append(now)
             self._ip_store[ip].append(now)
 
+            # Only the attempt that crosses threshold notifies
+            recent = sum(now - t < self._block_window for t in self._store[key])
+            ip_recent = sum(now - t < self._ip_block_window for t in self._ip_store[ip])
+
         admin_events.publish('rate-limits', '')
+
+        if recent == self._max_failures:
+            notify('login_blocked', ip=ip, username=username, failures=recent)
+
+        elif ip_recent == self._ip_max_failures:
+            notify('login_blocked', ip=ip, username='', failures=ip_recent)
 
     def reset(self, ip: str, username: str = ''):
         """Clear failures for an (IP, username) pair. The IP-wide bucket is kept."""

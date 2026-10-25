@@ -17,6 +17,7 @@ from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.constants import FFMPEG_INPUT_ARGS, START_TIME, SERVER_VERSION
 from beetsplug.beetstreamnext.core.library.beets.interaction import config_path
@@ -299,14 +300,19 @@ def scan_library(full: bool = False) -> Dict[str, int]:
         health_scan.release()
         admin_events.publish('health-scan', '')
 
+    notify('health_scan_completed',
+           songs_checked=counts['checked'],
+           songs_flagged=health_stats()['flagged'],
+           songs_unchanged=counts['skipped'])
+
     return counts
 
 
 @with_app_context
 def startup_path_check(music_root: str | Path, sample_size: int = 20) -> Tuple[int, int]:
     """
-    Stats a random sample of resolved item paths. Meant to be called once at boot, so a
-    bad path-mapping/mount config is caught fast.
+    Stats a random sample of resolved item paths. Meant to be called once at boot,
+    so a bad path-mapping/mount config is caught fast.
 
     Returns (checked, missing) counts.
     """

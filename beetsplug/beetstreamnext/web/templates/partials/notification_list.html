@@ -2,6 +2,11 @@
     <p class="card-hint">Notifications need the optional <code>apprise</code> package.
         Install it with <code>pip install "beetstreamnext[notifications]"</code> and restart.</p>
 {% else %}
+    <datalist id="notification-url-suggestions">
+        {% for url in url_suggestions %}
+            <option value="{{ url }}"></option>
+        {% endfor %}
+    </datalist>
     {% for item in items %}
         {% include 'partials/notification_form.html' %}
     {% else %}

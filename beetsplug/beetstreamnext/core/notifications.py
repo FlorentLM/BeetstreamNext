@@ -95,15 +95,26 @@ class Event:
 
 VARIABLES = {
     'path': ('Folder being imported', '/music/Example Album'),
-    'status': ('Started, Completed, Failed, Needs input or Aborted', None),
+    'status': ('Started, Completed, Failed, Needs input, Aborted, Blocked or Running', None),
     'exit_code': ('Exit code of the beets import', 0),
     'duration': ('How long the import ran for', '1m 23s'),
     'albums_imported': ('Albums added to the library', 2),
     'albums_skipped': ('Albums skipped: no match, duplicates, or skipped by you', 1),
     'imported_list': ('Names of the imported albums', 'Example Artist - First Album\nExample Artist - Second Album'),
     'skipped_list': ('Names of the skipped albums', 'Unknown Artist - Mystery Album'),
+    'ip': ('IP address the failed logins came from', '203.0.113.7'),
+    'username': ('Username that was being tried (empty when the whole IP was blocked)', 'alice'),
+    'failures': ('Failed login attempts that triggered the block', 5),
+    'songs_checked': ('Songs checked by the health scan', 1200),
+    'songs_flagged': ('Songs flagged as unhealthy in the whole library', 3),
+    'songs_unchanged': ('Songs skipped by the health scan because they were unchanged', 800),
     'time': ('When the notification was sent', None),
 }
+
+IMPORT_RESULT_VARIABLES = (
+    'path', 'status', 'exit_code', 'duration', 'albums_imported', 'albums_skipped',
+    'imported_list', 'skipped_list', 'time'
+)
 
 
 EVENTS = {
@@ -117,7 +128,7 @@ EVENTS = {
         label='Import completed',
         status='completed',
         body='Imported {path} in {duration}: {albums_imported} imported, {albums_skipped} skipped',
-        variables=tuple(VARIABLES),
+        variables=IMPORT_RESULT_VARIABLES,
         notify_type='success',
         options=(
             EventOption(
@@ -132,7 +143,7 @@ EVENTS = {
         label='Import failed',
         status='failed',
         body='Importing {path} failed (exit code {exit_code}) after {duration}',
-        variables=tuple(VARIABLES),
+        variables=IMPORT_RESULT_VARIABLES,
         notify_type='failure'),
 
     'import_needs_input': Event(
@@ -148,6 +159,34 @@ EVENTS = {
         body='The pinned scan stopped at {path}',
         variables=('path', 'status', 'time'),
         notify_type='failure'),
+
+    'login_blocked': Event(
+        label='Login blocked',
+        status='blocked',
+        body='Too many failed logins from {ip} (user: {username}), blocked after {failures} attempts',
+        variables=('ip', 'username', 'failures', 'status', 'time'),
+        notify_type='warning'),
+
+    'health_scan_completed': Event(
+        label='Health scan completed',
+        status='completed',
+        body='Health scan checked {songs_checked} songs: {songs_flagged} flagged in the library',
+        variables=('songs_checked', 'songs_flagged', 'songs_unchanged', 'status', 'time'),
+        notify_type='success',
+        options=(
+            EventOption(
+                key='only_if_flagged',
+                label='Only send if songs are flagged',
+                default=False,
+                help='Skips the notification when no song in the library is flagged'),
+        ),
+        should_send=lambda options, v: not (options['only_if_flagged'] and not v.get('songs_flagged'))),
+
+    'server_started': Event(
+        label='Server started',
+        status='running',
+        body='BeetstreamNext is running',
+        variables=('status', 'time')),
 }
 
 

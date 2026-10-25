@@ -1,6 +1,6 @@
 # Notifications
 
-**BeetstreamNext** can send a notification when something happens during a [Beets import](./beets-import.md), through [**Apprise**](https://github.com/caronc/apprise).
+**BeetstreamNext** can send a notification when something happens (a [Beets import](./beets-import.md), a blocked login, a finished health scan...), through [**Apprise**](https://github.com/caronc/apprise).
 
 Apprise supports most chat, push and email services (Discord, Telegram, Slack, Matrix, ntfy, Pushover, Gotify, email, generic webhooks, and [many more](https://appriseit.com/services/)).
 
@@ -29,13 +29,16 @@ You can create as many notifications as you like, including several of the same 
 
 ### Types
 
-| Type                      | Sent when                                                                                                               |
-|---------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| **Import started**        | A `beet import` run starts (from the admin panel, a pinned scan, a Subsonic client's `startScan`, or a watched folder)  |
-| **Import completed**      | An import finishes with exit code `0`                                                                                   |
-| **Import failed**         | An import finishes with a non-zero exit code                                                                            |
-| **Import needs input**    | An interactive import is waiting for an answer (once each time it starts waiting)                                       |
-| **Pinned scan aborted**   | A queued [pinned folder](./beets-import.md) scan couldn't be started, and the rest of the queue was dropped             |
+| Type                      | Sent when                                                                                                              |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Import started**        | A `beet import` run starts (from the admin panel, a pinned scan, a Subsonic client's `startScan`, or a watched folder) |
+| **Import completed**      | An import finishes with exit code `0`                                                                                  |
+| **Import failed**         | An import finishes with a non-zero exit code                                                                           |
+| **Import needs input**    | An interactive import is waiting for an answer (once each time it starts waiting)                                      |
+| **Pinned scan aborted**   | A queued [pinned folder](./beets-import.md) scan couldn't be started, and the rest of the queue was dropped            |
+| **Login blocked**         | Too many failed logins locked out a user / IP                                                                          |
+| **Health scan completed** | A library health scan finishes (can be limited to scans where songs are flagged)                                       |
+| **Server started**        | **BeetstreamNext** finished starting up (also after a restart)                                                         |
 
 > [!NOTE]
 > A quiet watched-folder import exits with `0` even when Beets skipped albums, so _Import completed_ doesn't mean everything was imported.
@@ -44,19 +47,25 @@ You can create as many notifications as you like, including several of the same 
 
 ### Variables
 
-Titles and bodies can contain `{variables}`, replaced when the notification is sent:
+Notification titles and bodies can contain `{variables}`, replaced when the notification is sent:
 
-| Variable            | Value                                                                            |
-|---------------------|----------------------------------------------------------------------------------|
-| `{path}`            | The folder being imported                                                        |
-| `{status}`          | `started`, `completed`, `failed`, `needs input` or `aborted`                     |
-| `{exit_code}`       | The exit code of the import (empty until it has finished)                        |
-| `{duration}`        | How long the import ran for, e.g. `1m 23s` (empty until it has finished)         |
-| `{albums_imported}` | How many albums were added to the library (`Import completed` / `Import failed`) |
-| `{albums_skipped}`  | How many albums were skipped: no match, duplicates, or skipped by you            |
-| `{imported_list}`   | Names of the imported albums (`Artist - Album`), one per line (first 5 only)     |
-| `{skipped_list}`    | Names of the skipped albums, one per line (first 5 only)                         |
-| `{time}`            | When the notification was sent                                                   |
+| Variable            | Value                                                                              |
+|---------------------|------------------------------------------------------------------------------------|
+| `{path}`            | The folder being imported                                                          |
+| `{status}`          | `started`, `completed`, `failed`, `needs input`, `aborted`, `blocked` or `running` |
+| `{exit_code}`       | The exit code of the import (empty until it has finished)                          |
+| `{duration}`        | How long the import ran for, e.g. `1m 23s` (empty until it has finished)           |
+| `{albums_imported}` | How many albums were added to the library (`Import completed` / `Import failed`)   |
+| `{albums_skipped}`  | How many albums were skipped: no match, duplicates, or skipped by you              |
+| `{imported_list}`   | Names of the imported albums (`Artist - Album`), one per line (first 5 only)       |
+| `{skipped_list}`    | Names of the skipped albums, one per line (first 5 only)                           |
+| `{ip}`              | The IP the failed logins came from (`Login blocked`)                               |
+| `{username}`        | The username that was tried, empty when the whole IP was blocked (`Login blocked`) |
+| `{failures}`        | The number of failed attempts that triggered the block (`Login blocked`)           |
+| `{songs_checked}`   | Songs checked by the scan (`Health scan completed`)                                |
+| `{songs_flagged}`   | Songs currently flagged in the whole library (`Health scan completed`)             |
+| `{songs_unchanged}` | Songs skipped because they hadn't changed since the last scan                      |
+| `{time}`            | When the notification was sent                                                     |
 
 ### Album results
 

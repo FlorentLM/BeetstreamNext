@@ -20,6 +20,7 @@ from beetsplug.beetstreamnext.constants import (
 from beetsplug.beetstreamnext.core.accounts.commands import check_onboarding
 from beetsplug.beetstreamnext.core.storage.encryption import ensure_secret, rotate_session_key
 from beetsplug.beetstreamnext.core.library.import_watcher import ImportWatcher
+from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.health import startup_path_check
 from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL, RedactingTransLogger, apply_logs_redaction, bsn_logger
 from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
@@ -309,6 +310,9 @@ def run_server(
         bsn_logger.info('CORS is disabled. Web-based OpenSubsonic clients will be blocked by browsers.')
 
     apply_logs_redaction()
+
+    notify('server_started')
+
     _write_runtime_port(host[0] if socket_path else port)
 
     if debug:

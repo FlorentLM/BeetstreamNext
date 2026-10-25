@@ -29,10 +29,15 @@ def _get_fields() -> dict:
 @admin_bp.route('/notifications', methods=['GET'])
 @admin_required
 def route_notifications() -> str:
+
+    items = notifications.list_notifications() if notifications.APPRISE else []
+    url_suggestions = list(dict.fromkeys(u for item in items for u in item['urls']))
+
     return flask.render_template(
         'partials/notification_list.html',
         apprise=notifications.APPRISE,
-        items=notifications.list_notifications() if notifications.APPRISE else [],
+        items=items,
+        url_suggestions=url_suggestions,
         events=EVENTS, variables=VARIABLES
     )
 

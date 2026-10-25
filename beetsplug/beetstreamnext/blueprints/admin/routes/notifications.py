@@ -5,16 +5,24 @@ import flask
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core import notifications
-from beetsplug.beetstreamnext.core.notifications import EVENTS, IMPORT_COMPLETED, VARIABLES
+from beetsplug.beetstreamnext.core.notifications import EVENTS, VARIABLES
 
 
 def _get_fields() -> dict:
     form = flask.request.form
+    event = EVENTS.get(form.get('event', ''))
+
+    # checkboxes first post a hidden 0 so last value wins
+    options = {
+        o.key: form.getlist(f'opt_{o.key}')[-1] for o in event.options if form.getlist(f'opt_{o.key}')
+    } if event else {}
+
     return {
         'event': form.get('event', ''),
         'title': form.get('title', ''),
         'body': form.get('body', ''),
         'urls': form.getlist('url'),
+        'options': options,
     }
 
 
@@ -34,14 +42,18 @@ def route_notifications() -> str:
 def route_notifications_new() -> str:
     """Blank form. Changing the event type re-fetches."""
 
-    event = EVENTS.get(flask.request.args.get('event', ''), IMPORT_COMPLETED)
+    key = flask.request.args.get('event', '')
+    if key not in EVENTS:
+        key = 'import_completed'
+    event = EVENTS[key]
 
     item = {
         'id': None,
-        'event': event.key,
+        'event': key,
         'title': event.label,
         'body': event.body,
         'urls': flask.request.args.getlist('url'),
+        'options': event.default_options(),
         'enabled': True
     }
 

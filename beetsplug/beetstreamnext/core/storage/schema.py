@@ -191,7 +191,8 @@ def initialise_db() -> None:
             body TEXT NOT NULL,
             urls TEXT NOT NULL,            -- JSON list of Apprise URLs, Fernet-encrypted when a key is available
             encrypted INTEGER NOT NULL DEFAULT 0,
-            enabled INTEGER NOT NULL DEFAULT 1
+            enabled INTEGER NOT NULL DEFAULT 1,
+            options TEXT NOT NULL DEFAULT '{}'  -- JSON obj of event-specific options
         )
         """
     )

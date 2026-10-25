@@ -26,9 +26,7 @@ from beetsplug.beetstreamnext.core.library.beets import import_results
 from beetsplug.beetstreamnext.core.library import import_history
 from beetsplug.beetstreamnext.core.library.import_paths import mark_pinned_triggered, validate_pinned_path
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.notifications import (
-    IMPORT_COMPLETED, IMPORT_FAILED, IMPORT_NEEDS_INPUT, IMPORT_QUEUE_ABORTED, IMPORT_STARTED, notify
-)
+from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.library.beets.config_policy import (
@@ -257,7 +255,7 @@ class ImportSession:
             bsn_logger.info(f"Started beets import (pid {pid_for_log}) on '{candidate}': "
                              f"{' '.join(shlex.quote(c) for c in command)}")
             self._push_status()
-            notify(IMPORT_STARTED, path=self._current_path)
+            notify('import_started', path=self._current_path)
             return True, 'Import started.'
 
     def start_pinned(self, entries: List[dict]) -> Tuple[bool, str]:
@@ -320,7 +318,7 @@ class ImportSession:
             if not ok:
                 bsn_logger.warning(f"Pinned scan stopped at '{entry['path']}': {message}")
                 self._queue = []
-                notify(IMPORT_QUEUE_ABORTED, path=entry['path'], exit_code='', duration='')
+                notify('import_queue_aborted', path=entry['path'], exit_code='', duration='')
 
     def _handle_output_chunk(self, log_file, text: str) -> None:
         log_file.write(text)
@@ -334,7 +332,7 @@ class ImportSession:
                     needs_input_path = self._current_path
 
         if needs_input_path is not None:    # Only on the running -> needs_input
-            notify(IMPORT_NEEDS_INPUT, path=needs_input_path)
+            notify('import_needs_input', path=needs_input_path)
 
         self._push_status(throttle=0.0 if needs_input_path is not None else IMPORT_PUSH_INTERVAL)
 
@@ -352,7 +350,7 @@ class ImportSession:
 
         bsn_logger.info(f'Beets import finished (exit {exit_code})')
 
-        event = IMPORT_COMPLETED if exit_code == 0 else IMPORT_FAILED
+        event = 'import_completed' if exit_code == 0 else 'import_failed'
 
         results = import_results.read_results(BEETS_IMPORT_RESULTS_PATH)
         results_summary = import_results.summarize(results)

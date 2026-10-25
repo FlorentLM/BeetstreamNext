@@ -33,8 +33,8 @@
                         hx-target="closest .notification-row"
                         hx-swap="outerHTML"
                         {% endif %}>
-                    {% for e in events.values() %}
-                        <option value="{{ e.key }}" {{ 'selected' if e.key == item.event }}>{{ e.label }}</option>
+                    {% for key, e in events.items() %}
+                        <option value="{{ key }}" {{ 'selected' if key == item.event }}>{{ e.label }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -50,12 +50,49 @@
                 <textarea name="body" class="notification-template" rows="3">{{ item.body }}</textarea>
                 <details class="notification-variables">
                     <summary>Available variables</summary>
-                    {% set pad = (variables.keys() | map('length') | max) + 4 %}
-                    <pre class="setting-help"><code>{% for name, description in variables.items() %}
-                        {{ ('{' ~ name ~ '}').ljust(pad) }}{{ description }}
-                    {% endfor %}</code></pre>
+                    {% set names = events[item.event].variables %}
+                    {% set pad = (names | map('length') | max) + 4 %}
+                    <pre class="setting-help"><code>{% for name in names -%}
+{{ ('{' ~ name ~ '}').ljust(pad) }}{{ variables[name][0] }}
+{% endfor -%}
+</code></pre>
                 </details>
             </div>
+
+            {% set event_options = events[item.event].options %}
+            {% if event_options %}
+                <div class="form-group notification-options">
+                    {% for opt in event_options %}
+                        {% set current = (item.options or {}).get(opt.key, opt.default) %}
+                        {% if opt.widget == 'checkbox' %}
+                            <label class="notification-option" {% if opt.help %}title="{{ opt.help }}"{% endif %}>
+                                <input type="hidden" name="opt_{{ opt.key }}" value="0">
+                                <input type="checkbox" name="opt_{{ opt.key }}" value="1" {{ 'checked' if current }}>
+                                {{ opt.label }}
+                                {% if opt.help %}<span class="label-hint">({{ opt.help }})</span>{% endif %}
+                            </label>
+                        {% else %}
+                            <label for="opt-{{ form_id }}-{{ opt.key }}">{{ opt.label }}
+                                {% if opt.help %}<span class="label-hint">({{ opt.help }})</span>{% endif %}</label>
+                            {% if opt.widget == 'number' %}
+                                <input type="number" id="opt-{{ form_id }}-{{ opt.key }}" name="opt_{{ opt.key }}"
+                                       value="{{ current }}"
+                                       {% if opt.min is not none %}min="{{ opt.min }}"{% endif %}
+                                       {% if opt.max is not none %}max="{{ opt.max }}"{% endif %}>
+                            {% elif opt.widget == 'text' %}
+                                <input type="text" id="opt-{{ form_id }}-{{ opt.key }}" name="opt_{{ opt.key }}"
+                                       value="{{ current }}">
+                            {% else %}
+                                <select id="opt-{{ form_id }}-{{ opt.key }}" name="opt_{{ opt.key }}">
+                                    {% for c in opt.choices %}
+                                        <option value="{{ c }}" {{ 'selected' if c == current }}>{{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
 
             <div class="form-group">
                 <label>URLs <span class="label-hint">(any <a href="https://appriseit.com/services/" target="_blank"

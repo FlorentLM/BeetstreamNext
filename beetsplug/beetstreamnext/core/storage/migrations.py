@@ -184,6 +184,21 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_8_VER
 
+    ## _________ Migration 9: Version 8 -> 9 (notifications get a JSON column for event-specific options), 25/10/2026
+    MIGRATION_9_VER = 9
+
+    if curr_version < MIGRATION_9_VER:
+        have_table = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='notifications'"""
+        ).fetchone()
+
+        if have_table:
+            columns = [row[1] for row in cursor.execute("""PRAGMA table_info(notifications)""")]
+            if 'options' not in columns:
+                cursor.execute("""ALTER TABLE notifications ADD COLUMN options TEXT NOT NULL DEFAULT '{}'""")
+
+        curr_version = MIGRATION_9_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

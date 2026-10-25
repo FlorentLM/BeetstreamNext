@@ -1870,7 +1870,7 @@ input:focus, select:focus {
 
 .notification-card-new,
 .notification-card-dirty {
-    border: 3px solid #f3b521;
+    border: 3px solid #f3b521bb;
     padding: calc(1.25rem - 2px);
 }
 
@@ -1910,6 +1910,13 @@ input:focus, select:focus {
     background: var(--overlay-strong);
     color: var(--text-muted);
     font-size: 0.75rem;
+}
+
+.notification-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
 }
 
 .notification-template {

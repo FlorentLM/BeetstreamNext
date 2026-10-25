@@ -85,7 +85,7 @@ def ensure_secret(db_path: str | Path) -> None:
                 '',
                 "  ▶  It has NOT been written to disk here.",
                 "  ▶  Keep it safe wherever you're managing it. If you lose it, stored",
-                '     passwords become unrecoverable.',
+                '     secrets become unrecoverable.',
                 '',
             ], color=TermColors.WARNING)
 
@@ -112,7 +112,7 @@ def ensure_secret(db_path: str | Path) -> None:
                     f'{TermColors.BOLD}BSN_NO_KEY_FILE{TermColors.ENDC} is set: key was NOT written to disk.',
                     '',
                     "  ▶  Store it in your secrets manager. It won't be shown again.",
-                    '  ▶  If you lose it, stored passwords will be unrecoverable.',
+                    '  ▶  If you lose it, stored secrets will be unrecoverable.',
                     '',
                 ], color=TermColors.WARNING)
 
@@ -136,7 +136,7 @@ def ensure_secret(db_path: str | Path) -> None:
                     f'{env_path}',
                     '',
                     "  ▶  Make sure this file has the correct permissions.",
-                    '  ▶  If you lose it, stored passwords will be unrecoverable.',
+                    '  ▶  If you lose it, stored secrets will be unrecoverable.',
                     '',
                 ], color=TermColors.WARNING)
 
@@ -150,7 +150,7 @@ def ensure_secret(db_path: str | Path) -> None:
                 f'Add the {TermColors.BOLD}BEETSTREAMNEXT_KEY{TermColors.ENDC} to:',
                 f'{env_path}',
                 '',
-                'If you have lost the BEETSTREAMNEXT_KEY, stored passwords',
+                'If you have lost the BEETSTREAMNEXT_KEY, stored secrets',
                 'are unrecoverable. Delete the database and run setup again.',
                 '',
             ], color=TermColors.FAIL)

@@ -169,6 +169,7 @@
                 break;
             case 'reset-app-password-form':
                 document.getElementById('appPasswordForm')?.reset();
+                document.getElementById('appPasswordSlot')?.replaceChildren();
                 break;
             case 'copy-app-password':
                 copyAppPassword(target);

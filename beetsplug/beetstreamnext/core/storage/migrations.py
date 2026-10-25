@@ -7,6 +7,9 @@ import beets
 import flask
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.accounts.passwords import hash_password
+from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, users_table_sql
+from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
 
 
 def _set_version(conn_or_cursor, version: int) -> None:
@@ -167,10 +170,72 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_7_VER
 
+    ## _________ Migration 8: Version 7 -> 8 (user passwords become one-way hashes instead of reversible
+    ##            ciphertext, and the inert users.api_key_hash column is dropped), 25/10/2026
+    MIGRATION_8_VER = 8
+
+    if curr_version < MIGRATION_8_VER:
+        have_users = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"""
+        ).fetchone()
+
+        if have_users:
+            _oneway_hashes(cursor.connection)
+
+        curr_version = MIGRATION_8_VER
+
     ## ___________________________________________________________________
 
     # Update version in db
     _set_version(cursor, curr_version)
+
+
+def _oneway_hashes(conn: sqlite3.Connection) -> None:
+
+    conn.commit()   # Close any transaction before toggling FK enforcement
+    conn.execute("""PRAGMA foreign_keys = OFF""")
+    try:
+        conn.execute("""BEGIN""")
+
+        old_columns = [row[1] for row in conn.execute("""PRAGMA table_info(users)""")]
+        columns = [c for c in old_columns if c in ALL_USER_FIELDS]
+        rows = conn.execute(f"""SELECT {', '.join(columns)} FROM users""").fetchall()    # nosec B608
+        pw_index = columns.index('password')
+
+        conn.execute(users_table_sql('users_new'))
+
+        for row in rows:
+            values = list(row)
+            stored = values[pw_index]
+            stored = stored.decode('utf-8') if isinstance(stored, bytes) else stored
+
+            if not stored.startswith('scrypt$'):
+                try:
+                    plaintext = get_cipher().decrypt(stored.encode('utf-8')).decode('utf-8')
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Can't convert the password of user '{row[columns.index('username')]}': "
+                        f"is BEETSTREAMNEXT_KEY the key this database was created with?"
+                    ) from e
+                values[pw_index] = hash_password(plaintext)
+            else:
+                values[pw_index] = stored
+
+            conn.execute(
+                f"""
+                INSERT INTO users_new ({', '.join(columns)}) VALUES ({', '.join('?' * len(columns))})
+                """,    # nosec B608
+                values
+            )
+
+        conn.execute("""DROP TABLE users""")
+        conn.execute("""ALTER TABLE users_new RENAME TO users""")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.execute("""PRAGMA foreign_keys = ON""")
 
 
 def _make_radios_per_user(cursor: sqlite3.Cursor) -> None:

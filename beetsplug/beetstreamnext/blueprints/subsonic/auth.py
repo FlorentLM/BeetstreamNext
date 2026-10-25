@@ -6,7 +6,6 @@ import flask
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.app_passwords import authenticate_api_key, authenticate_legacy
-from beetsplug.beetstreamnext.core.accounts.credentials import check_password
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 if TYPE_CHECKING:
@@ -61,5 +60,5 @@ def authenticate_subsonic(flask_req_values: 'CombinedMultiDict'):
         if role is not None:
             return True, 0, user, role
 
-        success, code, username = check_password(user, token, salt, clearpass)
-        return success, code, username, None
+        # 40: "Wrong username or password."
+        return False, 40, None, None

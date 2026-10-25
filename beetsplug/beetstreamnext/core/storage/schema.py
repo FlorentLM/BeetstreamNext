@@ -6,7 +6,7 @@ import flask
 from beetsplug.beetstreamnext.constants import DB_BUSY_TIMEOUT_MS
 from beetsplug.beetstreamnext.core.storage.encryption import get_key_hash
 from beetsplug.beetstreamnext.core.storage.migrations import apply_db_migrations
-from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.core.accounts.user_schema import users_table_sql
 
 
 def initialise_db() -> None:
@@ -53,7 +53,7 @@ def initialise_db() -> None:
         conn.close()
         raise RuntimeError(
             'BEETSTREAMNEXT_KEY has changed since the database was initialised. '
-            'Stored passwords are unrecoverable with the current key.\n'
+            'Stored secrets are unrecoverable with the current key.\n'
             f'Restore the original key, or delete the database '
             f"(`{flask.current_app.config['BSN_DB_PATH']}`) and run initial setup again."
         )
@@ -70,26 +70,7 @@ def initialise_db() -> None:
         """
     )
 
-    role_columns_sql = ",\n            ".join([
-        f'{name} INTEGER DEFAULT {1 if default else 0}'
-        for name, _, default in USER_ROLES_SCHEMA
-    ])
-
-    cur.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS users
-        (
-            username            TEXT PRIMARY KEY,
-            password            BLOB NOT NULL,
-            email               TEXT,
-            avatar              BLOB,
-            avatarLastChanged   REAL,
-            folder              INTEGER DEFAULT 0,
-            maxBitRate          INTEGER DEFAULT 0,  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
-            {role_columns_sql}
-        )
-        """
-    )
+    cur.execute(users_table_sql())
 
     cur.execute(
         """

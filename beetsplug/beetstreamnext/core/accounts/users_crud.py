@@ -9,17 +9,30 @@ import sqlite3
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.accounts.passwords import hash_password
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import filter_dict
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 
 
-def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, include_password: bool = False) -> dict:
-    
-    existing_fields = set(ALL_USER_FIELDS) if include_password else set(ALL_USER_FIELDS) - {'password'}
-    
+def get_password_hash(username: str) -> Optional[str]:
+    """The stored password hash of a user."""
+
+    with database() as db:
+        row = db.execute("SELECT password FROM users WHERE username = ?", (username,)).fetchone()
+
+    if not row:
+        return None
+
+    stored = row[0]
+    return stored.decode('utf-8') if isinstance(stored, bytes) else stored
+
+
+def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) -> dict:
+
+    existing_fields = set(ALL_USER_FIELDS) - {'password'}
+
     if fields is None:
         # return all safe fields
         column_names = sorted(list(existing_fields))
@@ -45,12 +58,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None, in
     if not row:
         return {}
 
-    user_dict = dict(zip(column_names, row, strict=True))
-
-    if 'password' in user_dict:
-        user_dict['password'] = get_cipher().decrypt(user_dict['password']).decode('utf-8')
-
-    return user_dict
+    return dict(zip(column_names, row, strict=True))
 
 
 def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sqlite3.Connection] = None) -> None:
@@ -67,7 +75,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
     filtered_dict = filter_dict(_user_dict, keep=ALL_USER_FIELDS)
 
     if 'password' in filtered_dict:
-        filtered_dict['password'] = get_cipher().encrypt(filtered_dict['password'].encode('utf-8'))
+        filtered_dict['password'] = hash_password(filtered_dict['password'])
 
     if insert_only:
         # Creating a new user
@@ -138,7 +146,7 @@ def create_user(username, password, admin=False, **kwargs):
 
     user_data = {
         'username': username,
-        'password': password,   # _store_userdata handles the encryption
+        'password': password,   # _store_userdata hashes it
         'adminRole': admin,
         'maxBitRate': 0,        # 'no limit'
     }
@@ -209,11 +217,11 @@ def session_stamp(username: str) -> Optional[str]:
     """
     Stamp of a user's current password: a session ith non-matching stamp is rejected.
     """
-    password = get_userdata(username, fields='password', include_password=True).get('password')
-    if password is None:
+    password_hash = get_password_hash(username)
+    if password_hash is None:
         return None
     key = str(app.config['SECRET_KEY']).encode('utf-8')   # Keyed with the session secret so the cookie reveals nothing
-    return hmac.new(key, password.encode('utf-8'), hashlib.sha256).hexdigest()[:32]
+    return hmac.new(key, password_hash.encode('utf-8'), hashlib.sha256).hexdigest()[:32]
 
 
 def get_user_roles(username: str) -> dict:

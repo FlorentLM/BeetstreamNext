@@ -36,3 +36,25 @@ ALL_USER_FIELDS = frozenset({
 
 PRIVATE_USER_FIELDS = frozenset({'password', 'avatar'})
 PUBLIC_USER_FIELDS = ALL_USER_FIELDS - PRIVATE_USER_FIELDS
+
+
+def users_table_sql(table: str = 'users') -> str:
+
+    role_columns_sql = ",\n            ".join([
+        f'{name} INTEGER DEFAULT {1 if default else 0}'
+        for name, _, default in USER_ROLES_SCHEMA
+    ])
+
+    return f"""
+        CREATE TABLE IF NOT EXISTS {table}
+        (
+            username            TEXT PRIMARY KEY,
+            password            BLOB NOT NULL,      -- one-way hash
+            email               TEXT,
+            avatar              BLOB,
+            avatarLastChanged   REAL,
+            folder              INTEGER DEFAULT 0,
+            maxBitRate          INTEGER DEFAULT 0,  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
+            {role_columns_sql}
+        )
+        """

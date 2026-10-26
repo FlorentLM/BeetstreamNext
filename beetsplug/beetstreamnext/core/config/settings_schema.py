@@ -93,7 +93,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'server',
         'description': 'Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).'
                        '<br>'
-                       'If unset, the hostname of the request is used.',
+                       'If unset, <code>users_hostname</code> is used, then the hostname of the request.',
         'requires_restart': False,
         'env_var': 'BSN_EXTERNAL_HOSTNAME',
         'validator': validate_external_hostname,

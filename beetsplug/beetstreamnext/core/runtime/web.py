@@ -48,8 +48,8 @@ def request_url(path_part: str) -> str:
 
 
 def external_url(path_part: str) -> str:
-    """Build an absolute URL for 'path_part' on the configured public share hostname."""
-    external_host = settings_store.get('external_hostname')
+    """Build an absolute URL for 'path_part' on `external_hostname` (or `users_hostname`)."""
+    external_host = settings_store.get('external_hostname') or settings_store.get('users_hostname')
     if not external_host:
         return request_url(path_part)
 

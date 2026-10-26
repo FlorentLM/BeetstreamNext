@@ -21,7 +21,7 @@ def sample_preview(text: str, event: str) -> Markup:
             return m.group(0)
         return f'<mark class="variable-sample">{escape(samples[m.group(1)])}</mark>'
 
-    return Markup(RE_VARIABLE.sub(fill, str(escape(text))))
+    return Markup(RE_VARIABLE.sub(fill, str(escape(text))))  # nosec B704 (text and sample values are escaped)
 
 
 def _get_fields() -> dict:

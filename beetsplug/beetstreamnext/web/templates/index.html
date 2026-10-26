@@ -28,7 +28,9 @@
         </div>
 
         <h1>BeetstreamNext</h1>
-        <p class="subtitle">Your Beets library, streaming anywhere.</p>
+        {% if subtitle %}
+            <p class="subtitle">{{ subtitle }}</p>
+        {% endif %}
 
         <!-- Now playing -->
         {% if now_playing %}
@@ -50,6 +52,7 @@
             </div>
         {% endif %}
 
+        {% if show_stats %}
         <div class="stats-grid">
             <div class="stat-card">
                 <span class="stat-value">{{ stats.artists }}</span>
@@ -64,6 +67,7 @@
                 <span class="stat-label">{{ 'Songs' if stats.songs != 1 else 'Song' }}</span>
             </div>
         </div>
+        {% endif %}
 
         {% if show_connect_hint %}
             <div class="footer-links">

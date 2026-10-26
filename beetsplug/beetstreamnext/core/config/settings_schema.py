@@ -299,6 +299,20 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Show the "Connect your favourite client using this URL" hint and server URL on the public home page.',
         'requires_restart': False,
     },
+    'homepage_stats': {
+        'type': 'bool',
+        'default': True,
+        'category': 'server',
+        'description': 'Show the artists / albums / songs counters on the public homepage.',
+        'requires_restart': False,
+    },
+    'homepage_subtitle': {
+        'type': 'str',
+        'default': 'Your Beets library, streaming anywhere.',
+        'category': 'server',
+        'description': 'Subtitle shown under the title on the public homepage. Leave empty to hide it.',
+        'requires_restart': False,
+    },
     'music_root': {
         'type': 'str',
         'default': '',

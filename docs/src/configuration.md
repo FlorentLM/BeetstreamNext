@@ -142,7 +142,7 @@ If set, the Subsonic API and user account pages are only accessible via this hos
 
 ### `external_hostname`
 
-Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).<br>If unset, the hostname of the request is used.
+Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).<br>If unset, <code>users_hostname</code> is used, then the hostname of the request.
 
 *type:* `str`
 
@@ -383,6 +383,26 @@ Show the "Connect your favourite client using this URL" hint and server URL on t
 *type:* `bool`
 
 *default:* `True`
+
+---
+
+### `homepage_stats`
+
+Show the artists / albums / songs counters on the public home page.
+
+*type:* `bool`
+
+*default:* `True`
+
+---
+
+### `homepage_subtitle`
+
+Subtitle shown under the title on the public home page. Leave empty to hide it.
+
+*type:* `str`
+
+*default:* `Your Beets library, streaming anywhere.`
 
 ---
 

@@ -60,4 +60,6 @@ def home() -> str:
         show_github_link=settings_store.get('homepage_github_link'),
         show_docs_link=settings_store.get('homepage_docs_link'),
         show_connect_hint=settings_store.get('homepage_connect_hint'),
+        show_stats=settings_store.get('homepage_stats'),
+        subtitle=settings_store.get('homepage_subtitle'),
     )

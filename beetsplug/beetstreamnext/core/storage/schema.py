@@ -184,6 +184,15 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS notification_overrides (
+            key TEXT PRIMARY KEY,       -- hash of a config-defined notification's event + URLs
+            enabled INTEGER NOT NULL
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event TEXT NOT NULL,           -- event type

@@ -16,7 +16,7 @@ It is included in `beetstreamnext[all]` and in the default Docker image. Without
 
 ## Notifications
 
-A _notification_ is one saved message, with:
+A _notification_ is a message with:
 
 | Field       | Description                                                                                                     |
 |-------------|-----------------------------------------------------------------------------------------------------------------|
@@ -25,7 +25,27 @@ A _notification_ is one saved message, with:
 | **Body**    | The message body, can use [variables](#variables)                                                               |
 | **URLs**    | One or more Apprise URLs, e.g. `discord://webhook_id/token`. The notification is sent to every URL in the list. |
 
-You can create as many notifications as you like, including several of the same type (for instance to word the message differently on different services), or a single one with several URLs if you just want the same message on several services.
+You can create as many notifications as you like, including several of the same type (for instance to word the message differently on different services).
+
+### In the config file
+
+Notifications can also be declared in the config file:
+
+```yaml
+notifications:
+  - event: import_completed
+    title: "Imported {albums_imported} album(s)"  # optional
+    body: "{path} took {duration}"                # optional
+    urls:                                         # or a single `url:`
+      - discord://webhook_id/token
+    options:
+      skip_if_unchanged: false
+    enabled: true                                 # optional, overridable from the UI
+```
+
+* `event` can be any type (see just below): `import_started`, `import_completed`, `import_failed`, `import_needs_input`, `import_queue_aborted`, `login_blocked`, `health_scan_completed`, `health_scan_failed`, `maintenance_completed`, `maintenance_failed`, `share_created`, `share_accessed`, `storage_problem`, `server_started`
+
+These are shown in the admin panel as _read-only_.
 
 ### Types
 
@@ -48,8 +68,6 @@ You can create as many notifications as you like, including several of the same 
 
 > [!NOTE]
 > A quiet watched-folder import exits with `0` even when Beets skipped albums, so _Import completed_ doesn't mean everything was imported.
-> 
-> Use the album counts below (`{albums_imported}`, `{albums_skipped}`) to tell.
 
 ### Variables
 

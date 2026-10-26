@@ -2049,7 +2049,8 @@ input:focus, select:focus {
     list-style: none;
 }
 
-.notification-head + .form-group {
+.notification-head + .form-group,
+.notification-head + .notification-config-notice {
     margin-top: 1.1rem;
 }
 
@@ -2290,6 +2291,32 @@ input:focus, select:focus {
 
 .notification-url-row {
     margin-bottom: 0.5rem;
+}
+
+.notification-url-row input[type="text"] {
+    background: var(--overlay-sunken);
+}
+
+.notification-config-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--overlay-sunken-2);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.notification-config-notice .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.notification-service {
+    margin-bottom: 0.5rem;
+    font-weight: 400;
 }
 
 .notification-remove-url {

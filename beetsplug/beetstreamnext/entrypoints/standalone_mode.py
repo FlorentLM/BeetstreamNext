@@ -15,6 +15,7 @@ from beetsplug.beetstreamnext.constants import DEFAULT_CONFIG_PATH, DEFAULT_DB_T
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.health import detect_beets_drift
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core import notifications
 from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
 from beetsplug.beetstreamnext.core.runtime.startup import prestartup_config, run_server
 from beetsplug.beetstreamnext.core.accounts.commands import (
@@ -278,6 +279,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     with app.app_context():
         initialise_db()
         settings_store.initialise(yaml_defaults)
+        notifications.load_config(yaml_cfg.get('notifications'))
 
     final_library_db = Path(settings_store.get('library_path'))
     final_music_root = settings_store.get('music_root')

@@ -7,8 +7,9 @@
             <option value="{{ url }}"></option>
         {% endfor %}
     </datalist>
+    <script type="application/json" id="notification-services">{{ services | tojson }}</script>
     {% for item in items %}
-        {% include 'partials/notification_form.html' %}
+        {% include 'partials/notification_readonly.html' if item.source == 'config' else 'partials/notification_form.html' %}
     {% else %}
         <p class="empty-state">No notifications yet. Use "Add notification" to create one.</p>
     {% endfor %}

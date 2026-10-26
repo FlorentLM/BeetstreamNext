@@ -65,6 +65,46 @@
 
                 init() {
                     this.sync();
+                    this.fillServices();
+                },
+
+                // Notification service picker
+                fillServices() {
+                    const select = this.$root.querySelector('.notification-service');
+                    const services = JSON.parse(document.getElementById('notification-services')?.textContent || '[]');
+                    select.append(...services.map((s, i) => new Option(s.name + ' (' + s.scheme + '://)', i)));
+                    select._services = services;
+                },
+
+                pickService(event) {
+                    const select = event.currentTarget;
+                    const service = select._services[select.value];
+                    select.value = '';
+                    if (!service) return;
+
+                    const card = this.$root;
+                    const rows = card.querySelectorAll('.notification-url-row');
+                    let input = [...rows].map(r => r.querySelector('input')).find(i => !i.value.trim());
+                    if (!input) {
+                        const row = rows[rows.length - 1].cloneNode(true);
+                        rows[rows.length - 1].after(row);
+                        input = row.querySelector('input');
+                    }
+                    input.value = service.template;
+                    input.focus();
+                    input.dispatchEvent(new Event('input', {bubbles: true}));
+
+                    const hint = card.querySelector('.notification-service-hint');
+                    hint.replaceChildren(service.name + ': ');
+                    if (service.docs) {
+                        const link = document.createElement('a');
+                        link.href = service.docs;
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.textContent = 'setup instructions';
+                        hint.append(link);
+                    }
+                    hint.hidden = false;
                 },
 
                 sync() {

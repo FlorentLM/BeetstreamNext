@@ -4,6 +4,8 @@ import threading
 import time
 from cryptography.fernet import InvalidToken
 from dataclasses import dataclass
+from functools import lru_cache
+import hashlib
 import json
 import re
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -260,6 +262,56 @@ EVENTS = {
 }
 
 
+## Read-only notifications (defined in config yaml)
+
+CONFIG_NOTIFICATIONS = []
+
+
+def load_config(raw: Any) -> None:
+    """
+    Load the yaml config `notifications:` block.
+    """
+
+    CONFIG_NOTIFICATIONS.clear()
+
+    if not raw:
+        return
+
+    if not isinstance(raw, list):
+        bsn_logger.warning("'notifications' in the config should be a list: ignoring it.")
+        return
+
+    for position, entry in enumerate(raw, start=1):
+        if not isinstance(entry, dict):
+            bsn_logger.warning(f'Config notification #{position} is not a mapping: skipped.')
+            continue
+
+        kind = EVENTS.get(str(entry.get('event', '')))
+        urls = entry.get('urls', entry.get('url', []))
+
+        try:
+            _, title, body, urls = _validate(
+                entry.get('event', ''),
+                entry.get('title') or (kind.label if kind else ''),
+                entry.get('body', kind.body if kind else ''),
+                [urls] if isinstance(urls, str) else list(urls or []))
+        except ValueError as e:
+            bsn_logger.warning(f'Config notification #{position} skipped: {e}')
+            continue
+
+        CONFIG_NOTIFICATIONS.append({
+            'id': -position,
+            'source': 'config',
+            'key': hashlib.sha256('\n'.join([entry['event'], *urls]).encode()).hexdigest(),
+            'event': entry['event'],
+            'title': title,
+            'body': body,
+            'urls': urls,
+            'enabled': api_bool(entry.get('enabled', True)),
+            'options': kind.clean_options(entry.get('options')),
+        })
+
+
 ## Storage
 
 def _encode_urls(urls: List[str]) -> Tuple[str, int]:
@@ -301,6 +353,7 @@ def _row_to_notification(row) -> Dict[str, Any]:
         'urls': _decode_urls(row['urls'], row['encrypted']),
         'enabled': bool(row['enabled']),
         'options': _decode_options(row['event'], row['options']),
+        'source': 'db',
     }
 
 
@@ -324,7 +377,19 @@ def list_notifications(event: Optional[str] = None) -> List[Dict[str, Any]]:
                 """, (event,)
             ).fetchall()
 
-    return [_row_to_notification(r) for r in rows]
+        overrides = dict(db.execute(
+            """
+            SELECT key, enabled FROM notification_overrides
+            """
+        ).fetchall())
+
+    # UI toggle takes precedence over the `enabled` field in config
+    config_items = [
+        {**n, 'enabled': bool(overrides.get(n['key'], n['enabled']))}
+        for n in CONFIG_NOTIFICATIONS if event in (None, n['event'])
+    ]
+
+    return [_row_to_notification(r) for r in rows] + config_items
 
 
 def get_notification(notification_id: int) -> Optional[Dict[str, Any]]:
@@ -405,6 +470,19 @@ def update_notification(notification_id: int, event: str, title: str, body: str,
 
 def toggle_enabled(notification_id: int, enabled: bool) -> bool:
 
+    if notification_id < 0:     # remembered in db, config file untouched
+        config_item = next((n for n in CONFIG_NOTIFICATIONS if n['id'] == notification_id), None)
+
+        if config_item is None:
+            return False
+        with database() as db:
+            db.execute(
+                """
+                INSERT OR REPLACE INTO notification_overrides (key, enabled) VALUES (?, ?)
+                """, (config_item['key'], int(enabled))
+            )
+        return True
+
     with database() as db:
         cursor = db.execute(
             """
@@ -428,6 +506,43 @@ def delete_notification(notification_id: int) -> bool:
         )
 
     return cursor.rowcount > 0
+
+
+## Services
+
+@lru_cache(maxsize=1)
+def list_services() -> List[Dict[str, Any]]:
+    """Services Apprise supports for the UI picker."""
+
+    if not APPRISE:
+        return []
+
+    import apprise
+
+    services = []
+    for schema in apprise.Apprise().details()['schemas']:
+        schemes = list(schema.get('secure_protocols') or ()) + list(schema.get('protocols') or ())
+        if not schemes:
+            continue
+        templates = schema.get('details', {}).get('templates') or ()
+        services.append({
+            'name': str(schema['service_name']),
+            'scheme': schemes[0],
+            'schemes': schemes,
+            'template': templates[0].replace('{schema}', schemes[0]) if templates else f'{schemes[0]}://',
+            'docs': str(schema.get('setup_url') or schema.get('service_url') or ''),
+        })
+
+    return sorted(services, key=lambda s: s['name'].lower())
+
+
+def service_names(urls: List[str]) -> List[str]:
+    """Readable service name per URL scheme."""
+
+    by_scheme = {scheme: s['name'] for s in list_services() for scheme in s['schemes']}
+    schemes = dict.fromkeys(u.split('://', 1)[0].lower() for u in urls)
+
+    return [by_scheme.get(scheme, scheme) for scheme in schemes]
 
 
 ## Sending

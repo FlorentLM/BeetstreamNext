@@ -24,6 +24,7 @@ import confuse
 from beets.plugins import BeetsPlugin
 
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
+from beetsplug.beetstreamnext.core import notifications
 from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -230,6 +231,8 @@ class BeetstreamNextPlugin(BeetsPlugin):
             with app.app_context():
                 initialise_db()
                 settings_store.initialise(yaml_defaults)
+                if _explicitly_set(self.config['notifications']):
+                    notifications.load_config(self.config['notifications'].get(list))
 
             host = settings_store.get('host')
             port = settings_store.get('port')

@@ -1,0 +1,51 @@
+<div class="notification-row">
+
+    <div class="notification-card">
+        <details class="notification-details">
+            <summary class="notification-head">
+                <h3>{{ item.title }}</h3>
+                <span class="notification-kind">Type: {{ events[item.event].label }}</span>
+            </summary>
+
+            <p class="notification-config-notice">
+                <span class="material-symbols-outlined">lock</span>
+                This notification is defined in the config file.
+            </p>
+
+            <div class="notification-preview" aria-live="polite">
+                <div class="notification-preview-card">
+                    <div class="notification-preview-title">{{ item.title | sample_preview(item.event) }}</div>
+                    {% if item.body %}
+                        <div class="notification-preview-body">{{ item.body | sample_preview(item.event) }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <p class="label-hint">Sent to {{ service_names(item.urls) | join(', ') }} (URLs hidden).</p>
+
+            <div class="setting-input-row notification-actions">
+                <button type="button" class="btn btn-outline"
+                        hx-post="{{ url_for('admin.route_notifications_test_saved', notification_id=item.id) }}"
+                        hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                        hx-target="next .notification-result"
+                        hx-swap="innerHTML"
+                        hx-disable="this">Send test
+                </button>
+            </div>
+            <div class="notification-result"></div>
+
+        </details>
+    </div>
+    <div class="notification-enabled">
+        <label class="switch" title="{{ 'Enabled' if item.enabled else 'Disabled' }}">
+            <input type="hidden" name="enabled" value="0">
+            <input type="checkbox" name="enabled" value="1" aria-label="Enabled" {{ 'checked' if item.enabled }}
+                   hx-post="{{ url_for('admin.route_notifications_enabled', notification_id=item.id) }}"
+                   hx-include="closest .switch"
+                   hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                   hx-swap="none">
+            <span class="switch-track"></span>
+        </label>
+    </div>
+
+</div>

@@ -108,6 +108,10 @@
             <div class="form-group">
                 <label>URLs <span class="label-hint">(any <a href="https://appriseit.com/services/" target="_blank"
                                                              rel="noopener">Apprise URL</a>, e.g. <code>discord://webhook_id/token</code>. The notification is sent to every URL.)</span></label>
+                <select class="notification-type notification-service" aria-label="Fill in a service" @change="pickService">
+                    <option value="">Pick a service to start a URL...</option>
+                </select>
+                <p class="label-hint notification-service-hint" hidden></p>
                 {% for url in (item.urls or ['']) %}
                     {% include 'partials/notification_url_row.html' %}
                 {% endfor %}

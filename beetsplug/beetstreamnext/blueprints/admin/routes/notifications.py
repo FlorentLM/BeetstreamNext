@@ -1,11 +1,27 @@
 from __future__ import annotations
 
+import time
 import flask
+from markupsafe import Markup, escape
 
 from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.core import notifications
-from beetsplug.beetstreamnext.core.notifications import EVENTS, VARIABLES
+from beetsplug.beetstreamnext.core.notifications import EVENTS, RE_VARIABLE, VARIABLES
+
+
+@admin_bp.app_template_filter('sample_preview')
+def sample_preview(text: str, event: str) -> Markup:
+    """Escape a template and fill its {variables} with the event's sample values."""
+
+    samples = {**EVENTS[event].examples(), 'time': time.strftime('%Y-%m-%d %H:%M:%S')}
+
+    def fill(m) -> str:
+        if m.group(1) not in samples:
+            return m.group(0)
+        return f'<mark class="variable-sample">{escape(samples[m.group(1)])}</mark>'
+
+    return Markup(RE_VARIABLE.sub(fill, str(escape(text))))
 
 
 def _get_fields() -> dict:
@@ -38,7 +54,9 @@ def route_notifications() -> str:
         apprise=notifications.APPRISE,
         items=items,
         url_suggestions=url_suggestions,
-        events=EVENTS, variables=VARIABLES
+        services=notifications.list_services(),
+        events=EVENTS, variables=VARIABLES,
+        service_names=notifications.service_names
     )
 
 
@@ -141,7 +159,7 @@ def route_notifications_url_row() -> str:
     return flask.render_template('partials/notification_url_row.html', url='')
 
 
-@admin_bp.route('/notifications/<int:notification_id>/enabled', methods=['POST'])
+@admin_bp.route('/notifications/<int(signed=True):notification_id>/enabled', methods=['POST'])
 @admin_required
 def route_notifications_enabled(notification_id: int) -> flask.Response:
 
@@ -164,6 +182,19 @@ def route_notifications_delete(notification_id: int) -> flask.Response:
 @admin_required
 def route_notifications_test() -> str:
     ok, message = notifications.send_test(**_get_fields())
+    return flask.render_template('partials/test_result.html', result_id='', ok=ok, message=message)
+
+
+@admin_bp.route('/notifications/<int(signed=True):notification_id>/test', methods=['POST'])
+@admin_required
+def route_notifications_test_saved(notification_id: int) -> str:
+    """Test send a config-defined notification"""
+
+    item = next((n for n in notifications.CONFIG_NOTIFICATIONS if n['id'] == notification_id), None)
+    if not item:
+        flask.abort(404)
+
+    ok, message = notifications.send_test(item['event'], item['title'], item['body'], item['urls'])
     return flask.render_template('partials/test_result.html', result_id='', ok=ok, message=message)
 
 

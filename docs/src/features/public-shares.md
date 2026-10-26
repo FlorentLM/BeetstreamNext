@@ -10,13 +10,13 @@ Active shares can be revoked at any time from the admin panel's [Shares tab](../
 
 You can expose the public shares on a _different_ hostname than what **BeetstreamNext** binds to locally:
 
-For example, you access the admin panel and the Subsonic API via `https://beetstreamnext.internal.example.com` but you want to allow unauthenticated users to download public shares from `https://shares.example.com`.
+For example, you access the admin panel via `https://admin.example.com` and the Subsonic API and account pages via `https://music.example.com`, but you want to allow unauthenticated users to download public shares from `https://public.example.com`.
 
 You can set `external_hostname` so that share links use the correct public URL instead of the internal bind address:
 
 ```yaml
 beetstreamnext:
-  external_hostname: shares.example.com
+  external_hostname: public.example.com
 ```
 
 ---

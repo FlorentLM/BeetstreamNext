@@ -118,7 +118,7 @@ API secret for the Podcast Index.
 
 ### `admin_hostname`
 
-If set, the admin panel will only be accessible when visited via this hostname (e.g. <code>beetstreamnext.internal.example.com</code>).<br>Loopback is always allowed.
+If set, the admin panel is only be accessible via this hostname (e.g. <code>admin.example.com</code>).<br>Loopback is always allowed.
 
 *type:* `str`
 
@@ -128,15 +128,39 @@ If set, the admin panel will only be accessible when visited via this hostname (
 
 ---
 
+### `users_hostname`
+
+If set, the Subsonic API and user account pages are only accessible via this hostname (e.g. <code>music.example.com</code>).<br>Loopback is always allowed.
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_USERS_HOSTNAME`
+
+---
+
 ### `external_hostname`
 
-Public hostname used for public share links (e.g. <code>shares.example.com</code>), which may differ from the hostname you use for the REST API/admin panel. Leave unset to have share links use whatever hostname was used to create them.
+Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).<br>If unset, the hostname of the request is used.
 
 *type:* `str`
 
 *default:* *(empty)*
 
 *env:* `BSN_EXTERNAL_HOSTNAME`
+
+---
+
+### `restrict_control_api`
+
+Only allow the control API on <code>admin_hostname</code> and not on <code>users_hostname</code>.
+
+*type:* `bool`
+
+*default:* `True`
+
+*env:* `BSN_RESTRICT_CONTROL_API`
 
 ---
 

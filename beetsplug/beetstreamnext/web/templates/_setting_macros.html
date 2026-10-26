@@ -62,7 +62,7 @@
     {%- elif key == 'external_hostname' -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
-               list="external-hostname-suggestions" placeholder="music.example.com" {{ dis }}>
+               list="external-hostname-suggestions" placeholder="public.example.com" {{ dis }}>
         <datalist id="external-hostname-suggestions">
             {% for h in (host_suggestions or []) %}
                 <option value="{{ h }}"></option>

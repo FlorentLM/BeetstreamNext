@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.core.runtime.web import request_url, read_upload
+from beetsplug.beetstreamnext.core.runtime.web import external_url, read_upload
 from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
@@ -81,7 +81,7 @@ def tokenised_image_url(subsonic_id: str, size: Optional[int] = None) -> str:
     from beetsplug.beetstreamnext.core.media.tokeniser import image_tokeniser
 
     token = image_tokeniser.register(f'{subsonic_id}|{size or ""}')
-    return request_url(flask.url_for('public.tokenised_image', token=token))
+    return external_url(flask.url_for('public.tokenised_image', token=token))
 
 
 def thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = None) -> Path:

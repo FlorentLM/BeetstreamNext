@@ -65,7 +65,7 @@ def validate_storage_dir(x: Any) -> str:
 
 
 def validate_admin_hostname(x: Any) -> str:
-    """Bare lowercase hostname/IP. admin_hostname is matched against a port-stripped Host header."""
+    """Bare lowercase hostname/IP. Matched against a port-stripped Host header."""
     return parse_host(str(x or '')).host
 
 

@@ -412,6 +412,35 @@ def admin_host_allowed(raw_host: str) -> bool:
     return request_host == admin_host or request_host in LOOPBACK_IPS
 
 
+def users_host_allowed(raw_host: str, path: str) -> bool:
+    """
+    Whether `path` can be served on `raw_host` given `users_hostname`.
+    (unset = no restriction)
+    """
+
+    from beetsplug.beetstreamnext.core.config.store import settings_store
+
+    users_host = settings_store.get('users_hostname')
+    if not users_host:
+        return True
+
+    is_control = path.startswith('/control-api')
+    if not (is_control or path.startswith(('/rest', '/account', '/login', '/logout'))):
+        return True
+
+    try:
+        request_host = strip_host_port(raw_host).lower()
+    except ValueError:
+        return False
+    if request_host in LOOPBACK_IPS:
+        return True
+
+    if request_host == users_host:
+        return not is_control or not settings_store.get('restrict_control_api')
+
+    return request_host == settings_store.get('admin_hostname')
+
+
 ##
 # Instanciate shared objects
 

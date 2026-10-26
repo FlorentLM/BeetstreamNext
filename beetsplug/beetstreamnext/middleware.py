@@ -6,7 +6,7 @@ import flask
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_filter
+from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_filter, users_host_allowed
 from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.core.library.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users, get_user_roles
@@ -48,6 +48,9 @@ def _before_request() -> flask.Response | None:
         if request_host not in allowed and request_host not in LOOPBACK_IPS:
             bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')
             flask.abort(403, description='Access Denied: Host not in TRUSTED_HOSTS.')
+
+    if not users_host_allowed(flask.request.host, flask.request.path):
+        flask.abort(403, description='Access Denied: not available on this hostname.')
 
     r = flask.request.values
     is_api = flask.request.path.startswith('/rest')

@@ -67,24 +67,44 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': f'If set, the admin panel will only be accessible when visited via this hostname '
-                       f'(e.g. <code>{SERVER_NAME.lower()}.internal.example.com</code>).'
+        'description': 'If set, the admin panel is only be accessible via this hostname '
+                       '(e.g. <code>admin.example.com</code>).'
                        '<br>'
                        'Loopback is always allowed.',
         'requires_restart': False,
         'env_var': 'BSN_ADMIN_HOSTNAME',
         'validator': validate_admin_hostname,
     },
+    'users_hostname': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': 'If set, the Subsonic API and user account pages are only accessible via this hostname '
+                       '(e.g. <code>music.example.com</code>).'
+                       '<br>'
+                       'Loopback is always allowed.',
+        'requires_restart': False,
+        'env_var': 'BSN_USERS_HOSTNAME',
+        'validator': validate_admin_hostname,
+    },
     'external_hostname': {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': 'Public hostname used for public share links (e.g. <code>shares.example.com</code>), '
-                       'which may differ from the hostname you use for the REST API/admin panel. '
-                       'Leave unset to have share links use whatever hostname was used to create them.',
+        'description': 'Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).'
+                       '<br>'
+                       'If unset, the hostname of the request is used.',
         'requires_restart': False,
         'env_var': 'BSN_EXTERNAL_HOSTNAME',
         'validator': validate_external_hostname,
+    },
+    'restrict_control_api': {
+        'type': 'bool',
+        'default': True,
+        'category': 'server',
+        'description': 'Only allow the control API on <code>admin_hostname</code> and not on <code>users_hostname</code>.',
+        'requires_restart': False,
+        'env_var': 'BSN_RESTRICT_CONTROL_API',
     },
     'host': {
         'type': 'list[str]',

@@ -8,7 +8,7 @@ from typing import List, Tuple
 
 from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.system import get_mimetype, AUDIO_MIMETYPES
-from beetsplug.beetstreamnext.core.runtime.web import request_url
+from beetsplug.beetstreamnext.core.runtime.web import external_url
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
 
@@ -50,7 +50,7 @@ class JukeboxBackend:
         filename = (Path(path).name if not is_url else '') or 'stream.mp3'
         path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
 
-        return request_url(path_part)
+        return external_url(path_part)
 
     def _content_type(self, path: str) -> str:
         """Best-effort mimetype sniffing (defaults to audio/mpeg)."""

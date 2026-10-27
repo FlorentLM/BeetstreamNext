@@ -62,7 +62,7 @@
     {%- elif key in ('host', 'public_hosts', 'admin_hosts') -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value | join(', ') }}"
-               placeholder="192.168.0.10, 10.0.0.5" {{ dis }}>
+               placeholder="Not set" {{ dis }}>
         {% if info.locked %}<p class="label-hint">This setting can't be edited here.</p>{% endif %}
         {% if info.pinned and not info.locked %}<p class="label-hint">Set in the config, can't be removed here: {{ info.pinned | join(', ') }}</p>{% endif %}
     {%- elif key == 'external_hostname' -%}

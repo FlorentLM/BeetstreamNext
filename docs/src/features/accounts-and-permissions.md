@@ -46,7 +46,7 @@ A new user account starts with the defaults above unless overridden at creation.
 Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, [app passwords](./app-passwords.md), and internet radio stations, and (if they are allowed) their public shares and podcast subscriptions.
 
 > [!IMPORTANT]
-> This is restricted by [`users_hostname`](../configuration.md#users_hostname). Admins who sign in from a hostname other than `admin_hostname` will see the non-admin view of their account.
+> Admins who sign in on a listener without the `admin` scope (see [`admin_hosts`](../configuration.md#admin_hosts) and [`admin_port`](../configuration.md#admin_port)) see the non-admin view of their account.
 
 ## Chat
 

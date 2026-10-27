@@ -116,54 +116,6 @@ API secret for the Podcast Index.
 
 ## Server & network
 
-### `admin_hostname`
-
-If set, the admin panel is only be accessible via this hostname (e.g. <code>admin.example.com</code>).<br>Loopback is always allowed.
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_ADMIN_HOSTNAME`
-
----
-
-### `users_hostname`
-
-If set, the Subsonic API and user account pages are only accessible via this hostname (e.g. <code>music.example.com</code>).<br>Loopback is always allowed.
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_USERS_HOSTNAME`
-
----
-
-### `external_hostname`
-
-Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).<br>If unset, <code>users_hostname</code> is used, then the hostname of the request.
-
-*type:* `str`
-
-*default:* *(empty)*
-
-*env:* `BSN_EXTERNAL_HOSTNAME`
-
----
-
-### `restrict_control_api`
-
-Only allow the control API on <code>admin_hostname</code> and not on <code>users_hostname</code>.
-
-*type:* `bool`
-
-*default:* `True`
-
-*env:* `BSN_RESTRICT_CONTROL_API`
-
----
-
 ### `host`
 
 Host(s) to listen on (comma-separated for multiple), or <code>unix:/path/to/socket</code> (to use a Unix socket, <code>reverse_proxy</code> has to be enabled)
@@ -189,6 +141,74 @@ Port to listen on.
 *default:* `8080`
 
 *env:* `BSN_PORT`
+
+---
+
+### `public_hosts`
+
+Addresses of <code>host</code> that only serve public pages (shares, tokenised links, health check, homepage). Not compatible with a wildcard <code>host</code> (<code>0.0.0.0</code>).
+
+<span style="color:#fab915">**requires restart**</span>
+
+*type:* `list[str]`
+
+*default:* *(empty)*
+
+*env:* `BSN_PUBLIC_HOSTS`
+
+---
+
+### `public_port`
+
+Extra port that only serves public pages on the other addresses of <code>host</code>. <code>0</code> disables it.
+
+<span style="color:#fab915">**requires restart**</span>
+
+*type:* `int`
+
+*default:* `0`
+
+*env:* `BSN_PUBLIC_PORT`
+
+---
+
+### `admin_hosts`
+
+Addresses of <code>host</code> that serve the admin panel and control API.
+
+<span style="color:#fab915">**requires restart**</span>
+
+*type:* `list[str]`
+
+*default:* *(empty)*
+
+*env:* `BSN_ADMIN_HOSTS`
+
+---
+
+### `admin_port`
+
+Extra port that serves the admin panel and control API on the other addresses of <code>host</code>. <code>0</code> disables it.
+
+<span style="color:#fab915">**requires restart**</span>
+
+*type:* `int`
+
+*default:* `0`
+
+*env:* `BSN_ADMIN_PORT`
+
+---
+
+### `external_hostname`
+
+Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>). If unset, the hostname of the request is used.
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_EXTERNAL_HOSTNAME`
 
 ---
 
@@ -388,7 +408,7 @@ Show the "Connect your favourite client using this URL" hint and server URL on t
 
 ### `homepage_stats`
 
-Show the artists / albums / songs counters on the public home page.
+Show the artists / albums / songs counters on the public homepage.
 
 *type:* `bool`
 
@@ -398,7 +418,7 @@ Show the artists / albums / songs counters on the public home page.
 
 ### `homepage_subtitle`
 
-Subtitle shown under the title on the public home page. Leave empty to hide it.
+Subtitle shown under the title on the public homepage. Leave empty to hide it.
 
 *type:* `str`
 

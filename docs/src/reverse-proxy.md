@@ -51,6 +51,80 @@ example.com {
 ```
 (or `reverse_proxy unix//run/beetstreamnext/bsn.sock` if using a Unix socket)
 
+## Traefik with Docker
+
+A common setup: the admin panel on a private hostname, the Subsonic API and accounts on another, and only the public routes (shares, tokenised links) on a public one.
+
+You can achieve this easily with a port for each [scope](./features/public-shares.md#listener-scopes) ([`port`](./configuration.md#port), [`public_port`](./configuration.md#public_port) and [`admin_port`](./configuration.md#admin_port)), and one Traefik router for each.
+
+```yaml
+services:
+  beetstreamnext:
+    image: ghcr.io/florentlm/beetstreamnext:latest
+    container_name: beetstreamnext
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      BEETS_LIBRARY_DB: /data/library.db
+      MUSIC_ROOT: /music
+      BSN_PORT: 8080                               # Subsonic API, login, account pages
+      BSN_PUBLIC_PORT: 8081                        # Public routes only
+      BSN_ADMIN_PORT: 8082                         # Admin panel and control API
+      BSN_REVERSE_PROXY: "true"
+      BSN_PROXY_HOPS: 1                            # if Traefik is the only proxy
+      BSN_EXTERNAL_HOSTNAME: share.example.com     # Host used in share links
+    volumes:
+      - ./config:/config
+      - /path/to/library.db:/data/library.db:ro
+      - /path/to/music:/music:ro
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      
+      # Public: shares and tokenised links, on a port that serves nothing else
+      - traefik.http.routers.bsn-public.rule=Host(`share.example.com`)
+      - traefik.http.routers.bsn-public.entrypoints=websecure
+      - traefik.http.routers.bsn-public.tls.certresolver=letsencrypt
+      - traefik.http.routers.bsn-public.service=bsn-public
+      - traefik.http.services.bsn-public.loadbalancer.server.port=8081
+
+      # Subsonic clients and account pages
+      - traefik.http.routers.bsn.rule=Host(`music.example.com`)
+      - traefik.http.routers.bsn.entrypoints=websecure
+      - traefik.http.routers.bsn.tls.certresolver=letsencrypt
+      - traefik.http.routers.bsn.service=bsn
+      - traefik.http.services.bsn.loadbalancer.server.port=8080
+
+      # Admin panel and control API
+      - traefik.http.routers.bsn-admin.rule=Host(`admin.example.com`)
+      - traefik.http.routers.bsn-admin.entrypoints=websecure
+      - traefik.http.routers.bsn-admin.tls.certresolver=letsencrypt
+      - traefik.http.routers.bsn-admin.service=bsn-admin
+      - traefik.http.routers.bsn-admin.middlewares=admin-allowlist
+      - traefik.http.middlewares.admin-allowlist.ipallowlist.sourcerange=192.168.0.0/16,100.64.0.0/10
+      - traefik.http.services.bsn-admin.loadbalancer.server.port=8082
+
+networks:
+  proxy:
+    external: true
+```
+
+(This assumes a Traefik container on the external `proxy` network, with a `websecure` entrypoint and a `letsencrypt` certificate resolver. Adjust to your configuration.)
+
+- Each router reaches a different port, and each port serves a different scope: `8081` the public routes, `8080` also the Subsonic API and account pages, `8082` also the admin panel and control API. A request for `share.example.com` with a spoofed `Host: admin.example.com` header still only gets public routes.
+
+- The `admin-allowlist` middleware limits who can reach the admin hostname (an IP allow-list here, or forward-auth with Authelia/Authentik, etc.).
+
+- External scripts that use the control API (`/control-api`) to trigger imports must reach the admin port. Note: I might make this more flexible again
+
+- `BSN_PROXY_HOPS` is the number of proxies in front of **BeetstreamNext**. Use `2` or more if something else (Cloudflare, for instance) is in front of Traefik, or if you [offload file serving](#offloading-file-serving-to-the-proxy) with another proxy.
+
+> [!NOTE]
+> To achieve similar thing without Docker, on a host with several addresses, use [`public_hosts` and `admin_hosts`](./features/public-shares.md#by-address-public_hosts-and-admin_hosts).
+
 ## Credentials in proxy logs
 
 The Subsonic protocol sends credentials as URL query parameters: `p` (password), `t` and `s` (token and salt), and `apiKey`. Creating or updating a user over the API also puts the new `password` in the query string.

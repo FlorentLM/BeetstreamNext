@@ -4,11 +4,14 @@
 
 - **IP allow/deny lists**: [`ip_whitelist`](../configuration.md#ip_whitelist)/[`ip_blacklist`](../configuration.md#ip_blacklist), they accept individual IPs or CIDR ranges.
 
-- **Admin panel host restriction**: [`admin_hostname`](../configuration.md#admin_hostname) restricts the admin panel to a specific hostname.
-  - **Remark:** Loopback access is always allowed.
-
-- **Users host restriction**: [`users_hostname`](../configuration.md#users_hostname) restricts the API, login and account pages to a specific hostname. This can be coupled with [`admin_hostname`](../configuration.md#admin_hostname) and [`external_hostname`](../configuration.md#external_hostname) (shares, tokenised links).
-  - **Remark:** The control API is not accessible via this hostname unless [`restrict_control_api`](../configuration.md#restrict_control_api) is disabled.
+- **Listener scopes**: each listener has a scope (`public`, `users` or `admin`) that sets which routes it serves, based on the address and port it listens on. See [Listener scopes](./public-shares.md#listener-scopes).
+  - [`public_hosts`](../configuration.md#public_hosts) and [`public_port`](../configuration.md#public_port) give listeners the `public` scope ([public routes](./public-shares.md#public-routes)).
+  
+  - [`admin_hosts`](../configuration.md#admin_hosts) and [`admin_port`](../configuration.md#admin_port) give listeners the `admin` scope (admin panel and control API).
+  
+  - The other addresses have the `users` scope.
+  
+  - **Remark:** By default, a single listener serves everything.
 
 - **Trusted `Host` headers**: [`trusted_hosts`](../configuration.md#trusted_hosts) controls which `Host` header values are accepted.
   - **Remark:** If the server is reachable beyond your own machine, it is recommended to set this. You can also use [`external_hostname`](../configuration.md#external_hostname) for share links.

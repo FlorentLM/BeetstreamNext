@@ -181,7 +181,7 @@ Editing it from the Admin WebUI is restricted by default for security. You can a
 > [!WARNING]
 > A Beets config can load plugins from any path and run shell commands when an import runs. Whoever can edit it can therefore potentially run code on the server (as the user beets runs as).
 >
-> Only enable it if you trust every admin account _and the network_ they reach the panel from (i.e. via HTTPS, and ideally using the `admin_hostname` restriction).
+> Only enable it if you trust every admin account _and the network_ they reach the panel from (i.e. via HTTPS, and ideally restricting the panel to a private listener with [`admin_hosts`](../configuration.md#admin_hosts) or [`admin_port`](../configuration.md#admin_port)).
 
 ### Blocked settings
 

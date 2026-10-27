@@ -3,10 +3,11 @@ from __future__ import annotations
 import secrets
 import flask
 
-from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
+from beetsplug.beetstreamnext.constants import BLUEPRINTS, LOOPBACK_IPS, Scope
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_filter, users_host_allowed
+from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_filter
+from beetsplug.beetstreamnext.core.runtime.listeners import ListenerScope
 from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.core.library.maintenance import run_periodic
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users, get_user_roles
@@ -34,6 +35,14 @@ def _any_users_exist() -> bool:
 
 @app.before_request
 def _before_request() -> flask.Response | None:
+
+    blueprint = BLUEPRINTS.get((flask.request.endpoint or '').partition('.')[0])
+    needed_scope = blueprint.scope if blueprint else Scope.ADMIN
+    is_public = needed_scope is Scope.PUBLIC
+
+    if flask.request.environ.get(ListenerScope.KEY, Scope.ADMIN) < needed_scope:
+        flask.abort(404)
+
     try:
         # the Host header ends up in tokenised URLs so it has to be just host[:port]
         request_host = parse_host(flask.request.host, strict=True).host
@@ -48,9 +57,6 @@ def _before_request() -> flask.Response | None:
         if request_host not in allowed and request_host not in LOOPBACK_IPS:
             bsn_logger.warning(f'Blocking request with untrusted Host: {request_host}')
             flask.abort(403, description='Access Denied: Host not in TRUSTED_HOSTS.')
-
-    if not users_host_allowed(flask.request.host, flask.request.path):
-        flask.abort(403, description='Access Denied: not available on this hostname.')
 
     r = flask.request.values
     is_api = flask.request.path.startswith('/rest')
@@ -78,8 +84,8 @@ def _before_request() -> flask.Response | None:
                 return subsonic_error(40, message='Setup required: no users exist yet.', resp_fmt=resp_fmt)
             return flask.redirect('/admin/setup')
 
-    # Allow public homepage, healthcheck, public share routes, and token-based stream/tokenised-image URLs
-    if flask.request.path in ('/', '/healthz') or flask.request.path.startswith(('/share/', '/now-playing/', '/tokenised-stream/', '/tokenised-image/')):
+    # Public routes (homepage, healthcheck, shares, tokenised URLs, static files)
+    if is_public:
         # Anonymous guest context
         flask.g.username = ''
         flask.g.user_data = {}
@@ -88,10 +94,6 @@ def _before_request() -> flask.Response | None:
 
     # Allow these two rest endpoints as per OpenSubsonic spec
     if flask.request.path.rstrip('/') in ('/rest/getOpenSubsonicExtensions', '/rest/getOpenSubsonicExtensions.view'):
-        return
-
-    # Allow static content
-    if flask.request.path.startswith('/static'):
         return
 
     # Unknown path: raise 404

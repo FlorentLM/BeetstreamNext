@@ -6,7 +6,8 @@ from flask import Blueprint
 
 from beetsplug.beetstreamnext.core.accounts.sessions import validate_session
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles, session_stamp
-from beetsplug.beetstreamnext.core.accounts.security import admin_host_allowed
+from beetsplug.beetstreamnext.constants import Scope
+from beetsplug.beetstreamnext.core.runtime.listeners import ListenerScope
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -17,12 +18,12 @@ def can_login(roles: dict) -> bool:
 
 
 def admin_here(roles: dict) -> bool:
-    """Whether this user is an admin *and* admin panel is allowed on current host."""
-    return bool(roles.get('adminRole')) and admin_host_allowed(flask.request.host)
+    """Whether this user is an admin *and* the listener they are on serves the admin panel."""
+    return bool(roles.get('adminRole')) and flask.request.environ.get(ListenerScope.KEY, Scope.ADMIN) is Scope.ADMIN
 
 
 def home_for(roles: dict) -> str:
-    """Users -> normal account page. Admins -> admin panel if host is allowed, otherwise -> normal account page."""
+    """Users -> normal account page. Admins -> admin panel if this listener serves it, otherwise -> normal account page."""
     return flask.url_for('admin.route_settings' if admin_here(roles) else 'account.route_account')
 
 

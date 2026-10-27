@@ -9,7 +9,6 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 import flask
 
 from beetsplug.beetstreamnext.utils.concurrency import DoOnce
-from beetsplug.beetstreamnext.utils.net import strip_host_port
 from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.notifications import notify
@@ -390,55 +389,6 @@ class IPFilter:
         self._blacklist_raw = parsed
         self._blacklist_nets = {n for n in (self._to_network(p) for p in parsed) if n is not None}
         bsn_logger.debug(f'Loaded new blacklist: {self._blacklist_raw}.')
-
-
-##
-# Host header validation
-
-def admin_host_allowed(raw_host: str) -> bool:
-    """
-    Whether `raw_host` (a request's raw Host header) is allowed to reach the admin panel,
-    given the `admin_hostname` setting (unset = no restriction). Loopback is always allowed.
-    """
-    from beetsplug.beetstreamnext.core.config.store import settings_store
-
-    admin_host = settings_store.get('admin_hostname')
-    if not admin_host:
-        return True
-    try:
-        request_host = strip_host_port(raw_host).lower()
-    except ValueError:
-        return False
-    return request_host == admin_host or request_host in LOOPBACK_IPS
-
-
-def users_host_allowed(raw_host: str, path: str) -> bool:
-    """
-    Whether `path` can be served on `raw_host` given `users_hostname`.
-    (unset = no restriction)
-    """
-
-    from beetsplug.beetstreamnext.core.config.store import settings_store
-
-    users_host = settings_store.get('users_hostname')
-    if not users_host:
-        return True
-
-    is_control = path.startswith('/control-api')
-    if not (is_control or path.startswith(('/rest', '/account', '/login', '/logout'))):
-        return True
-
-    try:
-        request_host = strip_host_port(raw_host).lower()
-    except ValueError:
-        return False
-    if request_host in LOOPBACK_IPS:
-        return True
-
-    if request_host == users_host:
-        return not is_control or not settings_store.get('restrict_control_api')
-
-    return request_host == settings_store.get('admin_hostname')
 
 
 ##

@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.constants import (
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter
 from beetsplug.beetstreamnext.utils.net import validate_trusted_hosts
 from beetsplug.beetstreamnext.core.config.validators import (
-    validate_admin_hostname,
+    validate_host_list_nosocket,
     validate_choice,
     validate_external_hostname,
     validate_host_list,
@@ -37,6 +37,7 @@ class SettingDescriptor(TypedDict, total=False):
     on_empty: Callable[[], str]         # Admin UI placeholder text/value shown while this is unset
     env_var: str                        # Name of the env var that can also set this key
     web_editable: bool                  # If false, setting is not shown in the web UI
+    read_only: bool                     # Shown in the web UI but always locked: set() and reset() refuse it
 
 
 # (Lazy imported inside each function to avoid import cycles)
@@ -63,49 +64,6 @@ def _effective_binary_path(name: str) -> str:
 SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
 
     # Server / network
-    'admin_hostname': {
-        'type': 'str',
-        'default': '',
-        'category': 'server',
-        'description': 'If set, the admin panel is only be accessible via this hostname '
-                       '(e.g. <code>admin.example.com</code>).'
-                       '<br>'
-                       'Loopback is always allowed.',
-        'requires_restart': False,
-        'env_var': 'BSN_ADMIN_HOSTNAME',
-        'validator': validate_admin_hostname,
-    },
-    'users_hostname': {
-        'type': 'str',
-        'default': '',
-        'category': 'server',
-        'description': 'If set, the Subsonic API and user account pages are only accessible via this hostname '
-                       '(e.g. <code>music.example.com</code>).'
-                       '<br>'
-                       'Loopback is always allowed.',
-        'requires_restart': False,
-        'env_var': 'BSN_USERS_HOSTNAME',
-        'validator': validate_admin_hostname,
-    },
-    'external_hostname': {
-        'type': 'str',
-        'default': '',
-        'category': 'server',
-        'description': 'Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>).'
-                       '<br>'
-                       'If unset, <code>users_hostname</code> is used, then the hostname of the request.',
-        'requires_restart': False,
-        'env_var': 'BSN_EXTERNAL_HOSTNAME',
-        'validator': validate_external_hostname,
-    },
-    'restrict_control_api': {
-        'type': 'bool',
-        'default': True,
-        'category': 'server',
-        'description': 'Only allow the control API on <code>admin_hostname</code> and not on <code>users_hostname</code>.',
-        'requires_restart': False,
-        'env_var': 'BSN_RESTRICT_CONTROL_API',
-    },
     'host': {
         'type': 'list[str]',
         'default': DEFAULT_HOST,
@@ -117,6 +75,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': True,
         'env_var': 'BSN_HOST',
         'validator': validate_host_list,
+        'read_only': True,      # A wrong value could lock out of the page that edits it
     },
     'port': {
         'type': 'int',
@@ -126,6 +85,55 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': True,
         'env_var': 'BSN_PORT',
         'validator': validate_int_range(1, 65535),
+    },
+    'public_hosts': {
+        'type': 'list[str]',
+        'default': [],
+        'category': 'server',
+        'description': 'Addresses of <code>host</code> that only serve public pages (shares, tokenised links, health check, homepage). '
+                       'Not compatible with a wildcard <code>host</code> (<code>0.0.0.0</code>).',
+        'requires_restart': True,
+        'env_var': 'BSN_PUBLIC_HOSTS',
+        'validator': validate_host_list_nosocket,
+    },
+    'public_port': {
+        'type': 'int',
+        'default': 0,
+        'category': 'server',
+        'description': 'Extra port that only serves public pages on the other addresses of <code>host</code>. '
+                        '<code>0</code> disables it.',
+        'requires_restart': True,
+        'env_var': 'BSN_PUBLIC_PORT',
+        'validator': validate_int_range(0, 65535),
+    },
+    'admin_hosts': {
+        'type': 'list[str]',
+        'default': [],
+        'category': 'server',
+        'description': 'Addresses of <code>host</code> that serve the admin panel and control API. ',
+        'requires_restart': True,
+        'env_var': 'BSN_ADMIN_HOSTS',
+        'validator': validate_host_list_nosocket,
+    },
+    'admin_port': {
+        'type': 'int',
+        'default': 0,
+        'category': 'server',
+        'description': 'Extra port that serves the admin panel and control API on the other addresses of <code>host</code>. '
+                       '<code>0</code> disables it.',
+        'requires_restart': True,
+        'env_var': 'BSN_ADMIN_PORT',
+        'validator': validate_int_range(0, 65535),
+    },
+    'external_hostname': {
+        'type': 'str',
+        'default': '',
+        'category': 'server',
+        'description': 'Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>). '
+                       'If unset, the hostname of the request is used.',
+        'requires_restart': False,
+        'env_var': 'BSN_EXTERNAL_HOSTNAME',
+        'validator': validate_external_hostname,
     },
     'threads': {
         'type': 'int',

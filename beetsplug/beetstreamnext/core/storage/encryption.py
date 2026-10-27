@@ -78,16 +78,12 @@ def ensure_secret(db_path: str | Path) -> None:
     if is_first_run:
         if externally_provided:
             print_box([
-                '',
-                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
-                '',
                 'Using the BEETSTREAMNEXT_KEY already set in the environment.',
                 '',
                 "  ▶  It has NOT been written to disk here.",
                 "  ▶  Keep it safe wherever you're managing it. If you lose it, stored",
                 '     secrets become unrecoverable.',
-                '',
-            ], color=TermColors.WARNING)
+            ], title='BEETSTREAMNEXT: First run setup', color=TermColors.WARNING)
 
         else:
             existing_lines = env_path.read_text().splitlines() if env_path.exists() else []
@@ -101,9 +97,6 @@ def ensure_secret(db_path: str | Path) -> None:
                 os.environ['BEETSTREAMNEXT_KEY'] = enc_key
 
                 print_box([
-                    '',
-                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
-                    '',
                     'An encryption key has been generated for your database:',
                     '',
                     f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
@@ -113,8 +106,7 @@ def ensure_secret(db_path: str | Path) -> None:
                     '',
                     "  ▶  Store it in your secrets manager. It won't be shown again.",
                     '  ▶  If you lose it, stored secrets will be unrecoverable.',
-                    '',
-                ], color=TermColors.WARNING)
+                ], title='BEETSTREAMNEXT: First run setup', color=TermColors.WARNING)
 
             else:
                 enc_key = Fernet.generate_key().decode()
@@ -124,9 +116,6 @@ def ensure_secret(db_path: str | Path) -> None:
                 _write_secret_file(env_path, '\n'.join(new_lines) + '\n')
 
                 print_box([
-                    '',
-                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  BEETSTREAMNEXT: First run setup  {TermColors.ENDC}',
-                    '',
                     'An encryption key has been generated for your database:',
                     '',
                     f'{TermColors.BOLD}BEETSTREAMNEXT_KEY:',
@@ -137,23 +126,18 @@ def ensure_secret(db_path: str | Path) -> None:
                     '',
                     "  ▶  Make sure this file has the correct permissions.",
                     '  ▶  If you lose it, stored secrets will be unrecoverable.',
-                    '',
-                ], color=TermColors.WARNING)
+                ], title='BEETSTREAMNEXT: First run setup', color=TermColors.WARNING)
 
     else:
         # Not first run, key must be present
         if not os.environ.get('BEETSTREAMNEXT_KEY'):
             print_box([
-                '',
-                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP FAILED: Missing required secret  {TermColors.ENDC}',
-                '',
                 f'Add the {TermColors.BOLD}BEETSTREAMNEXT_KEY{TermColors.ENDC} to:',
                 f'{env_path}',
                 '',
                 'If you have lost the BEETSTREAMNEXT_KEY, stored secrets',
                 'are unrecoverable. Delete the database and run setup again.',
-                '',
-            ], color=TermColors.FAIL)
+            ], title='STARTUP FAILED: Missing required secret', color=TermColors.FAIL)
             exit(1)
 
     try:
@@ -161,14 +145,10 @@ def ensure_secret(db_path: str | Path) -> None:
 
     except InvalidKeyError as e:
         print_box([
-            '',
-            f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP FAILED: Invalid secret  {TermColors.ENDC}',
-            '',
             str(e),
             '',
             'Refusing to start: user passwords would otherwise be stored unencrypted.',
-            '',
-        ], color=TermColors.FAIL)
+        ], title='STARTUP FAILED: Invalid secret', color=TermColors.FAIL)
         exit(1)
 
 

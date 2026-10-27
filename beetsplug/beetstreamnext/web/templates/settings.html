@@ -16,7 +16,7 @@
     <form method="POST" action="{{ url_for('admin.route_update_settings', category=category) }}"
           class="settings-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% for key, info in settings.items() if (info.type != 'list[str]' or key == 'external_playlists_editors') and key not in paired_with.values() %}
+        {% for key, info in settings.items() if (info.type != 'list[str]' or key in ('external_playlists_editors', 'host', 'public_hosts', 'admin_hosts')) and key not in paired_with.values() %}
             {{ sm.render_setting_row(category, key, settings, paired_with, users, host_suggestions, setting_pills) }}
         {% endfor %}
         <div class="settings-form-actions">

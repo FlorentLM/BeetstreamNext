@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import time
+from enum import IntEnum
 import os
 import re
 import mediafile
 from pathlib import Path
-from typing import Dict
+from typing import Dict, NamedTuple
 from importlib.metadata import version, PackageNotFoundError
 
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location, data_location
@@ -185,8 +186,8 @@ MAX_APP_PASSWORDS = 20  # per user
 
 ## Server defaults
 
-# A media server has to be reachable from other devices
 DEFAULT_HOST: str = '0.0.0.0'  # nosec B104
+
 DEFAULT_PORT: int = 8080
 
 DB_BUSY_TIMEOUT_MS: int = 5000
@@ -194,6 +195,29 @@ DEFAULT_DB_TIMEOUT: float = DB_BUSY_TIMEOUT_MS / 1000   # beets' 'timeout' kept 
 
 EVENT_BUS_INTERVAL: int = 15     # seconds (also how long a dead connection can hang around before cleanup)
 IMPORTWATCH_POLL_TIME: int = 30  # seconds
+
+
+## Blueprints and scopes
+
+class Scope(IntEnum):
+    """What a listener serves."""
+    PUBLIC = 0      # public routes only
+    USERS = 1       # + Subsonic API, login, account pages
+    ADMIN = 2       # + admin panel and control API
+
+class BlueprintPolicy(NamedTuple):
+    scope: Scope
+    self_authenticated: bool = False
+
+BLUEPRINTS = {
+    'static': BlueprintPolicy(Scope.PUBLIC, self_authenticated=True),
+    'public': BlueprintPolicy(Scope.PUBLIC, self_authenticated=True),
+    'subsonic': BlueprintPolicy(Scope.USERS, self_authenticated=True),
+    'auth': BlueprintPolicy(Scope.USERS, self_authenticated=True),
+    'account': BlueprintPolicy(Scope.USERS),
+    'admin': BlueprintPolicy(Scope.ADMIN),
+    'control_api': BlueprintPolicy(Scope.ADMIN),
+}
 
 
 ## Maintenance timings
@@ -220,6 +244,7 @@ HLS_MAX_CACHE_BYTES: int = 2 * 1024 ** 3    # Total size of all HLS sessions on 
 ZIP_MAX_CONCURRENT: int = 2                 # album zips being built at once
 TRANSCODE_MAX_CONCURRENT: int = 16          # max ffmpeg transcodes at once
 TRANSCODE_MAX_PER_USER: int = 4
+PUBLIC_LISTENER_MAX_THREADS: int = 8        # dedicated worker pool so that public-only listeners can't starve the full one
 COVER_EXTRACT_MAX_CONCURRENT: int = 8       # max ffmpeg cover art extractions at once
 PODCAST_MAX_CONCURRENT_DOWNLOADS: int = 3   # episode downloads running at once
 PART_MAX_AGE_SEC: int = 86400               # interrupted podcast '.part' downloads

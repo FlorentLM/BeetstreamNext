@@ -124,6 +124,9 @@ class SettingsStore:
                 is_list = spec['type'] == 'list[str]'
                 external = key in yaml_defaults
 
+                if spec.get('read_only'):
+                    self._locked.add(key)
+
                 if not spec.get('web_editable', True):
                     # Settings not available in WebUI are also not in db
                     self._locked.add(key)
@@ -217,7 +220,7 @@ class SettingsStore:
 
         pinned = self._pinned.get(key)
 
-        if not SETTINGS_SCHEMA[key].get('web_editable', True):
+        if not SETTINGS_SCHEMA[key].get('web_editable', True) or SETTINGS_SCHEMA[key].get('read_only'):
             raise PermissionError(f"'{key}' can only be set via an environment variable or the config file.")
 
         if pinned is None and self.locked(key):
@@ -277,7 +280,7 @@ class SettingsStore:
 
         pinned = self._pinned.get(key)
 
-        if not SETTINGS_SCHEMA[key].get('web_editable', True):
+        if not SETTINGS_SCHEMA[key].get('web_editable', True) or SETTINGS_SCHEMA[key].get('read_only'):
             raise PermissionError(f"'{key}' can only be set via an environment variable or the config file.")
 
         if pinned is None and self.locked(key):

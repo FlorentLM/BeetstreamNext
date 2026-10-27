@@ -8,14 +8,18 @@ import threading
 from pathlib import Path
 from typing import Iterable, List, Optional
 from flask_cors import CORS
-from waitress import serve
+from waitress import create_server, serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
+from beetsplug.beetstreamnext.core.runtime.listeners import (
+    Listeners, ListenerScope, resolve_listeners
+)
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import (
-    CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS, MAX_REQUEST_BYTES, UNIX_SOCKET_PERMS, UNIX_SOCKET_PREFIX
+    CACHE_DATA_DIR, CACHE_LOCATION, LOOPBACK_IPS, MAX_REQUEST_BYTES, PUBLIC_LISTENER_MAX_THREADS, Scope,
+    UNIX_SOCKET_PERMS, UNIX_SOCKET_PREFIX
 )
 from beetsplug.beetstreamnext.core.accounts.commands import check_onboarding
 from beetsplug.beetstreamnext.core.storage.encryption import ensure_secret, rotate_session_key
@@ -27,7 +31,6 @@ from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.services.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter
 from beetsplug.beetstreamnext.core.config.store import settings_store
-from beetsplug.beetstreamnext.utils.net import parse_host
 from beetsplug.beetstreamnext.utils.system import is_docker
 from beetsplug.beetstreamnext.utils.text import split_list
 
@@ -96,11 +99,41 @@ def _bindable(host: str, port: int) -> bool:
             return False
 
 
-def _write_runtime_port(port: int | str) -> None:
+def _write_runtime_endpoint(endpoint: str) -> None:
+    """Where the Docker healthcheck can reach the server: `host:port` or `unix:/path`."""
     try:
-        (CACHE_LOCATION / 'runtime_port').write_text(str(port))
+        (CACHE_LOCATION / 'runtime_endpoint').write_text(endpoint)
     except OSError:
-        bsn_logger.warning('Could not record runtime port to cache dir.')
+        bsn_logger.warning('Could not record runtime endpoint to cache dir.')
+
+
+def _run_listeners(wsgi_app, listeners: Listeners, socket_path: Optional[str], threads: int, **options) -> None:
+    """
+    Serve on the resolved listeners. The scope of a request is decided by the socket it arrives on.
+    """
+
+    if socket_path:
+        serve(wsgi_app, unix_socket=socket_path, unix_socket_perms=UNIX_SOCKET_PERMS,
+              threads=threads, **options)
+        return
+
+    *others, (last_scope, last_listen) = listeners.by_scope.items()
+
+    def scope_threads(scope: Scope) -> int:
+        return min(threads, PUBLIC_LISTENER_MAX_THREADS) if scope is Scope.PUBLIC else threads
+
+    for scope, listen in others:
+
+        name = scope.name.lower()
+
+        bsn_logger.info(f"{name.capitalize()} scope listener(s): {', '.join(listen)}")
+
+        server = create_server(ListenerScope(wsgi_app, scope), listen=listen, threads=scope_threads(scope), **options)
+        server.print_listen(f'Serving {name} scope on http://{{}}:{{}}')
+
+        threading.Thread(target=server.run, name=f'bsn-{name}-listener', daemon=True).start()
+
+    serve(ListenerScope(wsgi_app, last_scope), listen=last_listen, threads=scope_threads(last_scope), **options)
 
 
 def run_server(
@@ -118,47 +151,46 @@ def run_server(
 
     app.config['HOST_LIST'] = [h for h in host if not h.startswith(UNIX_SOCKET_PREFIX)]  # WebUI uses them as external_hostname suggestions
 
-    if len(host) == 1:
-        if not _bindable(host[0], port):
-            print_box([
-                '',
-                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
-                '',
-                f"The configured host ({host[0]}) can't be bound right now.",
-                '',
-            ], color=TermColors.FAIL)
-            sys.exit(1)
-        bindable_host = host
-    else:
-        bindable_host = [h for h in host if _bindable(h, port)]
+    bindable = [h for h in host if _bindable(h, port)]
+    if not bindable:
+        print_box([
+            f"The configured host ({host[0]}) can't be bound right now." if len(host) == 1 else
+            f"None of the configured hosts ({', '.join(host)}) can be bound right now."
+        ], title='STARTUP ABORTED:', color=TermColors.FAIL)
 
-        for h in host:
-            if h not in bindable_host:
-                bsn_logger.warning(f"Configured host '{h}' isn't bindable right now. Skipping it.")
+        sys.exit(1)
 
-        if not bindable_host:
-            print_box([
-                '',
-                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
-                '',
-                f"None of the configured hosts ({', '.join(host)}) can be bound right now.",
-                '',
-            ], color=TermColors.FAIL)
-            sys.exit(1)
+    for h in host:
+        if h not in bindable:
+            bsn_logger.warning(f"Configured host '{h}' isn't bindable right now. Skipping it.")
 
-    host = bindable_host
+    host = bindable
     socket_path = host[0][len(UNIX_SOCKET_PREFIX):] if host[0].startswith(UNIX_SOCKET_PREFIX) else None
-    netlocs = [parse_host(h)._replace(port=port).netloc for h in host] if not socket_path else []     # IPv6 gets its brackets
     exposed = not socket_path and any(h not in LOOPBACK_IPS for h in host)
 
     if socket_path and (debug or not settings_store.get('reverse_proxy')):
-        print_box([
-            '',
-            f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
-            '',
-            'A unix socket needs `reverse_proxy` enabled (and debug mode disabled).',
-            '',
-        ], color=TermColors.FAIL)
+        print_box(['A unix socket needs `reverse_proxy` enabled (and debug mode disabled).'],
+                  title='STARTUP ABORTED:', color=TermColors.FAIL)
+        sys.exit(1)
+
+    # Werkzeug's debug server and unix sockets only have one listener
+    scoped = {key: settings_store.get(key) for key in ('public_hosts', 'public_port', 'admin_hosts', 'admin_port')}
+
+    single_listener = bool(socket_path) or debug
+    if single_listener and any(scoped.values()):
+        bsn_logger.warning('`public_hosts`, `public_port`, `admin_hosts` and `admin_port` are ignored with a unix socket or in debug mode.')
+
+    try:
+        if socket_path:
+            listeners = Listeners({})
+        else:
+            if single_listener:
+                listeners = resolve_listeners(host, port, can_bind=_bindable)
+            else:
+                listeners = resolve_listeners(host, port, **scoped, can_bind=_bindable)
+
+    except ValueError as e:
+        print_box([str(e)], title='STARTUP ABORTED:', color=TermColors.FAIL)
         sys.exit(1)
 
     with app.app_context():
@@ -167,61 +199,42 @@ def run_server(
     if debug and exposed:
         if force_trust_host:
             print_box([
-                '',
-                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  !!! SUPER IMPORTANT WARNING !!!  {TermColors.ENDC}',
-                '',
                 f"Debug mode is force-enabled on {', '.join(host)}.",
                 'The Werkzeug debugger allows arbitrary remote code execution.',
                 '',
                 "I hope you know what you're doing!",
-                '',
-            ], color=TermColors.WARNING)
+            ], title='!!! SUPER IMPORTANT WARNING !!!', color=TermColors.WARNING)
 
         else:
             print_box([
-                '',
-                f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
-                '',
                 'Debug mode can only be used on localhost.',
                 'The Werkzeug debugger allows arbitrary remote code execution.',
-                '',
-            ], color=TermColors.FAIL)
+            ], title='STARTUP ABORTED:', color=TermColors.FAIL)
             sys.exit(1)
 
     if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
         if exposed:
             print_box([
-                '',
-                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                '',
                 'Legacy authentication is enabled, and the server',
-                f"is listening on {', '.join(f'http://{n}' for n in netlocs)}",
+                f"is listening on {', '.join(f'http://{n}' for n in listeners.all)}",
                 'without a reverse proxy.',
                 '',
                 'Passwords from legacy clients may be',
                 'transmitted in cleartext over HTTP.',
-                '',
-            ], color=TermColors.WARNING)
+            ], title='SECURITY WARNING:', color=TermColors.WARNING)
 
     if settings_store.get('reverse_proxy'):
         if exposed:
             if is_docker():
                 print_box([
-                    '',
-                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                    '',
                     'reverse_proxy is enabled and the server is bound to',
                     f"{', '.join(host)}:{port} (not loopback).",
                     '',
                     "Normal for a container, as long as this port isn't published",
                     'to the host. If it is, lock it down like a public bind.',
-                    '',
-                ], color=TermColors.WARNING)
+                ], title='SECURITY WARNING:', color=TermColors.WARNING)
             else:
                 print_box([
-                    '',
-                    f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                    '',
                     'reverse_proxy is enabled and the server is bound to',
                     f"{', '.join(host)}:{port} (not loopback).",
                     '',
@@ -229,8 +242,7 @@ def run_server(
                     '',
                     'Bind to 127.0.0.1 (or a unix socket), unless a firewall',
                     'guarantees only the proxy can reach this port.',
-                    '',
-                ], color=TermColors.WARNING)
+                ], title='SECURITY WARNING:', color=TermColors.WARNING)
 
         # Trusting 'proxy_hops' number of forwarded entries
         hops = max(1, settings_store.get('proxy_hops'))
@@ -253,16 +265,12 @@ def run_server(
 
     if checked_paths and missing_paths == checked_paths:
         print_box([
-            '',
-            f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
-            '',
             f'None of {checked_paths} sampled library item paths were found on disk under:',
             f'  {music_root}',
             '',
             'This probably means an incorrect path-mapping/mount config.',
             'Check your `music_root`/`library_local_path`/`library_remote_path` settings.',
-            '',
-        ], color=TermColors.WARNING)
+        ], title='WARNING:', color=TermColors.WARNING)
 
     elif missing_paths:
         bsn_logger.warning(
@@ -288,16 +296,12 @@ def run_server(
     if cors_origin:
         if cors_origin == '*' and supports_creds:
             print_box([
-                '',
-                f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  SECURITY WARNING:  {TermColors.ENDC}',
-                '',
                 "CORS is set to allow all origins ('*') WITH credentials.",
                 'This could allow any malicious website you visit to silently interact',
                 'with your BeetstreamNext server in the background.',
                 '',
                 "It is highly recommended to only allow your specific player's URL.",
-                ''
-            ], color=TermColors.WARNING)
+            ], title='SECURITY WARNING:', color=TermColors.WARNING)
         else:
             bsn_logger.info(f'Enabling CORS for origin(s): {cors_origin}')
 
@@ -316,7 +320,7 @@ def run_server(
 
     notify('server_started')
 
-    _write_runtime_port(host[0] if socket_path else port)
+    _write_runtime_endpoint(host[0] if socket_path else listeners.probe)
 
     if debug:
         if len(host) > 1:
@@ -329,26 +333,16 @@ def run_server(
 
     else:
         logging.getLogger('waitress').setLevel(LOG_LEVEL)
-        threads = settings_store.get('threads')
-        channel_timeout = settings_store.get('channel_timeout')
-        connection_limit = settings_store.get('connection_limit')
 
         if LOG_LEVEL > logging.INFO:
-            urls = host[0] if socket_path else ', '.join(f'http://{n}' for n in netlocs)
+            urls = host[0] if socket_path else ', '.join(f'http://{n}' for n in listeners.all)
             print(f'BeetstreamNext server running on {urls}...')
 
-        logged_app = RedactingTransLogger(app, setup_console_handler=True)
-
-        listen_options = {
-            'unix_socket': socket_path,
-            'unix_socket_perms': UNIX_SOCKET_PERMS
-        } if socket_path else {
-            'listen': netlocs
-        }
-
-        serve(
-            logged_app, **listen_options, threads=threads,
-            channel_timeout=channel_timeout, connection_limit=connection_limit,
+        _run_listeners(
+            RedactingTransLogger(app, setup_console_handler=True), listeners, socket_path,
+            threads=settings_store.get('threads'),
+            channel_timeout=settings_store.get('channel_timeout'),
+            connection_limit=settings_store.get('connection_limit'),
             max_request_body_size=MAX_REQUEST_BYTES,
             clear_untrusted_proxy_headers=not settings_store.get('reverse_proxy'),
         )

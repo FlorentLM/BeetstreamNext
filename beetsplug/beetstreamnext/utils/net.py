@@ -68,6 +68,19 @@ class ParsedHost(NamedTuple):
         return host if self.port is None else f'{host}:{self.port}'
 
 
+def is_wildcard_address(host: str) -> bool:
+    """Whether `host` is 0.0.0.0 / :: (all interfaces)."""
+    try:
+        return ipaddress.ip_address(host).is_unspecified
+    except ValueError:
+        return False
+
+
+def bind_netloc(host: str, port: int) -> str:
+    """`host:port` to listen on (IPv6 gets its brackets)."""
+    return ParsedHost(host=host, port=port).netloc
+
+
 def _parse_port(raw: str) -> int:
     if not (raw.isdecimal() and 0 < int(raw) <= 65535):
         raise ValueError(f'Invalid port: {raw}')
@@ -76,7 +89,7 @@ def _parse_port(raw: str) -> int:
 
 def parse_host(raw: str, strict: bool = False) -> ParsedHost:
     """
-    Parse a host/IP (`music.example.com`, `192.168.8.184`) or a full
+    Parse a host/IP (`music.example.com`, `192.168.0.10`) or a full
     `scheme://host[:port]` value into parts.
 
     Raises ValueError if host/IP part is invalid.

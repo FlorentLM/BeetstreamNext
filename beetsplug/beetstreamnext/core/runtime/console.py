@@ -40,8 +40,12 @@ def drift_lines(drift: Dict[str, dict]) -> List[str]:
     return lines
 
 
-def print_box(lines: list[str], width: int = 68, color: Optional[str] = None) -> None:
+def print_box(lines: list[str], width: int = 68, color: Optional[str] = None, title: Optional[str] = None) -> None:
+    """Print lines in a box, centered unless indented."""
+
     col = color if color else ''
+    if title:
+        lines = ['', f'{col}{TermColors.BOLD}{TermColors.REVERSE}  {title}  {TermColors.ENDC}', '', *lines, '']
     border = '═' * width
     print(f'\n{col}╔{border}╗{TermColors.ENDC}')
     for line in lines:

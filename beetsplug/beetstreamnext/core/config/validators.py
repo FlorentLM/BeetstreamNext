@@ -64,11 +64,6 @@ def validate_storage_dir(x: Any) -> str:
     return s
 
 
-def validate_admin_hostname(x: Any) -> str:
-    """Bare lowercase hostname/IP. Matched against a port-stripped Host header."""
-    return parse_host(str(x or '')).host
-
-
 def validate_external_hostname(x: Any) -> str:
     """Hostname/IP, keeping port if given. Any scheme prefix is stripped."""
     parsed = parse_host(str(x or ''))
@@ -134,3 +129,12 @@ def validate_host_list(hosts: List[str]) -> List[str]:
             raise ValueError(f"'{h}' is not a bare hostname or IP address.")
         result.append(parsed.host)
     return result
+
+
+def validate_host_list_nosocket(hosts: List[str]) -> List[str]:
+    """validate_host_list validator but excluding unix sockets."""
+
+    if any(h.startswith(UNIX_SOCKET_PREFIX) for h in hosts):
+        raise ValueError('A unix socket cannot be public-only.')
+
+    return validate_host_list(hosts)

@@ -26,6 +26,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
+_COMMA_LISTS = {'public_hosts', 'admin_hosts'}      # List settings edited as comma-separated text
 
 # Settings rendered together in a single row: {primary key: secondary key}
 _PAIRED_WITH = {
@@ -54,7 +55,7 @@ def route_update_settings(category: str) -> flask.Response:
             continue
         if not spec.get('web_editable', True):
             continue   # Not settable from the panel
-        if spec['type'] == 'list[str]' and key not in _CAN_MULTISELECT:
+        if spec['type'] == 'list[str]' and key not in _CAN_MULTISELECT | _COMMA_LISTS:
             continue   # Handled by dedicated endpoints
         if settings_store.locked(key):
             continue   # set explicitly (via CLI/env/config) so not editable here

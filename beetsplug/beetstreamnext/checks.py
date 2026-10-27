@@ -4,18 +4,12 @@ from flask import Flask
 from flask_wtf.csrf import CSRFProtect
 from jinja2 import nodes
 
+from beetsplug.beetstreamnext.constants import BLUEPRINTS, BlueprintPolicy, Scope
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.config.store import coerce_setting
 
 
 ##
-
-OPEN_BLUEPRINTS = frozenset({
-    'subsonic',
-    'public',
-    'auth',
-    'static'
-})
 
 OPEN_ENDPOINTS = frozenset({
     'admin.route_setup',
@@ -49,12 +43,12 @@ def route_collisions(app: Flask) -> None:
 
 
 def auth_coverage(app: Flask) -> None:
-    """Check if a (not explicitly open) view is missing a auth decorator."""
+    """Check if a (not explicitly open) view is missing a auth decorator, and if every blueprint has a policy."""
 
     unprotected = sorted(
         endpoint for endpoint, view in app.view_functions.items()
         if endpoint not in OPEN_ENDPOINTS
-        and endpoint.partition('.')[0] not in OPEN_BLUEPRINTS
+        and not BLUEPRINTS.get(endpoint.partition('.')[0], BlueprintPolicy(Scope.ADMIN)).self_authenticated
         and not getattr(view, 'requires_auth', False)
     )
 
@@ -62,9 +56,14 @@ def auth_coverage(app: Flask) -> None:
         raise RuntimeError(f"Views without auth decorator: {', '.join(unprotected)}.")
 
     blueprints = {endpoint.partition('.')[0] for endpoint in app.view_functions}
+
+    unlisted = sorted(blueprints - BLUEPRINTS.keys())
+    if unlisted:
+        raise RuntimeError(f"Blueprints missing from BLUEPRINTS in constants.py: {', '.join(unlisted)}.")
+
     stale = sorted(
         [e for e in OPEN_ENDPOINTS if e not in app.view_functions] +
-        [b for b in OPEN_BLUEPRINTS if b not in blueprints]
+        [b for b in BLUEPRINTS if b not in blueprints]
     )
     if stale:
         raise RuntimeError(f"Startup checks reference unknown element{'s' if len(stale) > 1 else ''}: {', '.join(stale)}")

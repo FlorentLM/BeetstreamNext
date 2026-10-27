@@ -56,22 +56,15 @@ def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
 
     if settings_store.get('strict_beets_version_check'):
         print_box([
-            '',
-            f'{TermColors.FAIL + TermColors.BOLD + TermColors.REVERSE}  STARTUP ABORTED:  {TermColors.ENDC}',
-            '',
             "This library.db shows signs of having been modified by a different beets version:",
             '',
             *drift_lines(drift),
             '',
             "Disable 'strict_beets_version_check' to start anyway (with a warning) instead.",
-            '',
-        ], color=TermColors.FAIL)
+        ], title='STARTUP ABORTED:', color=TermColors.FAIL)
         return False
 
     print_box([
-        '',
-        f'{TermColors.WARNING + TermColors.BOLD + TermColors.REVERSE}  WARNING:  {TermColors.ENDC}',
-        '',
         "This library.db shows signs of having been ",
         "modified by a different beets version:",
         '',
@@ -82,8 +75,7 @@ def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
         "But if you have another beets install using this library, ",
         "(e.g. in another container or on your host machine), ",
         "it would be safer to make sure the versions match. "
-        '',
-    ], color=TermColors.WARNING)
+    ], title='WARNING:', color=TermColors.WARNING)
 
     return True
 

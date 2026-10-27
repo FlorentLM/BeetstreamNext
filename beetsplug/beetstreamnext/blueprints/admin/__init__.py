@@ -6,7 +6,6 @@ import flask
 from flask import Blueprint
 
 from beetsplug.beetstreamnext.blueprints.auth import session_roles
-from beetsplug.beetstreamnext.core.accounts.security import admin_host_allowed
 from beetsplug.beetstreamnext.blueprints.shared.radio import register_radio_routes
 from beetsplug.beetstreamnext.blueprints.shared.app_passwords import register_app_password_routes
 from beetsplug.beetstreamnext.blueprints.shared.sessions import register_session_routes
@@ -14,13 +13,6 @@ from beetsplug.beetstreamnext.blueprints.shared.chat import register_chat_routes
 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-
-
-@admin_bp.before_request
-def restrict_admin_host() -> None:
-    """Enforce internal-only hostname rules if admin_hostname is configured."""
-    if not admin_host_allowed(flask.request.host):
-        flask.abort(403, description='Admin panel access denied on this hostname.')
 
 
 def admin_required(f) -> Callable:

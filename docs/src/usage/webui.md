@@ -69,7 +69,7 @@ Add/refresh/delete podcast subscriptions and internet radio stations.
 
 ### Shares
 
-View and revoke any active [public share](../features/public-shares.md).
+View, [edit](../features/public-shares.md#share-options) and revoke any active [public share](../features/public-shares.md).
 
 ### Chat moderation
 

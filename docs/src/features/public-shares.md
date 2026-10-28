@@ -6,6 +6,12 @@ Users with the `shareRole` permission can generate public share links for a song
 
 Active shares can be revoked at any time from the admin panel's [Shares tab](../usage/webui.md#public-shares).
 
+## Share options
+
+Shares can be configured with an expiry date, a download count limit, and protected by passwords.
+
+You can set a default policy for these (since OpenSubsonic clients can't set a password or download limit).
+
 ## Public routes
 
 Everything that works without an account is a _public route_:

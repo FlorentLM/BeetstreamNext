@@ -53,7 +53,6 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 - [ ] Playlist export to Spotify, Deezer, Tidal, etc
 - [ ] Augmented public shares for read-only setups (serve versions with clean tags and embedded art)
 - [ ] Share options: Selectable format/bitrate for shares downloads
-- [ ] Share options: Expiry or download-count limits, password protection
 - [ ] Proper OIDC support (Authelia, Authentik, etc)
 - [ ] Prometheus metrics
 - [ ] Backup/restore settings and BeetstreamNext data

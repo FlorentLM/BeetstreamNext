@@ -905,3 +905,33 @@ Seconds before an IP-wide failure count rolls off.
 *type:* `int`
 
 *default:* `3600`
+
+## Shares
+
+### `share_default_expiry_days`
+
+Days until new shares expire, unless the client sets an expiry (`0` = never).
+
+*type:* `int`
+
+*default:* `0`
+
+---
+
+### `share_default_max_downloads`
+
+Download limit for new shares (`0` = unlimited).
+
+*type:* `int`
+
+*default:* `0`
+
+---
+
+### `share_default_password`
+
+Password for new shares (visible to share owners on their account page).
+
+*type:* `str`
+
+*default:* *(empty)*

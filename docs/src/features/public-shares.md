@@ -36,6 +36,10 @@ beetstreamnext:
   external_hostname: public.example.com
 ```
 
+If it isn't set, share links use the address of the `public` scope listener (or the `users` one), when it has a specific address (not `0.0.0.0` or loopback) and when `reverse_proxy` is off. Otherwise, they use the `Host` header of the request, which is only as trustworthy as [`trusted_hosts`](../configuration.md#trusted_hosts).
+
+Set `external_hostname` whenever the server is reachable from outside.
+
 ## Listener scopes
 
 Every listener of **BeetstreamNext** has a _scope_ that sets which routes it serves. Any other route returns 404.

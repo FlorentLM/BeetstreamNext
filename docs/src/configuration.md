@@ -202,7 +202,7 @@ Extra port that serves the admin panel and control API on the other addresses of
 
 ### `external_hostname`
 
-Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>). If unset, the hostname of the request is used.
+Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>). If unset, the users-accessible address is used (unless <code>reverse_proxy</code> is on), then the hostname of the request.
 
 *type:* `str`
 
@@ -843,6 +843,18 @@ For <code>server_hardware</code> backend only. Path to the mpv binary, if it isn
 *env:* `BSN_MPV_PATH`
 
 ## Security
+
+### `restrict_control_api`
+
+Only serve the control API (<code>/control-api</code>) on the <code>admin</code> scope listeners. Turn off to also serve it on the <code>users</code> scope.
+
+*type:* `bool`
+
+*default:* `True`
+
+*env:* `BSN_RESTRICT_CONTROL_API`
+
+---
 
 ### `ip_whitelist`
 

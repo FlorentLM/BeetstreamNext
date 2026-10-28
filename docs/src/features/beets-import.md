@@ -68,6 +68,9 @@ The token can be sent as the `X-Api-Key` header value, `Authorization: Bearer <t
 
 - With `interactive=true`, Beets waits for you in the **Beets** tab when it needs a decision (and sends an _Import needs input_ [notification](./notifications.md)). Other imports (queued and watched folders) wait behind it until you answer.
 
+> [!NOTE]
+> The control API is only served on `admin` scope listeners by default. You can expose it on the user-facing interface by disabling [`restrict_control_api`](../configuration.md#restrict_control_api).
+
 > [!WARNING]
 > Don't trigger imports inside a [watched folder](#watched-folders-auto-import) (or a subfolder of one). It's safer to use one *or* the other.
 

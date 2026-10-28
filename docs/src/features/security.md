@@ -10,6 +10,8 @@
   - [`admin_hosts`](../configuration.md#admin_hosts) and [`admin_port`](../configuration.md#admin_port) give listeners the `admin` scope (admin panel and control API).
   
   - The other addresses have the `users` scope.
+
+  - [`restrict_control_api`](../configuration.md#restrict_control_api) (on by default) keeps the control API on `admin` scope listeners. Turn it off to also serve it on `users` ones (it is still protected by its token).
   
   - **Remark:** By default, a single listener serves everything.
 

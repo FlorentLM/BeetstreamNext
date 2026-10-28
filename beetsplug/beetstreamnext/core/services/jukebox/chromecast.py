@@ -47,6 +47,7 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
     Wrapper around a Chromecast device, controlled over the network via pychromecast.
     """
     NAME = 'chromecast'
+    REMOTE = True
 
     def __init__(self):
         super().__init__()

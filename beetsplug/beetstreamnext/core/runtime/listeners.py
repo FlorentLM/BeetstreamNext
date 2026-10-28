@@ -5,7 +5,7 @@ from typing import Callable, Dict, Iterable, List, Tuple
 
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, UNIX_SOCKET_PREFIX, Scope
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.net import bind_netloc, is_wildcard_address, parse_host
+from beetsplug.beetstreamnext.utils.net import bind_netloc, is_local_only, is_wildcard_address, parse_host
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,21 @@ class Listeners:
     @property
     def all(self) -> List[str]:
         return [netloc for netlocs in self.by_scope.values() for netloc in netlocs]
+
+    @property
+    def user_facing(self) -> str | None:
+        """
+        `host:port` that users connect to (public scope, else users scope, else the single listener),
+        if it has a specific address (not a wildcard or loopback).
+        """
+        scopes = [Scope.PUBLIC, Scope.USERS]
+        if len(self.by_scope) == 1:
+            scopes.append(Scope.ADMIN)      # Everything is served there
+
+        return next(
+            (n for scope in scopes for n in self.by_scope.get(scope, []) if not is_local_only(parse_host(n).host)),
+            None
+        )
 
     @property
     def probe(self) -> str:
@@ -124,5 +139,8 @@ def resolve_listeners(
                 by_scope[scope].append(bind_netloc(host, scope_port))
             else:
                 bsn_logger.warning(f"Can't bind '{host}' on {scope.name.lower()}_port {scope_port}. Skipping it.")
+
+    if admin_port and not by_scope[Scope.ADMIN]:
+        raise ValueError("No listener has the admin scope: `admin_port` couldn't be bound on any address in `host`.")
 
     return Listeners({scope: netlocs for scope, netlocs in by_scope.items() if netlocs})

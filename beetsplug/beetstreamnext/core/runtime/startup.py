@@ -193,6 +193,8 @@ def run_server(
         print_box([str(e)], title='STARTUP ABORTED:', color=TermColors.FAIL)
         sys.exit(1)
 
+    app.config['LISTENERS'] = listeners
+
     with app.app_context():
         check_onboarding(app.config.get('STANDALONE_MODE', False), host=[] if socket_path else host, port=port)
 

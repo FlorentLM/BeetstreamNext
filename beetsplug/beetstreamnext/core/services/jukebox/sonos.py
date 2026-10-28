@@ -40,6 +40,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
     URLs that already end with a known extension can be passed straight through.
     """
     NAME = 'sonos'
+    REMOTE = True
 
     def __init__(self):
         super().__init__()

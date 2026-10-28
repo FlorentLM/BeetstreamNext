@@ -131,7 +131,8 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': '',
         'category': 'server',
         'description': 'Public hostname for share links and tokenised stream/image URLs (e.g. <code>public.example.com</code>). '
-                       'If unset, the hostname of the request is used.',
+                       'If unset, the users-accessible address is used (unless <code>reverse_proxy</code> is on), '
+                       'then the hostname of the request.',
         'requires_restart': False,
         'env_var': 'BSN_EXTERNAL_HOSTNAME',
         'validator': validate_external_hostname,
@@ -411,6 +412,15 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'sensitive': True,
         'env_var': 'BSN_CONTROL_API_TOKEN',
+    },
+    'restrict_control_api': {
+        'type': 'bool',
+        'default': True,
+        'category': 'security',
+        'description': 'Only serve the control API (<code>/control-api</code>) on the <code>admin</code> scope listeners. '
+                       'Turn off to also serve it on the <code>users</code> scope. ',
+        'requires_restart': False,
+        'env_var': 'BSN_RESTRICT_CONTROL_API',
     },
     'import_watch_enabled': {
         'type': 'bool',

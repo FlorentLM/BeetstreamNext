@@ -6,7 +6,7 @@ import os
 import re
 import mediafile
 from pathlib import Path
-from typing import Dict, NamedTuple
+from typing import Any, Callable, Dict, NamedTuple
 from importlib.metadata import version, PackageNotFoundError
 
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location, data_location
@@ -209,6 +209,12 @@ class Scope(IntEnum):
 class BlueprintPolicy(NamedTuple):
     scope: Scope
     self_authenticated: bool = False
+    restricted_by: str = ''     # bool setting: when off, the blueprint is served at the `users` scope too
+
+    def effective_scope(self, get_setting: Callable[[str], Any]) -> Scope:
+        if self.restricted_by and not get_setting(self.restricted_by):
+            return min(self.scope, Scope.USERS)
+        return self.scope
 
 BLUEPRINTS = {
     'static': BlueprintPolicy(Scope.PUBLIC, self_authenticated=True),
@@ -217,7 +223,7 @@ BLUEPRINTS = {
     'auth': BlueprintPolicy(Scope.USERS, self_authenticated=True),
     'account': BlueprintPolicy(Scope.USERS),
     'admin': BlueprintPolicy(Scope.ADMIN),
-    'control_api': BlueprintPolicy(Scope.ADMIN),
+    'control_api': BlueprintPolicy(Scope.ADMIN, restricted_by='restrict_control_api'),
 }
 
 

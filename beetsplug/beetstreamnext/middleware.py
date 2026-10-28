@@ -6,6 +6,7 @@ import flask
 from beetsplug.beetstreamnext.constants import BLUEPRINTS, LOOPBACK_IPS, Scope
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter, ip_filter
 from beetsplug.beetstreamnext.core.runtime.listeners import ListenerScope
 from beetsplug.beetstreamnext.utils.net import parse_host
@@ -37,7 +38,7 @@ def _any_users_exist() -> bool:
 def _before_request() -> flask.Response | None:
 
     blueprint = BLUEPRINTS.get((flask.request.endpoint or '').partition('.')[0])
-    needed_scope = blueprint.scope if blueprint else Scope.ADMIN
+    needed_scope = blueprint.effective_scope(settings_store.get) if blueprint else Scope.ADMIN
     is_public = needed_scope is Scope.PUBLIC
 
     if flask.request.environ.get(ListenerScope.KEY, Scope.ADMIN) < needed_scope:

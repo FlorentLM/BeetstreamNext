@@ -8,6 +8,7 @@ import urllib.parse
 from functools import lru_cache
 from typing import List, NamedTuple, Optional, Set
 
+from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.utils.text import split_list
 
 
@@ -74,6 +75,11 @@ def is_wildcard_address(host: str) -> bool:
         return ipaddress.ip_address(host).is_unspecified
     except ValueError:
         return False
+
+
+def is_local_only(host: str) -> bool:
+    """Whether `host` can be bound to, but not as a url from another machine."""
+    return host in LOOPBACK_IPS or is_wildcard_address(host)
 
 
 def bind_netloc(host: str, port: int) -> str:

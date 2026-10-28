@@ -11,7 +11,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.utils.system import get_mimetype, safe_filename
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.utils.concurrency import DoOnce
-from beetsplug.beetstreamnext.utils.net import parse_host
+from beetsplug.beetstreamnext.utils.net import is_local_only, parse_host
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
@@ -31,11 +31,12 @@ def read_upload(field: str, max_bytes: int) -> bytes | None:
 _host_header_warning = DoOnce()
 
 
-def request_url(path_part: str) -> str:
-    """
-    Build an absolute URL for 'path_part' using the current request's scheme+host.
-    """
-    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+class ExternalHostUnavailable(RuntimeError):
+    """No address that other machines can use to reach this server could be worked out."""
+
+
+def _request_netloc() -> str:
+    """`host[:port]` of current request's Host header."""
     host = parse_host(flask.request.host, strict=True)
 
     if not app.config.get('trusted_hosts') and host.host not in LOOPBACK_IPS and _host_header_warning.claim():
@@ -44,22 +45,43 @@ def request_url(path_part: str) -> str:
             'is not set. This is dangerous, consider setting `trusted_hosts` (and `external_hostname` for share links).'
         )
 
-    return f'{scheme}://{host.netloc}{path_part}'
+    return host.netloc
 
 
-def external_url(path_part: str) -> str:
-    """Build an absolute URL for 'path_part' on `external_hostname`."""
-    external_host = settings_store.get('external_hostname')
-    if not external_host:
-        return request_url(path_part)
+def request_url(path_part: str) -> str:
+    """
+    Build an absolute URL for 'path_part' using the current request's scheme+host.
+    """
+    scheme = 'https' if (flask.request.is_secure or settings_store.get('reverse_proxy')) else 'http'
+    return f'{scheme}://{_request_netloc()}{path_part}'
 
+
+def external_url(path_part: str, reachable: bool = False) -> str:
+    """
+    Build an absolute URL for 'path_part' on `external_hostname`.
+    Falls back to the address of the 'users' listener, then to the request's Host header.
+
+        - `reachable`: raise ExternalHostUnavailable if not reachable from external machines
+    """
     reverse_proxy = settings_store.get('reverse_proxy')
     scheme = 'https' if (flask.request.is_secure or reverse_proxy) else 'http'
 
-    if not reverse_proxy and parse_host(external_host).port is None:
-        external_host = f'{external_host}:{settings_store.get("port")}'
+    listeners = app.config.get('LISTENERS')
+    netloc = settings_store.get('external_hostname')
 
-    return f'{scheme}://{external_host}{path_part}'
+    if netloc:
+        if not reverse_proxy and parse_host(netloc).port is None:
+            netloc = f'{netloc}:{settings_store.get("port")}'
+    else:
+        # Behind a reverse proxy the listener is internal
+        netloc = (None if reverse_proxy or not listeners else listeners.user_facing) or _request_netloc()
+
+    if reachable and is_local_only(parse_host(netloc).host):
+        raise ExternalHostUnavailable(
+            f"'{netloc}' can't be used as an URL. Set `external_hostname` to an address that is reachable from other machines."
+        )
+
+    return f'{scheme}://{netloc}{path_part}'
 
 
 def content_disposition(download_name: str) -> str:

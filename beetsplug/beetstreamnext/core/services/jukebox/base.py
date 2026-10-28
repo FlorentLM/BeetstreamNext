@@ -8,7 +8,7 @@ from typing import List, Tuple
 
 from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.system import get_mimetype, AUDIO_MIMETYPES
-from beetsplug.beetstreamnext.core.runtime.web import external_url
+from beetsplug.beetstreamnext.core.runtime.web import ExternalHostUnavailable, external_url
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
 
@@ -28,6 +28,7 @@ class JukeboxBackend:
     Queue and action logic share between jukebox backends.
     """
     NAME = 'jukebox'
+    REMOTE = False      # Plays on another device
 
     def __init__(self):
         self._lock = threading.RLock()
@@ -50,7 +51,18 @@ class JukeboxBackend:
         filename = (Path(path).name if not is_url else '') or 'stream.mp3'
         path_part = flask.url_for('public.tokenised_stream', token=token, filename=filename)
 
-        return external_url(path_part)
+        return self._external_url(path_part)
+
+    def _external_url(self, path_part: str) -> str:
+        try:
+            return external_url(path_part, reachable=self.REMOTE)
+        except ExternalHostUnavailable as e:
+            raise JukeboxUnavailableException(str(e)) from e
+
+    def _check_external_host(self) -> None:
+        """Fail early if the device couldn't fetch the tracks."""
+        if self.REMOTE:
+            self._external_url('/')
 
     def _content_type(self, path: str) -> str:
         """Best-effort mimetype sniffing (defaults to audio/mpeg)."""
@@ -118,6 +130,7 @@ class JukeboxBackend:
         """Replace the queue and start playing from the first track."""
 
         with self._lock:
+            self._check_external_host()
             self._ensure_ready()
             self._backend_clear()
 
@@ -130,6 +143,7 @@ class JukeboxBackend:
 
     def add(self, entries: List[Tuple[str, str]]) -> None:
         with self._lock:
+            self._check_external_host()
             self._ensure_ready()
             for entry_id, path in entries:
                 self._backend_append(entry_id, path)

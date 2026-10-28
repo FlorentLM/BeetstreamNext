@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 
-ADMIN_USER, ADMIN_PASSWORD = 'admin', 'hunter2?'
+ADMIN_USER, ADMIN_PASSWORD = 'admin', 'Hunter2??'
 ADMIN_APP_PASSWORD = 'admin-app-password'
 
 # (album, albumartist, year, track titles)
@@ -24,7 +24,7 @@ EXTRA_ALBUMS = [
 ]
 
 # (username, password), the admin is created separately
-USERS = [('alice', 'alice-password'), ('bob', 'bob-password')]
+USERS = [('alice', 'Alice-password1!'), ('bob', 'Bob-password1!')]
 
 RADIOS = [      # (name, stream url, homepage)
     ('Radio Paradise', 'https://stream.radioparadise.com/mp3-320', 'https://radioparadise.com'),

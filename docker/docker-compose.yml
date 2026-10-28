@@ -4,7 +4,7 @@
 # Usage:
 #   1. Edit the two host paths below (library.db and your music root)
 #      1b. Optional, run once (see https://florentlm.github.io/BeetstreamNext/installation.html#unattended-first-run):
-#           docker compose -f docker/docker-compose.yml run --rm -e BSN_ADMIN_USER=admin -e BSN_ADMIN_PASSWORD=hunter2 beetstreamnext create-user --noinput
+#           docker compose -f docker/docker-compose.yml run --rm -e BSN_ADMIN_USER=admin -e BSN_ADMIN_PASSWORD=Hunter2?? beetstreamnext create-user --noinput
 #   2. Run it:
 #     docker compose -f docker/docker-compose.yml up -d   (from the repository root, or just `docker compose up -d` from this folder)
 #

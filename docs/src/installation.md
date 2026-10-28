@@ -426,7 +426,7 @@ Other standalone subcommands work by overriding the container's command. For exa
 
 ```bash
 docker run --rm \
-  -e BSN_ADMIN_USER=admin -e BSN_ADMIN_PASSWORD=hunter2 \
+  -e BSN_ADMIN_USER=admin -e BSN_ADMIN_PASSWORD=Hunter2?? \
   -e BEETS_LIBRARY_DB=/data/library.db \
   -v /path/to/config:/config \
   -v /path/to/library.db:/data/library.db:ro \
@@ -578,10 +578,10 @@ You can also add `BSN_NO_KEY_FILE=1` to prevent it from writing the `.env` file 
 Example:
 
 ```bash
-BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=hunter2 beet beetstreamnext --create-user --noinput
+BSN_ADMIN_USER=admin BSN_ADMIN_PASSWORD=Hunter2?? beet beetstreamnext --create-user --noinput
 ```
 
-(obviously replace `admin` and `hunter2` by your chosen admin username and password)
+(obviously replace `admin` and `Hunter2??` by your chosen admin username and password)
 
 > [!NOTE]
 > This is a _one-time_ step. It will refuse to run if any user account already exists.

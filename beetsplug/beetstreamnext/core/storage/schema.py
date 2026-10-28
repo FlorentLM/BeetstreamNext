@@ -317,6 +317,9 @@ def initialise_db() -> None:
             expires     REAL,
             created     REAL NOT NULL DEFAULT (unixepoch()),
             visit_count INTEGER       DEFAULT 0,
+            max_downloads    INTEGER,           -- NULL = unlimited
+            download_count   INTEGER NOT NULL DEFAULT 0,
+            password_hash    TEXT,              -- NULL = public
             FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
         """

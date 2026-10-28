@@ -14,9 +14,11 @@ from flask import render_template
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.constants import ZIP_CACHE_DIR, ZIP_MAX_CONCURRENT
+from beetsplug.beetstreamnext.constants import RATE_LIMIT_BLOCK_WINDOW, ZIP_CACHE_DIR, ZIP_MAX_CONCURRENT
+from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.media.shares import claim_download, is_unlocked, unlock_share
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.runtime.web import external_url, send_file
 from beetsplug.beetstreamnext.utils.system import safe_filename
@@ -27,8 +29,10 @@ from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.library.resolve import beets_abspath
 
 
-def _get_active_share(share_id: str):
-    """Fetch a share row, aborting 404 if it doesn't exist or has expired."""
+def _get_active_share(share_id: str, *, unlocked: bool = True):
+    """
+    Fetch a share row, aborting 404 if it doesn't exist or has expired, and 403 if it is still locked.
+    """
     with database() as db:
         share = db.execute(
             """
@@ -39,6 +43,9 @@ def _get_active_share(share_id: str):
 
     if not share or (share['expires'] and share['expires'] < time.time()):
         flask.abort(404)
+
+    if unlocked and not is_unlocked(share):
+        flask.abort(403)
 
     return share
 
@@ -157,6 +164,17 @@ def share_view(share_id: str) -> str | Tuple[str, str]:
         }
         return render_template('error.html', error=error), str(410)
 
+    if share['max_downloads'] and share['download_count'] >= share['max_downloads']:
+        error = {
+            'code': 410,
+            'title': 'Download Limit Reached',
+            'message': 'This share has reached its download limit and is no longer available.',
+        }
+        return render_template('error.html', error=error), str(410)
+
+    if not is_unlocked(share):
+        return render_template('share_password.html', share=share)
+
     with database() as db:
         db.execute(
             """
@@ -182,10 +200,33 @@ def share_view(share_id: str) -> str | Tuple[str, str]:
     entry_ids = [r['item_id'] for r in entry_rows]
 
     resolved_songs, resolved_albums = Resolve.shared_items(entry_ids)
-    songs = [Serialise.song(s) for s in resolved_songs]
+    songs = [Serialise.song(s, exact_size=True) for s in resolved_songs]
     albums = [Serialise.album(a, include_songs=True) for a in resolved_albums]
 
     return render_template('shares.html', share=share, songs=songs, albums=albums)
+
+
+@public_bp.route('/share/<share_id>/unlock', methods=['POST'])
+def share_unlock(share_id: str) -> flask.Response | Tuple[str, int]:
+
+    share = _get_active_share(share_id, unlocked=False)
+    if not share['password_hash']:
+        flask.abort(404)
+
+    client_ip = flask.request.remote_addr or 'unknown'
+    attempted = f'share:{share_id}'     # Rate-limited per (IP, share) + the usual per-IP total
+
+    if rate_limiter.is_blocked(client_ip, attempted):
+        response = flask.make_response(render_template('share_password.html', share=share, blocked=True), 429)
+        response.headers['Retry-After'] = str(RATE_LIMIT_BLOCK_WINDOW)
+        return response
+
+    if unlock_share(share, flask.request.form.get('password', '')):
+        rate_limiter.reset(client_ip, attempted)
+        return flask.redirect(flask.url_for('public.share_view', share_id=share_id))
+
+    rate_limiter.record(client_ip, attempted)
+    return render_template('share_password.html', share=share, wrong=True), 401
 
 
 @public_bp.route('/share/<share_id>/download/<entry_id>')
@@ -199,6 +240,9 @@ def share_download(share_id: str, entry_id: str) -> flask.Response | None:
     entry_type, item = Resolve.any(entry_id)
     if entry_type != 'song' or not item:
         flask.abort(404)
+
+    if not claim_download(share_id):
+        return flask.make_response('This share has reached its download limit.', 410)
 
     song_path = beets_abspath(item)
 
@@ -238,8 +282,14 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     if not items:
         flask.abort(404)
 
+    if not claim_download(share_id):
+        return flask.make_response('This share has reached its download limit.', 410)
+
     zip_path = _zip_album(entry_id, items)
     if zip_path is None:
+        with database() as db:        # download was not served: un-count it
+            db.execute("""UPDATE shares SET download_count = MAX(download_count - 1, 0) WHERE id = ?""", (share_id,))
+
         response = flask.make_response('Too many downloads are being prepared, try again shortly.', 503)
         response.headers['Retry-After'] = '10'
         return response

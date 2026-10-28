@@ -1,0 +1,10 @@
+{# Share edit modal #}
+
+<div class="modal-overlay" id="editShareModal" x-data="modalPanel('editShareModal')"
+     :class="{ active: isOpen }" @click.self="close()">
+    <div class="modal-content">
+        <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
+        <h2>Edit Share</h2>
+        <div id="editShareModalBody"></div>
+    </div>
+</div>

@@ -17,6 +17,7 @@ from beetsplug.beetstreamnext.core.config.validators import (
     validate_int_range,
     validate_jukebox_device,
     validate_path,
+    validate_share_password,
     validate_storage_dir
 )
 
@@ -815,6 +816,30 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'description': 'Seconds before an IP-wide failure count rolls off.',
         'requires_restart': False,
         'validator': validate_int_range(10, 604800),
+    },
+    'share_default_expiry_days': {
+        'type': 'int',
+        'default': 0,
+        'category': 'shares',
+        'description': 'Days until new shares expire, unless the client sets an expiry (`0` = never).',
+        'requires_restart': False,
+        'validator': validate_int_range(0, 3650),
+    },
+    'share_default_max_downloads': {
+        'type': 'int',
+        'default': 0,
+        'category': 'shares',
+        'description': 'Download limit for new shares (`0` = unlimited).',
+        'requires_restart': False,
+        'validator': validate_int_range(0, 1_000_000),
+    },
+    'share_default_password': {
+        'type': 'str',
+        'default': '',
+        'category': 'shares',
+        'description': 'Password for new shares (visible to share owners on their account page).',
+        'requires_restart': False,
+        'validator': validate_share_password,
     },
 }
 

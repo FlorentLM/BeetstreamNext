@@ -1,0 +1,36 @@
+<p class="modal-username"><code>{{ share.id }}</code></p>
+
+<form id="editShareForm"
+      hx-post="{{ url_for(update_endpoint, share_id=share.id) }}"
+      hx-target="#sharesPane"
+      hx-swap="innerHTML">
+    {{ form.csrf_token }}
+    <div class="modal-result" id="editShareResult"></div>
+
+    <div class="form-group">
+        <label>Description <span class="label-hint">(optional)</span></label>
+        {{ form.description(autocomplete="off") }}
+    </div>
+
+    <div class="form-group form-row">
+        <div>
+            <label>Expires on <span class="label-hint">(end of day)</span></label>
+            {{ form.expires() }}
+        </div>
+        <div>
+            <label>Download limit</label>
+            {{ form.max_downloads(min=1, placeholder="Unlimited") }}
+            <span class="label-hint">{{ share.download_count }} used so far</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Password <span class="label-hint">{{ '(leave blank to keep current one)' if share.has_password else '(optional)' }}</span></label>
+        {{ form.password(placeholder="••••••••••••", autocomplete="new-password") }}
+        {% if share.has_password %}
+            <label class="role-item role-item-standalone">{{ form.remove_password() }} Remove password</label>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-full">Save changes</button>
+</form>

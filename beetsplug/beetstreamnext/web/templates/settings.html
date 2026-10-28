@@ -25,6 +25,14 @@
     </form>
 {% endmacro %}
 
+{% macro settings_card(category, title, icon=None, hint=None) %}
+    <div class="card">
+        <div class="table-header"><h2>{% if icon %}<span class="material-symbols-outlined">{{ icon }}</span>{% endif %}{{ title }}</h2></div>
+        {% if hint %}<p class="card-hint">{{ hint }}</p>{% endif %}
+        {{ render_settings_form(category, settings_by_category[category], users, host_suggestions, setting_pills) }}
+    </div>
+{% endmacro %}
+
 {% block body %}
     <div id="adminDashboard" class="dashboard-container" x-data="tabs" @keydown.escape.window="closeModal()"
          hx-sse:connect="{{ url_for('admin.route_admin_events') }}">
@@ -90,9 +98,8 @@
             'notifications': 'notifications',
             'maintenance': 'build',
         } %}
-        {% set tab_order = ['users', 'connections'] + settings_categories|reject('in', ['podcasts', 'connections'])|list
-            + (['podcasts'] if 'podcasts' in settings_categories else [])
-            + ['radios', 'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
+        {% set tab_order = ['users', 'connections', 'server', 'library', 'audio', 'security', 'podcasts', 'radios',
+                            'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <nav class="tabs" role="tablist">
             {% for cat in tab_order %}
                 <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
@@ -139,10 +146,7 @@
 
             {% with bp_name = 'admin' %}{% include 'partials/web_sessions_card.html' %}{% endwith %}
 
-            <div class="card">
-                <div class="table-header"><h2><span class="material-symbols-outlined">cloud</span>External services</h2></div>
-                {{ render_settings_form('connections', settings_by_category.connections, users, host_suggestions, setting_pills) }}
-            </div>
+            {{ settings_card('connections', 'External services', icon='cloud') }}
 
         </section>
 
@@ -160,118 +164,133 @@
 
         {# Shares tab #}
         <section class="tab-content" id="tab-shares" :class="{ active: active === 'shares' }" role="tabpanel">
+
+            {{ settings_card('shares', 'Default policy', hint='Defaults for new shares. Existing shares are not affected.') }}
+
             <div class="card">
                 <div class="table-header">
                     <h2>Shares Directory</h2>
                 </div>
-                <div hx-get="{{ url_for('admin.route_shares') }}" hx-trigger="load, every 30s"
+                <div id="sharesPane" hx-get="{{ url_for('admin.route_shares') }}" hx-trigger="load, every 30s"
                      hx-swap="innerHTML"></div>
+            </div>
+
+        </section>
+
+        {# Server tab #}
+        <section class="tab-content" id="tab-server" :class="{ active: active === 'server' }" role="tabpanel">
+            {{ settings_card('server', 'Server Settings') }}
+        </section>
+
+        {# Library tab #}
+        <section class="tab-content" id="tab-library" :class="{ active: active === 'library' }" role="tabpanel">
+            {{ settings_card('library', 'Library Settings') }}
+        </section>
+
+        {# Audio tab #}
+        <section class="tab-content" id="tab-audio" :class="{ active: active === 'audio' }" role="tabpanel">
+            {{ settings_card('audio', 'Audio Settings') }}
+        </section>
+
+        {# Security tab #}
+        <section class="tab-content" id="tab-security" :class="{ active: active === 'security' }" role="tabpanel">
+            {{ settings_card('security', 'Security Settings') }}
+            {% for list_type, key in (('whitelist', 'ip_whitelist'), ('blacklist', 'ip_blacklist')) %}
+                {% set ip_list = IP_LIST_META[list_type] %}
+                {% set ips = settings_by_category.security[key].value %}
+                {% set pinned = settings_by_category.security[key].pinned %}
+                {% include 'partials/ip_list.html' %}
+            {% endfor %}
+            <div class="card">
+                <div class="table-header">
+                    <h2>Rate Limits</h2>
+                    <button class="btn btn-outline"
+                            hx-get="{{ url_for('admin.route_rate_limits') }}"
+                            hx-trigger="click, load, rate-limits from:#adminDashboard throttle:1s"
+                            hx-target="#rate-limit-state"
+                            hx-swap="innerHTML">Refresh
+                    </button>
+                </div>
+                <div id="rate-limit-state" class="rate-limit-state">
+                    <p class="empty-state">Loading...</p>
+                </div>
+                <form hx-post="{{ url_for('admin.route_clear_rate_limits') }}"
+                      hx-trigger="confirmed"
+                      hx-target="#rate-limit-state"
+                      hx-swap="innerHTML"
+                      data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
+                      class="rate-limit-clear">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline">Clear rate-limit failures</button>
+                </form>
             </div>
         </section>
 
-        {# Settings tabs #}
-        {% for cat in settings_categories if cat != 'connections' %}
-            <section class="tab-content" id="tab-{{ cat }}" :class="{ active: active === '{{ cat }}' }" role="tabpanel">
-                <div class="card">
-                    <div class="table-header"><h2>{{ cat|capitalize }} Settings</h2></div>
-                    {{ render_settings_form(cat, settings_by_category[cat], users, host_suggestions, setting_pills) }}
+        {# Podcasts tab #}
+        <section class="tab-content" id="tab-podcasts" :class="{ active: active === 'podcasts' }" role="tabpanel">
+            {{ settings_card('podcasts', 'Podcasts Settings') }}
+            <div class="card">
+                <div class="table-header">
+                    <h2>Podcast Channels</h2>
+                    <form hx-post="{{ url_for('admin.route_refresh_all_podcasts') }}"
+                          hx-target="#podcastChannels"
+                          hx-swap="innerHTML"
+                          class="form-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline">Refresh all</button>
+                    </form>
                 </div>
+                <p class="card-hint" id="podcastTotalSize"></p>
 
-                {% if cat == 'security' %}
-                    {% for list_type, key in (('whitelist', 'ip_whitelist'), ('blacklist', 'ip_blacklist')) %}
-                        {% set ip_list = IP_LIST_META[list_type] %}
-                        {% set ips = settings_by_category.security[key].value %}
-                        {% set pinned = settings_by_category.security[key].pinned %}
-                        {% include 'partials/ip_list.html' %}
-                    {% endfor %}
-                    <div class="card">
-                        <div class="table-header">
-                            <h2>Rate Limits</h2>
-                            <button class="btn btn-outline"
-                                    hx-get="{{ url_for('admin.route_rate_limits') }}"
-                                    hx-trigger="click, load, rate-limits from:#adminDashboard throttle:1s"
-                                    hx-target="#rate-limit-state"
-                                    hx-swap="innerHTML">Refresh
+                {% if podcast_discovery_enabled %}
+                    <div class="radio-discovery form-group">
+                        <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
+                        <div class="setting-input-row">
+                            <input type="text" id="podcastDiscoveryQuery" name="q" placeholder="Podcast title">
+                            <button type="button" class="btn btn-outline"
+                                    hx-get="{{ url_for('admin.route_discover_podcasts') }}"
+                                    hx-include="#podcastDiscoveryQuery"
+                                    hx-target="#podcastDiscoveryResults"
+                                    hx-swap="innerHTML"
+                                    hx-trigger="click"
+                                    hx-disable="this"
+                                    hx-indicator="#podcastDiscoverySpinner">Search
                             </button>
                         </div>
-                        <div id="rate-limit-state" class="rate-limit-state">
-                            <p class="empty-state">Loading...</p>
-                        </div>
-                        <form hx-post="{{ url_for('admin.route_clear_rate_limits') }}"
-                              hx-trigger="confirmed"
-                              hx-target="#rate-limit-state"
-                              hx-swap="innerHTML"
-                              data-confirm="Clear ALL recorded login failures? Currently-blocked IPs will become unblocked."
-                              class="rate-limit-clear">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-outline">Clear rate-limit failures</button>
-                        </form>
-                    </div>
-                {% elif cat == 'podcasts' %}
-                    <div class="card">
-                        <div class="table-header">
-                            <h2>Podcast Channels</h2>
-                            <form hx-post="{{ url_for('admin.route_refresh_all_podcasts') }}"
-                                  hx-target="#podcastChannels"
-                                  hx-swap="innerHTML"
-                                  class="form-inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-outline">Refresh all</button>
-                            </form>
-                        </div>
-                        <p class="card-hint" id="podcastTotalSize"></p>
-
-                        {% if podcast_discovery_enabled %}
-                            <div class="radio-discovery form-group">
-                                <label>Search Podcast Index <span class="label-hint">(optional)</span></label>
-                                <div class="setting-input-row">
-                                    <input type="text" id="podcastDiscoveryQuery" name="q" placeholder="Podcast title">
-                                    <button type="button" class="btn btn-outline"
-                                            hx-get="{{ url_for('admin.route_discover_podcasts') }}"
-                                            hx-include="#podcastDiscoveryQuery"
-                                            hx-target="#podcastDiscoveryResults"
-                                            hx-swap="innerHTML"
-                                            hx-trigger="click"
-                                            hx-disable="this"
-                                            hx-indicator="#podcastDiscoverySpinner">Search
-                                    </button>
-                                </div>
-                                <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">
-                                    Searching&hellip;</p>
-                                <div class="suggestion-list" id="podcastDiscoveryResults"></div>
-                            </div>
-                        {% endif %}
-
-                        <form class="ip-add-form" id="addPodcastForm"
-                              hx-post="{{ url_for('admin.route_add_podcast') }}"
-                              hx-target="#podcastChannels"
-                              hx-swap="innerHTML"
-                              hx-disable="find button">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
-                                   required>
-                            <button type="submit" class="btn btn-primary">Subscribe</button>
-                        </form>
-
-                        <form hx-post="{{ url_for('admin.route_import_podcast_opml') }}"
-                              hx-encoding="multipart/form-data"
-                              hx-target="#podcastChannels"
-                              hx-swap="innerHTML"
-                              enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="file" name="opml_file" id="podcastOpmlFile"
-                                   accept=".opml,.xml,text/xml,text/x-opml" class="hidden">
-                            <button type="button" class="btn btn-outline" data-action="pick-file"
-                                    data-target="podcastOpmlFile">Import OPML
-                            </button>
-                        </form>
-
-                        <div id="podcastChannels" hx-get="{{ url_for('admin.route_podcast_channels') }}"
-                             hx-trigger="load" hx-swap="innerHTML"></div>
+                        <p id="podcastDiscoverySpinner" class="htmx-indicator test-result radio-search-status">
+                            Searching&hellip;</p>
+                        <div class="suggestion-list" id="podcastDiscoveryResults"></div>
                     </div>
                 {% endif %}
-            </section>
-        {% endfor %}
+
+                <form class="ip-add-form" id="addPodcastForm"
+                      hx-post="{{ url_for('admin.route_add_podcast') }}"
+                      hx-target="#podcastChannels"
+                      hx-swap="innerHTML"
+                      hx-disable="find button">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
+                           required>
+                    <button type="submit" class="btn btn-primary">Subscribe</button>
+                </form>
+
+                <form hx-post="{{ url_for('admin.route_import_podcast_opml') }}"
+                      hx-encoding="multipart/form-data"
+                      hx-target="#podcastChannels"
+                      hx-swap="innerHTML"
+                      enctype="multipart/form-data" class="ip-add-form" id="importOpmlForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="file" name="opml_file" id="podcastOpmlFile"
+                           accept=".opml,.xml,text/xml,text/x-opml" class="hidden">
+                    <button type="button" class="btn btn-outline" data-action="pick-file"
+                            data-target="podcastOpmlFile">Import OPML
+                    </button>
+                </form>
+
+                <div id="podcastChannels" hx-get="{{ url_for('admin.route_podcast_channels') }}"
+                     hx-trigger="load" hx-swap="innerHTML"></div>
+            </div>
+        </section>
 
         {# Radios tab #}
         <section class="tab-content" id="tab-radios" :class="{ active: active === 'radios' }" role="tabpanel">
@@ -705,6 +724,8 @@
 
     {% include 'partials/radio_modals.html' %}
 
+    {% include 'partials/share_modals.html' %}
+
     <div class="modal-overlay" id="artistImageModal" x-data="modalPanel('artistImageModal')"
          :class="{ active: isOpen }" @click.self="close()">
         <div class="modal-content">
@@ -725,6 +746,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/yaml_editor.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/shares.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"
             src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>

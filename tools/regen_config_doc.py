@@ -27,6 +27,7 @@ CATEGORIES = [
     ('podcasts', 'Podcasts'),
     ('audio', 'Audio & jukebox'),
     ('security', 'Security'),
+    ('shares', 'Shares'),
 ]
 
 header = """# Configuration reference

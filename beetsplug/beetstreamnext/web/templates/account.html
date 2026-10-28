@@ -118,7 +118,10 @@
         {% if user.shareRole %}
             <div class="card">
                 <div class="table-header"><h2><span class="material-symbols-outlined">share</span>My shares</h2></div>
-                <div id="accountShares"
+                {% if config['share_default_password'] %}
+                    <p class="card-hint">New shares are protected by the default password <code>{{ config['share_default_password'] }}</code>. You can set your own with the edit button.</p>
+                {% endif %}
+                <div id="sharesPane"
                      hx-get="{{ url_for('account.route_my_shares') }}"
                      hx-trigger="load"
                      hx-swap="innerHTML"></div>
@@ -250,6 +253,8 @@
 
     {% include 'partials/radio_modals.html' %}
 
+    {% include 'partials/share_modals.html' %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -259,6 +264,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/shares.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/modal.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}"
             src="{{ url_for('static', filename='vendor/alpine/alpine.csp.min.js') }}"></script>

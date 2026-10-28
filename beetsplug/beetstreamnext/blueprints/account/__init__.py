@@ -7,6 +7,7 @@ from flask import Blueprint
 
 from beetsplug.beetstreamnext.blueprints.auth import session_roles, admin_here
 from beetsplug.beetstreamnext.blueprints.shared.radio import register_radio_routes
+from beetsplug.beetstreamnext.blueprints.shared.shares import register_share_routes
 from beetsplug.beetstreamnext.blueprints.shared.app_passwords import register_app_password_routes
 from beetsplug.beetstreamnext.blueprints.shared.sessions import register_session_routes
 from beetsplug.beetstreamnext.blueprints.shared.chat import register_chat_routes
@@ -43,6 +44,7 @@ from .routes import (
 
 # Admin panel and account page expose the same routes, only the auth decorator differs
 register_radio_routes(account_bp, account_required)
+register_share_routes(account_bp, account_required, owner_only=True)
 register_app_password_routes(account_bp, account_required)
 register_session_routes(account_bp, account_required)
 register_chat_routes(account_bp, account_required)

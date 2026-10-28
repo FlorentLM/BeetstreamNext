@@ -1,12 +1,32 @@
 {% from '_macros.html' import icon %}
+
+{% if message %}
+    <div class="flash flash-success">{{ message }}</div>
+{% endif %}
+
+{% macro share_link(s) -%}
+    <a href="{{ s.url }}" target="_blank" rel="noopener" class="share-link"
+       title="{{ s.description or s.id }}">{{ s.description or s.id }}</a>
+    {%- if s.has_password %}<span class="material-symbols-outlined share-lock" title="Password protected">lock</span>
+    {% endif %}
+{%- endmacro %}
+
+{% macro share_contents(s) -%}
+    {%- if s.album_count %}{{ s.album_count }} {{ 'album' if s.album_count == 1 else 'albums' }}{% endif -%}
+    {%- if s.album_count and s.song_count %}, {% endif -%}
+    {%- if s.song_count %}{{ s.song_count }} {{ 'song' if s.song_count == 1 else 'songs' }}{% endif -%}
+{%- endmacro %}
+
 <div class="table-container">
-    <table>
+    <table class="shares-table">
         <thead>
         <tr>
-            <th>{{ 'ID / Link' if admin else 'Description' }}</th>
-            {% if admin %}<th>Creator</th><th>Description</th>{% endif %}
-            <th>Items</th>
+            <th>Share</th>
+            {% if admin %}
+                <th>Creator</th>{% endif %}
+            <th>Content</th>
             <th>{{ 'Traffic' if admin else 'Visits' }}</th>
+            <th>Downloads</th>
             <th>Expires</th>
             <th></th>
         </tr>
@@ -15,22 +35,21 @@
         {% for s in shares %}
             <tr>
                 {% if admin %}
-                    <td><a href="{{ s.url }}" target="_blank" rel="noopener" class="username-name"><code>{{ s.id }}</code></a></td>
+                    <td>{{ share_link(s) }}</td>
                     <td><strong>{{ s.username }}</strong></td>
-                    <td>
-                        {% if s.description %}<span class="email-cell">{{ s.description }}</span>
-                        {% else %}<span class="rate-limit-anon">—</span>{% endif %}
-                    </td>
-                    <td><span class="badge">{{ s.entry_count }} {{ 'item' if s.entry_count == 1 else 'items' }}</span></td>
+                    <td><span class="badge">{{ share_contents(s) }}</span></td>
                     <td><span class="badge badge-limit">{{ s.visit_count or 0 }} visits</span></td>
+                    <td><span class="badge badge-limit">{{ s.download_count }}{% if s.max_downloads %} /
+                        {{ s.max_downloads }}{% endif %}</span></td>
                 {% else %}
-                    <td><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.description or s.id }}</a></td>
-                    <td>{{ s.entry_count }}</td>
+                    <td>{{ share_link(s) }}</td>
+                    <td>{{ share_contents(s) }}</td>
                     <td>{{ s.visit_count or 0 }}</td>
+                    <td>{{ s.download_count }}{% if s.max_downloads %} / {{ s.max_downloads }}{% endif %}</td>
                 {% endif %}
                 <td>
                     {% if s.expires %}
-                        <span class="chat-time" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
+                        <span class="chat-time" data-date-only="1" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
                     {% elif admin %}
                         <span class="badge badge-success">Never</span>
                     {% else %}
@@ -38,18 +57,31 @@
                     {% endif %}
                 </td>
                 <td class="actions-cell">
+                    <button class="icon-btn" title="Copy link" aria-label="Copy link of share {{ s.id }}"
+                            data-action="copy-share-url" data-url="{{ s.url }}">
+                        {{ icon('copy') }}
+                    </button>
+                    <button class="icon-btn" title="Edit" aria-label="Edit share {{ s.id }}"
+                            hx-get="{{ url_for(edit_endpoint, share_id=s.id) }}"
+                            hx-target="#editShareModalBody"
+                            hx-swap="innerHTML">
+                        {{ icon('edit') }}
+                    </button>
                     <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}"
                             hx-post="{{ url_for(delete_endpoint, share_id=s.id) }}"
-                            hx-target="closest .table-container" hx-swap="outerHTML"
+                            hx-target="closest .table-container"
+                            hx-swap="outerHTML"
                             hx-confirm="Delete share '{{ s.id }}'? Its public link will stop working immediately.">
                         {{ icon('delete') }}
                     </button>
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="{{ 7 if admin else 5 }}" class="empty-state">
-                {{ 'No shares created yet.' if admin else "You haven't shared anything." }}
-            </td></tr>
+            <tr>
+                <td colspan="{{ 7 if admin else 6 }}" class="empty-state">
+                    {{ 'No shares created yet.' if admin else "You haven't shared anything." }}
+                </td>
+            </tr>
         {% endfor %}
         </tbody>
     </table>

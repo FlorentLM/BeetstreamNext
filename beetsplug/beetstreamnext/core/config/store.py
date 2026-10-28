@@ -70,7 +70,8 @@ class SettingsStore:
                   'enable_radio_discovery',
                   'enable_podcast_discovery',
                   'replaygain_enabled', 'replaygain_preamp',
-                  'replaygain_fallback', 'audio_peak_limit'):
+                  'replaygain_fallback', 'audio_peak_limit',
+                  'share_default_expiry_days', 'share_default_max_downloads', 'share_default_password'):
             self._directly_applicable[k] = lambda v, key=k: app.config.update({key: v})
 
         # Security object updates

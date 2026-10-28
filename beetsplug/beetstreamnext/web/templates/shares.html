@@ -36,10 +36,13 @@
                                 <span class="session-user">{{ album.artist }}</span>
                             </div>
                         </div>
-                        <a href="{{ url_for('public.share_download_album', share_id=share.id, entry_id=album.id) }}"
-                           class="btn btn-primary">
-                            Download all
-                        </a>
+                        <div class="album-download">
+                            <span class="session-user">{{ album.song | sum(attribute='size') | filesize }}</span>
+                            <a href="{{ url_for('public.share_download_album', share_id=share.id, entry_id=album.id) }}"
+                               class="btn btn-primary">
+                                Download all
+                            </a>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table>
@@ -48,6 +51,8 @@
                                 <th class="track-number">#</th>
                                 <th>Title</th>
                                 <th>Duration</th>
+                                <th>Format</th>
+                                <th>Size</th>
                                 <th class="cell-right"></th>
                             </tr>
                             </thead>
@@ -57,6 +62,8 @@
                                     <td class="track-number">{{ song.track or '' }}</td>
                                     <td class="track-title">{{ song.title }}</td>
                                     <td class="session-user">{{ song.duration | duration }}</td>
+                                    <td class="session-user">{{ song.suffix | upper }}</td>
+                                    <td class="session-user">{{ song.size | filesize }}</td>
                                     <td class="actions-cell">
                                         <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
                                            class="icon-btn" title="Download"
@@ -87,7 +94,7 @@
                     <div class="track-card-info">
                         <div class="track-card-title">{{ song.title }}</div>
                         <div class="email-cell">{{ song.artist }} &bull; {{ song.album }}</div>
-                        <div class="session-user">{{ song.duration | duration }}</div>
+                        <div class="session-user">{{ song.duration | duration }} &bull; {{ song.suffix | upper }} &bull; {{ song.size | filesize }}</div>
                     </div>
                     <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
                        class="btn btn-outline">

@@ -199,6 +199,26 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_9_VER
 
+    ## _________ Migration 10: Version 9 -> 10 (shares get download limits and passwords), 26/10/2026
+    MIGRATION_10_VER = 10
+
+    if curr_version < MIGRATION_10_VER:
+        have_table = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='shares'"""
+        ).fetchone()
+
+        if have_table:
+            columns = [row[1] for row in cursor.execute("""PRAGMA table_info(shares)""")]
+            for name, definition in (
+                    ('max_downloads', 'INTEGER'),
+                    ('download_count', 'INTEGER NOT NULL DEFAULT 0'),
+                    ('password_hash', 'TEXT'),
+            ):
+                if name not in columns:
+                    cursor.execute(f"""ALTER TABLE shares ADD COLUMN {name} {definition}""")  # nosec B608
+
+        curr_version = MIGRATION_10_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

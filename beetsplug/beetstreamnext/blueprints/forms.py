@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import flask
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, BooleanField, SelectField, StringField
-from wtforms.validators import DataRequired, EqualTo, Length, Optional, Email
+from wtforms import PasswordField, BooleanField, DateField, IntegerField, SelectField, StringField
+from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Email
 
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
@@ -102,6 +102,17 @@ class RadioStationForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(max=128)])
     streamUrl = StringField('Stream URL', validators=[DataRequired(), Length(max=1024)])
     homepageUrl = StringField('Homepage URL', validators=[Optional(), Length(max=1024)])
+
+
+class ShareOptionsForm(FlaskForm):
+    """
+    Form for editing a public share meta.
+    """
+    description = StringField('Description', validators=[Optional(), Length(max=255)])
+    expires = DateField('Expires', validators=[Optional()])
+    max_downloads = IntegerField('Download limit', validators=[Optional(), NumberRange(min=1, max=1_000_000)])
+    password = new_password_field('Password', required=False)
+    remove_password = BooleanField('Remove password')
 
 
 class ArtistImageForm(FlaskForm):

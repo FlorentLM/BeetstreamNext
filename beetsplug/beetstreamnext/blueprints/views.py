@@ -24,12 +24,15 @@ def modal_error(message: str, result_id: str) -> flask.Response:
 ##
 # Shares
 
-def render_shares(username: Optional[str] = None) -> str:
+def render_shares(username: Optional[str] = None, message: Optional[str] = None) -> str:
     """Shares table: every share, or only `username`'s."""
     admin = username is None
 
-    return flask.render_template('partials/shares_table.html', shares=list_shares(username), admin=admin,
-                                 delete_endpoint='admin.route_delete_share' if admin else 'account.route_delete_my_share')
+    return flask.render_template(
+        'partials/shares_table.html', shares=list_shares(username), admin=admin, message=message,
+        edit_endpoint='admin.route_edit_share' if admin else 'account.route_edit_share',
+        delete_endpoint='admin.route_delete_share' if admin else 'account.route_delete_my_share'
+    )
 
 
 ##

@@ -244,7 +244,6 @@ def route_settings() -> flask.Response:
             radio_form=RadioStationForm(formdata=None),
             server_info=get_server_info(extended=True),
             current_username=flask.session.get('username'),
-            settings_categories=SETTINGS_CATEGORIES,
             apprise_available=APPRISE,
             settings_by_category=settings_by_category,
             paired_with=_PAIRED_WITH,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import secrets
+import time
 import flask
 
 from .. import subsonic_bp
@@ -7,6 +8,7 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
+from beetsplug.beetstreamnext.core.accounts.passwords import hash_password
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.runtime.web import external_url
 
@@ -71,14 +73,21 @@ def endpoint_create_share() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     share_id = secrets.token_urlsafe(12)
-    expires = expires_ms / 1000.0 if expires_ms > 0 else None
+
+    # Server-wide share policy defaults
+    config = flask.current_app.config
+    password = config['share_default_password']
+    default_days = config['share_default_expiry_days']
+    expires = expires_ms / 1000.0 if expires_ms > 0 else (time.time() + default_days * 86400 if default_days else None)
+    max_downloads = config['share_default_max_downloads'] or None
+    password_hash = hash_password(password) if password else None
 
     with database() as db:
         db.execute(
             """
-            INSERT INTO shares (id, username, description, expires) 
-            VALUES (?, ?, ?, ?)
-            """, (share_id, flask.g.username, description, expires)
+            INSERT INTO shares (id, username, description, expires, max_downloads, password_hash) 
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (share_id, flask.g.username, description, expires, max_downloads, password_hash)
         )
         for item_id in ids:
             db.execute(

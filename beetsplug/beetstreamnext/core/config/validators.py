@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any, Callable, List
 from uuid import UUID
 
-from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN, UNIX_SOCKET_PREFIX
+from beetsplug.beetstreamnext.constants import UNIX_SOCKET_PREFIX
+from beetsplug.beetstreamnext.core.accounts.passwords import password_problems
 from beetsplug.beetstreamnext.utils.net import parse_host
 
 
@@ -23,8 +24,8 @@ def validate_int_range(lo: int, hi: int) -> Callable[[Any], int]:
 
 def validate_share_password(x: Any) -> str:
     s = str(x or '')
-    if s and len(s) < MIN_PASSWORD_LEN:
-        raise ValueError(f'Must be empty, or at least {MIN_PASSWORD_LEN} characters')
+    if s and (problems := password_problems(s)):
+        raise ValueError('Must be empty, or have: ' + '; '.join(p.lower() for p in problems))
     return s
 
 

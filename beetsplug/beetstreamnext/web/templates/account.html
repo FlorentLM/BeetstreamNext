@@ -91,6 +91,7 @@
                 </div>
                 <div class="form-group">
                     <label>New password</label>
+                    {{ macros.password_rules() }}
                     {{ password_form.password(autocomplete="new-password") }}
                 </div>
                 <div class="form-group">
@@ -260,6 +261,7 @@
 {% block scripts %}
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='vendor/htmx/htmx.min.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/password_rules.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>

@@ -1,3 +1,5 @@
+{% import '_macros.html' as macros %}
+
 <p class="modal-username"><code>{{ share.id }}</code></p>
 
 <form id="editShareForm"
@@ -26,6 +28,7 @@
 
     <div class="form-group">
         <label>Password <span class="label-hint">{{ '(leave blank to keep current one)' if share.has_password else '(optional)' }}</span></label>
+        {{ macros.password_rules() }}
         {{ form.password(placeholder="••••••••••••", autocomplete="new-password") }}
         {% if share.has_password %}
             <label class="role-item role-item-standalone">{{ form.remove_password() }} Remove password</label>

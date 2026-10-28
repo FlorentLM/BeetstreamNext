@@ -279,3 +279,31 @@ pre code {
     white-space: nowrap;
     border: 0;
 }
+
+.password-rules {
+    display: none;
+    list-style: none;
+    margin: 0 0 0.4rem;
+    padding: 0;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--text-muted);
+}
+
+.password-rules.active {
+    display: block;
+}
+
+.password-rules li::before {
+    content: '○';
+    display: inline-block;
+    width: 1.2em;
+}
+
+.password-rules li.met {
+    color: var(--ansi-green);
+}
+
+.password-rules li.met::before {
+    content: '✓';
+}

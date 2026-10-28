@@ -10,6 +10,7 @@ from flask_wtf.csrf import CSRFProtect
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION, MAX_REQUEST_BYTES
 from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL
 from beetsplug.beetstreamnext.core.storage.connection import close_database
+from beetsplug.beetstreamnext.core.accounts.passwords import PASSWORD_RULES
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.text import format_bytes, format_duration
 
@@ -56,6 +57,7 @@ app.config['ARTIST_IMAGE_DATA_PATH'].mkdir(parents=True, exist_ok=True)
 app.jinja_env.filters['duration'] = format_duration
 app.jinja_env.filters['filesize'] = format_bytes
 app.jinja_env.globals['USER_ROLES_SCHEMA'] = USER_ROLES_SCHEMA
+app.jinja_env.globals['PASSWORD_RULES'] = [(key, desc) for key, desc, _ in PASSWORD_RULES]
 
 csrf = CSRFProtect(app)
 

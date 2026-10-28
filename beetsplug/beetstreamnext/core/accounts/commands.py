@@ -8,7 +8,7 @@ from typing import Sequence
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import get_env
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
+from beetsplug.beetstreamnext.core.accounts.passwords import password_problems
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
@@ -23,8 +23,10 @@ def _prompt_password(label: str) -> str:
 
     while True:
         password = getpass.getpass(pw_hint)
-        if len(password) < MIN_PASSWORD_LEN:
-            pw_hint = f'{label} (at least {MIN_PASSWORD_LEN} chars): '
+        problems = password_problems(password)
+        if problems:
+            print('Password is too weak. It needs: ' + '; '.join(p.lower() for p in problems) + '.')
+            pw_hint = f'{label}: '
             continue
 
         confirm = getpass.getpass(f'Confirm {label.lower()}: ')

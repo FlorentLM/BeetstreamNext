@@ -50,3 +50,11 @@
 {% endif %}
 
 {%- endmacro %}
+
+{% macro password_rules() -%}
+    <ul class="password-rules" aria-live="polite">
+        {%- for key, desc in PASSWORD_RULES %}
+        <li data-rule="{{ key }}">{{ desc }}</li>
+        {%- endfor %}
+    </ul>
+{%- endmacro %}

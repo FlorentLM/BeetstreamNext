@@ -3,19 +3,24 @@ from __future__ import annotations
 import flask
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, BooleanField, DateField, IntegerField, SelectField, StringField
-from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Email
+from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Email, ValidationError
 
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.constants import BITRATE_CHOICES_STR
-from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
+from beetsplug.beetstreamnext.core.accounts.passwords import password_problems
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
+def password_complexity(form, field) -> None:
+    if problems := password_problems(field.data or ''):
+        raise ValidationError('Password is too weak. It needs: ' + '; '.join(p.lower() for p in problems) + '.')
+
+
 def new_password_field(label: str = 'New password', *, required: bool = True) -> PasswordField:
-    """New password field with the minimum-length check."""
+    """New password field with a complexity check."""
     presence = DataRequired() if required else Optional()
-    return PasswordField(label, validators=[presence, Length(min=MIN_PASSWORD_LEN)])
+    return PasswordField(label, validators=[presence, password_complexity], render_kw={'data-password-rules': ''})
 
 
 class PasswordConfirmMixin:

@@ -6,6 +6,7 @@ import hmac
 import secrets
 from typing import Optional
 
+
 # scrypt parameters for new hashes
 SCRYPT_N = 2 ** 15
 SCRYPT_R = 8
@@ -65,3 +66,27 @@ def verify_password(password: str, stored: Optional[str]) -> bool:
         return False
 
     return hmac.compare_digest(derived, expected)
+
+
+MIN_PASSWORD_LEN = 8
+
+PASSWORD_RULES = (
+    ('length', f'At least {MIN_PASSWORD_LEN} characters', lambda p: len(p) >= MIN_PASSWORD_LEN),
+    ('lower', 'A lowercase letter', lambda p: any(c.islower() for c in p)),
+    ('upper', 'An uppercase letter', lambda p: any(c.isupper() for c in p)),
+    ('digit', 'A digit', lambda p: any(c.isdigit() for c in p)),
+    ('special', 'A special character', lambda p: any(not c.isalnum() and not c.isspace() for c in p)),
+) # Keys and descriptions are also sent to the client-side strength meter
+
+
+def password_problems(password: str) -> list[str]:
+    """Descriptions of the rules the password fails."""
+    return [desc for _key, desc, ok in PASSWORD_RULES if not ok(password)]
+
+
+def validate_password(password: str) -> str:
+    """Return the password unchanged, or raise ValueError listing the missing requirements."""
+    problems = password_problems(password)
+    if problems:
+        raise ValueError('Password is too weak. It needs: ' + '; '.join(p.lower() for p in problems) + '.')
+    return password

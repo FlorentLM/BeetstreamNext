@@ -9,11 +9,10 @@ import sqlite3
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.core.accounts.passwords import hash_password
+from beetsplug.beetstreamnext.core.accounts.passwords import hash_password, validate_password
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import filter_dict
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.constants import MIN_PASSWORD_LEN
 
 
 def get_password_hash(username: str) -> Optional[str]:
@@ -128,8 +127,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
 def create_user(username, password, admin=False, **kwargs):
     """Core logic to create a user."""
 
-    if len(password) < MIN_PASSWORD_LEN:
-        raise ValueError(f'Password must be at least {MIN_PASSWORD_LEN} characters.')
+    validate_password(password)
 
     username = safe_str(username)
 
@@ -170,8 +168,8 @@ def update_user(username: str, **updates):
     filtered_updates = filter_dict(updates, keep=ALL_USER_FIELDS)
     filtered_updates['username'] = username
 
-    if 'password' in filtered_updates and len(filtered_updates['password']) < MIN_PASSWORD_LEN:
-        raise ValueError(f'Password must be at least {MIN_PASSWORD_LEN} characters.')
+    if 'password' in filtered_updates:
+        validate_password(filtered_updates['password'])
 
     _store_userdata(filtered_updates)
 

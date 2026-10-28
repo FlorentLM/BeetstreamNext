@@ -20,6 +20,7 @@
 
     <div class="form-group">
         <label>Password</label>
+        {{ macros.password_rules() }}
         {{ edit_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
     </div>
 

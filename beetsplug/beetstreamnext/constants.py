@@ -180,7 +180,6 @@ RATE_LIMIT_BLOCK_WINDOW: int = 300
 RATE_LIMIT_IP_MAX_FAILURES: int = 20
 RATE_LIMIT_IP_BLOCK_WINDOW: int = 3600
 
-MIN_PASSWORD_LEN: int = 8
 MAX_APP_PASSWORDS = 20    # per user
 MAX_UNLOCKED_SHARES = 10  # password-protected shares remembered per visitor session (keeps cookie small)
 

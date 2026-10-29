@@ -11,4 +11,3 @@ In no particular order:
 - [ ] Share options: Selectable format/bitrate for shares downloads
 - [ ] Proper OIDC support (Authelia, Authentik, etc)
 - [ ] Prometheus metrics
-- [ ] Backup/restore settings and BeetstreamNext data

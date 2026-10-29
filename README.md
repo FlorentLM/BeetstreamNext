@@ -55,7 +55,6 @@ BeetstreamNext exposes your [Beets](https://beets.io) music library over the [Op
 - [ ] Share options: Selectable format/bitrate for shares downloads
 - [ ] Proper OIDC support (Authelia, Authentik, etc)
 - [ ] Prometheus metrics
-- [ ] Backup/restore settings and BeetstreamNext data
 
 ## Documentation
 

@@ -27,6 +27,9 @@ beet beetstreamnext [options]
 | `-p`, `--password USERNAME`    | Change a user's password (interactive prompts)                                                             |
 | `--list-users`                 | List all registered users and their roles                                                                  |
 | `--clear-cache`                | Clear the thumbnail and HTTP caches                                                                        |
+| `--backup FILE`                | Back up settings and data to `FILE` (`.tar.gz`), or into a directory.                                      |
+| `--restore FILE` [`--yes`]     | Restore from a backup (the server must be stopped).                                                        |
+| `--rekey` [`--yes`]            | Re-encrypt the database with a new `BEETSTREAMNEXT_KEY` (the server must be stopped).                      |
 
 > [!NOTE]
 > User-management or cache flags perform the action and exit immediately. They do _not_ start the server.
@@ -39,15 +42,18 @@ Settings not overridden by a flag come from Beets' `config.yaml` (under the `bee
 beetstreamnext [command] [username] [options]
 ```
 
-| Command                  | Effect                                                |
-|--------------------------|-------------------------------------------------------|
-| `run`                    | Start the server (default)                            |
-| `create-user`            | Create a new user (interactive prompts)               |
-| `update-user [username]` | Update an existing user's roles (interactive prompts) |
-| `delete-user [username]` | Delete a user (asks for confirmation)                 |
-| `passwd [username]`      | Change a user's password (interactive prompts)        |
-| `list-users`             | List all registered users and their key roles         |
-| `clear-cache`            | Clear the thumbnail and HTTP caches                   |
+| Command                  | Effect                                                                               |
+|--------------------------|--------------------------------------------------------------------------------------|
+| `run`                    | Start the server (default)                                                           |
+| `create-user`            | Create a new user (interactive prompts)                                              |
+| `update-user [username]` | Update an existing user's roles (interactive prompts)                                |
+| `delete-user [username]` | Delete a user (asks for confirmation)                                                |
+| `passwd [username]`      | Change a user's password (interactive prompts)                                       |
+| `list-users`             | List all registered users and their key roles                                        |
+| `clear-cache`            | Clear the thumbnail and HTTP caches                                                  |
+| `backup FILE`            | Back up settings and data to `FILE` (`.tar.gz`), or into a directory                 |
+| `restore FILE` [`--yes`] | Restore from a backup (the server must be stopped)                                   |
+| `rekey` [`--yes`]        | Re-encrypt the database with a new `BEETSTREAMNEXT_KEY` (the server must be stopped) |
 
 > [!NOTE]
 > `command` defaults to `run` if omitted
@@ -87,3 +93,48 @@ See the [configuration reference](../configuration.md) for the full settings pre
 The interactivity is _deliberate_: these commands touch credentials, so user input is mandatory. Only exception to this is the [Unattended first run](../installation.md#unattended-first-run).
 
 ---
+## Backup and restore
+
+`backup` writes a snapshot of **BeetstreamNext**'s database (settings, users, app passwords, avatars, likes, ratings, bookmarks, playlists, shares, radio stations, podcasts, etc) to a `.tar.gz`.
+
+```bash
+beetstreamnext backup /backups/                      # -> /backups/beetstreamnext-backup-<timestamp>.tar.gz
+beet beetstreamnext --backup /backups/bsn.tar.gz     # plugin mode
+```
+
+`restore` replaces the current database with the one in the archive. **The server must not be running.** The previous database is kept next to it as `beetstreamnext.db.pre-restore-<timestamp>`.
+
+```bash
+beetstreamnext restore /backups/bsn.tar.gz [--yes]
+```
+
+- The archive contains password hashes: keep it private (it is created `0600`).
+
+- `BEETSTREAMNEXT_KEY` is **not** included. Store it separately.
+
+- To restore a backup made with a different key, see [Changing the key](#changing-the-key).
+
+- Your Beets `library.db` and music files are not part of the backup. Thumbnail/HTTP caches are not part of it either.
+
+## Changing the key
+
+`rekey` allows you to update the database's encryption key to a new one. **The server must not be running.**
+
+A copy of the database from before the change is kept as `beetstreamnext.db.pre-rekey-<timestamp>`. That copy stays readable with the old key.
+
+```bash
+export BEETSTREAMNEXT_KEY=<new key>
+export BEETSTREAMNEXT_OLD_KEY=<old key>     # or leave unset to be prompted
+beetstreamnext rekey [--yes]
+beet beetstreamnext --rekey [--yes]         # plugin mode
+```
+
+To restore a backup made with another key, set `BEETSTREAMNEXT_OLD_KEY` to the backup's key when running `restore`. The backup is re-encrypted with the current `BEETSTREAMNEXT_KEY` before it replaces the database:
+
+```bash
+export BEETSTREAMNEXT_KEY=<key to use from now on>
+export BEETSTREAMNEXT_OLD_KEY=<key the backup was made with>
+beetstreamnext restore /backups/bsn.tar.gz
+```
+
+If `BEETSTREAMNEXT_OLD_KEY` is not set and you run `restore` from a terminal, you are prompted for it.

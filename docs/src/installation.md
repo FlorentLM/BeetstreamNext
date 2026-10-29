@@ -88,7 +88,7 @@ beet beetstreamnext
 
 Plugin-mode flags:
 
-`--create-user`, `--update-user USERNAME`, `--delete-user USERNAME`, `--password USERNAME`, `--list-users`, `--clear-cache`, plus `--host`/`--port`/`--threads`/`--debug` to override those settings for a single run.
+`--create-user`, `--update-user USERNAME`, `--delete-user USERNAME`, `--password USERNAME`, `--list-users`, `--clear-cache`, `--backup FILE`, `--restore FILE`, plus `--host`/`--port`/`--threads`/`--debug` to override those settings for a single run.
 
 See [CLI usage](./usage/cli.md#plugin-mode) for the full command reference.
 
@@ -161,7 +161,7 @@ beetstreamnext run
 
 Standalone subcommands:
 
-`create-user`, `update-user USERNAME`, `delete-user USERNAME`, `passwd USERNAME`, `list-users`, `clear-cache`
+`create-user`, `update-user USERNAME`, `delete-user USERNAME`, `passwd USERNAME`, `list-users`, `clear-cache`, `backup FILE`, `restore FILE`
 
 See [CLI usage](./usage/cli.md#standalone-mode) for the full flag list (`--bsn-db`, `--beets-config`, `--host`, `--port`, `--threads`, `--debug`, `--force-trust-host`).
 

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import annotations
 # This file is part of beets.
 # Copyright 2016, Adrian Sampson.
 #
@@ -13,6 +12,8 @@ from __future__ import annotations
 #
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
+from __future__ import annotations
+
 import os
 import sys
 import optparse
@@ -23,6 +24,7 @@ import beets
 import confuse
 from beets.plugins import BeetsPlugin
 
+from beetsplug.beetstreamnext.constants import DB_FILE_NAME
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core import notifications
 from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_store
@@ -125,7 +127,7 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
             prestartup_config(
                 beets_db_path=beets_db_path,
-                bsn_db_path=beets_db_path.parent / 'beetstreamnext.db',
+                bsn_db_path=beets_db_path.parent / DB_FILE_NAME,
                 beets_config_path=_detect_config_override(sys.argv[1:]),
                 ip_whitelist=self.config['ip_whitelist'].as_str_seq(),
                 ip_blacklist=self.config['ip_blacklist'].as_str_seq(),

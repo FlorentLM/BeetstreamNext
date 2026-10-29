@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ from beets.library import Library
 
 from beetsplug.beetstreamnext.core.runtime.console import print_box, drift_lines
 from beetsplug.beetstreamnext.utils.ansi import TermColors
-from beetsplug.beetstreamnext.constants import DEFAULT_CONFIG_PATH, DEFAULT_DB_TIMEOUT
+from beetsplug.beetstreamnext.constants import DB_FILE_NAME, DEFAULT_CONFIG_PATH, DEFAULT_DB_TIMEOUT
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.health import detect_beets_drift
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
@@ -203,9 +204,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     if bsn_db:
         bsn_db_path = Path(bsn_db)
     elif is_docker():
-        bsn_db_path = DEFAULT_CONFIG_PATH.parent / 'beetstreamnext.db'
+        bsn_db_path = DEFAULT_CONFIG_PATH.parent / DB_FILE_NAME
     else:
-        bsn_db_path = library_db.parent / 'beetstreamnext.db'
+        bsn_db_path = library_db.parent / DB_FILE_NAME
 
     ip_whitelist = _yaml_get('ip_whitelist') or []
     ip_blacklist = _yaml_get('ip_blacklist') or []

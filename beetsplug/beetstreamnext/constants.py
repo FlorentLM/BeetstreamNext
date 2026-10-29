@@ -44,6 +44,7 @@ PROJECT_ROOT: Path = Path(os.path.abspath(__file__)).parent
 CACHE_LOCATION: Path = cache_location()    # safe to lose (regenerable/disposable)
 DATA_LOCATION: Path = data_location()      # should persist across restarts
 
+DB_FILE_NAME: str = 'beetstreamnext.db'
 DEFAULT_CONFIG_PATH: Path = config_location() / 'beetstreamnext.yaml'     # standalone mode only
 
 CACHE_DATA_DIR: Path = CACHE_LOCATION / 'data'

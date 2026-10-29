@@ -25,7 +25,7 @@ def validate_int_range(lo: int, hi: int) -> Callable[[Any], int]:
 def validate_share_password(x: Any) -> str:
     s = str(x or '')
     if s and (problems := password_problems(s)):
-        raise ValueError('Must be empty, or have: ' + '; '.join(p.lower() for p in problems))
+        raise ValueError('Must be empty, or have: ' + ', '.join(p.lower() for p in problems))
     return s
 
 

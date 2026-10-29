@@ -9,6 +9,15 @@ from beetsplug.beetstreamnext.core.storage.migrations import apply_db_migrations
 from beetsplug.beetstreamnext.core.accounts.user_schema import users_table_sql
 
 
+# Columns containing Fernet ciphertext
+ENCRYPTED_COLUMNS = (
+    # (table, column, flag)
+    ('settings', 'value', 'encrypted'),
+    ('notifications', 'urls', 'encrypted'),
+    ('app_passwords', 'secret_encrypted', None),    # every non-NULL value is encrypted
+)
+
+
 def initialise_db() -> None:
     conn = sqlite3.connect(flask.current_app.config['BSN_DB_PATH'])
     cur = conn.cursor()

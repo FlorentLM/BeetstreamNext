@@ -5,8 +5,9 @@ import json
 import secrets
 import os
 import base64
-import hashlib
 import time
+from typing import Optional
+
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from pathlib import Path
@@ -17,6 +18,7 @@ from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.constants import SESSION_KEY_ROTATION_DAYS
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.system import get_env
+from beetsplug.beetstreamnext.utils.text import sha256_hex
 
 
 def _write_secret_file(path: Path, content: str) -> None:
@@ -167,23 +169,23 @@ def _cipher_for(key: str) -> Fernet:
 
 @lru_cache(maxsize=1)
 def _hash_for(key: str) -> str:
-    """SHA256 of the decoded key bytes. Also cached."""
-    return hashlib.sha256(base64.urlsafe_b64decode(key)).hexdigest()
+    """SHA256 of the decoded key bytes. Cached for the process lifetime."""
+    return sha256_hex(base64.urlsafe_b64decode(key))
 
 
-def get_cipher() -> Fernet:
-    """
-    Cipher for BEETSTREAMNEXT_KEY.
-    Raises InvalidKeyError if the key is absent or malformed.
-    """
-    key = os.environ.get('BEETSTREAMNEXT_KEY')
+def get_cipher(key: Optional[str] = None) -> Fernet:
+    """Cipher for the BEETSTREAMNEXT_KEY (or of another `key`)."""
+
+    key = key or os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         raise InvalidKeyError('BEETSTREAMNEXT_KEY is not set')
     return _cipher_for(key)
 
 
-def get_key_hash() -> str | None:
-    key = os.environ.get('BEETSTREAMNEXT_KEY')
+def get_key_hash(key: Optional[str] = None) -> str | None:
+    """Hash of the BEETSTREAMNEXT_KEY (or of another `key`)."""
+
+    key = key or os.environ.get('BEETSTREAMNEXT_KEY')
     if not key:
         return None
     try:

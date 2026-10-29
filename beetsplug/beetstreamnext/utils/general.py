@@ -27,7 +27,7 @@ def _secret_env_vars() -> frozenset:
     from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 
     return frozenset(
-        {'BEETSTREAMNEXT_KEY'}
+        {'BEETSTREAMNEXT_KEY', 'BEETSTREAMNEXT_OLD_KEY'}
         | {spec['env_var'] for spec in SETTINGS_SCHEMA.values() if spec.get('sensitive') and 'env_var' in spec}
     )
 

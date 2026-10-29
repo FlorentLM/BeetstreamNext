@@ -22,9 +22,9 @@ def sha1_hex(value: str) -> str:
     return hashlib.sha1(value.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
-def sha256_hex(value: str) -> str:
-    """Hex SHA-256 digest of a string (UTF-8)."""
-    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+def sha256_hex(value: str | bytes) -> str:
+    """Hex SHA-256 digest of a string (UTF-8) or of raw bytes."""
+    return hashlib.sha256(value.encode('utf-8') if isinstance(value, str) else value).hexdigest()
 
 
 def validate_mbid(value: Any) -> str:

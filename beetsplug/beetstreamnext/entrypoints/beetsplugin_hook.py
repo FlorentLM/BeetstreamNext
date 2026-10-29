@@ -34,7 +34,7 @@ from beetsplug.beetstreamnext.core.runtime.startup import run_server, prestartup
 from beetsplug.beetstreamnext.core.storage.schema import initialise_db
 from beetsplug.beetstreamnext.core.accounts.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd,
-    cmd_create_app_password
+    cmd_create_app_password, cmd_backup, cmd_restore, cmd_rekey
 )
 from beetsplug.beetstreamnext.utils.system import get_env
 
@@ -114,8 +114,15 @@ class BeetstreamNextPlugin(BeetsPlugin):
 
         # Maintenance
         cmd.parser.add_option('--clear-cache', action='store_true', help="Clear thumbnail and HTTP cache")
+        cmd.parser.add_option('--backup', dest='backup_file', metavar='FILE', help='Back up BeetstreamNext settings and data to FILE (.tar.gz), or into a directory')
+        cmd.parser.add_option('--restore', dest='restore_file', metavar='FILE', help='Restore BeetstreamNext settings and data from a backup FILE (server must be stopped)')
+        cmd.parser.add_option('--rekey', action='store_true', default=False, help='Re-encrypt the database from the old key (BEETSTREAMNEXT_OLD_KEY) to the current BEETSTREAMNEXT_KEY (server must be stopped)')
+        cmd.parser.add_option('--yes', action='store_true', default=False, help='With --restore/--rekey: skip the confirmation prompt')
 
         def func(lib, opts, args):
+
+            if opts.yes and not (opts.restore_file or opts.rekey):
+                cmd.parser.error('--yes is only valid with --restore or --rekey.')
 
             if opts.noinput and not opts.create_user:
                 cmd.parser.error('--noinput is only valid with --create-user.')
@@ -137,6 +144,18 @@ class BeetstreamNextPlugin(BeetsPlugin):
             # Cache clearing
             if opts.clear_cache:
                 cmd_clear_cache()
+                return
+
+            if opts.backup_file:
+                cmd_backup(opts.backup_file)
+                return
+
+            if opts.restore_file:
+                cmd_restore(opts.restore_file, assume_yes=opts.yes)
+                return
+
+            if opts.rekey:
+                cmd_rekey(assume_yes=opts.yes)
                 return
 
             # Create a new user

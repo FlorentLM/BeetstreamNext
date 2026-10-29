@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import getpass
+import os
 import sys
 import time
 from typing import Sequence
@@ -13,6 +14,8 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches
+from beetsplug.beetstreamnext.core.storage.backup import BackupError, create_backup, restore_backup
+from beetsplug.beetstreamnext.core.storage.rekey import RekeyError, rekey_database
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole, create_app_password
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, list_users, get_user_roles, update_user
 
@@ -276,3 +279,92 @@ def cmd_clear_cache() -> None:
 
     except RuntimeError as e:
         print(str(e))
+
+
+def cmd_backup(dest: str) -> None:
+    """
+    CLI command: Back up BeetstreamNext's settings and data to a .tar.gz file
+    """
+
+    try:
+        path = create_backup(app.config['BSN_DB_PATH'], dest)
+    except BackupError as e:
+        print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
+        raise SystemExit(1) from e
+
+    print_box([
+        '',
+        f'{TermColors.OKGREEN + TermColors.BOLD}Backup written to:{TermColors.ENDC}',
+        f'{path}',
+        '',
+        '  ▶  It contains password hashes: keep it private.',
+        '  ▶  BEETSTREAMNEXT_KEY is not included. Store it separately, or',
+        '     encrypted settings will be unrecoverable after a restore.',
+        '',
+    ])
+
+
+def cmd_restore(archive: str, assume_yes: bool = False) -> None:
+    """
+    CLI command: Restore BeetstreamNext's settings and data from a backup. The server must be stopped.
+    """
+
+    if not assume_yes:
+        print(f"This will replace all BeetstreamNext data in '{app.config['BSN_DB_PATH']}' with the backup.")
+        print('Make sure the BeetstreamNext server is stopped.')
+
+        if input('Continue? [y/n]: ').lower() != 'y':
+            print('Aborted.')
+            return
+
+    try:
+        previous = restore_backup(archive, app.config['BSN_DB_PATH'])
+    except BackupError as e:
+        print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
+        raise SystemExit(1) from e
+
+    lines = ['', f'{TermColors.OKGREEN + TermColors.BOLD}Restore complete.{TermColors.ENDC}', '']
+    if previous:
+        lines += ['The previous database was kept as:', f'{previous}', '']
+
+    print_box(lines)
+
+
+def cmd_rekey(assume_yes: bool = False) -> None:
+    """
+    CLI command: Re-encrypt the database from an old BEETSTREAMNEXT_KEY to the current one.
+    The server must be stopped.
+    """
+
+    new_key = get_env('BEETSTREAMNEXT_KEY')
+
+    if not new_key:
+        print_box(['', '[ERROR] Set BEETSTREAMNEXT_KEY to the new key first.', ''], color=TermColors.FAIL)
+        raise SystemExit(1)
+
+    old_key = get_env('BEETSTREAMNEXT_OLD_KEY') or getpass.getpass('Old BEETSTREAMNEXT_KEY: ').strip()
+
+    if not assume_yes:
+        print(f"This will re-encrypt '{app.config['BSN_DB_PATH']}' with the key currently set in BEETSTREAMNEXT_KEY.")
+        print('Make sure the BeetstreamNext server is stopped.')
+
+        if input('Continue? [y/n]: ').lower() != 'y':
+            print('Aborted.')
+            return
+
+    try:
+        count, previous = rekey_database(app.config['BSN_DB_PATH'], old_key, new_key)
+    except RekeyError as e:
+        print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
+        raise SystemExit(1) from e
+
+    print_box([
+        '',
+        f'{TermColors.OKGREEN + TermColors.BOLD}Re-encrypted {count} value(s) with the new key.{TermColors.ENDC}',
+        '',
+        'A copy of the database before the change was kept as:',
+        f'{previous}',
+        '',
+        '  ▶  That copy is still readable with the old key.',
+        '',
+    ])

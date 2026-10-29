@@ -21,7 +21,7 @@ from beetsplug.beetstreamnext.core.config.store import coerce_setting, settings_
 from beetsplug.beetstreamnext.core.runtime.startup import prestartup_config, run_server
 from beetsplug.beetstreamnext.core.accounts.commands import (
     cmd_clear_cache, cmd_create_user, cmd_update_user, cmd_delete_user, cmd_list_users, cmd_change_passwd,
-    cmd_create_app_password
+    cmd_create_app_password, cmd_backup, cmd_restore, cmd_rekey
 )
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
 from beetsplug.beetstreamnext.core.storage.schema import initialise_db
@@ -31,6 +31,7 @@ from beetsplug.beetstreamnext.utils.system import get_env, is_docker
 
 
 _USER_ARG_COMMANDS = {'update-user', 'delete-user', 'passwd', 'create-app-password'}
+_FILE_ARG_COMMANDS = {'backup', 'restore'}
 
 
 def _cascade_value(*values: Any, default: Any = None) -> Any:
@@ -93,11 +94,12 @@ def main(argv: Optional[List[str]] = None) -> None:
     )
     parser.add_argument(
         'command', nargs='?', default='run',
-        choices=['run', 'create-user', 'update-user', 'delete-user', 'passwd', 'create-app-password', 'list-users', 'clear-cache'],
+        choices=['run', 'create-user', 'update-user', 'delete-user', 'passwd', 'create-app-password', 'list-users', 'clear-cache', 'backup', 'restore', 'rekey'],
         help='Action to perform (default: run)',
     )
     parser.add_argument('username', nargs='?',
-                        help='Username, for update-user/delete-user/passwd/create-app-password')
+                        help='Username, for update-user/delete-user/passwd/create-app-password. '
+                             'Backup file (or destination directory), for backup/restore')
     parser.add_argument('--config', metavar='PATH',
                         help=f'YAML config file (default: {DEFAULT_CONFIG_PATH} if present)')
     parser.add_argument('--library-db', metavar='PATH',
@@ -121,6 +123,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument('--noinput', action='store_true', default=False,
                         help="With create-user: non-interactive one-time setup, requires BSN_ADMIN_USER/BSN_ADMIN_PASSWORD")
 
+    parser.add_argument('--yes', action='store_true', default=False,
+                        help='With restore/rekey: skip the confirmation prompt')
+
     parser.add_argument('--name', metavar='NAME',
                         help='With create-app-password: a name for the app password')
     parser.add_argument('--access', choices=[r.value for r in AppPasswordRole], default=AppPasswordRole.FULL.value,
@@ -135,6 +140,12 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     if args.command in _USER_ARG_COMMANDS and not args.username:
         parser.error(f"'{args.command}' requires a USERNAME argument.")
+
+    if args.command in _FILE_ARG_COMMANDS and not args.username:
+        parser.error(f"'{args.command}' requires a FILE argument.")
+
+    if args.yes and args.command not in ('restore', 'rekey'):
+        parser.error("--yes is only valid with the 'restore' and 'rekey' commands")
 
     if args.command == 'create-app-password' and not args.name:
         parser.error("'create-app-password' requires --name.")
@@ -224,6 +235,18 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     if args.command == 'clear-cache':
         cmd_clear_cache()
+        return
+
+    if args.command == 'backup':
+        cmd_backup(args.username)
+        return
+
+    if args.command == 'restore':
+        cmd_restore(args.username, assume_yes=args.yes)
+        return
+
+    if args.command == 'rekey':
+        cmd_rekey(assume_yes=args.yes)
         return
 
     if args.command in ('create-user', 'update-user', 'delete-user', 'passwd', 'create-app-password', 'list-users'):

@@ -29,6 +29,10 @@
 
 - **User management over the API**: [`api_user_management`](../configuration.md#api_user_management) controls whether admins can create, update and delete users, and change other users' passwords, through the Subsonic API. It is off by default. The admin panel is not affected.
 
+## Security logging and CrowdSec
+
+Auth failures, rate-limit blocks and IP-filter denials are logged as `BSN-SEC event=... ip=... endpoint="..." user="..."` lines (credentials not included, usernames sanitised) and a ready-made [CrowdSec](https://www.crowdsec.net/) parser and scenarios are available in the [`crowdsec/`](https://github.com/FlorentLM/BeetstreamNext/tree/main/crowdsec) directory. Remember to set up [`reverse_proxy`](../reverse-proxy.md) so the logged IPs are the real client ones.
+
 ## Beets config protection
 
 The Beets config can load plugins and run commands, so editing it from the admin panel has some restrictions:

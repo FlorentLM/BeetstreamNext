@@ -1,0 +1,13 @@
+# Add to CrowdSec's acquis.yaml (or acquis.d/beetstreamnext.yaml)
+
+source: file
+filenames:
+  - /var/log/beetstreamnext/beetstreamnext.log
+labels:
+  type: beetstreamnext
+---
+# source: docker
+# container_name:
+#   - beetstreamnext
+# labels:
+#   type: beetstreamnext

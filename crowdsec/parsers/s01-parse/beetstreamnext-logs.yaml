@@ -1,0 +1,20 @@
+onsuccess: next_stage
+name: florentlm/beetstreamnext-logs
+description: "Parse BeetstreamNext (BSN-SEC) security log lines"
+filter: "evt.Line.Labels.type == 'beetstreamnext'"
+nodes:
+  - grok:
+      # e.g. WARNING:beetstreamnext:BSN-SEC event=auth_failure ip=1.2.3.4 endpoint="/rest/ping" user="bob"
+      pattern: 'BSN-SEC event=%{WORD:event} ip=%{NOTSPACE:source_ip}(?: endpoint="%{DATA:endpoint}")?(?: user="%{DATA:target_user}")?(?: %{GREEDYDATA:extra})?$'
+      apply_on: Line.Raw
+statics:
+  - meta: log_type
+    expression: "'beetstreamnext_' + evt.Parsed.event"
+  - meta: service
+    value: beetstreamnext
+  - meta: source_ip
+    expression: "evt.Parsed.source_ip"
+  - meta: target_user
+    expression: "evt.Parsed.target_user"
+  - meta: http_path
+    expression: "evt.Parsed.endpoint"

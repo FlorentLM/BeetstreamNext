@@ -1,0 +1,12 @@
+name: florentlm/beetstreamnext
+description: "BeetstreamNext: parser and scenarios for login brute force and rate-limit abuse"
+parsers:
+  - florentlm/beetstreamnext-logs
+scenarios:
+  - florentlm/beetstreamnext-bf
+  - florentlm/beetstreamnext-bf-spray
+  - florentlm/beetstreamnext-ratelimit-abuse
+author: florentlm
+tags:
+  - beetstreamnext
+  - subsonic

@@ -1,0 +1,12 @@
+type: leaky
+name: florentlm/beetstreamnext-ratelimit-abuse
+description: "Detect clients that keep hammering BeetstreamNext after being rate-limited"
+filter: "evt.Meta.log_type == 'beetstreamnext_rate_limited'"
+leakspeed: "30s"
+capacity: 10
+groupby: evt.Meta.source_ip
+blackhole: 5m
+labels:
+  service: beetstreamnext
+  type: bruteforce
+  remediation: true

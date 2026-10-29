@@ -248,6 +248,12 @@ def strip_html(text: Any) -> str:
     return '\n'.join(lines)
 
 
+def log_safe(val: Any, max_len: int = 64) -> str:
+    """Make text safe inside a quoted `key="value"` for the logs."""
+    cleaned = ''.join(c if c.isprintable() and c not in '"\\' else '_' for c in str(val))
+    return cleaned[:max_len]
+
+
 def safe_str(val: Any) -> str:
     if val is None:
         return ''

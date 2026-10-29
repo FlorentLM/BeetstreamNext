@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 import flask
 
 from beetsplug.beetstreamnext.utils.concurrency import DoOnce
-from beetsplug.beetstreamnext.utils.text import split_list
+from beetsplug.beetstreamnext.utils.text import split_list, log_safe
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -20,6 +20,26 @@ from beetsplug.beetstreamnext.constants import (
 
 
 _proxy_headers_warning = DoOnce()
+
+
+def log_security_event(event: str, ip: str, username: Optional[str] = None, **fields) -> None:
+    """
+    Emit a parseable line for log-based tools (CrowdSec, fail2ban, etc)
+
+        BSN-SEC event=<event> ip=<ip> endpoint="<path>" [user="<name>"] [key=value ...]
+
+    Events: auth_failure, rate_limited, ip_denied
+    """
+    parts = [f'BSN-SEC event={event}', f'ip={log_safe(ip, 45)}']
+
+    if flask.has_request_context():
+        parts.append(f'endpoint="{log_safe(flask.request.path, 128)}"')
+
+    if username is not None:
+        parts.append(f'user="{log_safe(username)}"')
+
+    parts.extend(f'{k}={log_safe(v, 32)}' for k, v in fields.items())
+    bsn_logger.warning(' '.join(parts))
 
 
 def is_local_client() -> bool:
@@ -94,6 +114,7 @@ class RateLimiter:
                 if recent_ip:
                     self._ip_store[ip] = recent_ip
                     if len(recent_ip) >= self._ip_max_failures:
+                        log_security_event('rate_limited', ip, username, scope='ip')
                         return True
                 else:
                     self._ip_store.pop(ip, None)
@@ -110,6 +131,8 @@ class RateLimiter:
 
             self._store[key] = recent
             exceeds = len(recent) >= self._max_failures
+            if exceeds:
+                log_security_event('rate_limited', ip, username, scope='pair')
             return exceeds
 
     def record(self, ip: str, username: str = ''):
@@ -128,6 +151,7 @@ class RateLimiter:
             recent = sum(now - t < self._block_window for t in self._store[key])
             ip_recent = sum(now - t < self._ip_block_window for t in self._ip_store[ip])
 
+        log_security_event('auth_failure', ip, username)
         admin_events.publish('rate-limits', '')
 
         if recent == self._max_failures:
@@ -316,22 +340,22 @@ class IPFilter:
 
         if addr is not None:
             if any(addr in net for net in self._blacklist_nets):
-                bsn_logger.info(f'IP {ip}: access denied (blacklist).')
+                log_security_event('ip_denied', ip, reason='blacklist')
                 return False
 
             if self._whitelist_nets and not any(addr in net for net in self._whitelist_nets):
-                bsn_logger.info(f'IP {ip}: access denied (not in whitelist).')
+                log_security_event('ip_denied', ip, reason='not_in_whitelist')
                 return False
 
             return True
 
         # Unparseable (e.g. a placeholder like 'unknown'): fall back to exact string matching.
         if ip in self._blacklist_raw:
-            bsn_logger.info(f'IP {ip}: access denied (blacklist).')
+            log_security_event('ip_denied', ip, reason='blacklist')
             return False
 
         if self._whitelist_raw and ip not in self._whitelist_raw:
-            bsn_logger.info(f'IP {ip}: access denied (not in whitelist).')
+            log_security_event('ip_denied', ip, reason='not_in_whitelist')
             return False
 
         return True

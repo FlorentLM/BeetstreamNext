@@ -7,10 +7,12 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from beetsplug.beetstreamnext.constants import DB_FILE_NAME, DB_BUSY_TIMEOUT_MS, SERVER_VERSION
 from beetsplug.beetstreamnext.core.storage.encryption import get_key_hash
+from beetsplug.beetstreamnext.core.storage.rekey import RekeyError, rekey_database
+from beetsplug.beetstreamnext.utils.system import get_env
 
 
 BACKUP_FORMAT = 1
@@ -20,6 +22,10 @@ DB_MANIFEST_FILE = 'manifest.json'
 
 class BackupError(RuntimeError):
     """A backup could not be created, or an archive can't be restored."""
+
+
+class BackupKeyMismatchError(BackupError):
+    """The backup was made with a different key and no old key was given."""
 
 
 def _meta(conn: sqlite3.Connection, key: str, table: str = 'db_metadata') -> str | None:
@@ -112,7 +118,7 @@ def create_backup(db_path: str | Path, dest: str | Path) -> Path:
     return dest
 
 
-def restore_backup(archive: str | Path, db_path: str | Path) -> Path | None:
+def restore_backup(archive: str | Path, db_path: str | Path, old_key: Optional[str] = None) -> Path | None:
     """
     Replace the database at `db_path` with the one in `archive`. Server must
     be stopped.
@@ -154,10 +160,20 @@ def restore_backup(archive: str | Path, db_path: str | Path) -> Path | None:
 
         current_hash = get_key_hash()
         if info['key_hash'] and info['key_hash'] != current_hash:
-            raise BackupError(
-                'This backup was made with a different BEETSTREAMNEXT_KEY than the one currently set. '
-                'Set the original key first.'
-            )
+            if not old_key:
+                raise BackupKeyMismatchError(
+                    'This backup was made with a different BEETSTREAMNEXT_KEY than the one currently set. '
+                    'Set BEETSTREAMNEXT_OLD_KEY to the original key to decrypt it.'
+                )
+
+            if info['key_hash'] != get_key_hash(old_key):
+                raise BackupError('BEETSTREAMNEXT_OLD_KEY does not match the key this backup was made with.')
+
+            # Re-encrypt the extracted copy (live database is untouched if this fails)
+            try:
+                rekey_database(extracted, old_key, get_env('BEETSTREAMNEXT_KEY'))
+            except RekeyError as e:
+                raise BackupError(f'Could not re-encrypt the backup: {e}') from e
 
         if db_path.is_file():
             current = _read_db_info(db_path)

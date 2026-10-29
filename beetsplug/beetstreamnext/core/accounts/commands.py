@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches
-from beetsplug.beetstreamnext.core.storage.backup import BackupError, create_backup, restore_backup
+from beetsplug.beetstreamnext.core.storage.backup import BackupError, BackupKeyMismatchError, create_backup, restore_backup
 from beetsplug.beetstreamnext.core.storage.rekey import RekeyError, rekey_database
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole, create_app_password
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, delete_user, list_users, get_user_roles, update_user
@@ -317,8 +317,20 @@ def cmd_restore(archive: str, assume_yes: bool = False) -> None:
             print('Aborted.')
             return
 
+    old_key = get_env('BEETSTREAMNEXT_OLD_KEY')
+
     try:
-        previous = restore_backup(archive, app.config['BSN_DB_PATH'])
+        try:
+            previous = restore_backup(archive, app.config['BSN_DB_PATH'], old_key=old_key)
+
+        except BackupKeyMismatchError:
+            if old_key or not sys.stdin.isatty():
+                raise
+
+            print('This backup was made with a different BEETSTREAMNEXT_KEY than the current one.')
+            old_key = getpass.getpass("Key the backup was made with (BEETSTREAMNEXT_OLD_KEY): ").strip()
+            previous = restore_backup(archive, app.config['BSN_DB_PATH'], old_key=old_key)
+
     except BackupError as e:
         print_box(['', f'[ERROR] {e}', ''], color=TermColors.FAIL)
         raise SystemExit(1) from e

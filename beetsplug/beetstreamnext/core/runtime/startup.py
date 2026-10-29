@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Iterable, List, Optional
 from flask_cors import CORS
 from waitress import create_server, serve
-from werkzeug.middleware.proxy_fix import ProxyFix
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.console import print_box
@@ -31,6 +30,7 @@ from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
 from beetsplug.beetstreamnext.core.services.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter
 from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.utils.net import WhitelistedProxyFix
 from beetsplug.beetstreamnext.utils.system import is_docker
 from beetsplug.beetstreamnext.utils.text import split_list
 
@@ -248,8 +248,9 @@ def run_server(
 
         # Trusting 'proxy_hops' number of forwarded entries
         hops = max(1, settings_store.get('proxy_hops'))
-        app.wsgi_app = ProxyFix(
+        app.wsgi_app = WhitelistedProxyFix(
             app.wsgi_app,
+            trusted=set(settings_store.get('trusted_proxies')),
             x_for=hops, x_proto=hops, x_host=hops, x_port=hops, x_prefix=hops,
         )
         app.config.update(SESSION_COOKIE_SECURE=True)

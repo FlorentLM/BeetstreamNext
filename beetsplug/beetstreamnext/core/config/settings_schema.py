@@ -208,6 +208,20 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'env_var': 'BSN_PROXY_HOPS',
         'validator': validate_int_range(1, 10),
     },
+    'trusted_proxies': {
+        'type': 'list[str]',
+        'default': [],
+        'category': 'server',
+        'description': 'IPs/CIDR ranges of reverse proxies allowed to set <code>X-Forwarded-*</code> headers. '
+                       'Headers from requests from other addresses are ignored.'
+                       '<br>'
+                       '<br>'
+                       'Only used if <code>reverse_proxy</code> is enabled. '
+                       'If empty, every peer is trusted. Unix sockets are always trusted.',
+        'requires_restart': True,
+        'env_var': 'BSN_TRUSTED_PROXIES',
+        'validator': ip_filter.parse_ips,
+    },
     'sendfile_method': {
         'type': 'str',
         'default': 'off',

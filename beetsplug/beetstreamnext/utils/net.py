@@ -222,3 +222,40 @@ def is_public_url(url: str) -> bool:
         return False
 
     return _hostname_is_public(hostname, _cache_ttl_hash=round(time.time() / 300))
+
+
+##
+# Reverse proxy
+
+class WhitelistedProxyFix:
+    """
+    ProxyFix that only listens X-Forwarded-* headers from trusted peers.
+    """
+
+    def __init__(self, wsgi_app, trusted: Set[str], **proxy_fix_kwargs):
+
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        self._plain = wsgi_app
+        self._fixed = ProxyFix(wsgi_app, **proxy_fix_kwargs)
+        self._networks = [ipaddress.ip_network(t, strict=False) for t in trusted]
+
+    def _is_trusted(self, peer: str) -> bool:
+
+        if not self._networks or not peer:
+            return True
+        try:
+            ip = ipaddress.ip_address(peer)
+        except ValueError:
+            return False
+        if ip.version == 6 and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+
+        return any(ip in net for net in self._networks if net.version == ip.version)
+
+    def __call__(self, environ, start_response):
+        if self._is_trusted(environ.get('REMOTE_ADDR', '')):
+            return self._fixed(environ, start_response)
+
+        return self._plain(environ, start_response)
+

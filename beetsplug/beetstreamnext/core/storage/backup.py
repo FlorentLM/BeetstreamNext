@@ -19,6 +19,8 @@ BACKUP_FORMAT = 1
 
 DB_MANIFEST_FILE = 'manifest.json'
 
+META_TABLES = frozenset({'db_metadata', 'encryption'})
+
 
 class BackupError(RuntimeError):
     """A backup could not be created, or an archive can't be restored."""
@@ -29,15 +31,13 @@ class BackupKeyMismatchError(BackupError):
 
 
 def _meta(conn: sqlite3.Connection, key: str, table: str = 'db_metadata') -> str | None:
+    if table not in META_TABLES:
+        raise ValueError(f'Unknown metadata table: {table}')
+
+    query = f'SELECT value FROM {table} WHERE key = ?'  # nosec B608
 
     try:
-        row = conn.execute(
-            f"""
-            SELECT value 
-            FROM {table} 
-            WHERE key = ?
-            """, (key,)
-        ).fetchone()
+        row = conn.execute(query, (key,)).fetchone()
 
     except sqlite3.DatabaseError:
         return None

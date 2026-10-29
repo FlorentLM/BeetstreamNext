@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import getpass
-import os
 import sys
 import time
 from typing import Sequence

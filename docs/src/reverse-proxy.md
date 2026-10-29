@@ -22,6 +22,10 @@ The socket is created with `660` permissions: add the proxy's user to the group 
 - The folder must exist and be writable by **BeetstreamNext**, and an old socket file from a previous run is replaced.
 - In Docker, mount the socket's folder as a volume shared with the proxy.
 
+### Restricting which peers are trusted
+
+By default, with [`reverse_proxy`](./configuration.md#reverse_proxy) on, `X-Forwarded-*` headers are trusted from any peer that can reach the server. If the port is reachable by anything but the proxy, set [`trusted_proxies`](./configuration.md#trusted_proxies) to the proxy's address(es) (e.g. `172.18.0.0/16` for a Docker network). Headers from any other address are then ignored, so a spoofed `X-Forwarded-For` can't change the client IP seen by the rate limiter and IP filters.
+
 ## Nginx
 
 Example configuration:

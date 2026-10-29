@@ -306,6 +306,20 @@ Number of trusted reverse proxies in front of the server. Only used if <code>rev
 
 ---
 
+### `trusted_proxies`
+
+IPs/CIDR ranges of reverse proxies allowed to set <code>X-Forwarded-*</code> headers. Headers from requests from other addresses are ignored.<br><br>Only used if <code>reverse_proxy</code> is enabled. If empty, every peer is trusted. Unix sockets are always trusted.
+
+<span style="color:#fab915">**requires restart**</span>
+
+*type:* `list[str]`
+
+*default:* *(empty)*
+
+*env:* `BSN_TRUSTED_PROXIES`
+
+---
+
 ### `sendfile_method`
 
 Offload direct (non-transcoded) file serving to the reverse proxy instead of streaming bytes through Python. Use <code>x-accel-redirect</code> for Nginx, <code>x-sendfile</code> for Apache.<br>Only takes effect when <code>reverse_proxy</code> is enabled and the proxy is configured to honor the header.

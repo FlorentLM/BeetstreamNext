@@ -7,7 +7,7 @@ from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optio
 
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
-from beetsplug.beetstreamnext.constants import BITRATE_CHOICES_STR
+from beetsplug.beetstreamnext.constants import BITRATE_CHOICES_STR, USERNAME_MIN_LEN, USERNAME_MAX_LEN
 from beetsplug.beetstreamnext.core.accounts.passwords import password_problems
 from beetsplug.beetstreamnext.utils.text import safe_str
 
@@ -43,7 +43,7 @@ class OnboardingForm(PasswordConfirmMixin, FlaskForm):
     """
     Create the first admin account.
     """
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
+    username = StringField('Username', validators=[DataRequired(), Length(min=USERNAME_MIN_LEN, max=USERNAME_MAX_LEN)])
     password = new_password_field('Password')
     setup_key = PasswordField('Server key', validators=[DataRequired()])
 
@@ -52,7 +52,7 @@ class UserForm(FlaskForm):
     """
     Form for creating a new user.
     """
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
+    username = StringField('Username', validators=[DataRequired(), Length(min=USERNAME_MIN_LEN, max=USERNAME_MAX_LEN)])
     password = new_password_field('Password')
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)

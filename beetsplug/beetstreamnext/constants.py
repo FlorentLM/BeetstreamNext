@@ -168,6 +168,9 @@ FFMPEG_INPUT_ARGS: tuple = (
     '-format_whitelist', 'mp3,flac,ogg,mov,aac,ape,wv,mpc,mpc8,asf,aiff,wav,w64,rf64,dsf,matroska,webm,tta,caf,ac3,eac3,dts',
 )
 
+USERNAME_MIN_LEN = 2
+USERNAME_MAX_LEN = 64
+
 LOOPBACK_IPS: frozenset[str] = frozenset({'127.0.0.1', 'localhost', '::1'})
 
 UNIX_SOCKET_PREFIX: str = 'unix:'

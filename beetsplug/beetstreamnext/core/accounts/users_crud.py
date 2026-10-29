@@ -8,6 +8,7 @@ from typing import Sequence, Optional, Dict, Tuple, List
 import sqlite3
 
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.constants import USERNAME_MIN_LEN, USERNAME_MAX_LEN
 from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, PUBLIC_USER_FIELDS, USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.core.accounts.passwords import hash_password, validate_password
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -133,6 +134,9 @@ def create_user(username, password, admin=False, **kwargs):
 
     if not username or '/' in username or '\\' in username or username in ('.', '..'):
         raise ValueError("Username can't be empty, contain '/' or '\\', or be '.' or '..'.")
+
+    if not USERNAME_MIN_LEN <= len(username) <= USERNAME_MAX_LEN:
+        raise ValueError(f'Username must be between {USERNAME_MIN_LEN} and {USERNAME_MAX_LEN} characters long.')
 
     if get_userdata(username, fields=['adminRole']):  # any field, doesn't matter
         raise ValueError(f"Username '{username}' already exists.")

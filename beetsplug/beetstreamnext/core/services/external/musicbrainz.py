@@ -6,6 +6,8 @@ from beetsplug.beetstreamnext.constants import USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch, http_session
 
+# TODO: migrate to ExternalService (service.py) so requests, timeouts and failure handling are defined once.
+
 
 def query_musicbrainz(mbid: str, data_type: str, cached_only: bool = False) -> dict:
 

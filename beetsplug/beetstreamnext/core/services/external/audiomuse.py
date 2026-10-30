@@ -5,6 +5,8 @@ import requests
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
+# TODO: migrate to ExternalService maybe? Not 100% sure bc this uses plain `requests` (because LAN instance)
+
 
 def audiomuse_get(path: str, params: dict, timeout: float = 10.0):
     """GET a AudioMuse-AI endpoint. Returns (data, error_message)."""

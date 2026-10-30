@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.services.external.session import http_session
 
+# TODO: migrate to ExternalService
 
 def query_lastfm(q: str, data_type: str, method: str = 'info', is_mbid: bool = True, artist: str = '') -> dict:
 

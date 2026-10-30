@@ -8,6 +8,8 @@ from beetsplug.beetstreamnext.constants import USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.session import http_session
 
+# TODO: migrate to ExternalService
+
 
 _DEEZER_PLACEHOLDER_HASHES = frozenset({
     'd41d8cd98f00b204e9800998ecf8427e',

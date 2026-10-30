@@ -7,6 +7,8 @@ from beetsplug.beetstreamnext.constants import USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.session import http_session
 
+# TODO: migrate to ExternalService
+
 
 def query_discogs(release_id: Any, cached_only: bool = False) -> dict:
     """

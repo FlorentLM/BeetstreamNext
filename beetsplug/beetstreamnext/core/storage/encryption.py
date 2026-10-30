@@ -198,7 +198,7 @@ def encrypt_json(value: Any) -> bytes:
 
 
 def decrypt_json(token: bytes | str) -> Any:
-     """Decrypt a JSON value with the BEETSTREAMNEXT_KEY."""
+    """Decrypt a JSON value with the BEETSTREAMNEXT_KEY."""
     return json.loads(decrypt_text(token))
 
 

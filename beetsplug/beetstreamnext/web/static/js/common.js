@@ -87,6 +87,110 @@
 
     document.body.addEventListener('htmx:after:swap', () => formatTimes());
 
+    // Tabulator tables
+
+    let tabulatorLoading = null;
+
+    function loadTabulator(el) {
+        tabulatorLoading ??= new Promise((resolve, reject) => {
+
+            const styles = [el.dataset.tableCss, el.dataset.tableTheme].map(href => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = href;
+                return link;
+            });
+
+            const script = document.createElement('script');
+            script.src = el.dataset.tableJs;
+            script.onload = resolve;
+            script.onerror = () => {
+                tabulatorLoading = null;
+                reject(new Error('Could not load Tabulator'));
+            };
+            document.head.append(...styles, script);
+        });
+        return tabulatorLoading;
+    }
+
+    const TABLE_COLUMN_TYPES = {
+        badge: {
+            formatter: cell => {
+                const pill = document.createElement('span');
+                pill.className = 'badge badge-admin';
+                pill.textContent = cell.getValue();
+                return pill;
+            }
+        },
+        time: {
+            sorter: 'number',
+            formatter: cell => new Date(cell.getValue()).toLocaleString()
+        }
+    };
+
+    // Per-column text filter
+    function filterIcon() {
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined table-filter-icon';
+        icon.textContent = 'filter_list';
+        return icon;
+    }
+
+    function filterPopup(e, column, onRendered) {
+        const wrap = document.createElement('div');
+        wrap.className = 'table-filter-popup';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Filter ' + column.getDefinition().title.toLowerCase();
+        input.value = column.getHeaderFilterValue() || '';
+        input.addEventListener('input', () => {
+            column.setHeaderFilterValue(input.value);
+            column.getElement().querySelector('.table-filter-icon')?.classList.toggle('active', input.value !== '');
+        });
+        wrap.append(input);
+        onRendered(() => input.focus());
+        return wrap;
+    }
+
+    function withFilter(col) {
+        if (col.type === 'time') return col;
+        return {
+            ...col,
+            headerPopup: filterPopup,
+            headerPopupIcon: filterIcon,
+            headerFilter: () => document.createElement('div'),
+            headerFilterFunc: 'like'
+        };
+    }
+
+    function initTables(root = document) {
+        root.querySelectorAll('[data-table]:not([data-table-ready])').forEach(el => {
+            el.dataset.tableReady = '1';
+            const spec = JSON.parse(el.dataset.table);
+            loadTabulator(el).then(() => {
+                new Tabulator(el, {
+                    data: spec.rows,
+                    columns: spec.columns.map(col => withFilter({
+                        ...col,
+                        ...TABLE_COLUMN_TYPES[col.type],
+                        minWidth: 60,
+                        tooltip: true
+                    })),
+
+                    layout: 'fitDataFill',
+                    pagination: true,
+                    paginationSize: spec.pageSize || 25
+                });
+            }).catch(() => {
+                el.textContent = 'Could not load the table.';
+            });
+        });
+    }
+
+    initTables();
+
+    document.body.addEventListener('htmx:after:swap', () => initTables());
+
     // htmx requests are same-origin -> attach the CSRF token to every one
     document.body.addEventListener('htmx:config:request', event => {
         const csrfInput = document.querySelector('input[name="csrf_token"]');

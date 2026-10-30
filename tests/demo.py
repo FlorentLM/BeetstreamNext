@@ -111,14 +111,14 @@ def build_app(root: Path, config: dict | None = None, yaml_defaults: dict | None
 def add_app_password(username: str, secret: str, role: str = 'full') -> None:
 
     from beetsplug.beetstreamnext.core.storage.connection import database
-    from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+    from beetsplug.beetstreamnext.core.storage.encryption import encrypt_text
     from beetsplug.beetstreamnext.utils.text import sha256_hex
 
     with database() as db:
         db.execute(
             """
             INSERT INTO app_passwords (username, name, secret_encrypted, api_key_hash, role) VALUES (?, 'tests', ?, ?, ?)
-            """, (username, get_cipher().encrypt(secret.encode('utf-8')), sha256_hex(secret), role)
+            """, (username, encrypt_text(secret), sha256_hex(secret), role)
         )
 
 

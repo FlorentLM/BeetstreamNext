@@ -9,7 +9,7 @@ import flask
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.accounts.passwords import hash_password
 from beetsplug.beetstreamnext.core.accounts.user_schema import ALL_USER_FIELDS, users_table_sql
-from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.storage.encryption import decrypt_text
 
 
 def _set_version(conn_or_cursor, version: int) -> None:
@@ -246,7 +246,7 @@ def _oneway_hashes(conn: sqlite3.Connection) -> None:
 
             if not stored.startswith('scrypt$'):
                 try:
-                    plaintext = get_cipher().decrypt(stored.encode('utf-8')).decode('utf-8')
+                    plaintext = decrypt_text(stored)
                 except Exception as e:
                     raise RuntimeError(
                         f"Can't convert the password of user '{row[columns.index('username')]}': "

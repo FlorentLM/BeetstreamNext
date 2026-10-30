@@ -8,7 +8,9 @@ from typing import Callable
 from cryptography.fernet import InvalidToken
 
 from beetsplug.beetstreamnext.constants import DB_BUSY_TIMEOUT_MS
-from beetsplug.beetstreamnext.core.storage.encryption import InvalidKeyError, get_cipher, get_key_hash
+from beetsplug.beetstreamnext.core.storage.encryption import (
+    InvalidKeyError, decrypt_text, encrypt_text, get_cipher, get_key_hash
+)
 from beetsplug.beetstreamnext.core.storage.schema import ENCRYPTED_COLUMNS
 
 
@@ -55,7 +57,8 @@ def rekey_database(db_path: str | Path, old_key: str, new_key: str) -> tuple[int
         raise RekeyError(f"BeetstreamNext database not found at '{db_path}'.")
 
     try:
-        old, new = get_cipher(old_key), get_cipher(new_key)
+        get_cipher(old_key)
+        get_cipher(new_key)
     except InvalidKeyError as e:
         raise RekeyError(f'Invalid old or new key: {e}') from e
 
@@ -65,7 +68,7 @@ def rekey_database(db_path: str | Path, old_key: str, new_key: str) -> tuple[int
         raise RekeyError('The old and new keys are the same.')
 
     def convert(token: bytes) -> bytes:
-        return new.encrypt(old.decrypt(token))
+        return encrypt_text(decrypt_text(token, old_key), new_key)
 
     conn = sqlite3.connect(db_path, isolation_level=None)
     try:

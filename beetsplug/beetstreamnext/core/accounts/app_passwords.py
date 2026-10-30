@@ -9,7 +9,7 @@ from typing import Literal, Optional, List, Tuple
 
 from beetsplug.beetstreamnext.constants import MAX_APP_PASSWORDS
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.storage.encryption import decrypt_text, encrypt_text
 from beetsplug.beetstreamnext.utils.concurrency import RollingLimiter
 from beetsplug.beetstreamnext.utils.text import sha256_hex
 
@@ -76,7 +76,7 @@ def create_app_password(
             raise ValueError(f'Maximum of {MAX_APP_PASSWORDS} app passwords reached.')
 
         secret = secrets.token_urlsafe(32)
-        encrypted = get_cipher().encrypt(secret.encode('utf-8')) if as_password else None
+        encrypted = encrypt_text(secret) if as_password else None
 
         db.execute(
             """
@@ -164,7 +164,7 @@ def authenticate_legacy(
 
         for row in rows:
 
-            secret = get_cipher().decrypt(row['secret_encrypted']).decode('utf-8')
+            secret = decrypt_text(row['secret_encrypted'])
 
             ok = False
             if token and salt:

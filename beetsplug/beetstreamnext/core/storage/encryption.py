@@ -6,7 +6,7 @@ import secrets
 import os
 import base64
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
@@ -180,6 +180,26 @@ def get_cipher(key: Optional[str] = None) -> Fernet:
     if not key:
         raise InvalidKeyError('BEETSTREAMNEXT_KEY is not set')
     return _cipher_for(key)
+
+
+def encrypt_text(text: str, key: Optional[str] = None) -> bytes:
+    """Encrypt text with the BEETSTREAMNEXT_KEY (or another `key`)."""
+    return get_cipher(key).encrypt(text.encode('utf-8'))
+
+
+def decrypt_text(token: bytes | str, key: Optional[str] = None) -> str:
+    """Decrypt text with the BEETSTREAMNEXT_KEY (or another `key`)."""
+    return get_cipher(key).decrypt(token.encode('utf-8') if isinstance(token, str) else token).decode('utf-8')
+
+
+def encrypt_json(value: Any) -> bytes:
+    """JSON-serialise a value and encrypt it with the BEETSTREAMNEXT_KEY."""
+    return encrypt_text(json.dumps(value))
+
+
+def decrypt_json(token: bytes | str) -> Any:
+     """Decrypt a JSON value with the BEETSTREAMNEXT_KEY."""
+    return json.loads(decrypt_text(token))
 
 
 def get_key_hash(key: Optional[str] = None) -> str | None:

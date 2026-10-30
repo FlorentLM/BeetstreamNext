@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import APPRISE
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.storage.encryption import decrypt_json, encrypt_json
 from beetsplug.beetstreamnext.utils.general import api_bool
 
 
@@ -315,21 +315,18 @@ def load_config(raw: Any) -> None:
 ## Storage
 
 def _encode_urls(urls: List[str]) -> Tuple[str, int]:
-    raw = json.dumps(urls)
-    return get_cipher().encrypt(raw.encode()).decode(), 1
+    return encrypt_json(urls).decode(), 1
 
 
 def _decode_urls(stored: str, encrypted: int) -> List[str]:
-    if encrypted:
-        try:
-            stored = get_cipher().decrypt(stored.encode()).decode()
-        except InvalidToken:
-            bsn_logger.warning('Could not decrypt notification URLs (BEETSTREAMNEXT_KEY changed?)')
-            return []
     try:
-        return [str(u) for u in json.loads(stored)]
+        urls = decrypt_json(stored) if encrypted else json.loads(stored)
+    except InvalidToken:
+        bsn_logger.warning('Could not decrypt notification URLs (BEETSTREAMNEXT_KEY changed?)')
+        return []
     except ValueError:
         return []
+    return [str(u) for u in urls]
 
 
 def _decode_options(event: str, stored: Optional[str]) -> Dict[str, bool]:

@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.core.storage.encryption import get_cipher
+from beetsplug.beetstreamnext.core.storage.encryption import decrypt_json, encrypt_json
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter, rate_limiter
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 
@@ -109,7 +109,7 @@ class SettingsStore:
 
             try:
                 if is_enc:
-                    db_values[key] = json.loads(get_cipher().decrypt(raw.encode()).decode())
+                    db_values[key] = decrypt_json(raw)
                 else:
                     db_values[key] = json.loads(raw) if raw is not None else None
             except Exception:
@@ -241,7 +241,7 @@ class SettingsStore:
 
         # Persist to db
         if spec.get('sensitive', False):
-            stored_val = get_cipher().encrypt(json.dumps(serializable_value).encode()).decode()
+            stored_val = encrypt_json(serializable_value).decode()
             encrypted_flag = 1
         else:
             stored_val = json.dumps(serializable_value)

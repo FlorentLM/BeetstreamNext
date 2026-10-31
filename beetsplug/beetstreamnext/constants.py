@@ -232,7 +232,7 @@ BLUEPRINTS = {
 
 ## Maintenance timings
 
-NOW_PLAYING_TIMEOUT_SEC: int = 600   # stale after 10 min
+NOW_PLAYING_TIMEOUT_SEC: int = 300   # stale after 5 min
 CLEANUP_INTERVAL_SEC: int = 86400    # clean once per day
 MAX_CACHE_AGE_DAYS: int = 30
 SESSION_KEY_ROTATION_DAYS: int = 30

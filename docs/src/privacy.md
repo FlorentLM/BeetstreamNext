@@ -20,18 +20,19 @@ _Nothing_ is sent anywhere unless you enable one of the features below.
 
 ## Outgoing requests
 
-Some features contact third-party services **from your server** (never from the browser). These requests carry names of artists, albums or feeds from your library, and your server's IP address. They never include account or listening data.
+Some features contact third-party services **from your server** (never from the browser). These requests carry names of artists, albums or feeds from your library, and your server's IP address. They never include account or listening data (except for external scrobbling of course).
 
-| Feature                     | Service                                                                                                                  | What is sent                                   |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
-| Metadata and album versions | [MusicBrainz](https://musicbrainz.org/), [Cover Art Archive](https://coverartarchive.org/)                               | Release / artist identifiers and names         |
-| Artist and album info       | [Last.fm](https://www.last.fm/)                                                                                          | Artist / album names and your `lastfm_api_key` |
-| Album ratings               | [Discogs](https://www.discogs.com/)                                                                                      | Release identifiers                            |
-| Artist images               | [Deezer](https://www.deezer.com/)                                                                                        | Artist / album names                           |
-| Radio stations              | [Radio Browser](https://www.radio-browser.info/), the station's own website, [DuckDuckGo icons](https://duckduckgo.com/) | Station names and domains (for favicons)       |
-| Podcasts                    | The feed and media hosts you subscribe to, and [Podcast Index](https://podcastindex.org/) for search                     | Feed URLs and search terms                     |
-| Notifications               | Whatever [Apprise](https://appriseit.com/services/) service you configure                                                | The notification content                       |
-| Sonic similarity            | Your own [AudioMuse-AI](https://github.com/NeptuneHub/AudioMuse-AI) instance                                             | Track identifiers                              |
+| Feature                     | Service                                                                                                                  | What is sent                                     |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------|
+| Metadata and album versions | [MusicBrainz](https://musicbrainz.org/), [Cover Art Archive](https://coverartarchive.org/)                               | Release / artist identifiers and names           |
+| Artist and album info       | [Last.fm](https://www.last.fm/)                                                                                          | Artist / album names and your `lastfm_api_key`   |
+| Scrobbling                  | [ListenBrainz](https://listenbrainz.org/)                                                                                | What you play, when, and your ListenBrainz token |
+| Album ratings               | [Discogs](https://www.discogs.com/)                                                                                      | Release identifiers                              |
+| Artist images               | [Deezer](https://www.deezer.com/)                                                                                        | Artist / album names                             |
+| Radio stations              | [Radio Browser](https://www.radio-browser.info/), the station's own website, [DuckDuckGo icons](https://duckduckgo.com/) | Station names and domains (for favicons)         |
+| Podcasts                    | The feed and media hosts you subscribe to, and [Podcast Index](https://podcastindex.org/) for search                     | Feed URLs and search terms                       |
+| Notifications               | Whatever [Apprise](https://appriseit.com/services/) service you configure                                                | The notification content                         |
+| Sonic similarity            | Your own [AudioMuse-AI](https://github.com/NeptuneHub/AudioMuse-AI) instance                                             | Track identifiers                                |
 
 Each service has its own privacy policy. Features you don't use don't make any requests, and the corresponding settings can be turned off in the [configuration](./configuration.md).
 

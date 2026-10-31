@@ -23,18 +23,18 @@ _You can_, however, have one user's likes/ratings persist inside the Beets libra
 
 Users permissions are [as defined](https://opensubsonic.netlify.app/docs/responses/user/) by the OpenSubsonic/Subsonic spec's _roles_. These roles can be set from the admin panel's **Users** tab (or `--update-user`/`update-user` on the CLI):
 
-| Role       | Default | Allows                                                          |
-|------------|---------|-----------------------------------------------------------------|
-| Admin      | off     | Full access to the admin panel and all settings                 |
-| Settings   | on      | Changing their own personal settings and password               |
-| Stream     | on      | Playing files                                                   |
-| Download   | off     | Downloading files                                               |
-| Playlists  | on      | Creating and deleting their own playlists                       |
-| Comments   | on      | Creating and editing comments and ratings                       |
-| Podcasts   | off     | Managing their own podcast subscriptions                        |
-| Sharing    | off     | Generating public shares (see [Sharing](public-shares.md))      |
-| Jukebox    | off     | Controlling jukebox-mode playback (see [Jukebox](./jukebox.md)) |
-| Scrobbling | on      | Keeping track of what they listen on BeetstreamNext             |
+| Role       | Default | Allows                                                                                               |
+|------------|---------|------------------------------------------------------------------------------------------------------|
+| Admin      | off     | Full access to the admin panel and all settings                                                      |
+| Settings   | on      | Changing their own personal settings and password                                                    |
+| Stream     | on      | Playing files                                                                                        |
+| Download   | off     | Downloading files                                                                                    |
+| Playlists  | on      | Creating and deleting their own playlists                                                            |
+| Comments   | on      | Creating and editing comments and ratings                                                            |
+| Podcasts   | off     | Managing their own podcast subscriptions                                                             |
+| Sharing    | off     | Generating public shares (see [Sharing](public-shares.md))                                           |
+| Jukebox    | off     | Controlling jukebox-mode playback (see [Jukebox](./jukebox.md))                                      |
+| Scrobbling | on      | Keeping track of what they listen on BeetstreamNext (and/or sending to extrernal scrobbling account) |
 
 A new user account starts with the defaults above unless overridden at creation.
 

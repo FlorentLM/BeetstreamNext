@@ -10,6 +10,7 @@
 - [App passwords](./features/app-passwords.md)
 - [Streaming & audio quality](./features/streaming.md)
 - [Playlists](./features/playlists.md)
+- [Scrobbling](./features/scrobbling.md)
 - [Security](features/security.md)
 - [Public shares](features/public-shares.md)
 - [Radio & podcasts](./features/radio-and-podcasts.md)

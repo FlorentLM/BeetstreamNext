@@ -64,6 +64,18 @@ Last.fm API key for fetching metadata.
 
 ---
 
+### `external_scrobbling`
+
+Let users connect their external scrobbling accounts and share what they play.
+
+*type:* `bool`
+
+*default:* `True`
+
+*env:* `BSN_EXTERNAL_SCROBBLING`
+
+---
+
 ### `audiomuse_api_token`
 
 API token for your AudioMuse-AI instance.

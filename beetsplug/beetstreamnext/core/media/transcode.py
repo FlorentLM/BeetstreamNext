@@ -22,6 +22,8 @@ from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import find_binary
 
 
+# bytes added to estimated length of a CBR MP3 stream for some headroom
+MP3_ESTIMATE_MARGIN = 4096
 
 FORMAT_MAP = {
     # Lossy
@@ -78,7 +80,7 @@ def get_normalization_filter(item) -> str | None:
     Calculates the ReplayGain adjustment and peak limiting.
     Returns an FFmpeg audio filter string.
     """
-    if not app.config.get('replaygain_enabled', True):
+    if not app.config.get('replaygain_enabled', False):
         return None
 
     # Beets stores these as floats
@@ -93,6 +95,10 @@ def get_normalization_filter(item) -> str | None:
 
     # Apply user preamp
     gain += app.config.get('replaygain_preamp', 0.0)
+
+    # Nothing to apply
+    if abs(gain) < 0.005:
+        return None
 
     # Safety peak limiting
     if app.config.get('audio_peak_limit', True):
@@ -168,7 +174,15 @@ def _send_transcode(
     else:
         return None
 
+    # Lossless and VBR/ABR formats (and Ogg/MP4 containers) can't really be estimated, so no Content-Length
+    declared_length: Optional[int] = None
+    if estimate_length and target['f'] == 'mp3' and max_bitrate > 0 and duration > 0:
+        remaining = max(0.0, duration - start_at)
+        # + the headroom for encoder delay/padding frames and Xing/ID3 headers
+        declared_length = int((max_bitrate * 1000 / 8) * remaining) + MP3_ESTIMATE_MARGIN
+
     def generate() -> Generator:
+        sent = 0
         chunk_queue: queue.Queue = queue.Queue(maxsize=32)
         _SENTINEL = object()   # marks "reader finished"
         stop_event = threading.Event()
@@ -211,7 +225,19 @@ def _send_transcode(
 
                 if chunk is _SENTINEL:
                     break
+                if declared_length is not None:
+                    chunk = chunk[:declared_length - sent]
+                    if not chunk:
+                        continue
+                sent += len(chunk)
                 yield chunk
+
+            if declared_length is not None and sent < declared_length:
+                # stream ended normally but short: pad with 0s
+                while sent < declared_length:
+                    pad = min(8192, declared_length - sent)
+                    sent += pad
+                    yield b'\x00' * pad
         finally:
             stop_event.set()
             try:
@@ -228,11 +254,8 @@ def _send_transcode(
 
     response = flask.Response(flask.stream_with_context(generate()), mimetype=target['mime'])
 
-    if estimate_length and max_bitrate > 0 and duration > 0:
-        remaining = max(0.0, duration - start_at)
-        estimated_bytes = int((max_bitrate * 1000 / 8) * remaining)
-        response.headers['Content-Length'] = estimated_bytes
-
+    if declared_length is not None:
+        response.headers['Content-Length'] = declared_length
 
     response.headers['Accept-Ranges'] = 'none'
 

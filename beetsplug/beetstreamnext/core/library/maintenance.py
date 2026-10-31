@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List
 
 from beetsplug.beetstreamnext.constants import (
-    CACHE_LOCATION, CLEANUP_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME,
+    CACHE_LOCATION, CLEANUP_INTERVAL_SEC, SCROBBLE_RETRY_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME,
     TRANSCODE_TMP_DIR, HLS_CACHE_DIR, ZIP_CACHE_DIR,
     TRANSCODE_MAX_AGE_SEC, HLS_MAX_AGE_SEC, ZIP_MAX_AGE_SEC,
 )
@@ -23,6 +23,7 @@ from beetsplug.beetstreamnext.utils.db import chunked_execute
 from beetsplug.beetstreamnext.utils.concurrency import Throttle
 
 _cleanup_throttle = Throttle()
+scrobble_retry_throttle = Throttle()
 
 
 def cache_breakdown(thumb_dir: str | Path, http_cache: str | Path) -> dict[str, int]:
@@ -232,6 +233,10 @@ def run_periodic():
     Runs housekeeping periodically.
     Deletes old cached thumbnails, purges rate limiting store.
     """
+
+    if scrobble_retry_throttle.allow(SCROBBLE_RETRY_INTERVAL_SEC):
+        from beetsplug.beetstreamnext.core.services.scrobbling.service import deliver_queued, workers
+        workers.submit(deliver_queued)      # retries listens that failed earlier
 
     if not _cleanup_throttle.allow(CLEANUP_INTERVAL_SEC):
         return

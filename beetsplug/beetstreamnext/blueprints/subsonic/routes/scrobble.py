@@ -7,7 +7,6 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.constants import (
     MAX_CLIENT_NAME_CHAR, MAX_ITEM_ID_CHAR, NOW_PLAYING_TIMEOUT_SEC, PLAYBACK_STATES
 )
-from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -15,6 +14,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_resp
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
+from beetsplug.beetstreamnext.core.services.scrobbling import service as scrobbling
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @subsonic_bp.route('/scrobble', methods=['GET', 'POST'])
@@ -36,7 +36,8 @@ def endpoint_scrobble() -> flask.Response:
     if not submission:
         # if submission=false, this is a "now playing" notification
         p_id = playing_ids[0]
-        if len(p_id) > MAX_ITEM_ID_CHAR or Resolve.any(p_id)[1] is None:
+        entry_type, item = Resolve.any(p_id) if len(p_id) <= MAX_ITEM_ID_CHAR else (None, None)
+        if item is None:
             return subsonic_error(70, resp_fmt=resp_fmt)
 
         with database() as db:
@@ -51,10 +52,26 @@ def endpoint_scrobble() -> flask.Response:
                     state       = 'playing'
                 """, (username, p_id, now, client)
             )
+
+        if entry_type == 'song':
+            scrobbling.now_playing(username, item)
+
         return subsonic_response({}, resp_fmt=resp_fmt)
 
-    # If submission=true, this is a completed playback
+    # If submission=true this is a completed playback
+    to_scrobble = []
+
     with database() as db:
+        # A play that reportPlayback already counted should not be counted again
+        session = db.execute(
+            """
+            SELECT item_id, scrobbled
+            FROM now_playing
+            WHERE username = ?
+            """, (username,)
+        ).fetchone()
+        already_counted = session['item_id'] if session and session['scrobbled'] else None
+
         # Clean up "now playing" state
         db.execute(
             """
@@ -69,6 +86,11 @@ def endpoint_scrobble() -> flask.Response:
             if entry_type == 'song':       # only keep count of songs played, not radios
                 if not item:
                     continue
+
+                if p_id == already_counted:
+                    already_counted = None
+                    continue
+
                 canonical_id = IDs.encode_song(standardise_datadict(item))
 
                 try:
@@ -86,10 +108,10 @@ def endpoint_scrobble() -> flask.Response:
                         last_played = excluded.last_played
                     """, (username, canonical_id, played_at)
                 )
+                to_scrobble.append((item, played_at))
 
-    if app.config.get('lastfm_api_key') and flask.g.user_data.get('scrobblingEnabled'):
-        # TODO: Lastfm scrobble
-        pass
+    for item, played_at in to_scrobble:
+        scrobbling.scrobble(username, item, played_at)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 
@@ -196,16 +218,22 @@ def endpoint_report_playback() -> flask.Response:
                 """, (media_id, position_ms, state, playback_rate, client, username)
             )
 
-    # Check for scrobble threshold: played for 4 minutes or 50% of total length
+    entry_type, item = Resolve.any(media_id)
+
+    if state == 'starting' and entry_type == 'song' and item:
+        scrobbling.now_playing(username, item)
+
+    # Check for scrobble threshold: played for 3 minutes or 50% of total length
     if not ignore_scrobble and state == 'playing':
-        entry_type, item = Resolve.any(media_id)
 
         if entry_type == 'song' and item:
             canonical_id = IDs.encode_song(standardise_datadict(item))
             duration_ms = (item.get('length') or 0) * 1000
-            threshold = min(4 * 60 * 1000, duration_ms * 0.5)
+            threshold = min(3 * 60 * 1000, duration_ms * 0.5)
 
             if position_ms >= threshold:
+                counted = False
+
                 # Check if already scrobbled this session
                 with database() as db:
                     session = db.execute(
@@ -235,9 +263,9 @@ def endpoint_report_playback() -> flask.Response:
                             WHERE username = ?
                             """, (username,)
                         )
+                        counted = True
 
-                        if app.config.get('lastfm_api_key') and flask.g.user_data.get('scrobblingEnabled'):
-                            # TODO: Last.fm scrobble call
-                            pass
+                if counted:
+                    scrobbling.scrobble(username, item, now)
 
     return subsonic_response({}, resp_fmt=resp_fmt)

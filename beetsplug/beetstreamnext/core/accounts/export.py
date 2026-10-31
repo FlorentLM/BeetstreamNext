@@ -4,6 +4,7 @@ import time
 from typing import Any, Dict, List
 
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata
+from beetsplug.beetstreamnext.core.services.scrobbling.service import list_connections
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 
@@ -45,6 +46,7 @@ def export_user_data(username: str) -> Dict[str, Any]:
             'exported_at': time.time(),
             'profile': profile,
             'app_passwords': app_passwords,
+            'connections': list_connections(username),
             'likes': _get_rows(db, "SELECT item_id, starred_at FROM likes WHERE username = ?", (username,)),
             'ratings': _get_rows(db, "SELECT item_id, rating, rated_at FROM ratings WHERE username = ?", (username,)),
             'bookmarks': _get_rows(db, "SELECT song_id, position, comment, created, changed FROM bookmarks WHERE username = ?", (username,)),

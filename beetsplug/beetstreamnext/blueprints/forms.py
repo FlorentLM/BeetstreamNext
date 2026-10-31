@@ -100,6 +100,14 @@ class AppPasswordForm(FlaskForm):
     as_password = BooleanField('Usable as password')
 
 
+class ConnectionURLTokenForm(FlaskForm):
+    """
+    Form for connecting a service that uses a auth URL + a token.
+    """
+    url = StringField('URL', validators=[Optional(), Length(max=256)], render_kw={'autocomplete': 'off'})
+    token = PasswordField('Token', validators=[DataRequired(), Length(max=128)], render_kw={'autocomplete': 'new-password'})
+
+
 class RadioStationForm(FlaskForm):
     """
     Form for creating/editing a radio station.

@@ -283,6 +283,15 @@ MAX_PAGE_SIZE: int = 1000                        # most items one API call retur
 MAX_REST_IDS: int = 500                          # most ids one API call can carry (scrobble, star, share, playlist...)
 
 
+## Scrobbling
+
+SCROBBLE_MIN_TRACK_SEC: int = 30                 # Tracks shorter than this are not scrobbled
+SCROBBLE_MAX_AGE_SEC: int = 14 * 86400           # Last.fm refuses listens older than that, queued ones are dropped
+SCROBBLE_BATCH_SIZE: int = 100                   # Max listens sent to a service in one request
+SCROBBLE_HTTP_TIMEOUT_SEC: int = 15
+SCROBBLE_RETRY_INTERVAL_SEC: int = 60            # How often queued listens that failed are retried
+
+
 ## Other stuff
 
 CHAT_MAX_CHARS: int = 1000

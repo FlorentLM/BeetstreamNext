@@ -2793,3 +2793,103 @@ input:focus, select:focus {
 #chatError:not(:empty) {
     padding: 0 1.5rem 0.75rem;
 }
+
+/* Exernal scrobbling connections */
+
+.connection-card {
+    position: relative;
+    margin: 0.75rem 1.5rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--overlay-weak);
+}
+
+.connection-card:has(.connection-switch input:not(:checked)) .connection-fields,
+.connection-card:has(.connection-switch input:not(:checked)) .connection-hint {
+    opacity: 0.6;
+}
+
+.connection-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-right: 3.5rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.connection-head::-webkit-details-marker {
+    display: none;
+}
+
+.connection-head::before {
+    content: '\25B8';
+    color: var(--text-muted);
+    transition: transform 0.15s;
+}
+
+.connection-details[open] > .connection-head::before {
+    transform: rotate(90deg);
+}
+
+.connection-head + .connection-fields {
+    margin-top: 0.7rem;
+}
+
+.connection-head h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.connection-kind {
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: var(--overlay-strong);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.connection-switch {
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+}
+
+.connection-switch:has(input:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.connection-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.6rem;
+    align-items: end;
+}
+
+.connection-fields .form-group {
+    margin: 0;
+    min-width: 0;
+}
+
+.connection-fields input[readonly] {
+    color: var(--text-muted);
+    cursor: default;
+}
+
+.connection-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.connection-hint {
+    margin: 0.6rem 0 0;
+}
+
+@media (max-width: 640px) {
+    .connection-fields {
+        grid-template-columns: 1fr;
+    }
+}

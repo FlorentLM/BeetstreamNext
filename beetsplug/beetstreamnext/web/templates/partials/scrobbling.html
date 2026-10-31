@@ -1,0 +1,86 @@
+{% from '_macros.html' import icon %}
+
+{% if message %}
+    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+{% endif %}
+
+{% if not enabled %}
+    <p class="card-hint">Scrobbling is turned off.</p>
+{% endif %}
+
+{% for svc in scrobblers if enabled %}
+    {% set conn = existing.get(svc.service) %}
+    <div class="connection-card">
+        <details class="connection-details" {{ 'open' if message or not conn or conn.last_error }}>
+            <summary class="connection-head">
+                <h3>{{ svc.label }}</h3>
+                {% if conn and conn.last_error %}
+                    <span class="badge badge-warning" title="{{ conn.last_error }}">needs attention</span>
+                {% elif conn %}
+                    <span class="connection-kind">{{ conn.display_name or 'Connected' }}</span>
+                {% else %}
+                    <span class="connection-kind">Not connected</span>
+                {% endif %}
+                {% if conn and conn.queued %}
+                    <span class="connection-kind" title="Listens waiting to be sent">{{ conn.queued }} queued</span>
+                {% endif %}
+            </summary>
+
+            <form hx-post="{{ url_for(bp_name ~ '.route_connect_service', service=svc.service) }}"
+                  hx-disable="find button[type='submit']"
+                  hx-target="#scrobblingList"
+                  hx-swap="innerHTML" class="connection-fields">
+                {{ token_form.csrf_token }}
+                <div class="form-group">
+                    <label>URL</label>
+                    {{ token_form.url(value=((conn.url if conn else '') or svc.default_url), placeholder=svc.default_url) }}
+                </div>
+                <div class="form-group">
+                    <label>Token
+                        {% if svc.credentials_url %}
+                            <a class="label-hint" href="{{ svc.credentials_url }}" target="_blank"
+                               rel="noopener noreferrer">(get your token)</a>
+                        {% endif %}
+                    </label>
+                    <input type="password" name="token" id="token" maxlength="128" autocomplete="new-password"
+                           {% if conn %}value="{{ token_mask }}" title="A token is saved. Paste a new one to replace it."
+                           {% else %}placeholder="Your {{ svc.label }} token"{% endif %}>
+                </div>
+                <div class="connection-buttons">
+                    <button type="submit" class="btn btn-primary btn-small">{{ 'Update' if conn else 'Connect' }}</button>
+                    {% if conn %}
+                        <button type="button" class="icon-btn icon-btn-delete" title="Disconnect"
+                                aria-label="Disconnect {{ svc.label }}"
+                                hx-post="{{ url_for(bp_name ~ '.route_disconnect_service', service=svc.service) }}"
+                                hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                hx-target="#scrobblingList"
+                                hx-swap="innerHTML"
+                                hx-confirm="Disconnect {{ svc.label }}? Unsent listens will be discarded.">
+                            {{ icon('delete') }}
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+
+            <p class="card-hint connection-hint">
+                {% if conn and conn.last_error %}{{ conn.last_error }} Paste a new token to reconnect.
+                {% elif conn and conn.last_ok %}Last delivery
+                    <span class="chat-time" data-timestamp="{{ (conn.last_ok * 1000) | int }}">Loading...</span>.
+                {% else %}Stored encrypted, only used to submit your listens.
+                {% endif %}
+            </p>
+        </details>
+
+        <label class="switch connection-switch"
+               title="{{ 'Connect an account first' if not conn else 'Enable or disable' }}">
+            <input type="hidden" name="enabled" value="0">
+            <input type="checkbox" name="enabled" value="1" aria-label="Enable {{ svc.label }}"
+                   {{ 'checked' if conn and conn.enabled }} {{ 'disabled' if not conn }}
+                   hx-post="{{ url_for(bp_name ~ '.route_toggle_service', service=svc.service) }}"
+                   hx-include="closest .switch"
+                   hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                   hx-swap="none">
+            <span class="switch-track"></span>
+        </label>
+    </div>
+{% endfor %}

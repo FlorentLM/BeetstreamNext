@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.core.config.validators import (
     validate_choice,
     validate_external_hostname,
     validate_host_list,
+    validate_http_url,
     validate_int_range,
     validate_jukebox_device,
     validate_path,
@@ -470,6 +471,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'sensitive': True,
         'env_var': 'BSN_LASTFM_API_KEY',
+    },
+    'external_scrobbling': {
+        'type': 'bool',
+        'default': True,
+        'category': 'connections',
+        'description': 'Let users connect their external scrobbling accounts and share what they play.',
+        'requires_restart': False,
+        'env_var': 'BSN_EXTERNAL_SCROBBLING',
     },
     'fetch_artists_images': {
         'type': 'bool',

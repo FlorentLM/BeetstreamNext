@@ -10,6 +10,7 @@ from beetsplug.beetstreamnext.blueprints.shared.radio import register_radio_rout
 from beetsplug.beetstreamnext.blueprints.shared.shares import register_share_routes
 from beetsplug.beetstreamnext.blueprints.shared.app_passwords import register_app_password_routes
 from beetsplug.beetstreamnext.blueprints.shared.sessions import register_session_routes
+from beetsplug.beetstreamnext.blueprints.shared.scrobbling import register_scrobbling_routes
 from beetsplug.beetstreamnext.blueprints.shared.chat import register_chat_routes
 
 
@@ -56,4 +57,5 @@ register_radio_routes(admin_bp, admin_required)
 register_share_routes(admin_bp, admin_required, owner_only=False)
 register_app_password_routes(admin_bp, admin_required)
 register_session_routes(admin_bp, admin_required)
+register_scrobbling_routes(admin_bp, admin_required)
 register_chat_routes(admin_bp, admin_required, moderator=True)

@@ -15,6 +15,7 @@ ENCRYPTED_COLUMNS = (
     ('settings', 'value', 'encrypted'),
     ('notifications', 'urls', 'encrypted'),
     ('app_passwords', 'secret_encrypted', None),    # every non-NULL value is encrypted
+    ('user_connections', 'credentials_encrypted', None),
 )
 
 
@@ -417,6 +418,40 @@ def initialise_db() -> None:
             playback_rate REAL DEFAULT 1.0,
             scrobbled     INTEGER DEFAULT 0,  -- flag to prevent double scrobbles
             FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        -- a user's account on an external service (scrobbling, and later playlist export)
+        CREATE TABLE IF NOT EXISTS user_connections
+        (
+            username              TEXT NOT NULL,
+            service               TEXT NOT NULL,   -- 'listenbrainz' etc
+            credentials_encrypted BLOB NOT NULL,   -- Fernet-encrypted JSON
+            display_name          TEXT,            -- account name on the remote service
+            created               REAL NOT NULL DEFAULT (unixepoch()),
+            last_ok               REAL,            -- last successful call
+            last_error            TEXT,            -- NULL = healthy, otherwise says why the connection is broken
+            enabled               INTEGER NOT NULL DEFAULT 1,   -- user switch: 0 = keep connection but send nothing
+            PRIMARY KEY (username, service),
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        -- listens waiting to be delivered
+        CREATE TABLE IF NOT EXISTS scrobble_queue
+        (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            username     TEXT NOT NULL,
+            service      TEXT NOT NULL,
+            payload_json TEXT NOT NULL,            -- service-agnostic track dict
+            played_at    REAL NOT NULL,
+            FOREIGN KEY (username, service) REFERENCES user_connections (username, service) ON DELETE CASCADE
         )
         """
     )

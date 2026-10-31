@@ -5,6 +5,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any, Callable, List
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from beetsplug.beetstreamnext.constants import UNIX_SOCKET_PREFIX
@@ -70,6 +71,17 @@ def validate_storage_dir(x: Any) -> str:
             raise ValueError('Must not be inside the music library, or contain it.')
 
     return s
+
+
+def validate_http_url(x: Any) -> str:
+    """Empty, or an http(s) URL with a host. Trailing slashes are dropped."""
+    s = str(x or '').strip()
+    if not s:
+        return s
+    parsed = urlsplit(s)
+    if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.query or parsed.fragment:
+        raise ValueError('Must be a http(s) URL, like https://api.listenbrainz.org')
+    return s.rstrip('/')
 
 
 def validate_external_hostname(x: Any) -> str:

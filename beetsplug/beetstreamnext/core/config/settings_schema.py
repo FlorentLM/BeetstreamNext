@@ -17,6 +17,7 @@ from beetsplug.beetstreamnext.core.config.validators import (
     validate_http_url,
     validate_int_range,
     validate_jukebox_device,
+    validate_local_services,
     validate_path,
     validate_share_password,
     validate_storage_dir
@@ -419,23 +420,14 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'category': 'library',
         'description': (
             "Token for the control API (<code>/control-api</code>), which lets external tools and scripts "
-            "trigger actions on this server (e.g. a Beets import triggered by a download client "
-            "(qBittorrent, Deluge, Transmission, etc) when a download finishes). "
-            "<br/>"
-            "The control API is disabled while this is empty. "
+            "trigger actions on this server (e.g. a Beets import triggered by a download client when a download finishes). "
+            "<br>"
+            "<br>"
+            "The control API is disabled if this is empty. "
         ),
         'requires_restart': False,
         'sensitive': True,
         'env_var': 'BSN_CONTROL_API_TOKEN',
-    },
-    'restrict_control_api': {
-        'type': 'bool',
-        'default': True,
-        'category': 'security',
-        'description': 'Only serve the control API (<code>/control-api</code>) on the <code>admin</code> scope listeners. '
-                       'Turn off to also serve it on the <code>users</code> scope. ',
-        'requires_restart': False,
-        'env_var': 'BSN_RESTRICT_CONTROL_API',
     },
     'import_watch_enabled': {
         'type': 'bool',
@@ -800,6 +792,30 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
     },
 
     # Security
+    'restrict_control_api': {
+        'type': 'bool',
+        'default': True,
+        'category': 'security',
+        'description': 'Only serve the control API (<code>/control-api</code>) on the <code>admin</code> scope listeners. '
+                       'Turn off to also serve it on the <code>users</code> scope. ',
+        'requires_restart': False,
+        'env_var': 'BSN_RESTRICT_CONTROL_API',
+    },
+    'local_services': {
+        'type': 'list[str]',
+        'default': [],
+        'category': 'security',
+        'description': (
+            f'Services on the local network that may be contacted: hostnames, IP addresses or CIDR ranges '
+            '(comma-separated), for example <code>localhost, 192.168.1.0/24</code>. '
+            '<br>'
+            '<br>'
+            'Connections to private addresses are refused unless they are listed here. Ports are not restricted.'
+        ),
+        'requires_restart': False,
+        'env_var': 'BSN_LOCAL_SERVICES',
+        'validator': validate_local_services,
+    },
     'ip_whitelist': {
         'type': 'list[str]',
         'default': [],

@@ -17,7 +17,11 @@ from requests_cache import CachedSession
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import MAX_REMOTE_IMAGE_BYTES, USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.utils.net import is_public_ip, is_public_url, https_variant, SCHEME_RE, DUPLICATE_SCHEME_RE
+from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.utils.net import (
+    is_public_ip, is_public_url, https_variant, build_local_services, NO_LOCAL_SERVICES, LocalServices,
+    SCHEME_RE, DUPLICATE_SCHEME_RE
+)
 
 
 class RequestThrottle(HTTPAdapter):
@@ -44,7 +48,17 @@ class RequestThrottle(HTTPAdapter):
 ##
 # Public-only connections
 
-def _public_only_connect(host: str, port: int, timeout, source_address, socket_options) -> socket.socket:
+def _local_services() -> LocalServices:
+    """The admin's whitelist of trusted services on the local network."""
+    try:
+        return build_local_services(settings_store.get('local_services') or [])
+    except ValueError:
+        return NO_LOCAL_SERVICES
+
+
+def _public_only_connect(
+    host: str, port: int, timeout, source_address, socket_options, local_services: LocalServices = NO_LOCAL_SERVICES
+) -> socket.socket:
     try:
         infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except UnicodeError as e:
@@ -53,7 +67,9 @@ def _public_only_connect(host: str, port: int, timeout, source_address, socket_o
     last_error: Exception | None = None
     for _family, _, _, _, sockaddr in infos:
         ip = sockaddr[0].split('%', 1)[0]
-        if not is_public_ip(ipaddress.ip_address(ip)):
+
+        addr = ipaddress.ip_address(ip)
+        if not (is_public_ip(addr) or local_services.allows(host, addr)):
             last_error = OSError(f'Refusing to connect to non-public address {ip} ({host})')
             continue
         try:
@@ -65,12 +81,15 @@ def _public_only_connect(host: str, port: int, timeout, source_address, socket_o
 
 
 class _PublicOnlyMixin:
-    """Connection mixin: only opens sockets to public addresses."""
+    """Connection mixin: only opens sockets to public addresses (and local services if 'allow_local_services')."""
+
+    allow_local_services: bool = False
 
     def _new_conn(self) -> socket.socket:
         try:
             return _public_only_connect(
-                self._dns_host, self.port, self.timeout, self.source_address, self.socket_options
+                self._dns_host, self.port, self.timeout, self.source_address, self.socket_options,
+                _local_services() if self.allow_local_services else NO_LOCAL_SERVICES
             )
         except socket.gaierror as e:
             raise NameResolutionError(self.host, self, e) from e
@@ -96,19 +115,43 @@ class _PublicOnlyHTTPSPool(HTTPSConnectionPool):
     ConnectionCls = _PublicOnlyHTTPSConnection
 
 
+class _LocalServicesHTTPConnection(_PublicOnlyHTTPConnection):
+    allow_local_services = True
+
+
+class _LocalServicesHTTPSConnection(_PublicOnlyHTTPSConnection):
+    allow_local_services = True
+
+
+class _LocalServicesHTTPPool(_PublicOnlyHTTPPool):
+    ConnectionCls = _LocalServicesHTTPConnection
+
+
+class _LocalServicesHTTPSPool(_PublicOnlyHTTPSPool):
+    ConnectionCls = _LocalServicesHTTPSConnection
+
+
 class PublicOnlyAdapter(HTTPAdapter):
     """
     HTTPAdapter that refuses to connect to private/loopback/link-local/reserved addresses.
     (connections made through a https(s) proxy aren't affected)
     """
 
+    def __init__(self, *args, allow_local_services: bool = False, **kwargs):
+        self._allow_local_services = allow_local_services
+        super().__init__(*args, **kwargs)
+
     def init_poolmanager(self, *args, **kwargs):
         super().init_poolmanager(*args, **kwargs)
-        self.poolmanager.pool_classes_by_scheme = {'http': _PublicOnlyHTTPPool, 'https': _PublicOnlyHTTPSPool}
+
+        # Addresses and hostnames whitelisted in 'local_services' setting are also accepted
+        if self._allow_local_services:
+            self.poolmanager.pool_classes_by_scheme = {'http': _LocalServicesHTTPPool, 'https': _LocalServicesHTTPSPool}
+        else:
+            self.poolmanager.pool_classes_by_scheme = {'http': _PublicOnlyHTTPPool, 'https': _PublicOnlyHTTPSPool}
 
 
-@functools.cache
-def http_session() -> CachedSession:
+def _build_session(allow_local_services: bool) -> CachedSession:
     session = CachedSession(
         str(app.config['HTTP_CACHE_PATH']),
         backend='sqlite',
@@ -119,9 +162,9 @@ def http_session() -> CachedSession:
 
     session.headers.update({'User-Agent': USER_AGENT})
 
-    public_adapter = PublicOnlyAdapter()
-    session.mount('http://', public_adapter)
-    session.mount('https://', public_adapter)
+    adapter = PublicOnlyAdapter(allow_local_services=allow_local_services)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
 
     # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
     # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
@@ -129,6 +172,18 @@ def http_session() -> CachedSession:
     session.mount('https://musicbrainz.org', musicbrainz_adapter)
     session.mount('http://musicbrainz.org', musicbrainz_adapter)
     return session
+
+
+@functools.cache
+def http_session() -> CachedSession:
+    """Public internet only."""
+    return _build_session(allow_local_services=False)
+
+
+@functools.cache
+def service_session() -> CachedSession:
+    """Public internet + the services whitelisted in 'local_services'."""
+    return _build_session(allow_local_services=True)
 
 
 def fetch_public(url: str, *, cache: bool = False, **kwargs) -> requests.Response:

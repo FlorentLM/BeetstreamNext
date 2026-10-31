@@ -59,7 +59,7 @@
         <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value }}"
                list="jukebox-devices-list" placeholder="mpv audio device, Sonos IP, Chromecast UUID" {{ dis }}>
         <datalist id="jukebox-devices-list"></datalist>
-    {%- elif key in ('host', 'public_hosts', 'admin_hosts') -%}
+    {%- elif key in ('host', 'public_hosts', 'admin_hosts', 'local_services') -%}
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <input id="set-{{ key }}" type="text" name="{{ key }}" value="{{ info.value | join(', ') }}"
                placeholder="Not set" {{ dis }}>

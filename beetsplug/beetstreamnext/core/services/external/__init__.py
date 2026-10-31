@@ -3,7 +3,7 @@ from __future__ import annotations
 import requests
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.services.external.session import http_session
+from beetsplug.beetstreamnext.core.services.external.session import service_session
 
 
 class ExternalService:
@@ -22,9 +22,14 @@ class ExternalService:
             kwargs.update(expire_after=0, force_refresh=True)
 
         try:
-            response = http_session().request(method, url, **kwargs)
+            response = service_session().request(method, url, **kwargs)
         except requests.exceptions.RequestException as e:
             bsn_logger.warning(f'{self.label or url} request failed: {type(e).__name__}')
+            if 'non-public address' in str(e):
+                bsn_logger.warning(
+                    f'{self.label or url} is on a private address: add its hostname or IP to the '
+                    "'local_services' setting to allow it."
+                )
             return None
 
         if getattr(response, 'from_cache', False):

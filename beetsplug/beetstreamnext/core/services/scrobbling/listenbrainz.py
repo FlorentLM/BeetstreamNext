@@ -27,7 +27,10 @@ class ListenBrainzScrobbler(ScrobblerBase):
             headers={'Authorization': f"Token {credentials['token']}"}
         )
         if response is None:
-            raise ScrobbleError('Could not reach ListenBrainz.')
+            raise ScrobbleError(
+                'Could not reach ListenBrainz. Check the URL (a server on a private network '
+                'has to be allowed by an admin first).'
+            )
 
         try:
             body = response.json()

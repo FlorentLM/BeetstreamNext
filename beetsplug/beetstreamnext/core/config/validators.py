@@ -10,7 +10,7 @@ from uuid import UUID
 
 from beetsplug.beetstreamnext.constants import UNIX_SOCKET_PREFIX
 from beetsplug.beetstreamnext.core.accounts.passwords import password_problems
-from beetsplug.beetstreamnext.utils.net import parse_host
+from beetsplug.beetstreamnext.utils.net import parse_host, parse_local_service
 
 
 
@@ -148,6 +148,17 @@ def validate_host_list(hosts: List[str]) -> List[str]:
         if not parsed.host or parsed.scheme or parsed.port:
             raise ValueError(f"'{h}' is not a bare hostname or IP address.")
         result.append(parsed.host)
+    return result
+
+
+def validate_local_services(entries: List[str]) -> List[str]:
+    """Each entry is a bare hostname, an IP address or a CIDR range."""
+
+    result = []
+    for e in entries:
+        value = parse_local_service(e)
+        if value not in result:
+            result.append(value)
     return result
 
 

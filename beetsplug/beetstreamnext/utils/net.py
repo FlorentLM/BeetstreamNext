@@ -6,7 +6,7 @@ import socket
 import time
 import urllib.parse
 from functools import lru_cache
-from typing import List, NamedTuple, Optional, Set
+from typing import Iterable, List, NamedTuple, Optional, Set, Tuple
 
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.utils.text import split_list
@@ -222,6 +222,60 @@ def is_public_url(url: str) -> bool:
         return False
 
     return _hostname_is_public(hostname, _cache_ttl_hash=round(time.time() / 300))
+
+
+##
+# Local services: private-network destinations the admin explicitly trusts
+
+class LocalServices(NamedTuple):
+    hostnames: frozenset            # Trusted names no matter what they resolve to (container names, 'localhost'...)
+    networks: Tuple                 # Trusted IP addresses and CIDR ranges
+
+    def allows(self, host: str, addr: ipaddress._BaseAddress) -> bool:
+        """
+        Whether a connection to `host` resolved to `addr` is allowed.
+        """
+
+        if host.rstrip('.').lower() in self.hostnames:
+            return True
+
+        if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+            addr = addr.ipv4_mapped
+
+        return any(addr in net for net in self.networks if net.version == addr.version)
+
+
+NO_LOCAL_SERVICES = LocalServices(frozenset(), ())
+
+
+def parse_local_service(entry: str) -> str:
+    """Normalises one entry (hostname, IP address or CIDR range) or raises ValueError."""
+
+    raw = str(entry or '').strip()
+    try:
+        return str(ipaddress.ip_network(raw, strict=False))
+    except ValueError:
+        pass
+
+    parsed = parse_host(raw)
+    if not parsed.host or parsed.scheme or parsed.port:
+        raise ValueError(f"'{raw}' is not a hostname, IP address or CIDR range (no scheme, no port).")
+
+    return parsed.host
+
+
+def build_local_services(entries: Iterable[str]) -> LocalServices:
+
+    hostnames = set()
+    networks = []
+    for entry in entries or ():
+        value = parse_local_service(entry)
+        try:
+            networks.append(ipaddress.ip_network(value, strict=False))
+        except ValueError:
+            hostnames.add(value.lower())
+
+    return LocalServices(frozenset(hostnames), tuple(networks))
 
 
 ##

@@ -26,7 +26,7 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
-_COMMA_LISTS = {'public_hosts', 'admin_hosts'}      # List settings edited as comma-separated text
+_COMMA_LISTS = {'public_hosts', 'admin_hosts', 'local_services'}      # List settings edited as comma-separated text
 
 # Settings rendered together in a single row: {primary key: secondary key}
 _PAIRED_WITH = {

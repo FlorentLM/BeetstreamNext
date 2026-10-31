@@ -19,7 +19,7 @@
     </div>
 
     <div class="form-group">
-        <label>Password</label>
+        <label>Password <span class="label-hint">(leave blank to keep current one)</span></label>
         {{ macros.password_rules() }}
         {{ edit_form.password(placeholder="••••••••••••", autocomplete="new-password") }}
     </div>

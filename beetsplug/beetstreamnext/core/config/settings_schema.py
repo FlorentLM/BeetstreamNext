@@ -14,7 +14,6 @@ from beetsplug.beetstreamnext.core.config.validators import (
     validate_choice,
     validate_external_hostname,
     validate_host_list,
-    validate_http_url,
     validate_int_range,
     validate_jukebox_device,
     validate_local_services,
@@ -806,7 +805,7 @@ SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
         'default': [],
         'category': 'security',
         'description': (
-            f'Services on the local network that may be contacted: hostnames, IP addresses or CIDR ranges '
+            'Services on the local network that may be contacted: hostnames, IP addresses or CIDR ranges '
             '(comma-separated), for example <code>localhost, 192.168.1.0/24</code>. '
             '<br>'
             '<br>'

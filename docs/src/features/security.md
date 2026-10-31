@@ -65,3 +65,17 @@ Two independent buckets slow down brute-force attempts:
 ---
 
 See the [configuration reference](../configuration.md) for any of the settings mentioned here.
+
+## Services on your local network
+
+To prevent users from making the server contact things it should not (a request forgery, or SSRF), **BeetstreamNext** restricts connections to private addresses (`localhost`, `192.168.x.x`, Docker container names, etc.).
+
+When you need **BeetstreamNext** to reach a self-hosted service (for example a [multi-scrobbler](./scrobbling.md#using-multi-scrobbler) instance, an admin can whitelist it in the [`local_services`](../configuration.md#local_services) setting (hostnames, IP addresses or CIDR ranges are accepted).
+
+- A hostname is trusted whatever address it resolves to (convenient for container names).
+
+- An IP or a range is trusted by address.
+
+- Ports are not restricted.
+
+- The whitelist only applies to services that an admin or user configures, like external scrobbling. Simple fetchable URLs like podcast feeds, radio streams, images, always stay restricted to public-only.

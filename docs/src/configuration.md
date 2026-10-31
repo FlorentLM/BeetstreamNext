@@ -542,7 +542,7 @@ Allow editing the Beets config file from the admin panel. <br>A Beets config cou
 
 ### `control_api_token`
 
-Token for the control API (<code>/control-api</code>), which lets external tools and scripts trigger actions on this server (e.g. a Beets import triggered by a download client (qBittorrent, Deluge, Transmission, etc) when a download finishes). <br/>The control API is disabled while this is empty.
+Token for the control API (<code>/control-api</code>), which lets external tools and scripts trigger actions on this server (e.g. a Beets import triggered by a download client when a download finishes). <br><br>The control API is disabled if this is empty.
 
 <span style="color:#6b5c58">**sensitive**</span>
 
@@ -879,6 +879,18 @@ Only serve the control API (<code>/control-api</code>) on the <code>admin</code>
 *default:* `True`
 
 *env:* `BSN_RESTRICT_CONTROL_API`
+
+---
+
+### `local_services`
+
+Services on the local network that may be contacted: hostnames, IP addresses or CIDR ranges (comma-separated), for example <code>localhost, 192.168.1.0/24</code>. <br><br>Connections to private addresses are refused unless they are listed here. Ports are not restricted.
+
+*type:* `list[str]`
+
+*default:* *(empty)*
+
+*env:* `BSN_LOCAL_SERVICES`
 
 ---
 

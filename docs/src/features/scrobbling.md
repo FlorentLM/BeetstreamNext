@@ -10,6 +10,18 @@ To scrobble, a user needs the _Scrobbling_ [role](./accounts-and-permissions.md#
 
 2. In **BeetstreamNext**, open your account page (or the admin panel's **Connections** tab) and paste the token in the **Scrobble** card.
 
+## Using multi-scrobbler
+
+[multi-scrobbler](https://github.com/FoxxMD/multi-scrobbler) can collect your listens and forward them to many services at once (Last.fm, Maloja, Koito, etc.). There are two ways to use it with **BeetstreamNext**:
+
+- **ListenBrainz endpoint:** in multi-scrobbler, add a _ListenBrainz endpoint_ source, then in the **Scrobble** card here set the **URL** to your multi-scrobbler address (for example `http://multi-scrobbler:9078`) and use the token from that source.
+
+- **Subsonic source:** in multi-scrobbler, add a _Subsonic_ source pointing at your **BeetstreamNext** server with your username and an [app password](./app-passwords.md). Nothing to set up here, but multi-scrobbler works by polling the "now playing" endpoint, so play times are less precise.
+
+> [!IMPORTANT]
+>
+> With the ListenBrainz endpoint on a self-hosted multi-scrobbler instance, you need to allow **BeetstreamNext** to reach it on your private network: see [Services on your local network](./security.md#services-on-your-local-network).
+
 ## What is sent
 
 | When                                                 | What                                                             |

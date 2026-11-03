@@ -1,4 +1,4 @@
-{% from '_macros.html' import icon %}
+{% from '_macros.html' import icon, data_table %}
 
 {% if message %}
     <div class="flash flash-success">{{ message }}</div>
@@ -18,71 +18,56 @@
 {%- endmacro %}
 
 <div class="table-container">
-    <table class="shares-table">
-        <thead>
-        <tr>
-            <th>Share</th>
-            {% if admin %}
-                <th>Creator</th>{% endif %}
-            <th>Content</th>
-            <th>{{ 'Traffic' if admin else 'Visits' }}</th>
-            <th>Downloads</th>
-            <th>Expires</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
+    {% if shares %}
+        {% set rows = [] %}
         {% for s in shares %}
-            <tr>
-                {% if admin %}
-                    <td>{{ share_link(s) }}</td>
-                    <td><strong>{{ s.username }}</strong></td>
-                    <td><span class="badge">{{ share_contents(s) }}</span></td>
-                    <td><span class="badge badge-limit">{{ s.visit_count or 0 }} visits</span></td>
-                    <td><span class="badge badge-limit">{{ s.download_count }}{% if s.max_downloads %} /
-                        {{ s.max_downloads }}{% endif %}</span></td>
-                {% else %}
-                    <td>{{ share_link(s) }}</td>
-                    <td>{{ share_contents(s) }}</td>
-                    <td>{{ s.visit_count or 0 }}</td>
-                    <td>{{ s.download_count }}{% if s.max_downloads %} / {{ s.max_downloads }}{% endif %}</td>
-                {% endif %}
-                <td>
-                    {% if s.expires %}
-                        <span class="chat-time" data-date-only="1" data-timestamp="{{ (s.expires * 1000) | int }}">Loading...</span>
-                    {% elif admin %}
-                        <span class="badge badge-success">Never</span>
-                    {% else %}
-                        Never
-                    {% endif %}
-                </td>
-                <td class="actions-cell">
-                    <button class="icon-btn" title="Copy link" aria-label="Copy link of share {{ s.id }}"
-                            data-action="copy-share-url" data-url="{{ s.url }}">
-                        {{ icon('copy') }}
-                    </button>
-                    <button class="icon-btn" title="Edit" aria-label="Edit share {{ s.id }}"
-                            hx-get="{{ url_for(edit_endpoint, share_id=s.id) }}"
-                            hx-target="#editShareModalBody"
-                            hx-swap="innerHTML">
-                        {{ icon('edit') }}
-                    </button>
-                    <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}"
-                            hx-post="{{ url_for(delete_endpoint, share_id=s.id) }}"
-                            hx-target="closest .table-container"
-                            hx-swap="outerHTML"
-                            hx-confirm="Delete share '{{ s.id }}'? Its public link will stop working immediately.">
-                        {{ icon('delete') }}
-                    </button>
-                </td>
-            </tr>
-        {% else %}
-            <tr>
-                <td colspan="{{ 7 if admin else 6 }}" class="empty-state">
-                    {{ 'No shares created yet.' if admin else "You haven't shared anything." }}
-                </td>
-            </tr>
+            {% set link_html %}{{ share_link(s) }}{% endset %}
+            {% set actions_html %}
+                <button class="icon-btn" title="Copy link" aria-label="Copy link of share {{ s.id }}"
+                        data-action="copy-share-url" data-url="{{ s.url }}">
+                    {{ icon('copy') }}
+                </button>
+                <button class="icon-btn" title="Edit" aria-label="Edit share {{ s.id }}"
+                        hx-get="{{ url_for(edit_endpoint, share_id=s.id) }}"
+                        hx-target="#editShareModalBody"
+                        hx-swap="innerHTML">
+                    {{ icon('edit') }}
+                </button>
+                <button class="icon-btn icon-btn-delete" title="Delete" aria-label="Delete share {{ s.id }}"
+                        hx-post="{{ url_for(delete_endpoint, share_id=s.id) }}"
+                        hx-target="closest .table-container"
+                        hx-swap="outerHTML"
+                        hx-confirm="Delete share '{{ s.id }}'? Its public link will stop working immediately.">
+                    {{ icon('delete') }}
+                </button>
+            {% endset %}
+            {% set downloads_html %}{{ s.download_count }}{% if s.max_downloads %} / {{ s.max_downloads }}{% endif %}{% endset %}
+            {% set _ = rows.append({
+                'share': s.description or s.id,
+                'share_html': link_html,
+                'creator': s.username,
+                'content': share_contents(s),
+                'visits': s.visit_count or 0,
+                'downloads': s.download_count,
+                'downloads_html': downloads_html,
+                'expires': (s.expires * 1000) | int if s.expires else 0,
+                'actions': actions_html,
+            }) %}
         {% endfor %}
-        </tbody>
-    </table>
+        {% set cols = [
+            {'title': 'Share', 'field': 'share', 'cssClass': 'cell-wrap', 'html': 'share_html', 'minWidth': 200},
+            {'title': 'Content', 'field': 'content', 'filter': false},
+            {'title': 'Traffic' if admin else 'Visits', 'field': 'visits', 'type': 'number', 'filter': false},
+            {'title': 'Downloads', 'field': 'downloads', 'type': 'number', 'html': 'downloads_html', 'filter': false},
+            {'title': 'Expires', 'field': 'expires', 'type': 'time',
+             'formatterParams': {'empty': 'Never', 'dateOnly': true}, 'filter': false},
+            {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+        ] %}
+        {% if admin %}
+            {% set _ = cols.insert(1, {'title': 'Creator', 'field': 'creator'}) %}
+        {% endif %}
+        {{ data_table({'columns': cols, 'rows': rows, 'pageSize': 10}) }}
+    {% else %}
+        <p class="empty-state">{{ 'No shares created yet.' if admin else "You haven't shared anything." }}</p>
+    {% endif %}
 </div>

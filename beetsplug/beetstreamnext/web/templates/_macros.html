@@ -58,3 +58,11 @@
         {%- endfor %}
     </ul>
 {%- endmacro %}
+
+
+{% macro data_table(table) -%}
+    <div data-table='{{ table | tojson }}'
+         data-table-js="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"
+         data-table-css="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}"
+         data-table-theme="{{ url_for('static', filename='css/table.css') }}"></div>
+{%- endmacro %}

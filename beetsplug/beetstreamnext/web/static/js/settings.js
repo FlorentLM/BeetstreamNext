@@ -524,9 +524,8 @@
     });
 
     // Episodes lists are lazy-loaded htmx
-    document.body.addEventListener('htmx:after:swap', event => {
-        const target = event.detail.ctx.target;
-        if (!target?.closest('.podcast-episodes')) return;
+    document.body.addEventListener('table:render', event => {
+        if (!event.target.closest('.podcast-episodes')) return;
         syncPodcastStatuses();
     });
 

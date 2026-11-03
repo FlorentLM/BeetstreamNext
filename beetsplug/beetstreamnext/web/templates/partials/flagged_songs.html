@@ -1,3 +1,5 @@
+{% import '_macros.html' as macros %}
+
 <span id="flagged-songs-summary"
       hx-swap-oob="true">{{ flagged_songs|length }} flagged song{{ 's' if flagged_songs|length != 1 }}</span>
 
@@ -18,16 +20,14 @@
             {'title': 'Title', 'field': 'title', 'width': 220},
             {'title': 'Artist', 'field': 'artist', 'width': 160},
             {'title': 'Album', 'field': 'album', 'width': 220},
-            {'title': 'Issue', 'field': 'issue', 'width': 140, 'type': 'badge'},
+            {'title': 'Issue', 'field': 'issue', 'width': 140, 'type': 'badge', 'filter': 'select'},
             {'title': 'Checked', 'field': 'checked', 'width': 170, 'type': 'time'},
             {'title': 'Detail', 'field': 'detail', 'width': 500},
         ],
         'rows': rows,
+        'layout': 'fitDataFill',
     } %}
-    <div data-table='{{ table | tojson }}'
-         data-table-js="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"
-         data-table-css="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}"
-         data-table-theme="{{ url_for('static', filename='css/table.css') }}"></div>
+    {{ macros.data_table(table) }}
 
 {% else %}
     <p class="empty-state">No flagged songs.</p>

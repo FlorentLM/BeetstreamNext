@@ -113,18 +113,40 @@
         return tabulatorLoading;
     }
 
+    function htmlFormatter(key) {
+        return (cell, params, onRendered) => {
+            onRendered(() => window.htmx?.process(cell.getElement()));
+            return cell.getData()[key] ?? '';
+        };
+    }
+
     const TABLE_COLUMN_TYPES = {
         badge: {
-            formatter: cell => {
+            formatter: (cell, params) => {
                 const pill = document.createElement('span');
-                pill.className = 'badge badge-admin';
+                pill.className = ('badge ' + (params?.cls ?? 'badge-admin')).trim();
                 pill.textContent = cell.getValue();
                 return pill;
             }
         },
         time: {
             sorter: 'number',
-            formatter: cell => new Date(cell.getValue()).toLocaleString()
+            formatter: (cell, params) => {
+                const value = cell.getValue();
+                if (!value) return params?.empty ?? '—';
+                const date = new Date(value);
+                return params?.dateOnly ? date.toLocaleDateString() : date.toLocaleString();
+            }
+        },
+        number: {
+            sorter: 'number'
+        },
+        actions: {
+            headerSort: false,
+            resizable: false,
+            widthShrink: 0,
+            hozAlign: 'right',
+            cssClass: 'table-actions'
         }
     };
 
@@ -152,8 +174,37 @@
         return wrap;
     }
 
-    function withFilter(col) {
-        if (col.type === 'time') return col;
+
+    function selectPopup(values) {
+        return (e, column, onRendered) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'table-filter-popup';
+            const select = document.createElement('select');
+            select.append(new Option('All', ''));
+            values.forEach(value => select.append(new Option(value, value)));
+            select.value = column.getHeaderFilterValue() || '';
+            select.addEventListener('change', () => {
+                column.setHeaderFilterValue(select.value);
+                column.getElement().querySelector('.table-filter-icon')?.classList.toggle('active', select.value !== '');
+            });
+            wrap.append(select);
+            onRendered(() => select.focus());
+            return wrap;
+        };
+    }
+
+    function withFilter(col, rows) {
+        if (col.filter === 'select') {
+            const values = [...new Set(rows.map(row => row[col.field]).filter(v => v !== '' && v != null))].sort();
+            return {
+                ...col,
+                headerPopup: selectPopup(values),
+                headerPopupIcon: filterIcon,
+                headerFilter: () => document.createElement('div'),
+                headerFilterFunc: '='
+            };
+        }
+        if (col.filter === false || ['time', 'actions', 'number', 'badge'].includes(col.type)) return col;
         return {
             ...col,
             headerPopup: filterPopup,
@@ -163,24 +214,93 @@
         };
     }
 
+    // icon columns fixed to content witdh and rest of table fills the container
+    function fitTable(table, el) {
+        let natural = null;
+        const fit = () => {
+            const cols = table.getColumns();
+
+            // Header: title + filter + sort + padding
+            const textWidth = node => {
+                if (!node) return 0;
+                const range = document.createRange();
+                range.selectNodeContents(node);
+                return range.getBoundingClientRect().width;
+            };
+            const headerNeed = cols.map(c => Math.ceil(textWidth(c.getElement().querySelector('.tabulator-col-title'))) + 50);
+
+            if (!natural && !cols.some(c => c.getCells().length)) return;
+            natural ??= cols.map((c, i) => Math.max(headerNeed[i], ...c.getCells().map(cell => cell.getElement().scrollWidth + 2)));
+            el.classList.add('table-fitted');
+            const isActions = c => c.getDefinition().type === 'actions';
+            const isWrap = c => c.getDefinition().cssClass?.includes('cell-wrap');
+
+            const widths = cols.map((c, i) => isActions(c)
+                ? Math.max(natural[i], ...c.getCells().map(cell => cell.getElement().scrollWidth))
+                : natural[i]);
+            const flex = cols.map((c, i) => i).filter(i => !isActions(cols[i]));
+            const avail = el.clientWidth - 2 - cols.reduce((n, c, i) => n + (isActions(c) ? widths[i] : 0), 0);
+            const total = flex.reduce((n, i) => n + widths[i], 0);
+
+            if (total > avail) {
+                let deficit = total - avail;
+                for (const [group, minimum] of [[flex.filter(i => isWrap(cols[i])), 160], [flex, 0], [flex.filter(i => !isWrap(cols[i])), -1], [flex, -1]]) {
+                    const floors = group.map(i => minimum < 0 ? 64 : Math.max(minimum, headerNeed[i]));
+                    const room = group.reduce((n, i, k) => n + Math.max(0, widths[i] - floors[k]), 0);
+                    if (!room) continue;
+                    const take = Math.min(deficit, room);
+                    group.forEach((i, k) => widths[i] -= take * Math.max(0, widths[i] - floors[k]) / room);
+                    deficit -= take;
+                    if (deficit <= 0) break;
+                }
+            } else if (flex.length) {
+                const wraps = flex.filter(i => isWrap(cols[i]));
+                const weights = flex.map(i => (wraps.length ? wraps.includes(i) : true) ? widths[i] : 0);
+                const weightSum = weights.reduce((n, w) => n + w, 0);
+                flex.forEach((i, k) => widths[i] += (avail - total) * weights[k] / weightSum);
+            }
+            let changed = false;
+            cols.forEach((c, i) => {
+                if (Math.abs(c.getWidth() - widths[i]) < 1) return;
+                c.setWidth(Math.floor(widths[i]));
+                changed = true;
+            });
+            if (changed) setTimeout(() => {
+                table.getRows().forEach(row => row.normalizeHeight(true));
+                table.rowManager.adjustTableSize();
+            }, 60);
+        };
+        table.on('tableBuilt', fit);
+        table.on('renderComplete', fit);
+        new ResizeObserver(fit).observe(el);
+    }
+
     function initTables(root = document) {
         root.querySelectorAll('[data-table]:not([data-table-ready])').forEach(el => {
             el.dataset.tableReady = '1';
             const spec = JSON.parse(el.dataset.table);
             loadTabulator(el).then(() => {
-                new Tabulator(el, {
+                const table = new Tabulator(el, {
                     data: spec.rows,
                     columns: spec.columns.map(col => withFilter({
                         ...col,
                         ...TABLE_COLUMN_TYPES[col.type],
+                        ...(col.html ? {formatter: htmlFormatter(col.html)} : {}),
                         minWidth: 60,
-                        tooltip: true
-                    })),
+                        tooltip: !col.html
+                    }, spec.rows)),
 
-                    layout: 'fitDataFill',
+                    layout: spec.layout || 'fitData',
+                    headerSort: spec.sortable !== false,
+                    rowFormatter: row => {
+                        const cls = row.getData()._class;
+                        if (cls) row.getElement().classList.add(...cls.split(' '));
+                    },
                     pagination: true,
                     paginationSize: spec.pageSize || 25
                 });
+                if (!spec.layout) fitTable(table, el);
+                table.on('renderComplete', () => el.dispatchEvent(new CustomEvent('table:render', {bubbles: true})));
             }).catch(() => {
                 el.textContent = 'Could not load the table.';
             });

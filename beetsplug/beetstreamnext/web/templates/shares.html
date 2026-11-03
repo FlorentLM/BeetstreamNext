@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import '_macros.html' as macros %}
 
 {% block title %} - {{ 'Shared album' if albums else ('Shared track' if songs else 'Shared files') }}{% endblock %}
 
@@ -45,41 +46,43 @@
                         </div>
                     </div>
                     <div class="table-container">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th class="track-number">#</th>
-                                <th>Title</th>
-                                <th>Duration</th>
-                                <th>Format</th>
-                                <th>Size</th>
-                                <th class="cell-right"></th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {% for song in album.song %}
-                                <tr>
-                                    <td class="track-number">{{ song.track or '' }}</td>
-                                    <td class="track-title">{{ song.title }}</td>
-                                    <td class="session-user">{{ song.duration | duration }}</td>
-                                    <td class="session-user">{{ song.suffix | upper }}</td>
-                                    <td class="session-user">{{ song.size | filesize }}</td>
-                                    <td class="actions-cell">
-                                        <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
-                                           class="icon-btn" title="Download"
-                                           aria-label="Download &quot;{{ song.title }}&quot;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                 stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M12 3v12"/>
-                                                <path d="M7 10l5 5 5-5"/>
-                                                <path d="M5 21h14"/>
-                                            </svg>
-                                        </a>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
+                        {% set rows = [] %}
+                        {% for song in album.song %}
+                            {% set actions_html %}
+                                <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+                                   class="icon-btn" title="Download"
+                                   aria-label="Download &quot;{{ song.title }}&quot;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3v12"/>
+                                        <path d="M7 10l5 5 5-5"/>
+                                        <path d="M5 21h14"/>
+                                    </svg>
+                                </a>
+                            {% endset %}
+                            {% set _ = rows.append({
+                                'track': song.track or none,
+                                'title': song.title,
+                                'duration': song.duration or 0,
+                                'duration_text': song.duration | duration,
+                                'format': (song.suffix or '') | upper,
+                                'size': song.size or 0,
+                                'size_text': song.size | filesize,
+                                'actions': actions_html,
+                            }) %}
+                        {% endfor %}
+                        {{ macros.data_table({
+                            'columns': [
+                                {'title': '#', 'field': 'track', 'type': 'number'},
+                                {'title': 'Title', 'field': 'title', 'cssClass': 'cell-wrap', 'minWidth': 200},
+                                {'title': 'Duration', 'field': 'duration', 'type': 'number', 'html': 'duration_text', 'filter': false},
+                                {'title': 'Format', 'field': 'format', 'filter': 'select'},
+                                {'title': 'Size', 'field': 'size', 'type': 'number', 'html': 'size_text', 'filter': false},
+                                {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+                            ],
+                            'rows': rows,
+                            'pageSize': 100,
+                        }) }}
                     </div>
                 </div>
             {% endfor %}
@@ -104,4 +107,8 @@
             {% endfor %}
         {% endif %}
     </div>
+{% endblock %}
+
+{% block scripts %}
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
 {% endblock %}

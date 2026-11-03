@@ -1,3 +1,5 @@
+{% from '_macros.html' import data_table %}
+
 <p class="card-hint">Pinned folders to import <strong>non-interactively</strong>. These are what a Subsonic client's <code>startScan</code> runs.</p>
 
 {% if message and not ok %}
@@ -5,45 +7,57 @@
 {% endif %}
 
 <div class="pinned-paths-frame">
-    <table class="rate-limit-table pinned-paths-table">
-        <thead>
-        <tr><th>Path</th><th>Incremental</th><th>Watched</th><th>Last auto-scan</th><th></th></tr>
-        </thead>
-        <tbody>
+    {% if pinned %}
+        {% set rows = [] %}
         {% for p in pinned %}
-            <tr>
-                <td class="pinned-path">{{ p.path }}</td>
-                <td>
-                    <input type="checkbox" name="incremental" value="1" {{ 'checked' if p.incremental }}
-                           title="Skip folders already processed on earlier scans"
-                           hx-post="{{ url_for('admin.route_pinned_paths_incremental', path_id=p.id) }}"
-                           hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
-                           hx-target="#pinnedPaths"
-                           hx-swap="innerHTML">
-                </td>
-                <td>
-                    <input type="checkbox" name="watch" value="1" {{ 'checked' if p.watch }}
-                           title="Automatically import new files from this folder"
-                           hx-post="{{ url_for('admin.route_pinned_paths_watch', path_id=p.id) }}"
-                           hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
-                           hx-target="#pinnedPaths"
-                           hx-swap="innerHTML">
-                </td>
-                <td>{{ p.last_triggered or '—' }}</td>
-                <td>
-                    <form hx-post="{{ url_for('admin.route_pinned_paths_remove', path_id=p.id) }}"
-                          hx-target="#pinnedPaths"
-                          hx-swap="innerHTML">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="pinned-path-remove" title="Unpin" aria-label="Unpin"><span class="material-symbols-outlined">close</span></button>
-                    </form>
-                </td>
-            </tr>
-        {% else %}
-            <tr><td colspan="5" class="pinned-path">No pinned paths yet.</td></tr>
+            {% set incremental_html %}
+                <input type="checkbox" name="incremental" value="1" {{ 'checked' if p.incremental }}
+                       title="Skip folders already processed on earlier scans"
+                       hx-post="{{ url_for('admin.route_pinned_paths_incremental', path_id=p.id) }}"
+                       hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                       hx-target="#pinnedPaths"
+                       hx-swap="innerHTML">
+            {% endset %}
+            {% set watch_html %}
+                <input type="checkbox" name="watch" value="1" {{ 'checked' if p.watch }}
+                       title="Automatically import new files from this folder"
+                       hx-post="{{ url_for('admin.route_pinned_paths_watch', path_id=p.id) }}"
+                       hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                       hx-target="#pinnedPaths"
+                       hx-swap="innerHTML">
+            {% endset %}
+            {% set actions_html %}
+                <form hx-post="{{ url_for('admin.route_pinned_paths_remove', path_id=p.id) }}"
+                      hx-target="#pinnedPaths"
+                      hx-swap="innerHTML">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="pinned-path-remove" title="Unpin" aria-label="Unpin"><span class="material-symbols-outlined">close</span></button>
+                </form>
+            {% endset %}
+            {% set _ = rows.append({
+                'path': p.path,
+                'incremental': 1 if p.incremental else 0,
+                'incremental_html': incremental_html,
+                'watch': 1 if p.watch else 0,
+                'watch_html': watch_html,
+                'last_triggered': p.last_triggered or '—',
+                'actions': actions_html,
+            }) %}
         {% endfor %}
-        </tbody>
-    </table>
+        {{ data_table({
+            'columns': [
+                {'title': 'Path', 'field': 'path', 'minWidth': 200, 'cssClass': 'cell-wrap'},
+                {'title': 'Incremental', 'field': 'incremental', 'type': 'number', 'html': 'incremental_html', 'filter': false},
+                {'title': 'Watched', 'field': 'watch', 'type': 'number', 'html': 'watch_html', 'filter': false},
+                {'title': 'Last auto-scan', 'field': 'last_triggered', 'filter': false},
+                {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+            ],
+            'rows': rows,
+            'pageSize': 10,
+        }) }}
+    {% else %}
+        <p class="pinned-path empty-state">No pinned paths yet.</p>
+    {% endif %}
 </div>
 
 {% if pinned %}

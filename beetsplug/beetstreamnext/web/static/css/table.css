@@ -14,7 +14,7 @@
 
 .tabulator .tabulator-header .tabulator-col {
     background-color: transparent;
-    border-right: 1px solid var(--border);
+    border-right: none;
 }
 
 .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
@@ -58,7 +58,7 @@
 }
 
 .tabulator-row .tabulator-cell {
-    border-right: 1px solid var(--border);
+    border-right: none;
 }
 
 .tabulator .tabulator-footer {
@@ -128,13 +128,53 @@
 }
 
 .tabulator-row .tabulator-cell {
-    padding: 1rem 1.25rem;
+    padding: 0.9rem 0.75rem;
 }
 
 .tabulator .tabulator-header .tabulator-col .tabulator-col-content {
-    padding: 0.9rem 1.25rem;
+    padding: 0.75rem 0.75rem;
 }
 
 .table-container .tabulator {
     border: none;
+}
+
+.tabulator-row .tabulator-cell.table-actions {
+    flex-shrink: 0;
+    overflow: visible;
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.tabulator-row .tabulator-cell.table-actions form {
+    display: inline-flex;
+}
+
+.tabulator-row .tabulator-cell.cell-wrap {
+    overflow-wrap: anywhere;
+}
+
+.table-fitted .tabulator-row .tabulator-cell.cell-wrap {
+    white-space: normal;
+}
+
+.tabulator-row.rate-limit-blocked,
+.tabulator-row.rate-limit-blocked.tabulator-row-even {
+    background-color: rgba(239, 68, 68, 0.08);
+}
+
+.tabulator-row.history-group {
+    background-color: var(--overlay-weak);
+}
+
+.tabulator-row.history-child .tabulator-cell:nth-child(2) {
+    padding-left: 2.25rem;
+}
+
+.table-filter-popup select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
 }

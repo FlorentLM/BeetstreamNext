@@ -1,79 +1,93 @@
+{% from '_macros.html' import data_table %}
+
 {% if message and not ok %}
     <p class="test-result test-result-fail">{{ message }}</p>
 {% endif %}
 
 {% if rows %}
-    <div class="pinned-paths-frame history-frame history-extra-{{ extra_groups }}">
-        <table class="rate-limit-table history-table">
-            <thead>
-            <tr>
-                <th>When</th>
-                <th>Album</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in rows %}
-                {% if row.kind == 'group' %}
-                    <tr class="history-group">
-                        <td colspan="3" class="history-cell-path">
-                            <span class="history-sub"
-                                  title="{{ row.count }} skipped albums in this folder">{{ row.parent }}</span>
-                        </td>
-                        <td class="history-cell-actions">
-                            <button type="button" class="pinned-path-remove"
-                                    hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=row.entry_id) }}"
-                                    hx-vals='{"csrf_token": "{{ csrf_token() }}", "parent": "1"}'
-                                    hx-target="#importHistory" hx-swap="innerHTML"
-                                    {{ 'disabled' if running }}
-                                    title="Reimport this folder and all its subfolders"
-                                    aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
-                            </button>
-                        </td>
-                    </tr>
+    {% set table_rows = [] %}
+    {% for row in rows %}
+        {% if row.kind == 'group' %}
+            {% set album_html %}
+                <span class="history-sub" title="{{ row.count }} skipped albums in this folder">{{ row.parent }}</span>
+            {% endset %}
+            {% set actions_html %}
+                <button type="button" class="pinned-path-remove"
+                        hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=row.entry_id) }}"
+                        hx-vals='{"csrf_token": "{{ csrf_token() }}", "parent": "1"}'
+                        hx-target="#importHistory" hx-swap="innerHTML"
+                        {{ 'disabled' if running }}
+                        title="Reimport this folder and all its subfolders"
+                        aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
+                </button>
+            {% endset %}
+            {% set status_html %}<span class="badge badge-warning">{{ row.count }} skipped</span>{% endset %}
+            {% set _ = table_rows.append({
+                'when': '',
+                'album': row.parent,
+                'album_html': album_html,
+                'status': 'Skipped',
+                'status_html': status_html,
+                'actions': actions_html,
+                '_class': 'history-group',
+            }) %}
+        {% else %}
+            {% set e = row.entry %}
+            {% set album_html %}
+                {{ e.label }}
+                <p class="history-sub">{{ e.path }}</p>
+                {% if e.reason %}<p class="history-sub history-reason">{{ e.reason }}</p>{% endif %}
+            {% endset %}
+            {% set status_html %}
+                {% if e.outcome == 'imported' %}
+                    <span class="badge badge-success">Imported{% if e.tracks %} ({{ e.tracks }}){% endif %}</span>
                 {% else %}
-                    {% set e = row.entry %}
-                    <tr {% if row.grouped %}class="history-child"{% endif %}>
-                        <td class="history-sub history-cell-when">{{ e.when }}</td>
-                        <td class="history-cell-album">
-                            {{ e.label }}
-                            <p class="history-sub">{{ e.path }}</p>
-                            {% if e.reason %}<p class="history-sub history-reason">{{ e.reason }}</p>{% endif %}
-                        </td>
-                        <td class="history-cell-status">
-                            {% if e.outcome == 'imported' %}
-                                <span class="badge badge-success">Imported{% if e.tracks %} ({{ e.tracks }}
-                                    ){% endif %}</span>
-                            {% else %}
-                                <span class="badge badge-warning">Skipped</span>
-                            {% endif %}
-                        </td>
-                        <td class="history-cell-actions">
-                            <div class="history-actions">
-                                {% if e.outcome == 'skipped' %}
-                                    <button type="button" class="btn btn-outline btn-icon"
-                                            hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=e.id) }}"
-                                            hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
-                                            hx-target="#importHistory" hx-swap="innerHTML"
-                                            {{ 'disabled' if running or not e.exists }}
-                                            title="{{ 'The folder is gone' if not e.exists else 'Reimport this folder interactively' }}"
-                                            aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
-                                    </button>
-                                {% endif %}
-                                <button type="button" class="pinned-path-remove" title="Remove from the list"
-                                        aria-label="Remove from the list"
-                                        hx-post="{{ url_for('admin.route_import_history_remove', entry_id=e.id) }}"
-                                        hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
-                                        hx-target="#importHistory" hx-swap="innerHTML"><span
-                                        class="material-symbols-outlined">close</span></button>
-                            </div>
-                        </td>
-                    </tr>
+                    <span class="badge badge-warning">Skipped</span>
                 {% endif %}
-            {% endfor %}
-            </tbody>
-        </table>
+            {% endset %}
+            {% set actions_html %}
+                <div class="history-actions">
+                    {% if e.outcome == 'skipped' %}
+                        <button type="button" class="btn btn-outline btn-icon"
+                                hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=e.id) }}"
+                                hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                hx-target="#importHistory" hx-swap="innerHTML"
+                                {{ 'disabled' if running or not e.exists }}
+                                title="{{ 'The folder is gone' if not e.exists else 'Reimport this folder interactively' }}"
+                                aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
+                        </button>
+                    {% endif %}
+                    <button type="button" class="pinned-path-remove" title="Remove from the list"
+                            aria-label="Remove from the list"
+                            hx-post="{{ url_for('admin.route_import_history_remove', entry_id=e.id) }}"
+                            hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                            hx-target="#importHistory" hx-swap="innerHTML"><span
+                            class="material-symbols-outlined">close</span></button>
+                </div>
+            {% endset %}
+            {% set _ = table_rows.append({
+                'when': e.when,
+                'album': e.label ~ ' ' ~ e.path ~ ' ' ~ (e.reason or ''),
+                'album_html': album_html,
+                'status': ('Imported' if e.outcome == 'imported' else 'Skipped'),
+                'status_html': status_html,
+                'actions': actions_html,
+                '_class': 'history-child' if row.grouped else '',
+            }) %}
+        {% endif %}
+    {% endfor %}
+    <div class="pinned-paths-frame">
+        {{ data_table({
+            'columns': [
+                {'title': 'When', 'field': 'when', 'filter': false},
+                {'title': 'Album', 'field': 'album', 'html': 'album_html', 'minWidth': 240, 'cssClass': 'cell-wrap'},
+                {'title': 'Status', 'field': 'status', 'html': 'status_html', 'filter': 'select'},
+                {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+            ],
+            'rows': table_rows,
+            'pageSize': 10,
+            'sortable': false,
+        }) }}
     </div>
 
     <form class="card-body-form"

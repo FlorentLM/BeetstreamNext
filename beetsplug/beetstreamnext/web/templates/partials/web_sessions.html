@@ -1,4 +1,5 @@
-{% from '_macros.html' import icon %}
+{% from '_macros.html' import icon, data_table %}
+
 {% set others = sessions | rejectattr('id', 'equalto', current_id) | list %}
 {% if others %}
     <div class="list-header">
@@ -15,42 +16,44 @@
     </div>
 {% endif %}
 <div class="table-container">
-    <table>
-        <thead>
-        <tr>
-            <th>Browser</th>
-            <th>IP</th>
-            <th>Signed in</th>
-            <th>Last active</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
+    {% if sessions %}
+        {% set rows = [] %}
         {% for s in sessions %}
-            <tr>
-                <td class="session-agent"><code>{{ s.user_agent or 'Unknown' }}</code></td>
-                <td>{{ s.ip or '' }}</td>
-                <td><span class="chat-time" data-timestamp="{{ (s.created * 1000) | int }}">Loading...</span></td>
-                <td><span class="chat-time" data-timestamp="{{ (s.last_seen * 1000) | int }}">Loading...</span></td>
-                <td class="actions-cell">
-                    {% if s.id == current_id %}
-                        <span class="badge badge-you">Current</span>
-                    {% else %}
-                        <button class="icon-btn icon-btn-delete" title="Sign out" aria-label="Sign out this session"
-                                hx-post="{{ url_for(bp_name ~ '.route_revoke_session', session_id=s.id) }}"
-                                hx-target="#webSessionList"
-                                hx-swap="innerHTML"
-                                hx-confirm="Sign out this session?">
-                            {{ icon('delete') }}
-                        </button>
-                    {% endif %}
-                </td>
-            </tr>
-        {% else %}
-            <tr>
-                <td colspan="5" class="empty-state">No active sessions.</td>
-            </tr>
+            {% set agent_html %}<code>{{ s.user_agent or 'Unknown' }}</code>{% endset %}
+            {% set actions_html %}
+                {% if s.id == current_id %}
+                    <span class="badge badge-you">Current</span>
+                {% else %}
+                    <button class="icon-btn icon-btn-delete" title="Sign out" aria-label="Sign out this session"
+                            hx-post="{{ url_for(bp_name ~ '.route_revoke_session', session_id=s.id) }}"
+                            hx-target="#webSessionList"
+                            hx-swap="innerHTML"
+                            hx-confirm="Sign out this session?">
+                        {{ icon('delete') }}
+                    </button>
+                {% endif %}
+            {% endset %}
+            {% set _ = rows.append({
+                'agent': s.user_agent or 'Unknown',
+                'agent_html': agent_html,
+                'ip': s.ip or '',
+                'created': (s.created * 1000) | int,
+                'last_seen': (s.last_seen * 1000) | int,
+                'actions': actions_html,
+            }) %}
         {% endfor %}
-        </tbody>
-    </table>
+        {{ data_table({
+            'columns': [
+                {'title': 'Browser', 'field': 'agent', 'html': 'agent_html', 'minWidth': 200, 'cssClass': 'cell-wrap'},
+                {'title': 'IP', 'field': 'ip'},
+                {'title': 'Signed in', 'field': 'created', 'type': 'time', 'filter': false},
+                {'title': 'Last active', 'field': 'last_seen', 'type': 'time', 'filter': false},
+                {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+            ],
+            'rows': rows,
+            'pageSize': 10,
+        }) }}
+    {% else %}
+        <p class="empty-state">No active sessions.</p>
+    {% endif %}
 </div>

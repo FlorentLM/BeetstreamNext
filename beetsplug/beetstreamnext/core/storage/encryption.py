@@ -6,7 +6,7 @@ import secrets
 import os
 import base64
 import time
-from typing import Any, Optional
+from typing import Any
 
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
@@ -175,7 +175,7 @@ def _hash_for(key: str) -> str:
     return sha256_hex(base64.urlsafe_b64decode(key))
 
 
-def get_cipher(key: Optional[str] = None) -> Fernet:
+def get_cipher(key: str | None = None) -> Fernet:
     """Cipher for the BEETSTREAMNEXT_KEY (or of another `key`)."""
 
     key = key or os.environ.get('BEETSTREAMNEXT_KEY')
@@ -184,12 +184,12 @@ def get_cipher(key: Optional[str] = None) -> Fernet:
     return _cipher_for(key)
 
 
-def encrypt_text(text: str, key: Optional[str] = None) -> bytes:
+def encrypt_text(text: str, key: str | None = None) -> bytes:
     """Encrypt text with the BEETSTREAMNEXT_KEY (or another `key`)."""
     return get_cipher(key).encrypt(text.encode('utf-8'))
 
 
-def decrypt_text(token: bytes | str, key: Optional[str] = None) -> str:
+def decrypt_text(token: bytes | str, key: str | None = None) -> str:
     """Decrypt text with the BEETSTREAMNEXT_KEY (or another `key`)."""
     return get_cipher(key).decrypt(token.encode('utf-8') if isinstance(token, str) else token).decode('utf-8')
 
@@ -204,7 +204,7 @@ def decrypt_json(token: bytes | str) -> Any:
     return json.loads(decrypt_text(token))
 
 
-def get_key_hash(key: Optional[str] = None) -> str | None:
+def get_key_hash(key: str | None = None) -> str | None:
     """Hash of the BEETSTREAMNEXT_KEY (or of another `key`)."""
 
     key = key or os.environ.get('BEETSTREAMNEXT_KEY')

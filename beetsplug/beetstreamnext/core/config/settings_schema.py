@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import TypedDict, Any, Callable, Dict, Tuple
+from typing import TypedDict, Any
+from collections.abc import Callable
 
 from beetsplug.beetstreamnext.constants import (
     SERVER_NAME, DATA_LOCATION, RATE_LIMIT_MAX_FAILURES, RATE_LIMIT_BLOCK_WINDOW,
@@ -34,7 +35,7 @@ class SettingDescriptor(TypedDict, total=False):
     standalone_only: bool               # Standalone run mode only: these don't concern plugin run mode
     sensitive: bool                     # Encrypt at rest, hide from logs, etc
     validator: Callable[[Any], Any]     # Raise ValueError on bad input
-    choices: Tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
+    choices: tuple[str, ...]            # If set, admin UI renders a <select> instead of free text
     help: str                           # If set, admin UI shows this as a dotted box
     on_empty: Callable[[], str]         # Admin UI placeholder text/value shown while this is unset
     env_var: str                        # Name of the env var that can also set this key
@@ -63,7 +64,7 @@ def _effective_binary_path(name: str) -> str:
     return find_binary(name) or 'Not found on PATH'
 
 
-SETTINGS_SCHEMA: Dict[str, SettingDescriptor] = {
+SETTINGS_SCHEMA: dict[str, SettingDescriptor] = {
 
     # Server / network
     'host': {

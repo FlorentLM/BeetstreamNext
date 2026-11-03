@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Callable, Optional
+from collections.abc import Callable
 import flask
 
 from beetsplug.beetstreamnext.blueprints import views
@@ -18,7 +18,7 @@ def register_share_routes(bp: flask.Blueprint, login_required: Callable, *, owne
     """
     route = route_registrar(bp, login_required)
 
-    def scope() -> Optional[str]:
+    def scope() -> str | None:
         return flask.session['username'] if owner_only else None
 
     @route('/shares/<share_id>/edit', ['GET'])

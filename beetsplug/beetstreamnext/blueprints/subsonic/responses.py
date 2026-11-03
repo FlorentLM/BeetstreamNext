@@ -1,7 +1,6 @@
 from __future__ import annotations
 import json
 import re
-from typing import List, Optional, Dict
 from xml.etree import ElementTree as ET
 
 import flask
@@ -10,7 +9,7 @@ from beetsplug.beetstreamnext.constants import MAX_REST_IDS, SUBSONIC_API_VER, S
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
-def subsonic_response(data: Optional[Dict] = None, resp_fmt: str = 'xml', failed: bool = False) -> flask.Response:
+def subsonic_response(data: dict | None = None, resp_fmt: str = 'xml', failed: bool = False) -> flask.Response:
     """
     Wraps json-like dict with the subsonic response data and
     outputs the appropriate format (json or xml).
@@ -145,7 +144,7 @@ class TooManyIDs(Exception):
     """Raised by cap_ids() and turned into a Subsonic error by the blueprint's error handler."""
 
 
-def cap_ids(ids: List[str]) -> List[str]:
+def cap_ids(ids: list[str]) -> list[str]:
     """Validator for ID lists."""
     if len(ids) > MAX_REST_IDS:
         raise TooManyIDs(f'Too many IDs. Maximum {MAX_REST_IDS} per call.')

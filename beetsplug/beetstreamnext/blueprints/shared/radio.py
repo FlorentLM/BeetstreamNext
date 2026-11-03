@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import Callable, Optional
+from collections.abc import Callable
 import flask
 
 from beetsplug.beetstreamnext.blueprints import views
@@ -22,7 +22,7 @@ def register_radio_routes(bp: flask.Blueprint, login_required: Callable) -> None
     bp_name = bp.name
     route = route_registrar(bp, login_required)
 
-    def render(message: Optional[str] = None) -> str:
+    def render(message: str | None = None) -> str:
         return views.render_radios(flask.session['username'], message, bp_name=bp_name)
 
     def own_station_or_404(station_id: int) -> dict:

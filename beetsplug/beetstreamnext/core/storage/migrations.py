@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import contextlib
 from pathlib import Path
 import beets
 import flask
@@ -234,7 +235,7 @@ def _oneway_hashes(conn: sqlite3.Connection) -> None:
 
         old_columns = [row[1] for row in conn.execute("""PRAGMA table_info(users)""")]
         columns = [c for c in old_columns if c in ALL_USER_FIELDS]
-        rows = conn.execute(f"""SELECT {', '.join(columns)} FROM users""").fetchall()    # nosec B608
+        rows = conn.execute(f"""SELECT {', '.join(columns)} FROM users""").fetchall()    # nosec B608  # noqa: S608 vars are constants
         pw_index = columns.index('password')
 
         conn.execute(users_table_sql('users_new'))
@@ -259,7 +260,7 @@ def _oneway_hashes(conn: sqlite3.Connection) -> None:
             conn.execute(
                 f"""
                 INSERT INTO users_new ({', '.join(columns)}) VALUES ({', '.join('?' * len(columns))})
-                """,    # nosec B608
+                """,    # nosec B608  # noqa: S608 vars are constants
                 values
             )
 
@@ -551,7 +552,7 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
         # likes/ratings: item_id is already TEXT, but may hold the old 'sg-<row id>' form
         for table in ('likes', 'ratings'):
             legacy_rows = conn.execute(
-                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'sg-[0-9]*'"""  # nosec B608
+                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'sg-[0-9]*'"""  # nosec B608  # noqa: S608 vars are constants
             ).fetchall()
             for rowid, item_id in legacy_rows:
                 try:
@@ -562,10 +563,10 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
                 if new_id is None or new_id == item_id:
                     continue
                 try:
-                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))  # nosec B608
+                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))  # nosec B608  # noqa: S608 vars are constants
                 except sqlite3.IntegrityError:
                     # a row for (username, new_id) already exists: drop the stale duplicate
-                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))  # nosec B608
+                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))  # nosec B608  # noqa: S608 vars are constants
 
         _set_version(conn, version)
         conn.commit()
@@ -573,10 +574,8 @@ def _migrate_to_stable_song_ids(conn: sqlite3.Connection, beets_db_path, version
         conn.rollback()
         raise
     finally:
-        try:
+        with contextlib.suppress(sqlite3.Error):
             conn.execute("""DETACH DATABASE beets_lib""")
-        except sqlite3.Error:
-            pass
         conn.execute("""PRAGMA foreign_keys = ON""")
 
 
@@ -614,7 +613,7 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, versio
 
         for table in ('likes', 'ratings'):
             legacy_rows = conn.execute(
-                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'al-[0-9]*'"""  # nosec B608
+                f"""SELECT rowid, item_id FROM {table} WHERE item_id GLOB 'al-[0-9]*'"""  # nosec B608  # noqa: S608 vars are constants
             ).fetchall()
             for rowid, item_id in legacy_rows:
                 try:
@@ -625,10 +624,10 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, versio
                 if new_id is None or new_id == item_id:
                     continue
                 try:
-                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))  # nosec B608
+                    conn.execute(f"""UPDATE {table} SET item_id = ? WHERE rowid = ?""", (new_id, rowid))  # nosec B608  # noqa: S608 vars are constants
                 except sqlite3.IntegrityError:
                     # a row for (username, new_id) already exists: drop the stale duplicate
-                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))  # nosec B608
+                    conn.execute(f"""DELETE FROM {table} WHERE rowid = ?""", (rowid,))  # nosec B608  # noqa: S608 vars are constants
 
         legacy_shares = conn.execute(
             """SELECT rowid, item_id FROM share_entries WHERE item_id GLOB 'al-[0-9]*'"""
@@ -649,8 +648,6 @@ def _migrate_to_stable_album_ids(conn: sqlite3.Connection, beets_db_path, versio
         conn.rollback()
         raise
     finally:
-        try:
+        with contextlib.suppress(sqlite3.Error):
             conn.execute("""DETACH DATABASE beets_lib""")
-        except sqlite3.Error:
-            pass
         conn.execute("""PRAGMA foreign_keys = ON""")

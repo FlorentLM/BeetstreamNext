@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time as dtime
-from typing import Optional, List
 import flask
 
 from beetsplug.beetstreamnext.constants import MAX_UNLOCKED_SHARES
@@ -14,7 +13,7 @@ from beetsplug.beetstreamnext.utils.text import sha256_hex
 SHARE_SESSION_KEY = 'unlocked_shares'
 
 
-def list_shares(username: Optional[str] = None, share_id: Optional[str] = None) -> List[dict]:
+def list_shares(username: str | None = None, share_id: str | None = None) -> list[dict]:
     """Shares with their public URL (newest first)."""
 
     conditions = []
@@ -42,7 +41,7 @@ def list_shares(username: Optional[str] = None, share_id: Optional[str] = None) 
             FROM shares s
             {where}
             ORDER BY s.created DESC
-            """, params  # nosec B608
+            """, params  # nosec B608  # noqa: S608 vars are constants
         ).fetchall()
 
     shares = []
@@ -54,7 +53,7 @@ def list_shares(username: Optional[str] = None, share_id: Optional[str] = None) 
     return shares
 
 
-def delete_share(share_id: str, username: Optional[str] = None) -> None:
+def delete_share(share_id: str, username: str | None = None) -> None:
     """Delete a share. With `username`, only delete ones that belongs to that user."""
 
     with database() as db:
@@ -63,18 +62,18 @@ def delete_share(share_id: str, username: Optional[str] = None) -> None:
             f"""
             DELETE FROM shares
             WHERE id = ? {'AND username = ?' if username is not None else ''}
-            """, (share_id, username) if username is not None else (share_id,)  # nosec B608
+            """, (share_id, username) if username is not None else (share_id,)  # nosec B608  # noqa: S608 vars are constants
         )
 
 
 def update_share(
         share_id: str,
-        username: Optional[str],
+        username: str | None,
         *,
         description: str,
-        expires_on: Optional[date],
-        max_downloads: Optional[int],
-        new_password: Optional[str] = None,
+        expires_on: date | None,
+        max_downloads: int | None,
+        new_password: str | None = None,
         remove_password: bool = False
     ) -> bool:
     """
@@ -102,7 +101,7 @@ def update_share(
             f"""
             UPDATE shares SET {', '.join(assignments)}
             WHERE id = ? {'AND username = ?' if username is not None else ''}
-            """, params  # nosec B608
+            """, params  # nosec B608  # noqa: S608 vars are constants
         )
 
     return cursor.rowcount > 0

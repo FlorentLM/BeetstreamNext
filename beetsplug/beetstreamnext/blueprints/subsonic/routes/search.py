@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Tuple, List
 import flask
 
 from .. import subsonic_bp
@@ -88,7 +87,7 @@ def endpoint_search() -> flask.Response:
 
     # Normal SQL search
     else:
-        def build_where(table_type: str, main_field: str) -> Tuple[str, List[str]]:
+        def build_where(table_type: str, main_field: str) -> tuple[str, list[str]]:
             # table_type: 'items' or 'albums'
             # main_field: 'title' or 'album'
             conds = []
@@ -129,7 +128,7 @@ def endpoint_search() -> flask.Response:
                 ORDER BY title 
                 COLLATE NOCASE 
                 LIMIT ? OFFSET ?
-                """, params + [song_count, song_offset]  # nosec B608
+                """, params + [song_count, song_offset]  # nosec B608  # noqa: S608 vars are constants
             )
         songs = list(rows)
 
@@ -142,7 +141,7 @@ def endpoint_search() -> flask.Response:
                 ORDER BY album 
                 COLLATE NOCASE 
                 LIMIT ? OFFSET ?
-                """, params + [album_count, album_offset]  # nosec B608
+                """, params + [album_count, album_offset]  # nosec B608  # noqa: S608 vars are constants
             )
         albums = list(rows)
 
@@ -162,7 +161,7 @@ def endpoint_search() -> flask.Response:
                 GROUP BY albumartist
                 ORDER BY albumartist COLLATE NOCASE
                 LIMIT ? OFFSET ?
-                """, params + [artist_count, artist_offset]  # nosec B608
+                """, params + [artist_count, artist_offset]  # nosec B608  # noqa: S608 vars are constants
             )
         artist_rows = list(rows)
 

@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 import threading
 from sqlite3 import Connection
-from typing import Dict, Hashable, Any, List, Optional, Tuple
+from typing import Any
+from collections.abc import Hashable
 
 import flask
 from beets.dbcore.db import Transaction
@@ -24,7 +25,7 @@ class SchemaCache:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._stamp: Hashable = None
-        self._data: Dict[Hashable, Any] = {}
+        self._data: dict[Hashable, Any] = {}
 
     def _sync(self, stamp: Hashable) -> None:
         """Drop everything if `stamp` has changed."""
@@ -42,7 +43,7 @@ class SchemaCache:
             if self._stamp == stamp:
                 self._data[key] = value
 
-    def bucket(self, stamp: Hashable, name: Hashable) -> Dict[Any, Any]:
+    def bucket(self, stamp: Hashable, name: Hashable) -> dict[Any, Any]:
         """Dict private to `name`."""
         with self._lock:
             self._sync(stamp)
@@ -55,7 +56,7 @@ schema_cache = SchemaCache()
 _beets_table_names = frozenset(['items', 'albums'])
 
 
-def get_beets_schema(table_name: str = 'items') -> List[str]:
+def get_beets_schema(table_name: str = 'items') -> list[str]:
     """Returns column names for the beets db, invalidating the cache if the beets db has changed."""
 
     if table_name not in _beets_table_names:
@@ -80,7 +81,7 @@ def get_beets_schema(table_name: str = 'items') -> List[str]:
 _lib_cache = SchemaCache()
 
 
-def _library_stamp() -> Tuple:
+def _library_stamp() -> tuple:
     path = os.fsdecode(flask.g.lib.path)
     mtimes = []
     for p in (path, path + '-wal'):
@@ -91,7 +92,7 @@ def _library_stamp() -> Tuple:
     return (path, *mtimes)
 
 
-def library_cache(name: str) -> Dict[Any, Any]:
+def library_cache(name: str) -> dict[Any, Any]:
     """
     Process-wide dict for things derived from the beets library, shared across requests.
     """
@@ -99,12 +100,12 @@ def library_cache(name: str) -> Dict[Any, Any]:
 
 
 def chunked_query(
-        db_obj: 'Transaction | Connection',
+        db_obj: Transaction | Connection,
         query_template: str,
-        chunked_values: List[Any],
-        base_params: Optional[List[Any]] = None,
+        chunked_values: list[Any],
+        base_params: list[Any] | None = None,
         chunk_size=900
-    ) -> List[Any]:
+    ) -> list[Any]:
     """
     db_obj: The beets Transaction or sqlite Connection object
     query_template: SQL string with a '{q}' placeholder for the IN clause
@@ -129,10 +130,10 @@ def chunked_query(
 
 
 def chunked_execute(
-        db_obj: 'Connection',
+        db_obj: Connection,
         query_template: str,
-        chunked_values: List[Any],
-        trailing_params: Optional[List[Any]] = None,
+        chunked_values: list[Any],
+        trailing_params: list[Any] | None = None,
         chunk_size: int = 900
     ) -> int:
     """
@@ -156,7 +157,7 @@ def escape_like(s: str, escape: str = '!') -> str:
     return s.replace(escape, escape * 2).replace('%', escape + '%').replace('_', escape + '_')
 
 
-def sql_conditions_for(name: str, name_fields: List[str]) -> Tuple[List[str], List[str]]:
+def sql_conditions_for(name: str, name_fields: list[str]) -> tuple[list[str], list[str]]:
     """
     Build OR-conditions and params matching `name` across all name columns.
     `artists`, `composers` and `lyricists` are multi-value beets fields with delimiters, everything else is exact-matched.

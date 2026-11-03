@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import Optional
 import flask
 
 from .. import admin_bp, admin_required
@@ -16,7 +15,7 @@ from beetsplug.beetstreamnext.core.media.images import read_uploaded_image, snif
 from beetsplug.beetstreamnext.utils.text import strip_text
 
 
-def _render_list(message: Optional[str] = None, ok: bool = True) -> str:
+def _render_list(message: str | None = None, ok: bool = True) -> str:
     return flask.render_template('partials/artist_images.html',
                                  artist_images=list_images(),
                                  message=message, ok=ok)

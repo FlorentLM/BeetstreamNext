@@ -5,7 +5,7 @@ import hmac
 import secrets
 import time
 from enum import StrEnum
-from typing import Literal, Optional, List, Tuple
+from typing import Literal
 
 from beetsplug.beetstreamnext.constants import MAX_APP_PASSWORDS
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -23,7 +23,7 @@ class AppPasswordRole(StrEnum):
 
 lastused_limiter = RollingLimiter(1, 60)
 
-def _touch_table(db, row_id: int, ip: Optional[str]) -> None:
+def _touch_table(db, row_id: int, ip: str | None) -> None:
 
     if lastused_limiter.allow(row_id):
         db.execute(
@@ -38,8 +38,8 @@ def _touch_table(db, row_id: int, ip: Optional[str]) -> None:
 def create_app_password(
         username: str,
         name: str,
-        role: 'AppPasswordRole' = AppPasswordRole.FULL,
-        expires_at: Optional[float] = None,
+        role: AppPasswordRole = AppPasswordRole.FULL,
+        expires_at: float | None = None,
         as_password: bool = False
 ) -> str:
     """
@@ -88,7 +88,7 @@ def create_app_password(
     return secret
 
 
-def list_app_passwords(username: str) -> List[dict]:
+def list_app_passwords(username: str) -> list[dict]:
     """Get the metadata of all existing app passwords."""
 
     with database() as db:
@@ -119,7 +119,7 @@ def revoke_app_password(username: str, app_password_id: int | Literal['all']) ->
     return cur.rowcount
 
 
-def authenticate_api_key(api_key: str, ip: Optional[str] = None) -> Tuple[str, 'AppPasswordRole'] | None:
+def authenticate_api_key(api_key: str, ip: str | None = None) -> tuple[str, AppPasswordRole] | None:
 
     with database() as db:
         row = db.execute(
@@ -141,12 +141,12 @@ def authenticate_api_key(api_key: str, ip: Optional[str] = None) -> Tuple[str, '
     return username, role
 
 
-def authenticate_legacy(
+def authenticate_legacy(  # nosec B107 (empty-string default, not a password)
         username: str,
         token: str = '',
         salt: str = '',
         clearpass: str = '',
-        ip: Optional[str] = None,
+        ip: str | None = None,
 ) -> AppPasswordRole | None:
     """Match legacy auth (t+s or p) against a user's app passwords."""
 
@@ -168,7 +168,7 @@ def authenticate_legacy(
 
             ok = False
             if token and salt:
-                expected = hashlib.md5(f'{secret}{salt}'.encode('utf-8')).hexdigest()       # nosec B324
+                expected = hashlib.md5(f'{secret}{salt}'.encode()).hexdigest()       # nosec B324  # noqa: S324
                 ok = hmac.compare_digest(token.encode('utf-8'), expected.encode('utf-8'))
 
             elif clearpass:

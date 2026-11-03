@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 import flask
 
 from beetsplug.beetstreamnext.blueprints.shared import route_registrar
@@ -37,8 +37,8 @@ def register_chat_routes(bp: flask.Blueprint, login_required: Callable, moderato
 
     @route('/chat/messages', ['GET'])
     def chat_messages() -> str:
-        after: Optional[int] = flask.request.args.get('after', type=int)
-        before: Optional[int] = flask.request.args.get('before', type=int)
+        after: int | None = flask.request.args.get('after', type=int)
+        before: int | None = flask.request.args.get('before', type=int)
 
         messages, has_older = chat.fetch_messages(after_id=after, before_id=before)
         return render('partials/chat_messages.html', messages=messages, has_older=has_older,

@@ -10,7 +10,7 @@ import threading
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Optional, Tuple, Any, List, Dict
+from typing import Any
 import beets
 import confuse
 import yaml
@@ -77,7 +77,7 @@ def is_import_safe() -> bool:
     return True
 
 
-def htmlify_log() -> List[str]:
+def htmlify_log() -> list[str]:
     """Import log as HTML lines (escaped, ANSI converted)."""
     return [log_line(line) for line in read_log(BEETS_IMPORT_LOG_PATH, drop_python=True)]
 
@@ -94,18 +94,18 @@ class ImportSession:
         self._push_lock = threading.Lock()
 
         self._last_push = 0.0
-        self._push_timer: Optional[threading.Timer] = None
+        self._push_timer: threading.Timer | None = None
 
-        self._proc: Optional[Any] = None         # subprocess.Popen or winpty.PtyProcess
-        self._master_fd: Optional[int] = None    # POSIX only, Windows pty process reads/writes itself
+        self._proc: Any | None = None         # subprocess.Popen or winpty.PtyProcess
+        self._master_fd: int | None = None    # POSIX only, Windows pty process reads/writes itself
 
         self._state: str = 'idle'                # idle, running, needs_input, completed, failed
-        self._current_path: Optional[str] = None
+        self._current_path: str | None = None
 
-        self._exit_code: Optional[int] = None
-        self._started_at: Optional[float] = None
+        self._exit_code: int | None = None
+        self._started_at: float | None = None
 
-        self._queue: List[dict] = []             # pinned paths waiting to be scanned
+        self._queue: list[dict] = []             # pinned paths waiting to be scanned
 
     def status(self) -> dict:
         """Snapshot of current import state."""
@@ -139,7 +139,7 @@ class ImportSession:
             quiet: bool = False,
             incremental: bool = False,
             reset_log: bool = True
-        ) -> Tuple[bool, str]:
+        ) -> tuple[bool, str]:
         """
         Start a `beet import` against `path`.
         """
@@ -227,7 +227,7 @@ class ImportSession:
             else:
                 master_fd, slave_fd = pty.openpty()
                 try:
-                    proc = subprocess.Popen(
+                    proc = subprocess.Popen(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
                         command, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
                         close_fds=True, start_new_session=True, env=env,
                     )
@@ -258,7 +258,7 @@ class ImportSession:
             notify('import_started', path=self._current_path)
             return True, 'Import started.'
 
-    def start_pinned(self, entries: List[dict]) -> Tuple[bool, str]:
+    def start_pinned(self, entries: list[dict]) -> tuple[bool, str]:
         """
         Import pinned paths manually.
         """
@@ -278,7 +278,7 @@ class ImportSession:
                 admin_events.publish('pinned-paths', '')
             return ok, message
 
-    def enqueue_pinned(self, entry: dict) -> Tuple[bool, str]:
+    def enqueue_pinned(self, entry: dict) -> tuple[bool, str]:
         """
         Add a pinned path to the non-interactive queue.
         (starts immediately if no other is in the queue)
@@ -291,7 +291,7 @@ class ImportSession:
 
             return self.start(entry['path'], quiet=True, incremental=True)
 
-    def enqueue(self, path: str, quiet: bool = True, incremental: bool = False) -> Tuple[bool, str]:
+    def enqueue(self, path: str, quiet: bool = True, incremental: bool = False) -> tuple[bool, str]:
         """
         Queue `path` (or start import immediately if queue empty).
         """
@@ -378,10 +378,8 @@ class ImportSession:
                 with self._lock:
                     if self._master_fd == master_fd:
                         self._master_fd = None
-                    try:
+                    with suppress(OSError):
                         os.close(master_fd)
-                    except OSError:
-                        pass
                 self._finish(log_file, proc.wait())
 
     def _pump_output_windows(self, proc) -> None:
@@ -407,7 +405,7 @@ class ImportSession:
                     exit_code = 1
                 self._finish(log_file, exit_code)
 
-    def send_input(self, text: str) -> Tuple[bool, str]:
+    def send_input(self, text: str) -> tuple[bool, str]:
 
         with self._lock:
             if (self._proc is None or self._state not in ('running', 'needs_input')
@@ -506,7 +504,7 @@ def read_config() -> dict:
     }
 
 
-def _line_of(root: Optional[yaml.Node], *path: str) -> int | None:
+def _line_of(root: yaml.Node | None, *path: str) -> int | None:
     """line of the deepest entry in `path` in the YAML."""
 
     line = None
@@ -531,7 +529,7 @@ def _line_of(root: Optional[yaml.Node], *path: str) -> int | None:
     return line
 
 
-def _exec_entries(content: str) -> Dict[str, Tuple[Any, Optional[int]]]:
+def _exec_entries(content: str) -> dict[str, tuple[Any, int | None]]:
     """
     Config entries in `content` that would let beets run code or commands, as {name: (value, line)}.
     Raises yaml.YAMLError on invalid YAML.
@@ -552,7 +550,7 @@ def _exec_entries(content: str) -> Dict[str, Tuple[Any, Optional[int]]]:
         return {'<top-level is not a mapping>': (None, 1)}
 
     # name: (value, path to it in the YAML)
-    found: Dict[str, Tuple[Any, Tuple[str, ...]]] = {}
+    found: dict[str, tuple[Any, tuple[str, ...]]] = {}
 
     for key in CODE_EXECUTION_KEYS:
         if key in data:
@@ -586,7 +584,7 @@ def _exec_entries(content: str) -> Dict[str, Tuple[Any, Optional[int]]]:
     return entries
 
 
-def _entries_by_trust(content: str) -> Tuple[dict, dict]:
+def _entries_by_trust(content: str) -> tuple[dict, dict]:
     """
     The dangerous entries of `content` as (new or changed, unchanged), the latter being what the config file
     already has. Those are trusted as long as they are left as they are (and can still be deleted).
@@ -602,7 +600,7 @@ def _entries_by_trust(content: str) -> Tuple[dict, dict]:
     return {name: entry for name, entry in found.items() if name not in unchanged}, unchanged
 
 
-def locked_lines(content: str) -> List[int]:
+def locked_lines(content: str) -> list[int]:
     """Lines of the dangerous entries that are left unchanged (they can only be deleted)."""
 
     try:
@@ -611,7 +609,7 @@ def locked_lines(content: str) -> List[int]:
         return []
 
 
-def validate_config(content: str) -> Optional[Tuple[str, Optional[int]]]:
+def validate_config(content: str) -> tuple[str, int | None] | None:
     """
     Why `content` can't be saved as the beets config, as (message, line).
     None when it's fine.
@@ -632,7 +630,7 @@ def validate_config(content: str) -> Optional[Tuple[str, Optional[int]]]:
     return None
 
 
-def write_config(content: str) -> Tuple[bool, str]:
+def write_config(content: str) -> tuple[bool, str]:
 
     edit_allowed = bool(settings_store.get('allow_beets_config_edit'))
 
@@ -712,7 +710,7 @@ def write_beets_field(
             UPDATE beets.{core_table} 
             SET {key} = ? 
             WHERE id = ?
-            """, (value, entity_id),  # nosec B608
+            """, (value, entity_id),  # nosec B608  # noqa: S608 vars are constants
         )
         db.commit()
 
@@ -732,7 +730,7 @@ def write_beets_field(
         INSERT INTO beets.{attr_table} (entity_id, key, value)
         VALUES (?, ?, ?)
         ON CONFLICT(entity_id, key) DO UPDATE SET value = excluded.value
-        """,  # nosec B608
+        """,  # nosec B608  # noqa: S608 vars are constants
         (entity_id, key, str(value)),
     )
     db.commit()

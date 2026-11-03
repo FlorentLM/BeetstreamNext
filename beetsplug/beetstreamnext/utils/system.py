@@ -13,7 +13,6 @@ from functools import lru_cache
 from itertools import groupby
 from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
-from typing import Dict, Optional, List
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
@@ -31,7 +30,7 @@ def is_writable(path: bytes | str | Path) -> bool:
     return os.access(path, os.W_OK)
 
 
-def get_env(var_name: str) -> Optional[str]:
+def get_env(var_name: str) -> str | None:
     """Load a env var value, treating unset or empty-string as None."""
     val = os.environ.get(var_name)
     return val if val not in (None, '') else None
@@ -123,7 +122,7 @@ def creation_date(filepath: bytes | str | Path) -> float:
 
 # Audio/playlist mimetypes keyed by extension
 # (taking precedence over mimetypes.guess() which tends to guess everything is a video...)
-AUDIO_MIMETYPES: Dict[str, str] = {
+AUDIO_MIMETYPES: dict[str, str] = {
     'mp3': 'audio/mpeg', 'aac': 'audio/aac', 'ogg': 'audio/ogg', 'oga': 'audio/ogg',
     'flac': 'audio/flac', 'wav': 'audio/wav', 'm4a': 'audio/mp4', 'opus': 'audio/opus',
     'mp4': 'audio/mp4', 'm3u8': 'application/x-mpegURL', 'm3u': 'application/x-mpegURL',
@@ -232,10 +231,10 @@ def make_hidden(filepath: bytes | str | Path) -> None:
             bsn_logger.warning(f"Could not set file as hidden on Windows: {e}")
 
 
-_last_logged_binary: Dict[str, str] = {}
+_last_logged_binary: dict[str, str] = {}
 
 
-def find_binary(name: str) -> Optional[str]:
+def find_binary(name: str) -> str | None:
 
     from beetsplug.beetstreamnext.core.config.store import settings_store
 
@@ -248,13 +247,13 @@ def find_binary(name: str) -> Optional[str]:
 
 
 @lru_cache(maxsize=8)
-def binary_version(bin_path: str, version_flag: str) -> Optional[str]:
+def binary_version(bin_path: str, version_flag: str) -> str | None:
     """Runs '<bin_path> <version_flag>' and pulls a version number from first line of output."""
 
     from beetsplug.beetstreamnext.utils.general import subprocess_env
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             [bin_path, version_flag], capture_output=True, text=True, timeout=5, env=subprocess_env()
         )
     except (OSError, subprocess.TimeoutExpired) as e:
@@ -273,7 +272,7 @@ def dir_size(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob('*') if f.is_file())
 
 
-def purge(folder: Path, max_age: Optional[float] = None, now: Optional[float] = None, suffix: Optional[str] = None) -> int:
+def purge(folder: Path, max_age: float | None = None, now: float | None = None, suffix: str | None = None) -> int:
     """
     Removes old elements inside a folder: files are deleted, subdirectories
     removed recursively.
@@ -308,7 +307,7 @@ def purge(folder: Path, max_age: Optional[float] = None, now: Optional[float] = 
     return n
 
 
-def drop_python_tracebacks(log_lines: List[str]) -> List[str]:
+def drop_python_tracebacks(log_lines: list[str]) -> list[str]:
     python_tracebacks = (
         'The above exception was the direct cause of the following exception:',
         'During handling of the above exception, another exception occurred:',
@@ -329,10 +328,10 @@ def drop_python_tracebacks(log_lines: List[str]) -> List[str]:
     return result
 
 
-def read_log(path: str | Path, max_lines: int = 1000, drop_python: bool = False) -> List[str]:
+def read_log(path: str | Path, max_lines: int = 1000, drop_python: bool = False) -> list[str]:
 
     try:
-        with open(path, 'r', errors='replace') as f:
+        with open(path, errors='replace') as f:
             lines = [line.rstrip('\r\n') for line in deque(f, maxlen=max_lines)]
     except OSError:
         return []

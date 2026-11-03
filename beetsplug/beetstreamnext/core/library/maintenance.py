@@ -4,7 +4,6 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from beetsplug.beetstreamnext.constants import (
     CACHE_LOCATION, CLEANUP_INTERVAL_SEC, SCROBBLE_RETRY_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME,
@@ -46,7 +45,7 @@ def cache_breakdown(thumb_dir: str | Path, http_cache: str | Path) -> dict[str, 
     return breakdown
 
 
-def clear_requests_caches(thumb_dir: str | Path, http_cache: str | Path) -> List[str]:
+def clear_requests_caches(thumb_dir: str | Path, http_cache: str | Path) -> list[str]:
     """Clears thumbnails and HTTP cache. Returns a list of what was cleared."""
     cleared = []
 
@@ -173,7 +172,7 @@ def sweep_stale_references() -> dict[str, int]:
                 FROM {table} 
                 WHERE {column} 
                 LIKE 'sg-%'
-                """  # nosec B608
+                """  # nosec B608  # noqa: S608 vars are constants
             ).fetchall()
 
             ids = [row[0] for row in rows]
@@ -203,7 +202,7 @@ def sweep_stale_references() -> dict[str, int]:
                     DELETE FROM {table} 
                     WHERE {column} 
                     IN ({{q}})
-                    """, to_delete  # nosec B608
+                    """, to_delete  # nosec B608  # noqa: S608 vars are constants
                 )
 
                 purged[f'{table} (deleted songs)'] = len(to_delete)
@@ -220,7 +219,7 @@ def sweep_stale_references() -> dict[str, int]:
             f"""
             DELETE FROM settings
             WHERE key NOT IN ({placeholders})
-            """, tuple(SETTINGS_SCHEMA.keys())  # nosec B608
+            """, tuple(SETTINGS_SCHEMA.keys())  # nosec B608  # noqa: S608 vars are constants
         )
         if cur.rowcount:
             purged['settings (unknown keys)'] = cur.rowcount

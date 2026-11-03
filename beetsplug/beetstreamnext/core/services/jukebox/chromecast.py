@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import TYPE_CHECKING, List, Optional
+import contextlib
+from typing import TYPE_CHECKING
 
 from beetsplug.beetstreamnext.constants import PYCHROMECAST
 from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
@@ -14,7 +15,7 @@ if TYPE_CHECKING and PYCHROMECAST:
     from pychromecast import Chromecast, CastBrowser
 
 
-def chromecast_discovery(timeout: float = 5.0) -> List[dict]:
+def chromecast_discovery(timeout: float = 5.0) -> list[dict]:
     """Scan the network for Chromecast devices. Returns [{'name', 'host', 'uuid'}, ...]."""
 
     if not PYCHROMECAST:
@@ -51,22 +52,18 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
 
     def __init__(self):
         super().__init__()
-        self._device: Optional['Chromecast'] = None
-        self._browser: Optional['CastBrowser'] = None
-        self._device_target: Optional[str] = None
+        self._device: Chromecast | None = None
+        self._browser: CastBrowser | None = None
+        self._device_target: str | None = None
         self._current_index: int = -1
 
     def _disconnect_device(self) -> None:
         if self._device is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._device.disconnect(timeout=2)
-            except Exception:
-                pass
         if self._browser is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._browser.stop_discovery()
-            except Exception:
-                pass
         self._device = None
         self._browser = None
 
@@ -154,10 +151,8 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
         }
 
     def _backend_clear(self) -> None:
-        try:
+        with contextlib.suppress(Exception):    # Nothing was loaded, nothing to stop
             self._device.media_controller.stop()
-        except Exception:
-            pass  # Nothing was loaded, nothing to stop
         self._current_index = -1
 
     def _backend_append(self, entry_id: str, path: str) -> None:
@@ -267,10 +262,8 @@ class ChromecastJukeboxPlayer(JukeboxBackend):
 
     def _backend_shutdown(self) -> None:
         if self._device is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._device.media_controller.stop()
-            except Exception:
-                pass
 
         self._disconnect_device()
         self._device_target = None

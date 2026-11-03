@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional, Tuple, Dict, List, Any, Sequence, Callable
+from typing import Any
+from collections.abc import Sequence, Callable
 import flask
 from beets.library import LibModel, Item
 
@@ -15,7 +16,7 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import resolve_path
 
 
-def beets_abspath(item: Dict | Item | Any) -> Path:
+def beets_abspath(item: dict | Item | Any) -> Path:
     """
     Beets sometimes stores paths relative to its 'directory' config.
     This resolves to an absolute path.
@@ -36,7 +37,7 @@ class AttrDict(dict):
             return None
 
 
-def standardise_datadict(obj: Dict | LibModel | Item | Any) -> dict:
+def standardise_datadict(obj: dict | LibModel | Item | Any) -> dict:
     """
     Standardise input (Beets Item/Album or sqlite3.Row) into a dict.
     """
@@ -75,10 +76,10 @@ class Resolve:
     Decode Subsonic IDs (minted by IDs) and fetch the Beets/db object they refer to.
     """
 
-    _method_map: Dict[str, Callable] = {}
+    _method_map: dict[str, Callable] = {}
 
     @classmethod
-    def artist(cls, req_id: str) -> Tuple[str, str] | None:
+    def artist(cls, req_id: str) -> tuple[str, str] | None:
         """
         Decode any music Subsonic ID (artist, album, or song) and fetch the beets artist data.
 
@@ -160,7 +161,7 @@ class Resolve:
             return artist_name, meta['mbid']
 
     @classmethod
-    def album(cls, subsonic_id: str) -> Optional[LibModel]:
+    def album(cls, subsonic_id: str) -> LibModel | None:
         """
         Decode a Subsonic album ID (mbid, hash, or legacy row id) and fetch the beets album data.
         """
@@ -188,7 +189,7 @@ class Resolve:
         return None
 
     @classmethod
-    def song(cls, subsonic_id: str) -> Optional[Item]:
+    def song(cls, subsonic_id: str) -> Item | None:
         """
         Decode a Subsonic song ID (mbid, hash, or legacy row id) and fetch the beets song data.
         """
@@ -217,13 +218,13 @@ class Resolve:
         return None
 
     @classmethod
-    def songs(cls, subsonic_ids: Sequence[str]) -> Dict[str, Item]:
+    def songs(cls, subsonic_ids: Sequence[str]) -> dict[str, Item]:
         """
         Batched song resolving. Returns {id: song_object},
         """
 
-        items: Dict[int, Optional[Item]] = {}
-        result: Dict[str, Item] = {}
+        items: dict[int, Item | None] = {}
+        result: dict[str, Item] = {}
 
         for sid, beets_id in cls.song_ids(subsonic_ids).items():
             if beets_id not in items:
@@ -235,7 +236,7 @@ class Resolve:
         return result
 
     @classmethod
-    def song_ids(cls, subsonic_ids: Sequence[str]) -> Dict[str, int]:
+    def song_ids(cls, subsonic_ids: Sequence[str]) -> dict[str, int]:
         """
         Batched song resolving, without loading the songs. Returns {id: beets_id}.
         """
@@ -244,7 +245,7 @@ class Resolve:
             return {}
 
         index = SongIndex.get()
-        result: Dict[str, int] = {}
+        result: dict[str, int] = {}
 
         for raw in subsonic_ids:
             sid = str(raw)
@@ -265,7 +266,7 @@ class Resolve:
         return result
 
     @classmethod
-    def radio(cls, subsonic_id: str) -> Optional[AttrDict]:
+    def radio(cls, subsonic_id: str) -> AttrDict | None:
         """
         Decode a Subsonic radio ID and fetch the station row.
         """
@@ -286,7 +287,7 @@ class Resolve:
         return AttrDict(dict(row)) if row else None
 
     @classmethod
-    def podcast_channel(cls, subsonic_id: str) -> Optional[AttrDict]:
+    def podcast_channel(cls, subsonic_id: str) -> AttrDict | None:
         """
         Decode a Subsonic podcast channel ID and fetch its row.
         """
@@ -307,7 +308,7 @@ class Resolve:
         return AttrDict(dict(row)) if row else None
 
     @classmethod
-    def podcast_episode(cls, subsonic_id: str) -> Optional[AttrDict]:
+    def podcast_episode(cls, subsonic_id: str) -> AttrDict | None:
         """
         Decode a Subsonic podcast episode ID and fetch its row.
         """
@@ -328,7 +329,7 @@ class Resolve:
         return AttrDict(dict(row)) if row else None
 
     @classmethod
-    def any(cls, subsonic_id: str) -> Tuple[Optional[str], Optional[Any]]:
+    def any(cls, subsonic_id: str) -> tuple[str | None, Any | None]:
         """
         Decode any Subsonic ID and fetch its data object. Returns (type, object).
 
@@ -340,7 +341,7 @@ class Resolve:
         return entry_type, (resolver(subsonic_id) if resolver else None)
 
     @classmethod
-    def multiple(cls, subsonic_ids: Sequence[str]) -> Dict[str, Tuple[str, Any]]:
+    def multiple(cls, subsonic_ids: Sequence[str]) -> dict[str, tuple[str, Any]]:
         """
         Batched resolve for a (possibly heterogeneous) list of IDs. Returns {id: (type, object)},
         omitting anything that didn't resolve.
@@ -349,7 +350,7 @@ class Resolve:
         """
         songs = cls.songs([sid for sid in subsonic_ids if IDs.decode_type(sid) == 'song'])
 
-        result: Dict[str, Tuple[str, Any]] = {}
+        result: dict[str, tuple[str, Any]] = {}
         for sid in subsonic_ids:
             entry_type = IDs.decode_type(sid)
             obj = songs.get(sid) if entry_type == 'song' else cls.any(sid)[1]
@@ -359,8 +360,7 @@ class Resolve:
         return result
 
     @classmethod
-    def playable(cls, entry_id: str, username: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[
-        Tuple[str, str]]:
+    def playable(cls, entry_id: str, username: str, pre_resolved: dict[str, tuple[str, Any]] | None = None) -> tuple[str, str] | None:
         """
         Resolve any playable Subsonic ID (song, radio station, or podcast episode) to (id, local path or URL).
 
@@ -413,7 +413,7 @@ class Resolve:
             return None
 
     @classmethod
-    def playables(cls, entry_ids: Sequence[str], username: str) -> List[Tuple[str, str]]:
+    def playables(cls, entry_ids: Sequence[str], username: str) -> list[tuple[str, str]]:
         """
         Batched playable resolving. Resolves a list of playable Subsonic IDs
         to (id, local path or URL) pairs, skipping unresolvable ones.
@@ -422,7 +422,7 @@ class Resolve:
         return [item for entry_id in entry_ids if (item := cls.playable(entry_id, username, resolved)) is not None]
 
     @classmethod
-    def shared_items(cls, entry_ids: Sequence[str]) -> Tuple[List[Item], List[LibModel]]:
+    def shared_items(cls, entry_ids: Sequence[str]) -> tuple[list[Item], list[LibModel]]:
         """
         Returns a public share's entry IDs, split into song items and album objects.
         """

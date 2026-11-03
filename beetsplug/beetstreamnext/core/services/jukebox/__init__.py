@@ -20,8 +20,8 @@ class JukeboxManager:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._player: Optional[JukeboxBackend] = None
-        self._backend: Optional[str] = None
+        self._player: JukeboxBackend | None = None
+        self._backend: str | None = None
 
     def player(self) -> JukeboxBackend:
         from beetsplug.beetstreamnext.core.config.store import settings_store

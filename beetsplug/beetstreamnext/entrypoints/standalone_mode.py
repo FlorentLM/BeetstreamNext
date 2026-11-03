@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import beets
 import confuse
@@ -86,7 +86,7 @@ def _beets_version_healthcheck(beets_db_path: str | Path) -> bool:
 ##
 # Standalone entrypoint
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
 
     parser = argparse.ArgumentParser(
         prog='beetstreamnext',
@@ -181,7 +181,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 "Move those values to --config's YAML file, BSN_* env vars, or the WebUI instead."
             )
 
-    def _beets_cfg(key: str) -> Optional[str]:
+    def _beets_cfg(key: str) -> str | None:
         if not beets_config_path:
             return None
         try:
@@ -274,7 +274,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         return
 
     # TODO: 'library_path' always comes from the library_db cascade above: it's needed to locate BSN's db, so it can never be set via WebUI... Change this maybe?
-    yaml_defaults: Dict[str, Any] = {'library_path': str(library_db)}
+    yaml_defaults: dict[str, Any] = {'library_path': str(library_db)}
     if music_root:
         yaml_defaults['music_root'] = music_root
 

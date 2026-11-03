@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
 EVENTS_PLUGIN = 'beetstreamnext_events'     # tiny companion module in beetsplug/
 
 
-def read_results(path: Path) -> Dict[str, List[Dict[str, Any]]]:
+def read_results(path: Path) -> dict[str, list[dict[str, Any]]]:
 
-    results: Dict[str, List[Dict[str, Any]]] = {'imported': [], 'skipped': []}
+    results: dict[str, list[dict[str, Any]]] = {'imported': [], 'skipped': []}
 
     try:
         lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
@@ -30,7 +30,7 @@ def read_results(path: Path) -> Dict[str, List[Dict[str, Any]]]:
     return results
 
 
-def album_label(record: Dict[str, Any]) -> str:
+def album_label(record: dict[str, Any]) -> str:
     artist, album = record.get('artist') or '', record.get('album') or ''
 
     if artist and album:
@@ -39,12 +39,12 @@ def album_label(record: Dict[str, Any]) -> str:
     return album or artist or Path(record.get('path') or '').name or 'Unknown album'
 
 
-def summarize(results: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+def summarize(results: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
     """Notification variables from the results."""
 
     max_listed = 5
 
-    def listing(records: List[Dict[str, Any]]) -> str:
+    def listing(records: list[dict[str, Any]]) -> str:
         names = [album_label(r) + (f" ({r['reason']})" if r.get('reason') else '') for r in records]
         shown = '\n'.join(names[:max_listed])
         return shown + (f'\n... and {len(names) - max_listed} more' if len(names) > max_listed else '')

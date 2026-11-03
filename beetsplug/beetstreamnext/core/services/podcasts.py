@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import calendar
 import os
 import re
@@ -7,7 +8,6 @@ import time
 from threading import Thread, Lock, Event
 import urllib.parse
 from pathlib import Path
-from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.constants import (
@@ -32,7 +32,7 @@ from beetsplug.beetstreamnext.utils.concurrency import KeyedLimiter, Throttle, W
 ##
 # Feed parsing helpers
 
-def _get_audio_url(entry) -> Tuple[str, int]:
+def _get_audio_url(entry) -> tuple[str, int]:
 
     for enc in entry.get('enclosures', []) or []:
         href = enc.get('href') or enc.get('url')
@@ -71,7 +71,7 @@ def _fetch_feed_bytes(url: str) -> bytes:
     return bytes(buf)
 
 
-def _parse_opml(data: bytes) -> List[str]:
+def _parse_opml(data: bytes) -> list[str]:
     """
     Extracts feed URLs from an OPML file.
     """
@@ -88,7 +88,7 @@ def _parse_opml(data: bytes) -> List[str]:
         raise ValueError(f'Not a valid OPML/XML file: {e}') from e
 
     seen: set = set()
-    urls: List[str] = []
+    urls: list[str] = []
 
     for outline in root.iter('outline'):
         url = (outline.get('xmlUrl') or '').strip()
@@ -111,7 +111,7 @@ def _fetch_feed(url: str) -> tuple:
         https_url = https_variant(url)
         try:
             return feedparser.parse(_fetch_feed_bytes(https_url)), https_url
-        except Exception:
+        except Exception:  # noqa: S110 best-effort, failure is harmless  # nosec B110 (best-effort, failure is harmless)
             pass   # fall through and try original http URL below
 
     return feedparser.parse(_fetch_feed_bytes(url)), url
@@ -164,11 +164,11 @@ class PodcastManager:
         base.mkdir(parents=True, exist_ok=True)
         return base
 
-    def is_downloading(self, episode_id: Optional[int] = None) -> bool:
+    def is_downloading(self, episode_id: int | None = None) -> bool:
         with self._download_lock:
             return bool(self._downloading_episodes) if episode_id is None else episode_id in self._downloading_episodes
 
-    def download_progress(self, episode_id: int) -> Optional[int]:
+    def download_progress(self, episode_id: int) -> int | None:
         """Bytes written for download progressbar, or None if not downloading."""
         with self._download_lock:
             return self._download_progress.get(episode_id)
@@ -284,10 +284,8 @@ class PodcastManager:
                 except OSError as e:
                     bsn_logger.warning(f"Failed to remove leftover podcast file '{f}': {e}")
 
-            try:
+            with contextlib.suppress(OSError):
                 channel_dir.rmdir()     # Only if it's empty now
-            except OSError:
-                pass
 
         return purged
 
@@ -343,8 +341,8 @@ class PodcastManager:
     def _worker_refresh_channel(self,
         channel_id: int,
         download_recents: bool = False,
-        username: Optional[str] = None,
-        prefetched: Optional[tuple] = None,
+        username: str | None = None,
+        prefetched: tuple | None = None,
     ) -> None:
         """Worker for refreshing a single channel."""
 
@@ -508,7 +506,7 @@ class PodcastManager:
             self.push_status()
 
     @with_app_context
-    def refresh(self, channel_id: Optional[int] = None, download_recents: bool = False, username: Optional[str] = None) -> None:
+    def refresh(self, channel_id: int | None = None, download_recents: bool = False, username: str | None = None) -> None:
 
         if not FEEDPARSER:
             return
@@ -528,7 +526,7 @@ class PodcastManager:
         else:
             self._worker_refresh_channel(channel_id=channel_id, download_recents=download_recents, username=username)
 
-    def background_refresh(self, channel_id: Optional[int] = None, download_recents: bool = False, username: Optional[str] = None) -> None:
+    def background_refresh(self, channel_id: int | None = None, download_recents: bool = False, username: str | None = None) -> None:
 
         thread = Thread(
             target=self.refresh,
@@ -540,7 +538,7 @@ class PodcastManager:
 
     def create_channel(
         self, username: str, url: str, download_recents: bool = True
-    ) -> Tuple[Optional[int], Optional[str]]:
+    ) -> tuple[int | None, str | None]:
         """
         Subscribes username to a podcast channel, deduped first by URL then by feed title.
 
@@ -651,7 +649,7 @@ class PodcastManager:
 
         return channel_id, None
 
-    def download_recent_episodes(self, channel_id: int, username: Optional[str] = None) -> int:
+    def download_recent_episodes(self, channel_id: int, username: str | None = None) -> int:
         """
         Starts downloading a channel's most recent episodes that aren't already downloaded (or downloading).
         (uses 'podcast_auto_download_count' setting)
@@ -689,7 +687,7 @@ class PodcastManager:
     def discovery_enabled(self) -> bool:
         return bool(settings_store.get('enable_podcast_discovery') and PODCASTINDEX)
 
-    def discover(self, query: Optional[str]) -> Tuple[List[dict], str | None]:
+    def discover(self, query: str | None) -> tuple[list[dict], str | None]:
         """PodcastIndex search for the Web UI. Returns (feeds, error message)."""
 
         if not self.discovery_enabled:
@@ -702,7 +700,7 @@ class PodcastManager:
         feeds = query_podcastindex(query, limit=15)
         return (feeds, None) if feeds else ([], 'No podcasts found.')
 
-    def subscribed_channels(self, username: str) -> List[dict]:
+    def subscribed_channels(self, username: str) -> list[dict]:
         """Podcast channels `username` is subscribed to (by title)."""
 
         with database() as db:
@@ -718,7 +716,7 @@ class PodcastManager:
 
         return [dict(r) for r in rows]
 
-    def channels_overview(self, username: Optional[str] = None) -> Tuple[List[dict], str]:
+    def channels_overview(self, username: str | None = None) -> tuple[list[dict], str]:
         """
         Channels with subscribers, episode counts and disk usage.
         All channels by default, or only those `username` is subscribed to.
@@ -760,7 +758,7 @@ class PodcastManager:
 
         return channels, format_bytes(sum(r['bytes_on_disk'] for r in channel_rows))
 
-    def episodes_of(self, channel_id: int, username: Optional[str] = None) -> List[dict]:
+    def episodes_of(self, channel_id: int, username: str | None = None) -> list[dict]:
         """A channel's episodes, newest first. With `username`, flags the ones that user wants downloaded."""
 
         with database() as db:
@@ -785,7 +783,7 @@ class PodcastManager:
             for r in rows
         ]
 
-    def export_opml(self, username: Optional[str] = None) -> bytes:
+    def export_opml(self, username: str | None = None) -> bytes:
         """
         Generates an OPML file of all the podcast channels in the library
         """
@@ -827,7 +825,7 @@ class PodcastManager:
         ET.indent(root)
         return ET.tostring(root, encoding='utf-8', xml_declaration=True)
 
-    def import_opml_upload(self, username: str) -> List[Tuple[str, str]]:
+    def import_opml_upload(self, username: str) -> list[tuple[str, str]]:
         """
         Starts importing the OPML file from the current request in the background.
         Returns (message, flash category) for what happened so far
@@ -842,7 +840,7 @@ class PodcastManager:
         except ValueError as e:
             return [(f'Could not import OPML file: {e}', 'error')]
 
-    def import_opml(self, username: str, data: bytes) -> List[Tuple[str, str]]:
+    def import_opml(self, username: str, data: bytes) -> list[tuple[str, str]]:
         """
         Subscribes username to every feed found in an OPML document.
         """
@@ -868,7 +866,7 @@ class PodcastManager:
 
         return [(f"Importing {len(urls)} feed{'s' if len(urls) != 1 else ''}.", 'info')]
 
-    def opml_import_messages(self, username: str) -> Tuple[List[Tuple[str, str]], bool]:
+    def opml_import_messages(self, username: str) -> tuple[list[tuple[str, str]], bool]:
         """
         What to show about username's OPML import: (messages, still running).
         """
@@ -897,7 +895,7 @@ class PodcastManager:
         ], False
 
     @with_app_context
-    def _worker_import_opml(self, username: str, urls: List[str]) -> None:
+    def _worker_import_opml(self, username: str, urls: list[str]) -> None:
 
         try:
             self._import_opml_feeds(username, urls)
@@ -905,7 +903,7 @@ class PodcastManager:
             self._opml_limit.release(username)
             self.push_status()
 
-    def _import_opml_feeds(self, username: str, urls: List[str]) -> None:
+    def _import_opml_feeds(self, username: str, urls: list[str]) -> None:
 
         for url in urls:
             outcome, error = 'failed', 'unexpected error'
@@ -923,7 +921,7 @@ class PodcastManager:
                 else:
                     job[outcome] += 1
 
-    def _import_opml_feed(self, username: str, url: str) -> Tuple[str, str]:
+    def _import_opml_feed(self, username: str, url: str) -> tuple[str, str]:
         """Subscribes username to one feed. Returns ('added' | 'already' | 'failed', error)."""
 
         try:

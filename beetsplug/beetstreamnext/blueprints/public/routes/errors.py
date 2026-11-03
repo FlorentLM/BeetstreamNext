@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Tuple
+from typing import Any
 
 from flask import render_template
 
@@ -7,7 +7,7 @@ from .. import public_bp
 
 
 @public_bp.app_errorhandler(404)
-def page_not_found(_e: Any) -> Tuple[str, str]:
+def page_not_found(_e: Any) -> tuple[str, str]:
     error = {
         'code': 404,
         'title': '*record scratches*',

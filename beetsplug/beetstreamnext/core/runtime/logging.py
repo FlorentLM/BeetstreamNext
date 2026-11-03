@@ -4,7 +4,6 @@ import re
 import logging
 import collections
 import threading
-from typing import Optional, List
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from paste.translogger import TransLogger
 
@@ -68,7 +67,7 @@ class RedactingTransLogger(TransLogger):
                     environ = dict(environ)
                     environ['HTTP_REFERER'] = _scrub_uri(referer)
                 req_uri = _scrub_uri(req_uri)
-            except Exception:
+            except Exception:  # noqa: S110 failure is harmless  # nosec B110 (failure is harmless)
                 pass
             super().write_log(environ, method, req_uri, start, status, bytes)
 
@@ -122,9 +121,9 @@ class MemLogBuffer(logging.Handler):
 
         self.buffer: collections.deque = collections.deque(maxlen=capacity)
 
-        self._pending: List[str] = []
+        self._pending: list[str] = []
         self._pending_lock = threading.Lock()
-        self._flush_timer: Optional[threading.Timer] = None
+        self._flush_timer: threading.Timer | None = None
 
     def _flush(self) -> None:
         with self._pending_lock:
@@ -151,7 +150,7 @@ class MemLogBuffer(logging.Handler):
             self.handleError(record)
 
     @property
-    def recents(self) -> List[str]:
+    def recents(self) -> list[str]:
         return [log_line(*entry) for entry in self.buffer]
 
 

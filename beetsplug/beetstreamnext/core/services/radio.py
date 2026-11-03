@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from typing import Optional, List, Tuple
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -11,7 +10,7 @@ from beetsplug.beetstreamnext.core.media.images import sniff_image
 from beetsplug.beetstreamnext.utils.net import https_variant
 
 
-def resolve_station_icon(name: str, favicon_url: Optional[str] = None, homepage_url: Optional[str] = None) -> bytes:
+def resolve_station_icon(name: str, favicon_url: str | None = None, homepage_url: str | None = None) -> bytes:
     """
     Station icon fetch, in order: the given favicon URL, a Radio Browser lookup (by name),
     then the homepage's favicon.
@@ -42,10 +41,10 @@ def create_station(
         owner: str,
         name: str,
         stream_url: str,
-        homepage_url: Optional[str] = None,
-        image: Optional[bytes] = None,
-        favicon_url: Optional[str] = None,
-    ) -> Tuple[int | None, str | None]:
+        homepage_url: str | None = None,
+        image: bytes | None = None,
+        favicon_url: str | None = None,
+    ) -> tuple[int | None, str | None]:
     """
     Returns (station_id, error_message).
     station_id is None if the owner already has this stream URL
@@ -88,8 +87,8 @@ def update_station(
         station_id: int,
         name: str,
         stream_url: str,
-        homepage_url: Optional[str] = None,
-        image: Optional[bytes] = None,
+        homepage_url: str | None = None,
+        image: bytes | None = None,
         *,
         owner: str
     ) -> str | None:
@@ -139,7 +138,7 @@ def update_station(
     return None
 
 
-def list_radios(owner: str) -> List[dict]:
+def list_radios(owner: str) -> list[dict]:
     """`owner`'s stations."""
 
     with database() as db:

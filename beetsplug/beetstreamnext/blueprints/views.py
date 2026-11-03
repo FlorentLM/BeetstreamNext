@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, Dict
 import flask
 
 from beetsplug.beetstreamnext.core.accounts.app_passwords import list_app_passwords
@@ -24,7 +23,7 @@ def modal_error(message: str, result_id: str) -> flask.Response:
 ##
 # Shares
 
-def render_shares(username: Optional[str] = None, message: Optional[str] = None) -> str:
+def render_shares(username: str | None = None, message: str | None = None) -> str:
     """Shares table: every share, or only `username`'s."""
     admin = username is None
 
@@ -65,7 +64,7 @@ def render_sessions(username: str, bp_name: str) -> str:
 ##
 # Radios
 
-def radio_endpoints(bp_name: str) -> Dict[str, str]:
+def radio_endpoints(bp_name: str) -> dict[str, str]:
     """Endpoint names of the radio routes registered on blueprint `bp_name`, for the templates."""
     return {
         key: f'{bp_name}.route_{key}_radio' for key in ('create', 'update', 'edit', 'delete')} | {
@@ -76,7 +75,7 @@ def radio_endpoints(bp_name: str) -> Dict[str, str]:
     }
 
 
-def render_radios(username: str, message: Optional[str] = None, bp_name: str = 'admin') -> str:
+def render_radios(username: str, message: str | None = None, bp_name: str = 'admin') -> str:
 
     return flask.render_template(
         'partials/radio_list.html',
@@ -87,9 +86,9 @@ def render_radios(username: str, message: Optional[str] = None, bp_name: str = '
     )
 
 
-def render_radio_discovery(query: Optional[str]) -> str:
+def render_radio_discovery(query: str | None) -> str:
 
-    def result(stations: list, message: Optional[str]) -> str:
+    def result(stations: list, message: str | None) -> str:
         return flask.render_template('partials/radio_search.html', stations=stations, message=message)
 
     if not flask.current_app.config.get('enable_radio_discovery'):
@@ -120,10 +119,10 @@ def render_radio_discovery(query: Optional[str]) -> str:
 
 def render_channels(
         scope: str,
-        username: Optional[str] = None,
-        message: Optional[str] = None,
+        username: str | None = None,
+        message: str | None = None,
         ok: bool = True,
-        notices: Optional[list] = None
+        notices: list | None = None
     ) -> str:
 
     pm = flask.current_app.config['podcast_manager']
@@ -142,7 +141,7 @@ def render_channels(
     )
 
 
-def render_episodes(scope: str, channel_id: int, username: Optional[str] = None) -> str:
+def render_episodes(scope: str, channel_id: int, username: str | None = None) -> str:
 
     pm = flask.current_app.config['podcast_manager']
     episodes = pm.episodes_of(channel_id, username if scope == 'account' else None)
@@ -150,7 +149,7 @@ def render_episodes(scope: str, channel_id: int, username: Optional[str] = None)
     return flask.render_template('partials/podcast_episodes.html', scope=scope, episodes=episodes)
 
 
-def render_discovery(query: Optional[str]) -> str:
+def render_discovery(query: str | None) -> str:
 
     pm = flask.current_app.config['podcast_manager']
     feeds, message = pm.discover(query)
@@ -172,7 +171,7 @@ def delete_downloads_message(count: int) -> str:
     return 'No downloaded episodes to delete.'
 
 
-def opml_response(username: Optional[str] = None) -> flask.Response:
+def opml_response(username: str | None = None) -> flask.Response:
     """OPML export as a file download: every channel, or only `username`'s subscriptions."""
 
     pm = flask.current_app.config['podcast_manager']

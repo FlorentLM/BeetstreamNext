@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import urllib.parse
 from pathlib import Path
-from typing import Optional
 
 import flask
 
@@ -91,7 +90,7 @@ def content_disposition(download_name: str) -> str:
     return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{urllib.parse.quote(name, safe='')}"
 
 
-def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optional[str]) -> flask.Response | None:
+def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: str | None) -> flask.Response | None:
     """
     Hand the file off to the reverse proxy (Nginx/Apache) instead of streaming it through
     Python (if configured). Returns None if offloading isn't enabled/possible.
@@ -128,7 +127,7 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: Optio
 def send_file(
         file_path: str | Path,
         as_attachment: bool = False,
-        download_name: Optional[str] = None
+        download_name: str | None = None
     ) -> flask.Response | None:
 
     file_path = Path(file_path)

@@ -4,7 +4,7 @@ import json
 import time
 from collections import defaultdict
 from dataclasses import asdict
-from typing import Any, Dict, List
+from typing import Any
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import SCROBBLE_BATCH_SIZE, SCROBBLE_MAX_AGE_SEC, SCROBBLE_MIN_TRACK_SEC
@@ -28,7 +28,7 @@ def is_allowed(username: str) -> bool:
     return bool((get_userdata(username, fields=['scrobblingEnabled']) or {}).get('scrobblingEnabled'))
 
 
-def save_connection(username: str, service: str, credentials: Dict[str, Any], display_name: str) -> None:
+def save_connection(username: str, service: str, credentials: dict[str, Any], display_name: str) -> None:
     """Reconnecting clears any error and the listens waiting are sent."""
 
     with database() as db:
@@ -74,7 +74,7 @@ def set_enabled(username: str, service: str, enabled: bool) -> None:
         workers.submit(deliver_queued)
 
 
-def get_credentials(username: str, service: str) -> Dict[str, Any]:
+def get_credentials(username: str, service: str) -> dict[str, Any]:
 
     with database() as db:
         row = db.execute(
@@ -88,7 +88,7 @@ def get_credentials(username: str, service: str) -> Dict[str, Any]:
     return decrypt_json(row['credentials_encrypted']) if row else {}
 
 
-def list_connections(username: str) -> List[Dict[str, Any]]:
+def list_connections(username: str) -> list[dict[str, Any]]:
 
     with database() as db:
         rows = db.execute(
@@ -109,7 +109,7 @@ def list_connections(username: str) -> List[Dict[str, Any]]:
     return connections
 
 
-def _now_playing_work(targets: List[tuple], track: ScrobbleTrack) -> None:
+def _now_playing_work(targets: list[tuple], track: ScrobbleTrack) -> None:
     with app.app_context():
         for scrobbler, credentials in targets:
             try:
@@ -190,7 +190,7 @@ def deliver_queued() -> None:
                 """
             ).fetchall()
 
-        per_connection: Dict[tuple, List] = defaultdict(list)
+        per_connection: dict[tuple, list] = defaultdict(list)
         for row in due:
             per_connection[(row['username'], row['service'])].append(row)
 
@@ -220,7 +220,7 @@ def deliver_queued() -> None:
                             f"""
                             DELETE FROM scrobble_queue 
                             WHERE id IN ({placeholders})
-                            """, ids)   # nosec B608
+                            """, ids)   # nosec B608  # noqa: S608 vars are constants
 
                     if status is ScrobbleStatus.OK:
                         db.execute(

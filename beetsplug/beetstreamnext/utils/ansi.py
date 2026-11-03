@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import html
 import re
-from typing import List, Optional
 
 
 class TermColors:
@@ -45,9 +44,9 @@ def _ansi_spans(line: str) -> str:
     HTML-escape a log line and turn ANSI colour/style codes into <span class="ansi-...">
     """
 
-    out: List[str] = []
+    out: list[str] = []
     span_open = False
-    color: Optional[str] = None
+    color: str | None = None
     flags = {'bold': False, 'dim': False, 'italic': False, 'underline': False}
     flag_codes = {1: ('bold', True), 2: ('dim', True), 3: ('italic', True), 4: ('underline', True),
                   23: ('italic', False), 24: ('underline', False)}
@@ -102,7 +101,7 @@ def _tokens(text: str) -> str:
     return ''.join(out)
 
 
-def log_line(line: str, level: Optional[str] = None, name: Optional[str] = None) -> str:
+def log_line(line: str, level: str | None = None, name: str | None = None) -> str:
     """
     Log line as a <div> with the level in a <span> so the page can colour and filter it.
     """

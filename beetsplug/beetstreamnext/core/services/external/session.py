@@ -240,7 +240,7 @@ def normalize_url(url: str, probe_https: bool = False, probe_timeout: float = 3.
                 )
             resp.close()
             url = https_url
-        except Exception:
+        except Exception:  # noqa: S110 failure is harmless  # nosec B110 (failure is harmless)
             pass
 
     return url

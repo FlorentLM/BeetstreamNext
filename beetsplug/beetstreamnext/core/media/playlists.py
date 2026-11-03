@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import threading
 import urllib.parse
-from typing import TYPE_CHECKING, List, Optional, Generator
+from typing import TYPE_CHECKING
+from collections.abc import Generator
 import os
+import contextlib
 from pathlib import Path
 import flask
 from beets.util import bytestring_path
@@ -19,6 +21,7 @@ from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
+
 if TYPE_CHECKING:
     from beets.library import Item
 
@@ -31,7 +34,7 @@ def _validate_owner(name: str) -> None:
 
 class Playlist:
 
-    def __init__(self, dir_id, path: str | Path, owner: Optional[str] = None):
+    def __init__(self, dir_id, path: str | Path, owner: str | None = None):
         self._lock = threading.RLock()
         self.path = Path(path)
         self.dir_id = dir_id
@@ -48,7 +51,7 @@ class Playlist:
         self._parse_metadata()
 
     @staticmethod
-    def make_id(dir_id, path: Path, owner: Optional[str]) -> str:
+    def make_id(dir_id, path: Path, owner: str | None) -> str:
         """
         Make playlist's ID from its directory group, path (and owner for per-user ones).
         """
@@ -177,7 +180,7 @@ class Playlist:
 
         self.song_count = len(self.songs)
 
-    def rename(self, name : Optional[str] = None) -> None:
+    def rename(self, name : str | None = None) -> None:
         with self._lock:
             if name and name[:200] != self.name:
                 safe_name = safe_filename(str(name).rsplit('.', 1)[0], fallback='playlist')
@@ -231,7 +234,7 @@ class Playlist:
             self.to_m3u()
             self.mtime = self.path.stat().st_mtime
 
-    def remove_songs(self, indices: List[int]) -> None:
+    def remove_songs(self, indices: list[int]) -> None:
         with self._lock:
             for i in sorted(indices, reverse=True):  # descending order so that removing an item doesn't shift other indices
                 if 0 <= i < len(self.songs):
@@ -250,7 +253,7 @@ class Playlist:
         self.duration = sum(int(s.get('duration', 0) or 0) for s in self.songs)
 
     @classmethod
-    def from_songs(cls, name: str, songs: List['Item']) -> Playlist:
+    def from_songs(cls, name: str, songs: list[Item]) -> Playlist:
         """
         Create a new playlist from a list of beets songs, write it to disk, and return Playlist instance.
         """
@@ -345,10 +348,8 @@ class Playlist:
                     curr_entry['m3a'] = True
 
                 elif line.startswith('#EXTBYT:'):
-                    try:
+                    with contextlib.suppress(ValueError):
                         curr_entry['size'] = int(line[8:].strip())
-                    except ValueError:
-                        pass
 
                 elif line.startswith('#EXTALBUMARTURL:'):
                     curr_entry['albumarturl'] = line[len('#EXTALBUMARTURL:'):].strip()
@@ -468,7 +469,7 @@ class PlaylistProvider:
                     for path in user_dir.glob('*.m3u*'):
                         yield path, user_dir.name
 
-    def _load_playlist(self, dir_id, filepath, owner: Optional[str] = None) -> Playlist:
+    def _load_playlist(self, dir_id, filepath, owner: str | None = None) -> Playlist:
         """Load playlist data from a file, or return the cached version if still current."""
 
         file_mtime = filepath.stat().st_mtime
@@ -540,7 +541,7 @@ class PlaylistProvider:
 
             return None
 
-    def getall(self) -> List[Playlist]:
+    def getall(self) -> list[Playlist]:
         """Return all playlists, rescanning directories for changes."""
         with self._lock:
             current_paths_by_dir: dict[int, set] = {}

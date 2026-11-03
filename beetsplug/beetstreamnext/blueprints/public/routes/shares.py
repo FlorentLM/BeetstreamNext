@@ -7,7 +7,6 @@ import threading
 import time
 import zipfile
 from pathlib import Path
-from typing import List, Tuple
 
 import flask
 from flask import render_template
@@ -89,7 +88,7 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
 _zip_slots = threading.BoundedSemaphore(ZIP_MAX_CONCURRENT)
 
 
-def _zip_cache_path(entry_id: str, files: List[Tuple[Path, str]]) -> Path:
+def _zip_cache_path(entry_id: str, files: list[tuple[Path, str]]) -> Path:
     """
     Cached by album and by (name, size, mtime) of the files so repeat downloads cost nothing.
     """
@@ -107,7 +106,7 @@ def _zip_album(entry_id: str, items: list) -> Path | None:
     Zip an album and returns the (cached) path, or None if too many zips are being built
     """
 
-    files: List[Tuple[Path, str]] = []
+    files: list[tuple[Path, str]] = []
 
     for item in items:
         path_obj = beets_abspath(item)
@@ -143,7 +142,7 @@ def _zip_album(entry_id: str, items: list) -> Path | None:
 
 
 @public_bp.route('/share/<share_id>')
-def share_view(share_id: str) -> str | Tuple[str, str]:
+def share_view(share_id: str) -> str | tuple[str, str]:
     with database() as db:
         share = db.execute(
             """
@@ -207,7 +206,7 @@ def share_view(share_id: str) -> str | Tuple[str, str]:
 
 
 @public_bp.route('/share/<share_id>/unlock', methods=['POST'])
-def share_unlock(share_id: str) -> flask.Response | Tuple[str, int]:
+def share_unlock(share_id: str) -> flask.Response | tuple[str, int]:
 
     share = _get_active_share(share_id, unlocked=False)
     if not share['password_hash']:

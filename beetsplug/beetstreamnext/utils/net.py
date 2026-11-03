@@ -6,7 +6,8 @@ import socket
 import time
 import urllib.parse
 from functools import lru_cache
-from typing import Iterable, List, NamedTuple, Optional, Set, Tuple
+from typing import NamedTuple
+from collections.abc import Iterable
 
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS
 from beetsplug.beetstreamnext.utils.text import split_list
@@ -32,8 +33,8 @@ def validate_trusted_hosts(raw: str) -> str:
     if not raw:
         return ''
 
-    entries: Set[str] = set()
-    invalid: List[str] = []
+    entries: set[str] = set()
+    invalid: list[str] = []
 
     for item in split_list(raw):
         candidate = item[1:-1] if item.startswith('[') and item.endswith(']') else item
@@ -59,8 +60,8 @@ def validate_trusted_hosts(raw: str) -> str:
 
 class ParsedHost(NamedTuple):
     host: str     # hostname or IP (lowercase)
-    scheme: Optional[str] = None
-    port: Optional[int] = None
+    scheme: str | None = None
+    port: int | None = None
 
     @property
     def netloc(self) -> str:
@@ -229,7 +230,7 @@ def is_public_url(url: str) -> bool:
 
 class LocalServices(NamedTuple):
     hostnames: frozenset            # Trusted names no matter what they resolve to (container names, 'localhost'...)
-    networks: Tuple                 # Trusted IP addresses and CIDR ranges
+    networks: tuple                 # Trusted IP addresses and CIDR ranges
 
     def allows(self, host: str, addr: ipaddress._BaseAddress) -> bool:
         """
@@ -286,7 +287,7 @@ class WhitelistedProxyFix:
     ProxyFix that only listens X-Forwarded-* headers from trusted peers.
     """
 
-    def __init__(self, wsgi_app, trusted: Set[str], **proxy_fix_kwargs):
+    def __init__(self, wsgi_app, trusted: set[str], **proxy_fix_kwargs):
 
         from werkzeug.middleware.proxy_fix import ProxyFix
 

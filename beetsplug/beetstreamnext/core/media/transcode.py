@@ -7,7 +7,8 @@ import tempfile
 from pathlib import Path
 import queue
 import threading
-from typing import Generator, Optional, Any
+from typing import Any
+from collections.abc import Generator
 import flask
 
 from beetsplug.beetstreamnext.constants import (
@@ -20,6 +21,7 @@ from beetsplug.beetstreamnext.core.runtime.web import send_file
 from beetsplug.beetstreamnext.utils.concurrency import KeyedLimiter
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import find_binary
+import contextlib
 
 
 # bytes added to estimated length of a CBR MP3 stream for some headroom
@@ -130,7 +132,7 @@ def _send_transcode(
         req_format: str = 'mp3',
         duration: float = 0.0,
         estimate_length: bool = False,
-        audio_filters: Optional[str] = None
+        audio_filters: str | None = None
     ) -> flask.Response | None:
 
     target = FORMAT_MAP.get(req_format.lower() if req_format else 'mp3', FORMAT_MAP['mp3'])
@@ -165,7 +167,7 @@ def _send_transcode(
 
         command.append('pipe:1')
 
-        output_stream = subprocess.Popen(
+        output_stream = subprocess.Popen(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -175,7 +177,7 @@ def _send_transcode(
         return None
 
     # Lossless and VBR/ABR formats (and Ogg/MP4 containers) can't really be estimated, so no Content-Length
-    declared_length: Optional[int] = None
+    declared_length: int | None = None
     if estimate_length and target['f'] == 'mp3' and max_bitrate > 0 and duration > 0:
         remaining = max(0.0, duration - start_at)
         # + the headroom for encoder delay/padding frames and Xing/ID3 headers
@@ -205,10 +207,8 @@ def _send_transcode(
                             continue
             finally:
                 # if queue is full, consumer is gone and won't read the sentinel anyway
-                try:
+                with contextlib.suppress(queue.Full):
                     chunk_queue.put_nowait(_SENTINEL)
-                except queue.Full:
-                    pass
 
         reader_thread = threading.Thread(target=_reader, daemon=True)
         reader_thread.start()
@@ -247,7 +247,7 @@ def _send_transcode(
                 except subprocess.TimeoutExpired:
                     output_stream.kill()
                     output_stream.wait(timeout=5)
-            except Exception:
+            except Exception:  # noqa: S110 failure is harmless  # nosec B110 (failure is harmless)
                 pass
 
     # reader is a daemon, here stdout is closed and stop_event is set, so it will exit on its own. Joining would block.
@@ -267,7 +267,7 @@ def _send_transcode_tempfile(
         start_at: float = 0.0,
         max_bitrate: int = 128,
         req_format: str = 'mp3',
-        audio_filters: Optional[str] = None
+        audio_filters: str | None = None
     ) -> flask.Response | None:
     """
     Transcode to a temp file then serve with send_file() for an exact Content-Length and Range/seek support.
@@ -306,7 +306,7 @@ def _send_transcode_tempfile(
     command.append(str(tmp_path))
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             command,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -341,7 +341,7 @@ def try_transcode(
         req_format: str = 'mp3',
         duration: float = 0.0,
         estimate_length: bool = False,
-        audio_filters: Optional[str] = None,
+        audio_filters: str | None = None,
         exact_length: bool = False
     ) -> flask.Response | None:
 

@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import time
 from io import BytesIO
-from typing import Sequence, Optional, Dict, Tuple, List
+from collections.abc import Sequence
 import sqlite3
 
 from beetsplug.beetstreamnext.application import app
@@ -16,7 +16,7 @@ from beetsplug.beetstreamnext.utils.general import filter_dict
 from beetsplug.beetstreamnext.utils.text import safe_str
 
 
-def get_password_hash(username: str) -> Optional[str]:
+def get_password_hash(username: str) -> str | None:
     """The stored password hash of a user."""
 
     with database() as db:
@@ -29,7 +29,7 @@ def get_password_hash(username: str) -> Optional[str]:
     return stored.decode('utf-8') if isinstance(stored, bytes) else stored
 
 
-def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) -> dict:
+def get_userdata(username: str, fields: str | Sequence[str] | None = None) -> dict:
 
     existing_fields = set(ALL_USER_FIELDS) - {'password'}
 
@@ -52,7 +52,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) ->
             SELECT {columns_str}
             FROM users
             WHERE username = ?
-            """, (username,)  # nosec B608
+            """, (username,)  # nosec B608  # noqa: S608 vars are constants
         ).fetchone()
 
     if not row:
@@ -61,7 +61,7 @@ def get_userdata(username: str, fields: Optional[str | Sequence[str]] = None) ->
     return dict(zip(column_names, row, strict=True))
 
 
-def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sqlite3.Connection] = None) -> None:
+def _store_userdata(user_dict: dict, insert_only: bool = False, db: sqlite3.Connection | None = None) -> None:
     """
     Insert or update a user row. If `db` is given, executes on that connection without
     opening/committing here (caller owns the transaction).
@@ -91,7 +91,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
         columns_str = ', '.join(columns)
         placeholders_str = ', '.join(placeholders)
 
-        sql = f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str})"  # nosec B608
+        sql = f"INSERT INTO users ({columns_str}) VALUES ({placeholders_str})"  # nosec B608  # noqa: S608 vars are constants
         sql_values = values
     else:
         # Updating an existing user
@@ -105,7 +105,7 @@ def _store_userdata(user_dict: dict, insert_only: bool = False, db: Optional[sql
             update_clauses.append(f"{key} = ?")
             sql_values.append(val)
 
-        sql = f"UPDATE users SET {', '.join(update_clauses)} WHERE username = ?"  # nosec B608
+        sql = f"UPDATE users SET {', '.join(update_clauses)} WHERE username = ?"  # nosec B608  # noqa: S608 vars are constants
         sql_values.append(username)
 
     def _execute(conn: sqlite3.Connection) -> None:
@@ -193,7 +193,7 @@ def delete_user(username: str) -> bool:
     return cursor.rowcount > 0
 
 
-def list_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
+def list_users(fields: Sequence[str] | None = None) -> list[dict]:
     """
     Load roles/metadata for all users. Defaults to public user fields only.
     """
@@ -209,13 +209,13 @@ def list_users(fields: Optional[Sequence[str]] = None) -> List[Dict]:
 
     with database() as db:
         rows = db.execute(
-            f"""SELECT {columns_str} FROM users"""  # nosec B608
+            f"""SELECT {columns_str} FROM users"""  # nosec B608  # noqa: S608 vars are constants
         ).fetchall()
 
     return [dict(zip(column_names, row, strict=True)) for row in rows]
 
 
-def session_stamp(username: str) -> Optional[str]:
+def session_stamp(username: str) -> str | None:
     """
     Stamp of a user's current password: a session ith non-matching stamp is rejected.
     """
@@ -231,7 +231,7 @@ def get_user_roles(username: str) -> dict:
     return get_userdata(username)
 
 
-def set_user_avatar(username: str, blob: Optional[bytes | BytesIO] = None) -> bool:
+def set_user_avatar(username: str, blob: bytes | BytesIO | None = None) -> bool:
     """Updates a user's avatar. If blob is None, deletes the avatar. Returns True if user found."""
 
     if isinstance(blob, BytesIO):
@@ -249,7 +249,7 @@ def set_user_avatar(username: str, blob: Optional[bytes | BytesIO] = None) -> bo
     return cur.rowcount > 0
 
 
-def get_user_avatar(username: str) -> Tuple[Optional[bytes], Optional[float]]:
+def get_user_avatar(username: str) -> tuple[bytes | None, float | None]:
     """Returns (blob_bytes, last_changed_timestamp)."""
     with database() as db:
         row = db.execute(

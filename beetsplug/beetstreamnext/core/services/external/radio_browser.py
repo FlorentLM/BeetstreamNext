@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import time
 import urllib.parse
-from typing import List
 import requests
 import asyncio
 
@@ -24,7 +23,7 @@ _ICON_HREF_RE = re.compile(r'href=["\']([^"\']+)["\']', re.IGNORECASE)
 _ICON_SIZES_RE = re.compile(r'sizes=["\'](\d+)x\d+["\']', re.IGNORECASE)
 
 
-async def _async_radio_search(query: str, limit: int) -> List[dict]:
+async def _async_radio_search(query: str, limit: int) -> list[dict]:
 
     from radios import RadioBrowser
 

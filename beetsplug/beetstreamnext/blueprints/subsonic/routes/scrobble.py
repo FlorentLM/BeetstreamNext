@@ -224,48 +224,46 @@ def endpoint_report_playback() -> flask.Response:
         scrobbling.now_playing(username, item)
 
     # Check for scrobble threshold: played for 3 minutes or 50% of total length
-    if not ignore_scrobble and state == 'playing':
+    if not ignore_scrobble and state == 'playing' and entry_type == 'song' and item:
+        canonical_id = IDs.encode_song(standardise_datadict(item))
+        duration_ms = (item.get('length') or 0) * 1000
+        threshold = min(3 * 60 * 1000, duration_ms * 0.5)
 
-        if entry_type == 'song' and item:
-            canonical_id = IDs.encode_song(standardise_datadict(item))
-            duration_ms = (item.get('length') or 0) * 1000
-            threshold = min(3 * 60 * 1000, duration_ms * 0.5)
+        if position_ms >= threshold:
+            counted = False
 
-            if position_ms >= threshold:
-                counted = False
+            # Check if already scrobbled this session
+            with database() as db:
+                session = db.execute(
+                    """
+                    SELECT scrobbled 
+                    FROM now_playing 
+                    WHERE username = ?
+                    """, (username,)
+                ).fetchone()
 
-                # Check if already scrobbled this session
-                with database() as db:
-                    session = db.execute(
+                if session and not session['scrobbled']:
+                    # Update play stats
+                    db.execute(
                         """
-                        SELECT scrobbled 
-                        FROM now_playing 
+                        INSERT INTO play_stats (username, song_id, play_count, last_played)
+                        VALUES (?, ?, 1, ?)
+                        ON CONFLICT (username, song_id)
+                            DO UPDATE SET play_count  = play_count + 1,
+                                          last_played = excluded.last_played
+                        """, (username, canonical_id, now)
+                    )
+                    # Mark as scrobbled to not count again until the next 'starting' state
+                    db.execute(
+                        """
+                        UPDATE now_playing 
+                        SET scrobbled = 1 
                         WHERE username = ?
                         """, (username,)
-                    ).fetchone()
+                    )
+                    counted = True
 
-                    if session and not session['scrobbled']:
-                        # Update play stats
-                        db.execute(
-                            """
-                            INSERT INTO play_stats (username, song_id, play_count, last_played)
-                            VALUES (?, ?, 1, ?)
-                            ON CONFLICT (username, song_id)
-                                DO UPDATE SET play_count  = play_count + 1,
-                                              last_played = excluded.last_played
-                            """, (username, canonical_id, now)
-                        )
-                        # Mark as scrobbled to not count again until the next 'starting' state
-                        db.execute(
-                            """
-                            UPDATE now_playing 
-                            SET scrobbled = 1 
-                            WHERE username = ?
-                            """, (username,)
-                        )
-                        counted = True
-
-                if counted:
-                    scrobbling.scrobble(username, item, now)
+            if counted:
+                scrobbling.scrobble(username, item, now)
 
     return subsonic_response({}, resp_fmt=resp_fmt)

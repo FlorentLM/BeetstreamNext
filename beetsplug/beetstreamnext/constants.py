@@ -6,7 +6,8 @@ import os
 import re
 import mediafile
 from pathlib import Path
-from typing import Any, Callable, Dict, NamedTuple
+from typing import Any, NamedTuple
+from collections.abc import Callable
 from importlib.metadata import version, PackageNotFoundError
 
 from beetsplug.beetstreamnext.utils.system import is_installed, cache_location, config_location, data_location
@@ -74,7 +75,7 @@ BEETS_IMPORT_RESULTS_PATH: Path = CACHE_LOCATION / 'last_import_results.jsonl'
 BEETS_MULTI_DELIM: str = '\\\u2400'  # what's used in beets' db to separate multiple artists, multiple genres etc
 GENRES_DELIM: re.Pattern = re.compile('|'.join(re.escape(d) for d in [';', ',', '/', '|', '\u2400', '\\', '\x00']))
 
-ASCII_TRANSLATE_TABLE: Dict[int, str] = {
+ASCII_TRANSLATE_TABLE: dict[int, str] = {
     ord('\u2010'): '-', ord('\u2011'): '-', ord('\u2012'): '-',
     ord('\u2013'): '-', ord('\u2014'): '-', ord('\u2015'): '-',
     ord('\u2212'): '-', ord('\u2018'): "'", ord('\u2019'): "'",
@@ -190,7 +191,7 @@ MAX_UNLOCKED_SHARES = 10  # password-protected shares remembered per visitor ses
 
 ## Server defaults
 
-DEFAULT_HOST: str = '0.0.0.0'  # nosec B104
+DEFAULT_HOST: str = '0.0.0.0'  # nosec B104  # noqa: S104
 
 DEFAULT_PORT: int = 8080
 

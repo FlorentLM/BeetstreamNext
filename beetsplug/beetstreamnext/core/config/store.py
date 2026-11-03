@@ -1,7 +1,8 @@
 from __future__ import annotations
 import json
 import threading
-from typing import Any, Dict, Optional, Callable
+from typing import Any
+from collections.abc import Callable
 
 from beetsplug.beetstreamnext.utils.text import split_list
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -45,11 +46,11 @@ class SettingsStore:
     def __init__(self):
         self._lock = threading.RLock()
 
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._external: set = set()     # keys present in yaml_defaults (CLI flag/env var/YAML/beets-config)
         self._locked: set = set()       # settings explicitly set via a CLI flag/env var/YAML/beets-config are locked
-        self._pinned: Dict[str, Any] = {}   # list[str] keys: explicitly set items are locked
-        self._directly_applicable: Optional[Dict[str, Callable]] = None
+        self._pinned: dict[str, Any] = {}   # list[str] keys: explicitly set items are locked
+        self._directly_applicable: dict[str, Callable] | None = None
 
     def _init_directly_applicable(self):
         """Bind settings that don't neet a restart."""
@@ -84,7 +85,7 @@ class SettingsStore:
             'rate_limit_ip_block_window': lambda v: setattr(rate_limiter, 'ip_block_window', v),
         })
 
-    def initialise(self, yaml_defaults: Optional[Dict[str, Any]] = None):
+    def initialise(self, yaml_defaults: dict[str, Any] | None = None):
         """
         Populate the in-memory cache and apply settings to live runtime stuff.
         Resolution order (per key): CLI flag/env var/YAML/beets-config (yaml_defaults) -> db -> schema default.
@@ -312,7 +313,7 @@ class SettingsStore:
 
         return value
 
-    def get_for_ui(self, category: str) -> Dict[str, Dict[str, Any]]:
+    def get_for_ui(self, category: str) -> dict[str, dict[str, Any]]:
         """For UI rendering. Sensitive values are only reported as 'is_set' booleans."""
         result = {}
         standalone = app.config.get('STANDALONE_MODE', False)

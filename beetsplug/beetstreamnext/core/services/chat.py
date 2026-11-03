@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from beetsplug.beetstreamnext.constants import (
     CHAT_MAX_CHARS, CHAT_MAX_STORED, CHAT_RATE_MAX, CHAT_RATE_WINDOW_SEC, CHAT_RETENTION_SEC
@@ -74,7 +73,7 @@ def post_message(username: str, message: str) -> None:
     admin_events.publish('chat', '')
 
 
-def get_message(msg_id: int) -> Optional[dict]:
+def get_message(msg_id: int) -> dict | None:
 
     with database() as db:
         row = db.execute(
@@ -89,7 +88,7 @@ def get_message(msg_id: int) -> Optional[dict]:
     return dict(row) if row else None
 
 
-def fetch_messages(after_id: Optional[int] = None, before_id: Optional[int] = None) -> tuple[list[dict], bool]:
+def fetch_messages(after_id: int | None = None, before_id: int | None = None) -> tuple[list[dict], bool]:
     """
     Returns (messages, has_older), oldest first.
 

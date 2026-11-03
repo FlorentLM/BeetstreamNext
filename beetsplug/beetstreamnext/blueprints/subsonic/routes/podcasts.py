@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import List
 import flask
 
 from .. import subsonic_bp
@@ -26,7 +25,7 @@ def _is_subscribed(username: str, channel_id: int) -> bool:
     return row is not None
 
 
-def _list_episodes(channel_id: int) -> List[dict]:
+def _list_episodes(channel_id: int) -> list[dict]:
 
     with database() as db:
         rows = db.execute(
@@ -40,7 +39,7 @@ def _list_episodes(channel_id: int) -> List[dict]:
     return [dict(r) for r in rows]
 
 
-def _newest_episodes(username: str, count: int) -> List[dict]:
+def _newest_episodes(username: str, count: int) -> list[dict]:
 
     with database() as db:
         rows = db.execute(

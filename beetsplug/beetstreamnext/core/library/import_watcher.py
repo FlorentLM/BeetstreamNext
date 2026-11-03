@@ -4,7 +4,6 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, Optional, Tuple
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import AUDIO_EXTENSIONS, IMPORTWATCH_POLL_TIME
@@ -16,12 +15,12 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.general import filter_dict
 
 
-Snapshot = FrozenSet[Tuple[str, int, int]]
+Snapshot = frozenset[tuple[str, int, int]]
 
 
 @dataclass
 class PathState:
-    snapshot: Optional[Snapshot] = None
+    snapshot: Snapshot | None = None
     changed_at: float = 0.0
     dirty: bool = False
     last_error: str = ''
@@ -49,7 +48,7 @@ class ImportWatcher(threading.Thread):
 
     def __init__(self) -> None:
         super().__init__(name='import-watcher', daemon=True)
-        self._states: Dict[str, PathState] = {}
+        self._states: dict[str, PathState] = {}
 
     def run(self) -> None:
         while True:

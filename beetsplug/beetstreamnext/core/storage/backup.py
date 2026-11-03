@@ -7,7 +7,7 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from beetsplug.beetstreamnext.constants import DB_FILE_NAME, DB_BUSY_TIMEOUT_MS, SERVER_VERSION
 from beetsplug.beetstreamnext.core.storage.encryption import get_key_hash
@@ -34,7 +34,7 @@ def _meta(conn: sqlite3.Connection, key: str, table: str = 'db_metadata') -> str
     if table not in META_TABLES:
         raise ValueError(f'Unknown metadata table: {table}')
 
-    query = f'SELECT value FROM {table} WHERE key = ?'  # nosec B608
+    query = f'SELECT value FROM {table} WHERE key = ?'  # nosec B608  # noqa: S608 vars are constants
 
     try:
         row = conn.execute(query, (key,)).fetchone()
@@ -45,7 +45,7 @@ def _meta(conn: sqlite3.Connection, key: str, table: str = 'db_metadata') -> str
     return row[0] if row else None
 
 
-def _read_db_info(path: Path) -> Dict[str, Any]:
+def _read_db_info(path: Path) -> dict[str, Any]:
     """Check integrity of database file and read its schema version and key hash."""
 
     conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
@@ -118,7 +118,7 @@ def create_backup(db_path: str | Path, dest: str | Path) -> Path:
     return dest
 
 
-def restore_backup(archive: str | Path, db_path: str | Path, old_key: Optional[str] = None) -> Path | None:
+def restore_backup(archive: str | Path, db_path: str | Path, old_key: str | None = None) -> Path | None:
     """
     Replace the database at `db_path` with the one in `archive`. Server must
     be stopped.

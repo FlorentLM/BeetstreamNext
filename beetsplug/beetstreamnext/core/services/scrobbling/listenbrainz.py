@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 from beetsplug.beetstreamnext.constants import SERVER_NAME, SERVER_VERSION
 from beetsplug.beetstreamnext.core.services.scrobbling.base import ScrobbleError, ScrobbleTrack, ScrobblerBase, ScrobbleStatus
@@ -17,10 +18,10 @@ class ListenBrainzScrobbler(ScrobblerBase):
     default_url = DEFAULT_URL
 
     @staticmethod
-    def base_url(credentials: Dict[str, Any]) -> str:
+    def base_url(credentials: dict[str, Any]) -> str:
         return (credentials.get('url') or DEFAULT_URL).rstrip('/')
 
-    def verify(self, credentials: Dict[str, Any]) -> str:
+    def verify(self, credentials: dict[str, Any]) -> str:
 
         response = self.request(
             'GET', f'{self.base_url(credentials)}/1/validate-token',
@@ -43,7 +44,7 @@ class ListenBrainzScrobbler(ScrobblerBase):
         return str(body.get('user_name') or '')
 
     @staticmethod
-    def _listen(track: ScrobbleTrack, with_time: bool) -> Dict[str, Any]:
+    def _listen(track: ScrobbleTrack, with_time: bool) -> dict[str, Any]:
 
         info = {
             'media_player': SERVER_NAME,
@@ -72,7 +73,7 @@ class ListenBrainzScrobbler(ScrobblerBase):
 
         return listen
 
-    def _post(self, credentials: Dict[str, Any], listen_type: str, listens: list) -> ScrobbleStatus:
+    def _post(self, credentials: dict[str, Any], listen_type: str, listens: list) -> ScrobbleStatus:
 
         response = self.request(
             'POST', f'{self.base_url(credentials)}/1/submit-listens',
@@ -90,11 +91,11 @@ class ListenBrainzScrobbler(ScrobblerBase):
             return ScrobbleStatus.RETRY
         return ScrobbleStatus.DROP
 
-    def now_playing(self, credentials: Dict[str, Any], track: ScrobbleTrack) -> ScrobbleStatus:
+    def now_playing(self, credentials: dict[str, Any], track: ScrobbleTrack) -> ScrobbleStatus:
         listens = [self._listen(track, with_time=False)]
         listen_type = 'playing_now'
         return self._post(credentials, listen_type, listens)
 
-    def submit(self, credentials: Dict[str, Any], tracks: Sequence[ScrobbleTrack]) -> ScrobbleStatus:
+    def submit(self, credentials: dict[str, Any], tracks: Sequence[ScrobbleTrack]) -> ScrobbleStatus:
         listens = [self._listen(t, with_time=True) for t in tracks]
         return self._post(credentials, 'single' if len(listens) == 1 else 'import', listens)

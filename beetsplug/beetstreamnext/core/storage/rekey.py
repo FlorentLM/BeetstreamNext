@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 import time
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 from cryptography.fernet import InvalidToken
 
@@ -26,7 +26,7 @@ def _reencrypt(conn: sqlite3.Connection, table: str, column: str, flag: str | No
         f"""SELECT rowid, {column} 
         FROM {table} 
         WHERE {where}
-        """).fetchall()    # nosec B608
+        """).fetchall()    # nosec B608  # noqa: S608 vars are constants
 
     for rowid, stored in rows:
         token = stored if isinstance(stored, bytes) else stored.encode('utf-8')
@@ -40,7 +40,7 @@ def _reencrypt(conn: sqlite3.Connection, table: str, column: str, flag: str | No
             f"""
             UPDATE {table} 
             SET {column} = ? WHERE rowid = ?
-            """,     # nosec B608
+            """,     # nosec B608  # noqa: S608 vars are constants
             (new if isinstance(stored, bytes) else new.decode('utf-8'), rowid)
         )
 

@@ -18,7 +18,6 @@ import tarfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Optional
 
 ##
 
@@ -44,9 +43,9 @@ alpine_SHA256 = '4c4cd80495f4bbfac3cc026a191b84f341df885d175d757cba7675bcc7b87ec
 
 ##
 
-def download(url: str, sha256: Optional[str] = None) -> io.BytesIO:
+def download(url: str, sha256: str | None = None) -> io.BytesIO:
 
-    with urllib.request.urlopen(urllib.parse.quote(url, safe=':/,'), timeout=120) as resp:
+    with urllib.request.urlopen(urllib.parse.quote(url, safe=':/,'), timeout=120) as resp:  # noqa: S310 hardcoded pinned https URL
         data = resp.read()
 
     digest = hashlib.sha256(data).hexdigest()

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import urllib.parse
-from typing import Optional, Dict
 import requests
 
 from beetsplug.beetstreamnext.constants import USER_AGENT
@@ -16,7 +15,7 @@ _DEEZER_PLACEHOLDER_HASHES = frozenset({
 })
 
 
-def _is_deezer_placeholder(artist_data: Dict) -> bool:
+def _is_deezer_placeholder(artist_data: dict) -> bool:
     url = artist_data.get('picture_small', '')
 
     if '//56x56' in url or '//250x250' in url:
@@ -28,7 +27,7 @@ def _is_deezer_placeholder(artist_data: Dict) -> bool:
     return not bool(url)
 
 
-def query_deezer(artist: Optional[str] = None, album: Optional[str] = None) -> dict:
+def query_deezer(artist: str | None = None, album: str | None = None) -> dict:
 
     if not artist and not album:
         return {}

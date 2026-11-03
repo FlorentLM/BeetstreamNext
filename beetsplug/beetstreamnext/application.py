@@ -13,6 +13,7 @@ from beetsplug.beetstreamnext.core.storage.connection import close_database
 from beetsplug.beetstreamnext.core.accounts.passwords import PASSWORD_RULES
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
 from beetsplug.beetstreamnext.utils.text import format_bytes, format_duration
+import contextlib
 
 ##
 
@@ -67,10 +68,8 @@ def _add_static_version(endpoint, values):
     """Adds v=<mtime to static URLs so browsers fetch fresh JS/CSS after an edit."""
     if endpoint == 'static' and 'filename' in values:
         asset_path = os.path.join(app.static_folder, values['filename'])
-        try:
+        with contextlib.suppress(OSError):
             values['v'] = int(os.stat(asset_path).st_mtime)
-        except OSError:
-            pass
 
 
 ##

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from typing import Dict, FrozenSet, Optional
 
 
 ## Code/command execution (config editor)
 
 # Plugins that run arbitrary code or shell commands straight from the config
-CODE_EXECUTION_PLUGINS: FrozenSet[str] = frozenset({
+CODE_EXECUTION_PLUGINS: frozenset[str] = frozenset({
     'inline',
     'hook'
 })
 
 # Top-level keys that can load or evaluate code
-CODE_EXECUTION_KEYS: FrozenSet[str] = frozenset({
+CODE_EXECUTION_KEYS: frozenset[str] = frozenset({
     'pluginpath',       # imports Python from arbitrary dirs
     'item_fields',      # Python snippets ran by the inline plugin
     'album_fields'      # Python snippets ran by the inline plugin
@@ -20,7 +19,7 @@ CODE_EXECUTION_KEYS: FrozenSet[str] = frozenset({
 
 # Plugin options with a command line / binary to execute
 # {plugin: options}
-COMMAND_OPTIONS: Dict[str, FrozenSet[str]] = {
+COMMAND_OPTIONS: dict[str, frozenset[str]] = {
     'hook': frozenset({'hooks'}),
     'convert': frozenset({'command', 'formats'}),
     'play': frozenset({'command', 'raw'}),
@@ -35,7 +34,7 @@ COMMAND_OPTIONS: Dict[str, FrozenSet[str]] = {
 
 # Plugins that modify the music folder when importing
 # {plugin: option that enables it}
-DISK_WRITING_PLUGINS: Dict[str, Optional[str]] = {
+DISK_WRITING_PLUGINS: dict[str, str | None] = {
     'scrub': 'auto',
     'embedart': 'auto',
     'fetchart': 'auto',

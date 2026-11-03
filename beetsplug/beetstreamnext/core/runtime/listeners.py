@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterable, List, Tuple
+from collections.abc import Callable, Iterable
 
 from beetsplug.beetstreamnext.constants import LOOPBACK_IPS, UNIX_SOCKET_PREFIX, Scope
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -14,10 +14,10 @@ class Listeners:
     What to listen on (as `host:port` strings) for each scope.
     """
 
-    by_scope: Dict[Scope, List[str]]
+    by_scope: dict[Scope, list[str]]
 
     @property
-    def all(self) -> List[str]:
+    def all(self) -> list[str]:
         return [netloc for netlocs in self.by_scope.values() for netloc in netlocs]
 
     @property
@@ -66,10 +66,10 @@ class ListenerScope:
 
 
 def split_listeners(
-        hosts: List[str],
+        hosts: list[str],
         public_hosts: Iterable[str],
         admin_hosts: Iterable[str]
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
     """
     Split bind addresses into (base, public, admin).
     """
@@ -106,7 +106,7 @@ def split_listeners(
 
 
 def resolve_listeners(
-        hosts: List[str],
+        hosts: list[str],
         port: int,
         public_hosts: Iterable[str] = (),
         public_port: int = 0,

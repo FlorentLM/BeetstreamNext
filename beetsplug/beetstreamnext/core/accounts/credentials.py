@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
 import flask
 
 from beetsplug.beetstreamnext.core.accounts.passwords import verify_password
@@ -20,7 +19,7 @@ def check_password(username: str, password: str) -> bool:
     return verify_password(password=password, stored=stored)
 
 
-def webui_login(username: str, password: str) -> Tuple[bool, Optional[str]]:
+def webui_login(username: str, password: str) -> tuple[bool, str | None]:
     """
     Password check for the WebUI's login form.
     """

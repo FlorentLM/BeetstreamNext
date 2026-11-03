@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import Callable
+from collections.abc import Callable
 import flask
 from flask import Blueprint
 

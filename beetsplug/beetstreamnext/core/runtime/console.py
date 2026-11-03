@@ -1,12 +1,11 @@
 from __future__ import annotations
 import sys
 import textwrap
-from typing import Dict, List, Optional
 
 from beetsplug.beetstreamnext.utils.ansi import TermColors
 
 
-def _wrap(text: str, width: int, initial_indent: str = '', subsequent_indent: str = '') -> List[str]:
+def _wrap(text: str, width: int, initial_indent: str = '', subsequent_indent: str = '') -> list[str]:
     return textwrap.wrap(
         text, width=width,
         initial_indent=initial_indent, subsequent_indent=subsequent_indent,
@@ -14,7 +13,7 @@ def _wrap(text: str, width: int, initial_indent: str = '', subsequent_indent: st
     )
 
 
-def wrap_bullet(label: str, items: List[str], width: int = 68) -> List[str]:
+def wrap_bullet(label: str, items: list[str], width: int = 68) -> list[str]:
     """
     Wrap a comma-separated item list under a ' ▶ ' bullet to fit print_box's width.
     Continuation lines are indent-only.
@@ -27,7 +26,7 @@ def wrap_bullet(label: str, items: List[str], width: int = 68) -> List[str]:
     return wrapped or [f'  ▶  {label}']
 
 
-def drift_lines(drift: Dict[str, dict]) -> List[str]:
+def drift_lines(drift: dict[str, dict]) -> list[str]:
     lines = []
     for table, info in drift.items():
         if 'unknown_migrations' in info:
@@ -40,7 +39,7 @@ def drift_lines(drift: Dict[str, dict]) -> List[str]:
     return lines
 
 
-def print_box(lines: list[str], width: int = 68, color: Optional[str] = None, title: Optional[str] = None) -> None:
+def print_box(lines: list[str], width: int = 68, color: str | None = None, title: str | None = None) -> None:
     """Print lines in a box, centered unless indented."""
 
     col = color if color else ''

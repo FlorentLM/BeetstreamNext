@@ -4,7 +4,7 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.beets.import_results import album_label
@@ -20,11 +20,11 @@ MAX_EXTRA_GROUPS = 6
 ##
 # Recording
 
-def _subfolders(record: Dict[str, Any]) -> Set[str]:
+def _subfolders(record: dict[str, Any]) -> set[str]:
     return set(record.get('folders') or filter(None, [record.get('path')]))
 
 
-def _merge_imports(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _merge_imports(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Beets imports a multi-disc album disc by disc, so each merge with a previous disc added,
     the same album is reported with growing count.
@@ -48,7 +48,7 @@ def _merge_imports(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return kept
 
 
-def _row(run_path: str, outcome: str, record: Dict[str, Any], ts: float) -> Dict[str, Any]:
+def _row(run_path: str, outcome: str, record: dict[str, Any], ts: float) -> dict[str, Any]:
     return {
         'ts': ts,
         'run_path': run_path,
@@ -84,7 +84,7 @@ def _drop_superseded(db: sqlite3.Connection, settled: set[str], skipped_again: s
     )
 
 
-def record_run(run_path: str, results: Dict[str, List[Dict[str, Any]]]) -> int:
+def record_run(run_path: str, results: dict[str, list[dict[str, Any]]]) -> int:
     """Store a finished run's results. Returns how many rows were added."""
 
     now = time.time()
@@ -94,7 +94,7 @@ def record_run(run_path: str, results: Dict[str, List[Dict[str, Any]]]) -> int:
 
     # Only latest report per skipped folder, no report for folders that are imported
     # (a task that beets replaced with a merged one is reported as skipped)
-    skipped: Dict[str, Dict[str, Any]] = {}
+    skipped: dict[str, dict[str, Any]] = {}
 
     for record in results.get('skipped', []):
         path = record.get('path') or run_path
@@ -136,7 +136,7 @@ def record_run(run_path: str, results: Dict[str, List[Dict[str, Any]]]) -> int:
 ##
 # Reading
 
-def reimport_parent(entry: Any) -> Optional[str]:
+def reimport_parent(entry: Any) -> str | None:
 
     album, run = Path(entry['path']), Path(entry['run_path'])
     parent = album.parent
@@ -147,7 +147,7 @@ def reimport_parent(entry: Any) -> Optional[str]:
     return str(parent) if parent.is_dir() else None
 
 
-def _shared_parents() -> Dict[str, int]:
+def _shared_parents() -> dict[str, int]:
     """Parent folders with more than one skipped subfolders -> how many"""
 
     with database() as db:
@@ -158,7 +158,7 @@ def _shared_parents() -> Dict[str, int]:
             """
         ).fetchall()
 
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for r in rows:
         if parent := reimport_parent(r):
             counts[parent] = counts.get(parent, 0) + 1
@@ -166,7 +166,7 @@ def _shared_parents() -> Dict[str, int]:
     return {parent: n for parent, n in counts.items() if n > 1}
 
 
-def list_history(outcome: Optional[str] = None, limit: int = HISTORY_MAX_ROWS) -> List[Dict[str, Any]]:
+def list_history(outcome: str | None = None, limit: int = HISTORY_MAX_ROWS) -> list[dict[str, Any]]:
     """Newest first. Called inside an app context."""
     where, params = ('WHERE outcome = ?', (outcome,)) if outcome in ('imported', 'skipped') else ('', ())
 
@@ -175,7 +175,7 @@ def list_history(outcome: Optional[str] = None, limit: int = HISTORY_MAX_ROWS) -
             f"""
             SELECT * FROM import_history {where}
             ORDER BY ts DESC, id DESC LIMIT ?
-            """, (*params, limit),  # nosec B608
+            """, (*params, limit),  # nosec B608  # noqa: S608 vars are constants
         ).fetchall()
 
     shared = _shared_parents()
@@ -194,7 +194,7 @@ def list_history(outcome: Optional[str] = None, limit: int = HISTORY_MAX_ROWS) -
     return entries
 
 
-def get_entry(entry_id: int) -> Optional[Dict[str, Any]]:
+def get_entry(entry_id: int) -> dict[str, Any] | None:
 
     with database() as db:
         row = db.execute(
@@ -210,11 +210,11 @@ def get_entry(entry_id: int) -> Optional[Dict[str, Any]]:
 ##
 # Display
 
-def group_rows(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def group_rows(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Albums sharing a parent folder are gathered under one header row.
     """
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     done = set()
 
     for entry in entries:
@@ -236,7 +236,7 @@ def group_rows(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return rows
 
 
-def visible_groups(rows: List[Dict[str, Any]]) -> int:
+def visible_groups(rows: list[dict[str, Any]]) -> int:
 
     albums = groups = 0
 
@@ -264,7 +264,7 @@ def delete_entry(entry_id: int) -> None:
         )
 
 
-def clear_history(outcome: Optional[str] = None) -> None:
+def clear_history(outcome: str | None = None) -> None:
 
     with database() as db:
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+import contextlib
 
 from beetsplug.beetstreamnext.constants import SOCO
 from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
@@ -13,7 +13,7 @@ if SOCO:
     soco.config.REQUEST_TIMEOUT = 20    # Just to give a bit more time to wireless speakers to wake up
 
 
-def sonos_discovery(timeout: float = 5.0) -> List[dict]:
+def sonos_discovery(timeout: float = 5.0) -> list[dict]:
     """Scan the network for Sonos speakers. Returns [{'name', 'ip', 'uid'}, ...]."""
 
     if not SOCO:
@@ -45,7 +45,7 @@ class SonosJukeboxPlayer(JukeboxBackend):
     def __init__(self):
         super().__init__()
         self._device = None                        # soco.SoCo connected lazily
-        self._device_ip: Optional[str] = None
+        self._device_ip: str | None = None
 
     def _target(self):
         """The zone that actually accepts transport commands (the group's coordinator)."""
@@ -166,10 +166,8 @@ class SonosJukeboxPlayer(JukeboxBackend):
 
     def _backend_shutdown(self) -> None:
         if self._device is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._target().pause()
-            except Exception:
-                pass
 
         self._device = None
         self._device_ip = None

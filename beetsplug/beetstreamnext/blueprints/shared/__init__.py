@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, List
+from collections.abc import Callable
 import flask
 
 
@@ -10,7 +10,7 @@ def route_registrar(bp: flask.Blueprint, login_required: Callable) -> Callable:
     Only their auth decorator differs.
     """
 
-    def route(rule: str, methods: List[str]) -> Callable:
+    def route(rule: str, methods: list[str]) -> Callable:
 
         def register(view: Callable) -> Callable:
             bp.add_url_rule(

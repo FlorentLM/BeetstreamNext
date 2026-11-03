@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata
 from beetsplug.beetstreamnext.core.services.scrobbling.service import list_connections
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 
-def _get_rows(db, sql: str, params: tuple) -> List[Dict[str, Any]]:
+def _get_rows(db, sql: str, params: tuple) -> list[dict[str, Any]]:
     return [dict(row) for row in db.execute(sql, params).fetchall()]
 
 
-def export_user_data(username: str) -> Dict[str, Any]:
+def export_user_data(username: str) -> dict[str, Any]:
     """
     Everything BeetstreamNext stores about a user as a serialisable dict.
     Credentials are not included and the avatar is reported as a flag only.

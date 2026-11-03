@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from typing import Optional, List, Tuple
 import flask
 
 from beetsplug.beetstreamnext.application import with_app_context
@@ -12,7 +11,7 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 
 
 
-def joint_keys(name: str, names_raw: Optional[str], mbids_raw: Optional[str]) -> List[str]:
+def joint_keys(name: str, names_raw: str | None, mbids_raw: str | None) -> list[str]:
     """
     Keys of a joint credit, best first: the set of all members' mbids (survives renames) then the credit text.
     """
@@ -27,7 +26,7 @@ def joint_keys(name: str, names_raw: Optional[str], mbids_raw: Optional[str]) ->
 
 
 @with_app_context
-def credit_keys(name: str) -> List[str]:
+def credit_keys(name: str) -> list[str]:
     """Keys of a joint credit, or [] if name isn't a multi-artist credit."""
 
     with flask.g.lib.transaction() as tx:
@@ -51,7 +50,7 @@ def credit_keys(name: str) -> List[str]:
     return joint_keys(name, rows[0][0], rows[0][1])
 
 
-def artist_keys(name: str, mbid: Optional[str] = None) -> List[str]:
+def artist_keys(name: str, mbid: str | None = None) -> list[str]:
     """Keys an image can be stored under for this artist, best first."""
 
     joint = credit_keys(name)
@@ -64,7 +63,7 @@ def artist_keys(name: str, mbid: Optional[str] = None) -> List[str]:
     return keys
 
 
-def find_uploaded_image(name: str, mbid: Optional[str] = None) -> bytes | None:
+def find_uploaded_image(name: str, mbid: str | None = None) -> bytes | None:
     """
     Manually uploaded image for this artist.
     """
@@ -78,7 +77,7 @@ def find_uploaded_image(name: str, mbid: Optional[str] = None) -> bytes | None:
             FROM artist_images
             WHERE artist_key IN ({','.join('?' * len(keys))}) 
             AND image IS NOT NULL
-            """, keys  # nosec B608
+            """, keys  # nosec B608  # noqa: S608 vars are constants
         ).fetchall()
 
     by_key = {r['artist_key']: r['image'] for r in rows}
@@ -100,7 +99,7 @@ def get_image(key: str) -> bytes | None:
     return row['image'] if row else None
 
 
-def set_image(name: str, mbid: Optional[str], image: bytes) -> None:
+def set_image(name: str, mbid: str | None, image: bytes) -> None:
     with database() as db:
         db.execute(
             """
@@ -125,7 +124,7 @@ def delete_image(key: str) -> bool:
     return cur.rowcount > 0
 
 
-def list_images() -> List[dict]:
+def list_images() -> list[dict]:
 
     with database() as db:
         rows = db.execute(
@@ -147,7 +146,7 @@ def list_images() -> List[dict]:
 
 
 @with_app_context
-def find_artist(name: str) -> Tuple[str, str] | None:
+def find_artist(name: str) -> tuple[str, str] | None:
     """(canonical name, mbid) of an artist from the beets library, or None."""
 
     name = (name or '').strip()
@@ -176,7 +175,7 @@ def find_artist(name: str) -> Tuple[str, str] | None:
 
 
 @with_app_context
-def suggest_artists(query: str, limit: int = 15) -> List[Tuple[str, bool]]:
+def suggest_artists(query: str, limit: int = 15) -> list[tuple[str, bool]]:
     """(name, is_joint_credit) pairs of library album artists matching the query."""
 
     query = (query or '').strip()
@@ -205,7 +204,7 @@ def library_keys() -> set[str]:
 
     keys: set[str] = set()
 
-    def add(names: Optional[str], mbids: Optional[str]) -> None:
+    def add(names: str | None, mbids: str | None) -> None:
         for n in [names or '', *split_beets_multi(names or '')]:     # Joint credit, then each member
             if n:
                 keys.add(IDs.encode_artist(n, is_mbid=False))
@@ -235,14 +234,14 @@ def library_keys() -> set[str]:
                         f"""
                         SELECT {name_col}, {mbid_col} 
                         FROM {table}
-                        """  # nosec B608
+                        """  # nosec B608  # noqa: S608 vars are constants
                     )
                     for row in rows:
                         add(row[0], row[1])
 
             name_col, names_col, mbids_col = joint_cols[table]
             if {name_col, names_col, mbids_col} <= cols:
-                for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):  # nosec B608
+                for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):  # nosec B608  # noqa: S608 vars are constants
                     if name and IDs.is_joint_credit(names, name):
                         keys.update(joint_keys(name, names, mbids))
     return keys

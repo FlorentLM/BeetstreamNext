@@ -4,7 +4,7 @@ import threading
 import time
 import ipaddress
 from collections import defaultdict
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from collections.abc import Sequence
 
 import flask
 
@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext.constants import (
 _proxy_headers_warning = DoOnce()
 
 
-def log_security_event(event: str, ip: str, username: Optional[str] = None, **fields) -> None:
+def log_security_event(event: str, ip: str, username: str | None = None, **fields) -> None:
     """
     Emit a parseable line for log-based tools (CrowdSec, fail2ban, etc)
 
@@ -91,8 +91,8 @@ class RateLimiter:
 
         self._lock = threading.Lock()
 
-        self._store: Dict[Tuple[str, str], List[float]] = defaultdict(list)
-        self._ip_store: Dict[str, List[float]] = defaultdict(list)
+        self._store: dict[tuple[str, str], list[float]] = defaultdict(list)
+        self._ip_store: dict[str, list[float]] = defaultdict(list)
 
         self._max_failures = max_failures
         self._block_window = block_window
@@ -287,14 +287,14 @@ class IPFilter:
     """
 
     def __init__(self,
-                 whitelist: Optional[Sequence[str]] = None,
-                 blacklist: Optional[Sequence[str]] = None
+                 whitelist: Sequence[str] | None = None,
+                 blacklist: Sequence[str] | None = None
         ):
 
-        self._whitelist_raw: Set[str] = set()
-        self._blacklist_raw: Set[str] = set()
-        self._whitelist_nets: Set[ipaddress._BaseNetwork] = set()
-        self._blacklist_nets: Set[ipaddress._BaseNetwork] = set()
+        self._whitelist_raw: set[str] = set()
+        self._blacklist_raw: set[str] = set()
+        self._whitelist_nets: set[ipaddress._BaseNetwork] = set()
+        self._blacklist_nets: set[ipaddress._BaseNetwork] = set()
 
         if whitelist:
             self.whitelist = whitelist
@@ -302,7 +302,7 @@ class IPFilter:
             self.blacklist = blacklist
 
     @staticmethod
-    def parse_ips(values: Optional[str | Sequence[str]] = None) -> Set[str]:
+    def parse_ips(values: str | Sequence[str] | None = None) -> set[str]:
         """Validate a comma-separated (or sequence of) IPs/CIDR ranges, returning normalised strings."""
         raw_items = split_list(values)
 
@@ -321,7 +321,7 @@ class IPFilter:
         return final_ips
 
     @staticmethod
-    def _to_network(item: str) -> Optional['ipaddress._BaseNetwork']:
+    def _to_network(item: str) -> ipaddress._BaseNetwork | None:
         try:
             return ipaddress.ip_network(item, strict=False)
         except ValueError:
@@ -360,7 +360,7 @@ class IPFilter:
 
         return True
 
-    def _add(self, raw_set: Set[str], net_set: Set['ipaddress._BaseNetwork'], item: str):
+    def _add(self, raw_set: set[str], net_set: set[ipaddress._BaseNetwork], item: str):
         item = item.strip()
         if not item:
             return
@@ -369,7 +369,7 @@ class IPFilter:
         if net is not None:
             net_set.add(net)
 
-    def _remove(self, raw_set: Set[str], net_set: Set['ipaddress._BaseNetwork'], item: str):
+    def _remove(self, raw_set: set[str], net_set: set[ipaddress._BaseNetwork], item: str):
         item = item.strip()
         raw_set.discard(item)
         net = self._to_network(item)
@@ -393,7 +393,7 @@ class IPFilter:
         self._remove(self._blacklist_raw, self._blacklist_nets, ip)
 
     @property
-    def whitelist(self) -> Set[str]:
+    def whitelist(self) -> set[str]:
         return set(self._whitelist_raw)
 
     @whitelist.setter
@@ -404,7 +404,7 @@ class IPFilter:
         bsn_logger.debug(f'Loaded new whitelist: {self._whitelist_raw}.')
 
     @property
-    def blacklist(self) -> Set[str]:
+    def blacklist(self) -> set[str]:
         return set(self._blacklist_raw)
 
     @blacklist.setter

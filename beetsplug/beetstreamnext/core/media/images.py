@@ -7,7 +7,7 @@ import os
 import tempfile
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 from io import BytesIO
 from PIL import Image, ImageOps
 import flask
@@ -71,7 +71,7 @@ def sniff_image(data: bytes) -> str | None:
     return None
 
 
-def tokenised_image_url(subsonic_id: str, size: Optional[int] = None) -> str:
+def tokenised_image_url(subsonic_id: str, size: int | None = None) -> str:
     """
     Token-gated URL for an image, to be included inside another endpoint's response.
     """
@@ -95,7 +95,7 @@ def thumbnail_path(original_path: Path | str | bytes, size: int, mtime: float = 
     return app.config['THUMBNAIL_CACHE_PATH'] / f'.{file_hash}.jpg'
 
 
-def round_image_size(requested_size: Optional[int]) -> int | None:
+def round_image_size(requested_size: int | None) -> int | None:
     """Rounds requested image size up to nearest allowed size to limit cache bloat."""
     if not requested_size:
         return None
@@ -107,7 +107,7 @@ def round_image_size(requested_size: Optional[int]) -> int | None:
     return ALLOWED_THUMBNAIL_SIZES[-1]   # max size if client asks for something huge
 
 
-def resize_image(data: Union[bytes, BytesIO], size: int, crop: bool = False) -> BytesIO:
+def resize_image(data: bytes | BytesIO, size: int, crop: bool = False) -> BytesIO:
     """
     Applies EXIF rotation, converts to RGB, optionally crops to square, resizes.
     """
@@ -269,7 +269,7 @@ def image_from_song(path: str | Path) -> bytes | None:
                 '-vframes', '1', '-f', 'image2pipe', '-c:v', 'mjpeg', '-q:v', '2',
                 'pipe:1'
             ]
-            process = subprocess.Popen(
+            process = subprocess.Popen(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
@@ -292,7 +292,7 @@ def image_from_song(path: str | Path) -> bytes | None:
 ##
 # Main logic for album art and for artist images
 
-def _persist_album_art(image_bytes: bytes, album, album_dir: Optional[Path]) -> None:
+def _persist_album_art(image_bytes: bytes, album, album_dir: Path | None) -> None:
     """Persist CoverArtArchive-fetched bytes as cover.jpg in the album folder, if enabled."""
     if not (app.config.get('save_album_art') and album_dir):
         return
@@ -424,7 +424,7 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     return None # TODO - send a placeholder instead of 404ing
 
 
-def playlist_mosaic(playlist: 'Playlist', size: int = 500) -> BytesIO | None:
+def playlist_mosaic(playlist: Playlist, size: int = 500) -> BytesIO | None:
     """
     2x2 grid mosaic from 4 distinct albums' art in a playlist,
     falls back to a single album art if only one album in the playlist
@@ -505,7 +505,7 @@ def _first_deezer_artist(names: list[str]) -> dict:
     return {}
 
 
-def _send_blob(image: bytes, size: Optional[int]) -> flask.Response | None:
+def _send_blob(image: bytes, size: int | None) -> flask.Response | None:
     if size:
         resized = _cached_resize(BytesIO(image), size)
         return flask.send_file(resized, mimetype='image/jpeg') if resized else None
@@ -602,7 +602,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     return None
 
 
-def send_stored_art(kind: str, row_id: int, size: Optional[int] = None) -> flask.Response | None:
+def send_stored_art(kind: str, row_id: int, size: int | None = None) -> flask.Response | None:
     """Image stored in the database for a podcast channel or radio station ('podcast' / 'radio')."""
 
     if kind == 'podcast':
@@ -617,7 +617,7 @@ def send_stored_art(kind: str, row_id: int, size: Optional[int] = None) -> flask
             f"""
             SELECT image FROM {table} 
             WHERE id = ?
-            """, (row_id,)  # nosec B608
+            """, (row_id,)  # nosec B608  # noqa: S608 vars are constants
         ).fetchone()
 
     if not row or not row['image']:

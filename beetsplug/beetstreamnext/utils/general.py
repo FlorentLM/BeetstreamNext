@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from functools import lru_cache
-from typing import Any, Collection, Dict, Mapping, Optional, Tuple
+from typing import Any
+from collections.abc import Collection, Mapping
 
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, strip_text, standard_ascii, safe_str
 from beetsplug.beetstreamnext.constants import (
@@ -17,7 +18,7 @@ from beetsplug.beetstreamnext.constants import (
 # Various parsers / converters / formatters
 
 
-def filter_dict(data: Mapping, keep: Optional[Collection] = None, drop: Collection = ()) -> dict:
+def filter_dict(data: Mapping, keep: Collection | None = None, drop: Collection = ()) -> dict:
     """A copy of `data` only with the keys in `keep` and without the keys in `drop`."""
     return {k: v for k, v in data.items() if (keep is None or k in keep) and k not in drop}
 
@@ -32,7 +33,7 @@ def _secret_env_vars() -> frozenset:
     )
 
 
-def subprocess_env(*drop: str) -> Dict[str, str]:
+def subprocess_env(*drop: str) -> dict[str, str]:
     """
     The environment for a child process without any secret or unnecessary env vars.
 
@@ -61,13 +62,13 @@ def timestamp_to_iso(timestamp) -> str:
     if not timestamp or timestamp == 0:
         return ''
     try:
-        return datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat().replace('+00:00', 'Z')
+        return datetime.fromtimestamp(float(timestamp), tz=UTC).isoformat().replace('+00:00', 'Z')
     except (ValueError, TypeError):
         return ''
 
 
 @lru_cache(maxsize=4096)
-def genres_formatter(genres: Optional[str]) -> Tuple[str, ...]:
+def genres_formatter(genres: str | None) -> tuple[str, ...]:
     """Additional cleaning for common genres formatting issues."""
 
     if not genres:

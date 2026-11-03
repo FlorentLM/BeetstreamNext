@@ -4,7 +4,7 @@ import secrets
 import threading
 import time
 from collections import OrderedDict
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 from beetsplug.beetstreamnext.constants import (
     IMAGE_TOKEN_MAX, IMAGE_TOKEN_TTL_SEC, STREAM_TOKEN_MAX, STREAM_TOKEN_TTL_SEC
@@ -36,7 +36,7 @@ class Tokeniser:
         self._lock = threading.Lock()
 
         # token -> (payload, expires_at)
-        self._by_token: OrderedDict[str, Tuple[str, float]] = OrderedDict()
+        self._by_token: OrderedDict[str, tuple[str, float]] = OrderedDict()
         self._by_payload: dict[str, str] = {}
 
     def _drop(self, token: str) -> None:
@@ -69,7 +69,7 @@ class Tokeniser:
                 self._by_token.move_to_end(token)
             return token
 
-    def resolve(self, token: str) -> Optional[str]:
+    def resolve(self, token: str) -> str | None:
 
         with self._lock:
             entry = self._by_token.get(token)

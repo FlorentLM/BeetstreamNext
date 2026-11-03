@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import os
 import threading
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from beets.importer import Action
 from beets.importer.state import ImportState
@@ -22,9 +22,9 @@ class BeetstreamNextEvents(BeetsPlugin):
     def __init__(self) -> None:
         super().__init__()
 
-        self._path: Optional[str] = os.environ.get(EVENTS_ENV_VAR) or None
+        self._path: str | None = os.environ.get(EVENTS_ENV_VAR) or None
         self._lock = threading.Lock()
-        self._pending: Dict[int, Dict[str, Any]] = {}
+        self._pending: dict[int, dict[str, Any]] = {}
 
         if os.environ.get(RETRY_ENV_VAR):
             self.register_listener('import_begin', self._forget_history)
@@ -54,7 +54,7 @@ class BeetstreamNextEvents(BeetsPlugin):
             with state:
                 state.taghistory -= stale
 
-    def _write(self, record: Dict[str, Any]) -> None:
+    def _write(self, record: dict[str, Any]) -> None:
         try:
             line = json.dumps(record, ensure_ascii=False)
             with self._lock, open(self._path, 'a', encoding='utf-8') as f:
@@ -64,7 +64,7 @@ class BeetstreamNextEvents(BeetsPlugin):
             self._log.debug('Could not report import result: {}', e)
 
     @staticmethod
-    def _describe(task) -> Dict[str, Any]:
+    def _describe(task) -> dict[str, Any]:
         """What to report about a task."""
 
         folders = []
@@ -86,7 +86,7 @@ class BeetstreamNextEvents(BeetsPlugin):
         return {'artist': artist, 'album': album, 'path': path, 'folders': folders}
 
     @staticmethod
-    def _skip_reason(session, task) -> Tuple[str, str]:
+    def _skip_reason(session, task) -> tuple[str, str]:
         """Returns (cause, human-readable reason) for a skipped album."""
 
         try:

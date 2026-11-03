@@ -18,7 +18,6 @@ import sys
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Optional, List
 
 from fontTools import subset
 from fontTools.ttLib import TTFont
@@ -54,9 +53,9 @@ symbols_license = f'{symbols_url}/{symbols_pinned_commit}/LICENSE'
 
 ##
 
-def download(url: str, sha256: Optional[str] = None) -> io.BytesIO:
+def download(url: str, sha256: str | None = None) -> io.BytesIO:
 
-    with urllib.request.urlopen(urllib.parse.quote(url, safe=':/,'), timeout=120) as resp:
+    with urllib.request.urlopen(urllib.parse.quote(url, safe=':/,'), timeout=120) as resp:  # noqa: S310 hardcoded pinned https URL
         data = resp.read()
 
     digest = hashlib.sha256(data).hexdigest()
@@ -67,7 +66,7 @@ def download(url: str, sha256: Optional[str] = None) -> io.BytesIO:
     return io.BytesIO(data)
 
 
-def icons_used(all_names: List[str]) -> List[str]:
+def icons_used(all_names: list[str]) -> list[str]:
 
     known = set(all_names)
     found: set[str] = set()
@@ -81,7 +80,7 @@ def icons_used(all_names: List[str]) -> List[str]:
     return sorted(found)
 
 
-def subset_symbols(font_bytes: io.BytesIO, icons: List[str]) -> bytes:
+def subset_symbols(font_bytes: io.BytesIO, icons: list[str]) -> bytes:
 
     font = TTFont(font_bytes)
     font = instancer.instantiateVariableFont(font, {'FILL': 0, 'GRAD': 0, 'opsz': 24, 'wght': 400}, inplace=False)

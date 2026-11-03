@@ -8,7 +8,8 @@ import hashlib
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Generator, Optional, Any, Tuple
+from typing import Any
+from collections.abc import Generator
 import flask
 
 from .. import subsonic_bp
@@ -39,7 +40,7 @@ def _run_hls_encode(command: list, stream_dir) -> None:
     """Runs ffmpeg (holds an HLS slot), and drops the session if it failed."""
 
     try:
-        returncode = subprocess.run(
+        returncode = subprocess.run(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             command,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -58,7 +59,7 @@ def _run_hls_encode(command: list, stream_dir) -> None:
         shutil.rmtree(stream_dir, ignore_errors=True)
 
 
-def _get_media_context(req_values, required_role='streamRole') -> Tuple[Optional[Any], Optional[str], Optional[flask.Response]]:
+def _get_media_context(req_values, required_role='streamRole') -> tuple[Any | None, str | None, flask.Response | None]:
     """Helper to check permissions, IDs, and retrieve absolute track path (song, or a downloaded podcast episode)."""
 
     resp_fmt = req_values.get('f', default='xml', type=safe_str)
@@ -200,26 +201,19 @@ def endpoint_stream_song() -> flask.Response | None:
 
     healing = not isinstance(song, dict) and needs_healing(IDs.encode_song(standardise_datadict(song)))
 
-    needs_transcode = False
-
-    # Transcode if audio normalisation is required
-    if norm_filter:
-        needs_transcode = True
-
     # Transcode if bitrate too high
-    elif max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000):
-        needs_transcode = True
+    bitrate_too_high = max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000)
 
     # or if client wants different format
-    elif req_format != 'raw' and req_format != song_ext and not app.config['never_transcode']:
-        needs_transcode = True
+    wants_other_format = req_format != 'raw' and req_format != song_ext and not app.config['never_transcode']
 
-    # or if seeking
-    elif time_offset > 0:
-        needs_transcode = True
-
-    elif healing:
-        needs_transcode = True
+    needs_transcode = (
+        bool(norm_filter)           # audio normalisation required
+        or bitrate_too_high
+        or wants_other_format
+        or time_offset > 0          # if seeking
+        or healing
+    )
 
     if not needs_transcode:
         response = send_file(song_path)

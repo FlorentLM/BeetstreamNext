@@ -6,7 +6,8 @@ import re
 import string
 import unicodedata
 from html.parser import HTMLParser
-from typing import Any, Optional, Sequence, List
+from typing import Any
+from collections.abc import Sequence
 
 from beetsplug.beetstreamnext.constants import (
     MBID_VALIDATOR, BEETS_MULTI_DELIM, ASCII_TRANSLATE_TABLE, HTTP_ERROR_LABELS
@@ -39,7 +40,7 @@ def remove_accents(text: Any) -> str:
     return ''.join(c for c in unicodedata.normalize('NFD', str(text)) if unicodedata.category(c) != 'Mn')
 
 
-def split_beets_multi(stringlist: Sequence[Any] | str) -> List[str]:
+def split_beets_multi(stringlist: Sequence[Any] | str) -> list[str]:
     """Split a beets multi-value field."""
     if not stringlist:
         return []
@@ -52,7 +53,7 @@ def split_beets_multi(stringlist: Sequence[Any] | str) -> List[str]:
     return [s.strip('\\\u2400') for s in splitted if s]
 
 
-def split_list(value: Optional[Any], delim: str = ',') -> List[str]:
+def split_list(value: Any | None, delim: str = ',') -> list[str]:
     """
     Normalise a delimited string, a sequence of strings (each of which could contain
     delim-separated items), or None/empty, into a flat list of trimmed, non-empty strings.
@@ -212,7 +213,7 @@ class _TagStripper(HTMLParser):
 
     def __init__(self):
         super().__init__()
-        self.parts: List[str] = []
+        self.parts: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         if tag in _BLOCK_TAGS:

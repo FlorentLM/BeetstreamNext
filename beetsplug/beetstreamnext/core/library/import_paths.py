@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -30,7 +29,7 @@ def list_pinned_paths() -> list[dict]:
     ]
 
 
-def validate_pinned_path(candidate: str | Path) -> Optional[str]:
+def validate_pinned_path(candidate: str | Path) -> str | None:
     """Returns an error message if the path can't be used for a non-interactive import."""
 
     candidate = Path(candidate)
@@ -50,7 +49,7 @@ def validate_pinned_path(candidate: str | Path) -> Optional[str]:
     return None
 
 
-def add_pinned_path(path: str, incremental: bool = True) -> Tuple[bool, str]:
+def add_pinned_path(path: str, incremental: bool = True) -> tuple[bool, str]:
     candidate = Path(path).expanduser() if path else None
     if not candidate:
         return False, 'Enter a directory path.'

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import List, Tuple
 import flask
 
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -29,7 +28,7 @@ def _batch_cache(cache_key: str, fetch_fn, ids: list):
 ##
 # Likes
 
-def batch_likes(subsonic_ids: List[str]):
+def batch_likes(subsonic_ids: list[str]):
 
     def fetch(ids):
         query = """
@@ -71,7 +70,7 @@ def one_like(item_id: str) -> float | None:
 ##
 # Ratings
 
-def batch_ratings(subsonic_ids: List[str]):
+def batch_ratings(subsonic_ids: list[str]):
 
     def fetch(ids):
         query = """
@@ -110,7 +109,7 @@ def one_rating(item_id: str) -> int:
     return 0 if result is _MISSING else result
 
 
-def avg_rating(item_id: str) -> Tuple[float, int]:
+def avg_rating(item_id: str) -> tuple[float, int]:
     """Average rating across all users for an item (and the count)."""
     with database() as db:
         row = db.execute(
@@ -130,7 +129,7 @@ def avg_rating(item_id: str) -> Tuple[float, int]:
 ##
 # Play stats
 
-def batch_play_stats(song_ids: List[str]):
+def batch_play_stats(song_ids: list[str]):
 
     def fetch(ids):
         query = """
@@ -240,7 +239,7 @@ def preload_artists(artists_data):
         batch_ratings(sub_ids)
 
 
-def get_song_counts(albums: List[dict]) -> dict:
+def get_song_counts(albums: list[dict]) -> dict:
     """Get song counts for a list of albums in a single db query."""
 
     album_ids = [row['id'] for row in albums]
@@ -249,7 +248,7 @@ def get_song_counts(albums: List[dict]) -> dict:
         return {}
 
     with flask.g.lib.transaction() as tx:
-        sql_query = ('SELECT album_id, COUNT(*) as count, CAST(SUM(length) AS INTEGER) as duration'
+        sql_query = ('SELECT album_id, COUNT(*) as count, CAST(SUM(length) AS INTEGER) as duration'  # noqa: S608 vars are constants
                      + ' FROM items WHERE album_id IN ({q}) GROUP BY album_id')
         count_rows = chunked_query(
             db_obj=tx,

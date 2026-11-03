@@ -8,7 +8,8 @@ from functools import lru_cache
 import hashlib
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
+from collections.abc import Callable
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import APPRISE
@@ -27,9 +28,9 @@ class EventOption:
     kind: type = bool
     default: Any = False
     help: str = ''
-    min: Optional[int] = None
-    max: Optional[int] = None
-    choices: Tuple[str, ...] = ()
+    min: int | None = None
+    max: int | None = None
+    choices: tuple[str, ...] = ()
 
     def coerce(self, raw: Any) -> Any:
 
@@ -69,21 +70,21 @@ class Event:
     label: str                      # Label hown in the UI (and default title)
     status: str                     # fills the {status} variable
     body: str                       # Default notification body
-    variables: Tuple[str, ...]      # Names of the VARIABLES available for this event
+    variables: tuple[str, ...]      # Names of the VARIABLES available for this event
     notify_type: str = 'info'       # Apprise type: info, success, warning or failure
-    options: Tuple[EventOption, ...] = ()
-    should_send: Optional[Callable[[Dict[str, Any], Dict[str, Any]], bool]] = None
+    options: tuple[EventOption, ...] = ()
+    should_send: Callable[[dict[str, Any], dict[str, Any]], bool] | None = None
 
-    def examples(self) -> Dict[str, str]:
+    def examples(self) -> dict[str, str]:
         """Example values for current event's variables."""
         values = {k: '' if VARIABLES[k][1] is None else str(VARIABLES[k][1]) for k in self.variables}
         values['status'] = self.status
         return values
 
-    def default_options(self) -> Dict[str, Any]:
+    def default_options(self) -> dict[str, Any]:
         return {o.key: o.default for o in self.options}
 
-    def clean_options(self, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def clean_options(self, raw: dict[str, Any] | None) -> dict[str, Any]:
         raw = raw or {}
         return {
             o.key: o.coerce(raw[o.key])
@@ -314,11 +315,11 @@ def load_config(raw: Any) -> None:
 
 ## Storage
 
-def _encode_urls(urls: List[str]) -> Tuple[str, int]:
+def _encode_urls(urls: list[str]) -> tuple[str, int]:
     return encrypt_json(urls).decode(), 1
 
 
-def _decode_urls(stored: str, encrypted: int) -> List[str]:
+def _decode_urls(stored: str, encrypted: int) -> list[str]:
     try:
         urls = decrypt_json(stored) if encrypted else json.loads(stored)
     except InvalidToken:
@@ -329,7 +330,7 @@ def _decode_urls(stored: str, encrypted: int) -> List[str]:
     return [str(u) for u in urls]
 
 
-def _decode_options(event: str, stored: Optional[str]) -> Dict[str, bool]:
+def _decode_options(event: str, stored: str | None) -> dict[str, bool]:
 
     kind = EVENTS.get(event)
     if kind is None:
@@ -341,7 +342,7 @@ def _decode_options(event: str, stored: Optional[str]) -> Dict[str, bool]:
     return kind.clean_options(raw if isinstance(raw, dict) else {})
 
 
-def _row_to_notification(row) -> Dict[str, Any]:
+def _row_to_notification(row) -> dict[str, Any]:
     return {
         'id': row['id'],
         'event': row['event'],
@@ -354,7 +355,7 @@ def _row_to_notification(row) -> Dict[str, Any]:
     }
 
 
-def list_notifications(event: Optional[str] = None) -> List[Dict[str, Any]]:
+def list_notifications(event: str | None = None) -> list[dict[str, Any]]:
 
     with database() as db:
         if event is None:
@@ -389,7 +390,7 @@ def list_notifications(event: Optional[str] = None) -> List[Dict[str, Any]]:
     return [_row_to_notification(r) for r in rows] + config_items
 
 
-def get_notification(notification_id: int) -> Optional[Dict[str, Any]]:
+def get_notification(notification_id: int) -> dict[str, Any] | None:
 
     with database() as db:
         row = db.execute(
@@ -402,7 +403,7 @@ def get_notification(notification_id: int) -> Optional[Dict[str, Any]]:
     return _row_to_notification(row) if row else None
 
 
-def _validate(event: str, title: str, body: str, urls: List[str]) -> Tuple[Event, str, str, List[str]]:
+def _validate(event: str, title: str, body: str, urls: list[str]) -> tuple[Event, str, str, list[str]]:
 
     kind = EVENTS.get(event)
 
@@ -431,8 +432,8 @@ def _validate(event: str, title: str, body: str, urls: List[str]) -> Tuple[Event
     return kind, title, body, urls
 
 
-def add_notification(event: str, title: str, body: str, urls: List[str],
-                     options: Optional[Dict[str, Any]] = None, enabled: bool = True) -> int:
+def add_notification(event: str, title: str, body: str, urls: list[str],
+                     options: dict[str, Any] | None = None, enabled: bool = True) -> int:
 
     kind, title, body, urls = _validate(event, title, body, urls)
     stored, encrypted = _encode_urls(urls)
@@ -448,8 +449,8 @@ def add_notification(event: str, title: str, body: str, urls: List[str],
     return cursor.lastrowid
 
 
-def update_notification(notification_id: int, event: str, title: str, body: str, urls: List[str],
-                        options: Optional[Dict[str, Any]] = None) -> bool:
+def update_notification(notification_id: int, event: str, title: str, body: str, urls: list[str],
+                        options: dict[str, Any] | None = None) -> bool:
 
     kind, title, body, urls = _validate(event, title, body, urls)
     stored, encrypted = _encode_urls(urls)
@@ -508,7 +509,7 @@ def delete_notification(notification_id: int) -> bool:
 ## Services
 
 @lru_cache(maxsize=1)
-def list_services() -> List[Dict[str, Any]]:
+def list_services() -> list[dict[str, Any]]:
     """Services Apprise supports for the UI picker."""
 
     if not APPRISE:
@@ -533,7 +534,7 @@ def list_services() -> List[Dict[str, Any]]:
     return sorted(services, key=lambda s: s['name'].lower())
 
 
-def service_names(urls: List[str]) -> List[str]:
+def service_names(urls: list[str]) -> list[str]:
     """Readable service name per URL scheme."""
 
     by_scheme = {scheme: s['name'] for s in list_services() for scheme in s['schemes']}
@@ -547,7 +548,7 @@ def service_names(urls: List[str]) -> List[str]:
 RE_VARIABLE = re.compile(r'\{(\w+)\}')
 
 
-def render(notification: Dict[str, Any], **variables: Any) -> Tuple[str, str]:
+def render(notification: dict[str, Any], **variables: Any) -> tuple[str, str]:
     """
     Title and body from the notification's templates (unknown {variables} are kept as-is).
     """
@@ -586,7 +587,7 @@ def _send(url: str, title: str, body: str, notify_type: str) -> bool:
     return bool(client.notify(title=title, body=body, notify_type=notify_type))
 
 
-def _send_all(urls: List[str], title: str, body: str, notify_type: str) -> int:
+def _send_all(urls: list[str], title: str, body: str, notify_type: str) -> int:
     """Send to every URL. Returns how many failed."""
 
     failed = 0
@@ -601,7 +602,7 @@ def _send_all(urls: List[str], title: str, body: str, notify_type: str) -> int:
     return failed
 
 
-def _dispatch(event: str, variables: Dict[str, Any]) -> None:
+def _dispatch(event: str, variables: dict[str, Any]) -> None:
     """Pipeline per saved notification: filter -> render -> send."""
 
     kind = EVENTS[event]
@@ -637,8 +638,8 @@ def notify(event: str, **variables: Any) -> None:
     threading.Thread(target=_dispatch, args=(event, variables), name='notify', daemon=True).start()
 
 
-def send_test(event: str, title: str, body: str, urls: List[str],
-              options: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
+def send_test(event: str, title: str, body: str, urls: list[str],
+              options: dict[str, Any] | None = None) -> tuple[bool, str]:
     """
     Test send what's currently in the form (saved or not) with sample values, synchronously.
     Options are accepted but ignored: a test is never suppressed.

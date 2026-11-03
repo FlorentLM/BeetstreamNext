@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import secrets
 import time
-from typing import Optional
 
 import flask
 
@@ -12,7 +11,7 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.text import sha256_hex
 
 
-def current_session_id() -> Optional[str]:
+def current_session_id() -> str | None:
     """
     Get the stored id of the current signed-in session.
     """
@@ -20,7 +19,7 @@ def current_session_id() -> Optional[str]:
     return sha256_hex(sid) if sid and isinstance(sid, str) else None
 
 
-def create_session(username: str, ip: Optional[str] = None, user_agent: Optional[str] = None) -> str:
+def create_session(username: str, ip: str | None = None, user_agent: str | None = None) -> str:
     """Records a new login and return its id (to put in the cookie)."""
 
     sid = secrets.token_urlsafe(32)
@@ -37,7 +36,7 @@ def create_session(username: str, ip: Optional[str] = None, user_agent: Optional
     return sid
 
 
-def validate_session(sid: Optional[str], username: str, touch: bool = True) -> bool:
+def validate_session(sid: str | None, username: str, touch: bool = True) -> bool:
     """Whether `sid` is a live session of `username`."""
 
     if not sid or not isinstance(sid, str):
@@ -102,7 +101,7 @@ def purge_expired_sessions() -> int:
     return cursor.rowcount
 
 
-def revoke_session(session_id: Optional[str], username: Optional[str] = None) -> bool:
+def revoke_session(session_id: str | None, username: str | None = None) -> bool:
 
     if not session_id:
         return False
@@ -117,7 +116,7 @@ def revoke_session(session_id: Optional[str], username: Optional[str] = None) ->
     return cursor.rowcount > 0
 
 
-def revoke_user_sessions(username: str, keep: Optional[str] = None) -> int:
+def revoke_user_sessions(username: str, keep: str | None = None) -> int:
     """Sign out `username` everywhere (except `keep` session id)."""
     with database() as db:
         cursor = db.execute(

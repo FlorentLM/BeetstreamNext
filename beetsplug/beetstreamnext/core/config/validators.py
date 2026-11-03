@@ -4,7 +4,8 @@ import ipaddress
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Callable, List
+from typing import Any
+from collections.abc import Callable
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -120,7 +121,7 @@ def validate_jukebox_device(x: Any) -> str:
     return s
 
 
-def validate_host_list(hosts: List[str]) -> List[str]:
+def validate_host_list(hosts: list[str]) -> list[str]:
     """
     Each entry must be a bare hostname/IP to bind to (no scheme or port),
     or a single `unix:/absolute/path` socket.
@@ -151,7 +152,7 @@ def validate_host_list(hosts: List[str]) -> List[str]:
     return result
 
 
-def validate_local_services(entries: List[str]) -> List[str]:
+def validate_local_services(entries: list[str]) -> list[str]:
     """Each entry is a bare hostname, an IP address or a CIDR range."""
 
     result = []
@@ -162,7 +163,7 @@ def validate_local_services(entries: List[str]) -> List[str]:
     return result
 
 
-def validate_host_list_nosocket(hosts: List[str]) -> List[str]:
+def validate_host_list_nosocket(hosts: list[str]) -> list[str]:
     """validate_host_list validator but excluding unix sockets."""
 
     if any(h.startswith(UNIX_SOCKET_PREFIX) for h in hosts):

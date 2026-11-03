@@ -3,7 +3,7 @@ from __future__ import annotations
 import getpass
 import sys
 import time
-from typing import Sequence
+from collections.abc import Sequence
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.system import get_env

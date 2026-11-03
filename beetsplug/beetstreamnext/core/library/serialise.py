@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Tuple, Dict, List, Any, Sequence, Callable
+from typing import TYPE_CHECKING, Any
+from collections.abc import Sequence, Callable
 import flask
 from beets.library import LibModel, Item
 
@@ -35,7 +37,7 @@ def _r128_to_rg(value: Any) -> float:
     return gain + 5.0
 
 
-def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
+def _get_artists(data: dict) -> tuple[list[dict], list[dict], list[dict], str]:
     """
     Split a song/album's raw artist/composer/lyricist/etc. fields into Subsonic ID3 artist refs.
     """
@@ -109,7 +111,7 @@ def _get_artists(data: dict) -> Tuple[List[Dict], List[Dict], List[Dict], str]:
     return artists_array, album_artists_array, contributors_array, display_composer
 
 
-def _exact_albums_by(artist_name: str) -> List[LibModel]:
+def _exact_albums_by(artist_name: str) -> list[LibModel]:
     """
     Albums whose albumartist exactly matches
     (beets' field:value query is a substring match)
@@ -136,10 +138,10 @@ class Serialise:
     Maps a Beets/db object (as returned by the resolver) to its serialised Subsonic response dict.
     """
 
-    _method_map: Dict[str, Callable] = {}
+    _method_map: dict[str, Callable] = {}
 
     @classmethod
-    def _common(cls, beets_object: Dict | LibModel) -> dict:
+    def _common(cls, beets_object: dict | LibModel) -> dict:
         """
         Build the tag-derived fields (artist credits, genre, dates...) shared by song
         and album responses. Internal helper, not a member of the entry-type hierarchy.
@@ -195,7 +197,7 @@ class Serialise:
         return subsonic_media
 
     @classmethod
-    def artist(cls, artist_name: str, with_albums: bool = True, prefetched: Optional[Dict] = None) -> dict:
+    def artist(cls, artist_name: str, with_albums: bool = True, prefetched: dict | None = None) -> dict:
         """
         Map a beets artist name to its serialised Subsonic ArtistID3 response dict.
         """
@@ -282,8 +284,8 @@ class Serialise:
         return subsonic_artist
 
     @classmethod
-    def album(cls, album_object: Dict | LibModel, include_songs: bool = True,
-              song_counts: Optional[Dict] = None) -> dict:
+    def album(cls, album_object: dict | LibModel, include_songs: bool = True,
+              song_counts: dict | None = None) -> dict:
         """
         Map a beets album object to its serialised Subsonic AlbumID3 response dict.
         """
@@ -420,7 +422,7 @@ class Serialise:
         return subsonic_album
 
     @classmethod
-    def song(cls, song_object: Dict | LibModel | Item, exact_size: bool = False) -> dict:
+    def song(cls, song_object: dict | LibModel | Item, exact_size: bool = False) -> dict:
         """
         Map a beets song item to its serialised Subsonic Child response dict.
 
@@ -539,10 +541,8 @@ class Serialise:
 
         subsonic_song['size'] = round(((data.get('bitrate') or 0) * (data.get('length') or 0)) / 8)
         if exact_size and song_filepath:
-            try:
+            with contextlib.suppress(OSError):      # Unreachable file so keep estimate
                 subsonic_song['size'] = resolve_path(song_filepath, app.config['music_root']).stat().st_size
-            except OSError:
-                pass    # Unreachable file so keep estimate
 
         stats = one_play_stats(song_id)
         if stats:
@@ -557,7 +557,7 @@ class Serialise:
         return subsonic_song
 
     @classmethod
-    def playlist(cls, playlist: 'Playlist', include_songs: bool = False) -> dict:
+    def playlist(cls, playlist: Playlist, include_songs: bool = False) -> dict:
         """
         Map a Playlist object to its serialised Subsonic PlaylistWithSongs response dict.
         """
@@ -595,7 +595,7 @@ class Serialise:
         return subsonic_radio_station
 
     @classmethod
-    def podcast_channel(cls, row: dict, episodes: Optional[List[dict]] = None) -> dict:
+    def podcast_channel(cls, row: dict, episodes: list[dict] | None = None) -> dict:
         channel_id = IDs.encode_podcast_channel(row['id'])
 
         subsonic_channel = {
@@ -617,7 +617,7 @@ class Serialise:
         return subsonic_channel
 
     @classmethod
-    def podcast_episode(cls, row: dict, channel: Optional[dict] = None) -> dict:
+    def podcast_episode(cls, row: dict, channel: dict | None = None) -> dict:
 
         episode_id = IDs.encode_podcast_episode(row['id'])
         channel_id = IDs.encode_podcast_channel(row['channel_id'])
@@ -664,7 +664,7 @@ class Serialise:
         return subsonic_episode
 
     @classmethod
-    def any(cls, entry_type: Optional[str], obj: Optional[Any]) -> Optional[dict]:
+    def any(cls, entry_type: str | None, obj: Any | None) -> dict | None:
         """
         Map any resolvable Subsonic object (song, album, radio, podcast channel, or
         episode) to its serialised response dict, given the (type, object) pair
@@ -676,7 +676,7 @@ class Serialise:
         return serialiser(obj) if serialiser else None
 
     @classmethod
-    def playable(cls, entry_id: str, pre_resolved: Optional[Dict[str, Tuple[str, Any]]] = None) -> Optional[dict]:
+    def playable(cls, entry_id: str, pre_resolved: dict[str, tuple[str, Any]] | None = None) -> dict | None:
         """
         Map any playable Subsonic ID (song, radio station, or podcast episode) to its serialised entry dict.
 
@@ -703,7 +703,7 @@ class Serialise:
             return cls.podcast_episode(obj, channel)
 
     @classmethod
-    def playables(cls, entry_ids: Sequence[str]) -> List[dict]:
+    def playables(cls, entry_ids: Sequence[str]) -> list[dict]:
         """
         Batched serialisation of playables. Maps a list of playable
         Subsonic IDs to their serialised entry dicts, skipping unresolvable ones.

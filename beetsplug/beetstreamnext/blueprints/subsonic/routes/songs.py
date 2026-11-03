@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict
 import flask
 
 from .. import subsonic_bp
@@ -81,7 +80,7 @@ def endpoint_songs_by_genre() -> flask.Response:
         SELECT * FROM items 
         WHERE ({' OR '.join(conditions)}) 
         ORDER BY title LIMIT ? OFFSET ?
-        """  # nosec B608
+        """  # nosec B608  # noqa: S608 vars are constants
         params.extend([count, offset])
 
         with flask.g.lib.transaction() as tx:
@@ -184,7 +183,7 @@ def endpoint_get_top_songs() -> flask.Response:
                    SELECT * FROM items 
                    WHERE (albumartist = ? OR {' OR '.join(name_conditions)})
                      AND title IN ({placeholders})
-                   """  # nosec B608
+                   """  # nosec B608  # noqa: S608 vars are constants
             with flask.g.lib.transaction() as tx:
                 top_tracks_available = list(tx.query(sql, [artist_name, *name_params, *lastfm_track_names]))
 
@@ -232,12 +231,12 @@ def endpoint_get_top_songs() -> flask.Response:
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
-def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int, Dict]:
+def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> dict[int, dict]:
     """
     Track-level similarity via Last.fm's track.getSimilar, matched against the local library by (artist, title).
     (only possible when the request is for a song (not an album/artist) obviously).
     """
-    matches: Dict[int, Dict] = {}
+    matches: dict[int, dict] = {}
 
     entry_type, song_item = Resolve.any(req_id)
     if entry_type != 'song' or not song_item or not song_item.get('title'):
@@ -269,7 +268,7 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> Dict[int
     if not conditions:
         return matches
 
-    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions)  # nosec B608
+    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions)  # nosec B608  # noqa: S608 vars are constants
     with flask.g.lib.transaction() as tx:
         rows = list(tx.query(query, params))
 
@@ -302,7 +301,7 @@ def endpoint_get_similar_songs() -> flask.Response:
 
     req_artist_name, req_artist_mbid = resolved
 
-    matched_songs: Dict[int, Dict] = {}
+    matched_songs: dict[int, dict] = {}
     if app.config['lastfm_api_key']:
         matched_songs = _similar_by_track(req_id, req_artist_name, limit)
 
@@ -362,7 +361,7 @@ def endpoint_get_similar_songs() -> flask.Response:
         if conditions:
             # Overfetch a bit since some rows may duplicate what track-level already found
             remaining = limit - len(matched_songs)
-            query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"  # nosec B608
+            query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions) + " LIMIT ?"  # nosec B608  # noqa: S608 vars are constants
             params.append(remaining + len(matched_songs))
 
             with flask.g.lib.transaction() as tx:

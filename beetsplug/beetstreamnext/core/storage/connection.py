@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 import os
 import sqlite3
 from pathlib import Path
@@ -34,7 +34,7 @@ def dual_database() -> sqlite3.Connection:
     return db
 
 
-def close_database(_e: Optional[Any] = None) -> None:
+def close_database(_e: Any | None = None) -> None:
     """Closes the database at the end of the request."""
     db = flask.g.pop('db', None)
     if db is not None:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple
 
 import flask
 
@@ -56,8 +55,8 @@ class ArtistIndex(Index):
             return next((n for n in names if n in cols), 'NULL')
 
         # name -> (mbid, sort name) of the first album/song credited
-        self._album_artists: Dict[str, Tuple[str, str]] = {}
-        self._song_artists: Dict[str, Tuple[str, str]] = {}
+        self._album_artists: dict[str, tuple[str, str]] = {}
+        self._song_artists: dict[str, tuple[str, str]] = {}
 
         multi_artists = set()
         composers = set()
@@ -77,7 +76,7 @@ class ArtistIndex(Index):
                        {column('composers', 'composer')}, {column('lyricists', 'lyricist')}
                 FROM items
                 ORDER BY id
-                """)  # nosec B608
+                """)  # nosec B608  # noqa: S608 vars are constants
 
         for name, mbid, sort_name in album_rows:
             self._album_artists.setdefault(name, (mbid, sort_name))
@@ -93,7 +92,7 @@ class ArtistIndex(Index):
         self._composers = self._names(composers)
         self._lyricists = self._names(lyricists)
 
-        self._metadata: Dict[str, dict] = {}
+        self._metadata: dict[str, dict] = {}
 
     @staticmethod
     def _names(values: set) -> set:
@@ -160,8 +159,8 @@ class SongIndex(Index):
         super().__init__()
 
         # Lowest beets ID wins when songs have the same MBID
-        self.by_mbid: Dict[str, int] = {}
-        self.by_hash: Dict[str, int] = {}
+        self.by_mbid: dict[str, int] = {}
+        self.by_hash: dict[str, int] = {}
 
         self.ids: set = set()
 
@@ -208,7 +207,7 @@ class ArtistHashIndex(Index):
                 GROUP BY albumartist
                 """)
 
-        self.by_hash: Dict[str, str] = {sha1_hex(r[0])[:16]: r[0] for r in rows if r[0]}
+        self.by_hash: dict[str, str] = {sha1_hex(r[0])[:16]: r[0] for r in rows if r[0]}
 
     @classmethod
     def _cache_name(cls) -> str:
@@ -237,7 +236,7 @@ class AlbumHashIndex(Index):
                 """)
 
         # Descending so lowest ID wins
-        self.by_hash: Dict[str, int] = {
+        self.by_hash: dict[str, int] = {
             sha1_hex(f"{r[1] or ''}\x1f{r[2] or ''}")[:16]: r[0]
             for r in rows
         }

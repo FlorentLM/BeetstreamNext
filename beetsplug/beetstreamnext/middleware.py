@@ -79,11 +79,10 @@ def _before_request() -> flask.Response | None:
         flask.abort(429)
 
     # First-run onboarding: no admin exists yet, redirect everything to /admin/setup
-    if not flask.request.path.startswith('/static') and not _any_users_exist():
-        if flask.request.path.rstrip('/') != '/admin/setup':
-            if is_api:
-                return subsonic_error(40, message='Setup required: no users exist yet.', resp_fmt=resp_fmt)
-            return flask.redirect('/admin/setup')
+    if not flask.request.path.startswith('/static') and not _any_users_exist() and flask.request.path.rstrip('/') != '/admin/setup':
+        if is_api:
+            return subsonic_error(40, message='Setup required: no users exist yet.', resp_fmt=resp_fmt)
+        return flask.redirect('/admin/setup')
 
     # Public routes (homepage, healthcheck, shares, tokenised URLs, static files)
     if is_public:

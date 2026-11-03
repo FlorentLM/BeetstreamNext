@@ -4,7 +4,7 @@ import queue
 import threading
 import time
 from collections import Counter, defaultdict, deque
-from typing import Callable, Hashable, Optional
+from collections.abc import Callable, Hashable
 
 
 class WorkerPool:
@@ -42,7 +42,7 @@ class WorkerPool:
             fn, args = self._jobs.get()
             try:
                 fn(*args)
-            except Exception:
+            except Exception:  # noqa: S110 failure is harmless  # nosec B110 (failure is harmless)
                 pass    # Jobs shoudl report their own errors
             finally:
                 self._jobs.task_done()
@@ -70,7 +70,7 @@ class Throttle:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._last: Optional[float] = None
+        self._last: float | None = None
 
     def allow(self, interval: float) -> bool:
         now = time.monotonic()
@@ -90,7 +90,7 @@ class RollingLimiter:
         self._lock = threading.Lock()
         self._events: defaultdict[Hashable, deque] = defaultdict(deque)
 
-    def allow(self, key: Hashable, now: Optional[float] = None) -> bool:
+    def allow(self, key: Hashable, now: float | None = None) -> bool:
 
         now = time.time() if now is None else now
 
@@ -114,7 +114,7 @@ class KeyedLimiter:
         self._lock = threading.Lock()
         self._held: Counter = Counter()
 
-    def try_acquire(self, key: Optional[Hashable]) -> bool:
+    def try_acquire(self, key: Hashable | None) -> bool:
         if not key:
             return True
         with self._lock:
@@ -123,7 +123,7 @@ class KeyedLimiter:
             self._held[key] += 1
             return True
 
-    def release(self, key: Optional[Hashable]) -> None:
+    def release(self, key: Hashable | None) -> None:
         if not key:
             return
         with self._lock:

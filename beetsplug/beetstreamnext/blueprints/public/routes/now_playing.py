@@ -41,10 +41,9 @@ def now_playing_cover() -> flask.Response:
             if response:
                 return response
 
-    elif entry_type == 'radio':
-        if entry:
-            response = send_stored_art('radio', entry['id'])
-            if response:
-                return response
+    elif entry_type == 'radio' and entry:
+        response = send_stored_art('radio', entry['id'])
+        if response:
+            return response
 
     flask.abort(404)

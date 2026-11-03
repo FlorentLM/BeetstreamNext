@@ -4,7 +4,6 @@ import random
 import re
 import threading
 from pathlib import Path
-from typing import List, Tuple
 
 from beetsplug.beetstreamnext.core.media.tokeniser import stream_tokeniser
 from beetsplug.beetstreamnext.utils.system import get_mimetype, AUDIO_MIMETYPES
@@ -32,7 +31,7 @@ class JukeboxBackend:
 
     def __init__(self):
         self._lock = threading.RLock()
-        self._queue: List[Tuple[str, str]] = []   # (id, local path or playable URL)
+        self._queue: list[tuple[str, str]] = []   # (id, local path or playable URL)
 
     def _resolve_uri(self, path: str) -> str:
         """
@@ -111,7 +110,7 @@ class JukeboxBackend:
     def _backend_shutdown(self) -> None:
         raise NotImplementedError
 
-    def track_ids(self) -> List[str]:
+    def track_ids(self) -> list[str]:
         with self._lock:
             return [eid for eid, _ in self._queue]
 
@@ -126,7 +125,7 @@ class JukeboxBackend:
             except Exception:
                 return empty_status
 
-    def set_playlist(self, entries: List[Tuple[str, str]]) -> None:
+    def set_playlist(self, entries: list[tuple[str, str]]) -> None:
         """Replace the queue and start playing from the first track."""
 
         with self._lock:
@@ -141,7 +140,7 @@ class JukeboxBackend:
             if entries:
                 self._backend_play_from(0)
 
-    def add(self, entries: List[Tuple[str, str]]) -> None:
+    def add(self, entries: list[tuple[str, str]]) -> None:
         with self._lock:
             self._check_external_host()
             self._ensure_ready()

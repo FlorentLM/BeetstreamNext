@@ -6,7 +6,7 @@ import socket
 import sys
 import threading
 from pathlib import Path
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 from flask_cors import CORS
 from waitress import create_server, serve
 
@@ -38,12 +38,12 @@ from beetsplug.beetstreamnext.utils.text import split_list
 def prestartup_config(
         beets_db_path: str | Path,
         bsn_db_path: str | Path,
-        beets_config_path: Optional[str | Path],
+        beets_config_path: str | Path | None,
         ip_whitelist: Iterable[str] = (),
         ip_blacklist: Iterable[str] = (),
         standalone: bool = False,
-        music_root: Optional[str | Path] = None,
-        bsn_config_path: Optional[str | Path] = None,
+        music_root: str | Path | None = None,
+        bsn_config_path: str | Path | None = None,
     ) -> None:
     """
     Setup configs and secrets needed before anything else touches the db
@@ -74,7 +74,7 @@ def restart_server(delay: float = 1.5) -> None:
     """
     def _do_restart() -> None:
         bsn_logger.info('Restarting server...')
-        os.execv(sys.executable, [sys.executable] + sys.orig_argv[1:])
+        os.execv(sys.executable, [sys.executable] + sys.orig_argv[1:])  # noqa: S606  # nosec B606 (re-exec of running interpreter with its argv)
 
     threading.Timer(delay, _do_restart).start()
 
@@ -107,7 +107,7 @@ def _write_runtime_endpoint(endpoint: str) -> None:
         bsn_logger.warning('Could not record runtime endpoint to cache dir.')
 
 
-def _run_listeners(wsgi_app, listeners: Listeners, socket_path: Optional[str], threads: int, **options) -> None:
+def _run_listeners(wsgi_app, listeners: Listeners, socket_path: str | None, threads: int, **options) -> None:
     """
     Serve on the resolved listeners. The scope of a request is decided by the socket it arrives on.
     """
@@ -138,7 +138,7 @@ def _run_listeners(wsgi_app, listeners: Listeners, socket_path: Optional[str], t
 
 def run_server(
         lib,
-        host: List[str],
+        host: list[str],
         port: int,
         debug: bool,
         force_trust_host: bool,
@@ -214,16 +214,15 @@ def run_server(
             ], title='STARTUP ABORTED:', color=TermColors.FAIL)
             sys.exit(1)
 
-    if settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
-        if exposed:
-            print_box([
-                'Legacy authentication is enabled, and the server',
-                f"is listening on {', '.join(f'http://{n}' for n in listeners.all)}",
-                'without a reverse proxy.',
-                '',
-                'Passwords from legacy clients may be',
-                'transmitted in cleartext over HTTP.',
-            ], title='SECURITY WARNING:', color=TermColors.WARNING)
+    if exposed and settings_store.get('legacy_auth') and not settings_store.get('reverse_proxy'):
+        print_box([
+            'Legacy authentication is enabled, and the server',
+            f"is listening on {', '.join(f'http://{n}' for n in listeners.all)}",
+            'without a reverse proxy.',
+            '',
+            'Passwords from legacy clients may be',
+            'transmitted in cleartext over HTTP.',
+        ], title='SECURITY WARNING:', color=TermColors.WARNING)
 
     if settings_store.get('reverse_proxy'):
         if exposed:

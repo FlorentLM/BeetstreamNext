@@ -8,7 +8,6 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Tuple, Dict
 
 import beets
 from beets.library import Album, Item, Library as BeetsLibrary
@@ -67,7 +66,7 @@ def check_decode_errors(file_path: str | Path, samplerate: int = 0) -> tuple[boo
     ffmpeg_bin = find_binary('ffmpeg') or 'ffmpeg'
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             [ffmpeg_bin, '-v', 'error', *FFMPEG_INPUT_ARGS, '-i', str(file_path), '-map', '0:a', '-f', 'null', '-'],
             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=300, env=subprocess_env()
         )
@@ -115,7 +114,7 @@ def needs_healing(song_id: str) -> bool:
     return row is not None
 
 
-def health_stats() -> Dict[str, int]:
+def health_stats() -> dict[str, int]:
     """Counts sum of all health errors. Returns total songs checked, and how many are flagged."""
 
     with database() as db:
@@ -168,7 +167,7 @@ def flagged_songs() -> list[dict]:
 
 
 @with_app_context
-def scan_library(full: bool = False) -> Dict[str, int]:
+def scan_library(full: bool = False) -> dict[str, int]:
     """
     Checks library audio files for health issues (currently just decode errors) incrementally.
 
@@ -197,7 +196,7 @@ def scan_library(full: bool = False) -> Dict[str, int]:
                 """
             ).fetchall()
 
-            existing: Dict[str, Dict[str, Tuple[float, int]]] = {}
+            existing: dict[str, dict[str, tuple[float, int]]] = {}
             for row in db.execute(
                 """
                 SELECT song_id, kind, mtime, ok
@@ -317,7 +316,7 @@ def scan_library(full: bool = False) -> Dict[str, int]:
 
 
 @with_app_context
-def startup_path_check(music_root: str | Path, sample_size: int = 20) -> Tuple[int, int]:
+def startup_path_check(music_root: str | Path, sample_size: int = 20) -> tuple[int, int]:
     """
     Stats a random sample of resolved item paths. Meant to be called once at boot,
     so a bad path-mapping/mount config is caught fast.
@@ -346,7 +345,7 @@ def startup_path_check(music_root: str | Path, sample_size: int = 20) -> Tuple[i
     return checked, missing
 
 
-def detect_beets_drift(db_path: str | Path) -> Dict[str, dict]:
+def detect_beets_drift(db_path: str | Path) -> dict[str, dict]:
     """
     Compares items/albums tables in a beets db against this install's expected schema, before Library() opens it.
     """
@@ -404,7 +403,7 @@ def detect_beets_drift(db_path: str | Path) -> Dict[str, dict]:
     return result
 
 
-def start_health_scan(full: bool = False) -> Tuple[bool, str]:
+def start_health_scan(full: bool = False) -> tuple[bool, str]:
     """
     Starts a health scan on a background thread. Returns (started, message).
     """
@@ -423,7 +422,7 @@ def start_health_scan(full: bool = False) -> Tuple[bool, str]:
     return True, 'Health scan started.'
 
 
-def get_server_info(extended: bool = False) -> Dict[str, str]:
+def get_server_info(extended: bool = False) -> dict[str, str]:
     lib = app.config['lib']
     stats = {}
     with lib.transaction() as tx:

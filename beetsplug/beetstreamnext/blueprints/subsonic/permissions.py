@@ -28,7 +28,4 @@ def app_role_allows(role: AppPasswordRole, path: str) -> bool:
 
     name = path.rstrip('/').rsplit('/', 1)[-1].removesuffix('.view')
 
-    if role == AppPasswordRole.READONLY and name in WRITE_ENDPOINTS:
-        return False
-
-    return True
+    return not (role == AppPasswordRole.READONLY and name in WRITE_ENDPOINTS)

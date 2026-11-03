@@ -105,7 +105,7 @@ def default_n_choices(descriptor: dict) -> str:
 
     if default == '' or default == []:
         rendered = '*(empty)*'
-    elif isinstance(default, bool) or isinstance(default, list):
+    elif isinstance(default, (bool, list)):
         rendered = f'`{default!r}`'
     else:
         rendered = f'`{default}`'

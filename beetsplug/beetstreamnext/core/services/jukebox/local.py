@@ -9,8 +9,8 @@ import socket
 import subprocess
 import threading
 import time
+import contextlib
 from pathlib import Path
-from typing import List, Optional
 
 from beetsplug.beetstreamnext.constants import JUKEBOX_SOCK_DIR
 from beetsplug.beetstreamnext.utils.general import subprocess_env
@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext.core.services.jukebox.base import JukeboxBackend, 
 _MPV_DEVICE_RE = re.compile(r"^'([^']+)'\s*\(([^)]*)\)$")
 
 
-def mpv_discovery(timeout: float = 5.0) -> List[dict]:
+def mpv_discovery(timeout: float = 5.0) -> list[dict]:
     """List the audio output devices mpv can see on this machine. Returns [{'name', 'device'}, ...]."""
 
     mpv_bin = find_binary('mpv')
@@ -30,7 +30,7 @@ def mpv_discovery(timeout: float = 5.0) -> List[dict]:
         raise JukeboxUnavailableException("mpv wasn't found. Install it, or update the 'mpv_path' setting.")
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             [mpv_bin, '--audio-device=help'],
             capture_output=True,
             text=True,
@@ -62,10 +62,10 @@ class LocalJukeboxPlayer(JukeboxBackend):
 
     def __init__(self):
         super().__init__()
-        self._proc: Optional[subprocess.Popen] = None
-        self._sock: Optional[socket.socket] = None
+        self._proc: subprocess.Popen | None = None
+        self._sock: socket.socket | None = None
         self._sock_file = None
-        self._sock_path: Optional[Path] = None
+        self._sock_path: Path | None = None
         self._req_ids = itertools.count(1)
 
     def _is_ready(self) -> bool:
@@ -102,7 +102,7 @@ class LocalJukeboxPlayer(JukeboxBackend):
             args.append(f'--audio-device={audio_device}')
 
         bsn_logger.info(f'Jukebox: launching mpv: {shlex.join(args)}')
-        self._proc = subprocess.Popen(
+        self._proc = subprocess.Popen(  # noqa: S603 argument list, no shell  # nosec B603 (argument list, no shell)
             args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=subprocess_env()
         )
         threading.Thread(target=self._drain_output, args=(self._proc,), daemon=True).start()
@@ -133,16 +133,12 @@ class LocalJukeboxPlayer(JukeboxBackend):
 
     def _terminate(self):
         if self._sock_file:
-            try:
+            with contextlib.suppress(OSError):
                 self._sock_file.close()
-            except OSError:
-                pass
 
         if self._sock:
-            try:
+            with contextlib.suppress(OSError):
                 self._sock.close()
-            except OSError:
-                pass
 
         if self._proc and self._proc.poll() is None:
             self._proc.terminate()

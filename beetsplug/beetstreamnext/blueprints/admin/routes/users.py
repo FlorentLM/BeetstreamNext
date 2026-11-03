@@ -83,7 +83,7 @@ def route_edit_user(username) -> str:
 @admin_required
 def route_revoke_user_app_password(username: str, app_pwd_id: str) -> str:
 
-    if app_pwd_id != 'all':
+    if app_pwd_id != 'all':  # noqa: S105 not a password (database id)  # nosec B105 (database id)
         if not app_pwd_id.isdigit():
             flask.abort(404)
         app_pwd_id = int(app_pwd_id)

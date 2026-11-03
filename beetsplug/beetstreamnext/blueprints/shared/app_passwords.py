@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Callable
+from collections.abc import Callable
 import flask
 
 from beetsplug.beetstreamnext.application import app
@@ -57,7 +57,7 @@ def register_app_password_routes(bp: flask.Blueprint, login_required: Callable) 
 
         username = flask.session['username']
 
-        if app_pwd_id != 'all':
+        if app_pwd_id != 'all':  # noqa: S105 not a password  # nosec B105 (database id)
             if not app_pwd_id.isdigit():
                 flask.abort(404)
             app_pwd_id = int(app_pwd_id)

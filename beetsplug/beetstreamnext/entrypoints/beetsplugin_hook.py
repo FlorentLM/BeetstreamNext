@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # This file is part of beets.
 # Copyright 2016, Adrian Sampson.
 #
@@ -18,7 +17,7 @@ import os
 import sys
 import optparse
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 import beets
 import confuse
@@ -39,7 +38,7 @@ from beetsplug.beetstreamnext.core.accounts.commands import (
 from beetsplug.beetstreamnext.utils.system import get_env
 
 
-def _detect_config_override(argv: List[str]) -> Optional[str]:
+def _detect_config_override(argv: list[str]) -> str | None:
     """
     Look for an eventual explicit -c/--config arg that beets could have been launched with.
     """
@@ -76,7 +75,7 @@ def _detect_config_override(argv: List[str]) -> Optional[str]:
 class BeetstreamNextPlugin(BeetsPlugin):
 
     def __init__(self):
-        super(BeetstreamNextPlugin, self).__init__('beetstreamnext')
+        super().__init__('beetstreamnext')
 
         _defaults = {key: spec['default'] for key, spec in SETTINGS_SCHEMA.items() if not spec.get('standalone_only')}
         _defaults.update({'debug': False, 'force_trust_host': False})

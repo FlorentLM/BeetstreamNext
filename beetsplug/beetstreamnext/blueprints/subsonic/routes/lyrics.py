@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import TYPE_CHECKING, Tuple, Union
+from typing import TYPE_CHECKING
 import flask
 
 from .. import subsonic_bp
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 _LRC_TIMESTAMP_REGEX = re.compile(r'^\[(\d+:\d+\.\d+)\]')
 
 
-def _get_lyrics_plugin() -> Union['BeetsPlugin', 'LyricsPlugin', None]:
+def _get_lyrics_plugin() -> BeetsPlugin | LyricsPlugin | None:
     """
     Find the beets lyrics plugin instance. Should work with any version of Beets.
     """
@@ -38,7 +38,7 @@ def _get_lyrics_plugin() -> Union['BeetsPlugin', 'LyricsPlugin', None]:
         return None
 
 
-def _parse_lyrics_content(text: str) -> Tuple[list, bool]:
+def _parse_lyrics_content(text: str) -> tuple[list, bool]:
     """
     Parses raw lyrics text.
     Detects if it's synced (LRC) and returns structured lines.

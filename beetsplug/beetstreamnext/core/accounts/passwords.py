@@ -4,7 +4,6 @@ import base64
 import hashlib
 import hmac
 import secrets
-from typing import Optional
 
 
 # scrypt parameters for new hashes
@@ -39,7 +38,7 @@ def hash_password(password: str) -> str:
 
 DUMMY_HASH = hash_password(secrets.token_urlsafe(24))
 
-def verify_password(password: str, stored: Optional[str]) -> bool:
+def verify_password(password: str, stored: str | None) -> bool:
 
     if stored is None:
         stored = DUMMY_HASH

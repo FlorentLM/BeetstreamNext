@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
-from typing import Optional, Tuple, Any
+from typing import Any
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, sha1_hex
@@ -85,7 +85,7 @@ class IDs:
         return None
 
     @classmethod
-    def decode_song(cls, subsonic_id: str) -> Tuple[Any, str] | Tuple[None, None]:
+    def decode_song(cls, subsonic_id: str) -> tuple[Any, str] | tuple[None, None]:
         """Decode any song id (mbid, hash, or legacy row id) into (value, kind)."""
 
         sid = str(subsonic_id)
@@ -109,7 +109,7 @@ class IDs:
         return None, None
 
     @classmethod
-    def decode_album(cls, subsonic_id: str) -> Tuple[Any, str] | Tuple[None, None]:
+    def decode_album(cls, subsonic_id: str) -> tuple[Any, str] | tuple[None, None]:
         """Decode any album id (mbid, hash, or legacy row id) into (value, kind)."""
 
         sid = str(subsonic_id)
@@ -133,7 +133,7 @@ class IDs:
         return None, None
 
     @classmethod
-    def decode_artist(cls, subsonic_id: str) -> Tuple[str, str]:
+    def decode_artist(cls, subsonic_id: str) -> tuple[str, str]:
         """Decode an artist ID back to (value, kind), kind in {'mbid', 'name', 'hash'}."""
 
         sid = str(subsonic_id)
@@ -164,7 +164,7 @@ class IDs:
         return sid[len(cls._PLY_ID_PREF):]
 
     @classmethod
-    def encode_artist(cls, name_or_mbid: Any, is_mbid: Optional[bool] = None, *, joint_credit: bool = False) -> str:
+    def encode_artist(cls, name_or_mbid: Any, is_mbid: bool | None = None, *, joint_credit: bool = False) -> str:
         """
         Mint an artist ID from a mbid or a plain name.
 
@@ -184,16 +184,16 @@ class IDs:
         return f"{prefix}{encoded}"
 
     @staticmethod
-    def is_joint_credit(multi_value: Optional[str], single_name: str = '') -> bool:
+    def is_joint_credit(multi_value: str | None, single_name: str = '') -> bool:
         """Whether a beets *artists (multi-value) field represents more than one credited artist."""
         return len(split_beets_multi(multi_value or single_name)) > 1
 
     @classmethod
     def encode_album(cls,
             beets_id: Any,
-            mb_albumid: Optional[str] = None,
-            albumartist: Optional[str] = None,
-            album: Optional[str] = None,
+            mb_albumid: str | None = None,
+            albumartist: str | None = None,
+            album: str | None = None,
         ) -> str:
         """
         Mint the album ID for a beets album: prefers mb_albumid (the MusicBrainz release
@@ -216,7 +216,7 @@ class IDs:
         return f"{cls._ALB_ID_PREF}{beets_id or 0}"
 
     @classmethod
-    def encode_song(cls, song: dict, _music_root: Optional[bytes | str | Path] = None) -> str:
+    def encode_song(cls, song: dict, _music_root: bytes | str | Path | None = None) -> str:
         """
         Mint the song ID for a beets item: prefers whatever external database ID beets
         recorded (MusicBrainz, Deezer, Spotify etc... beets always writes them in the mb_* field).
@@ -239,7 +239,7 @@ class IDs:
         return f"{cls._SNG_ID_PREF}{song.get('id', 0)}"
 
     @classmethod
-    def encode_playlist(cls, dir_id: int, stem_suffix: str, owner: Optional[str] = None) -> str:
+    def encode_playlist(cls, dir_id: int, stem_suffix: str, owner: str | None = None) -> str:
         """
         Mint a playlist ID from its directory ID and filename stem, optionally scoped to an owner.
         """

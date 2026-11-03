@@ -123,6 +123,19 @@ def claim_download(share_id: str) -> bool:
     return cursor.rowcount > 0
 
 
+def release_download(share_id: str) -> None:
+    """Uncount a download that was claimed but never served."""
+
+    with database() as db:
+        db.execute(
+            """
+            UPDATE shares
+            SET download_count = MAX(download_count - 1, 0)
+            WHERE id = ?
+            """, (share_id,)
+        )
+
+
 def unlock_share(share, password: str) -> bool:
     """Check the password and remember the unlock in the visitor's session."""
 

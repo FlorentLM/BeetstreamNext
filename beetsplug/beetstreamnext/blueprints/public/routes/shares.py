@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.constants import RATE_LIMIT_BLOCK_WINDOW, ZIP_CACH
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.media.shares import claim_download, is_unlocked, unlock_share
+from beetsplug.beetstreamnext.core.media.shares import claim_download, is_unlocked, release_download, unlock_share
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.runtime.web import external_url, send_file
 from beetsplug.beetstreamnext.utils.system import safe_filename
@@ -246,11 +246,17 @@ def share_download(share_id: str, entry_id: str) -> flask.Response | None:
 
     song_path = beets_abspath(item)
 
-    return send_file(
+    response = send_file(
         song_path,
         as_attachment=True,
         download_name=f"{safe_filename(item.title or song_path.stem, 'untitled')}.{(item.format or song_path.suffix.lstrip('.')).lower()}"
     )
+
+    if response is None:        # File missing/unreadable: don't count download
+        release_download(share_id)
+        flask.abort(404)
+
+    return response
 
 
 @public_bp.route('/share/<share_id>/download-album/<entry_id>')
@@ -287,8 +293,7 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
 
     zip_path = _zip_album(entry_id, items)
     if zip_path is None:
-        with database() as db:        # download was not served: un-count it
-            db.execute("""UPDATE shares SET download_count = MAX(download_count - 1, 0) WHERE id = ?""", (share_id,))
+        release_download(share_id)    # download was not served: un-count it
 
         response = flask.make_response('Too many downloads are being prepared, try again shortly.', 503)
         response.headers['Retry-After'] = '10'

@@ -25,11 +25,13 @@ def _write_secret_file(path: Path, content: str) -> None:
     """Write a secret to disk, 0o600 from creation."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
-        with os.fdopen(fd, 'w') as f:
-            f.write(content)
+        f = os.fdopen(fd, 'w')
     except Exception:
-        os.close(fd)   # only for if fdopen failed
+        os.close(fd)   # if fdopen failed
         raise
+
+    with f:
+        f.write(content)
 
 # Secrets management
 

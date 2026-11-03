@@ -7,6 +7,7 @@ from .. import admin_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.accounts.credentials import start_session
+from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.accounts.users_crud import create_user, list_users
 from beetsplug.beetstreamnext.blueprints.forms import OnboardingForm, flash_form_errors
 
@@ -21,10 +22,14 @@ def route_setup() -> flask.Response:
     if form.validate_on_submit():
 
         expected_key = os.environ.get('BEETSTREAMNEXT_KEY')
+        client_ip = flask.request.remote_addr or 'unknown'
 
-        if not expected_key or not hmac.compare_digest(form.setup_key.data, expected_key):
+        if not expected_key or not hmac.compare_digest(form.setup_key.data.encode(), expected_key.encode()):
+            rate_limiter.record(client_ip)
             flask.flash('Incorrect server key.', 'error')
             return flask.make_response(flask.render_template('setup.html', form=form))
+
+        rate_limiter.reset(client_ip)
 
         try:
             username = safe_str(form.username.data)

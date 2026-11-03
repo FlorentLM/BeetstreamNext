@@ -48,10 +48,10 @@ def route_trigger_import() -> flask.Response:
         received = (flask.request.headers.get('X-Api-Key') or flask.request.form.get('token') or '').strip()
 
     if not hmac.compare_digest(received.encode(), str(expected).encode()):
-        rate_limiter.record(client_ip, 'control-api')
+        rate_limiter.record(client_ip)
         return _json(401, message='Invalid import token.')
 
-    rate_limiter.reset(client_ip, 'control-api')
+    rate_limiter.reset(client_ip)
 
     path = flask.request.form.get('path', '').strip()
     if not path:

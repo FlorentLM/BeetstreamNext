@@ -7,7 +7,7 @@ from dataclasses import asdict
 from typing import Any
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import SCROBBLE_BATCH_SIZE, SCROBBLE_MAX_AGE_SEC, SCROBBLE_MIN_TRACK_SEC
+from beetsplug.beetstreamnext.constants import SCROBBLE_MAX_AGE_SEC, SCROBBLE_MIN_TRACK_SEC
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -201,8 +201,8 @@ def deliver_queued() -> None:
 
             credentials = decrypt_json(listens[0]['credentials_encrypted'])
 
-            for start in range(0, len(listens), SCROBBLE_BATCH_SIZE):
-                batch = listens[start:start + SCROBBLE_BATCH_SIZE]
+            for start in range(0, len(listens), scrobbler.batch_size):
+                batch = listens[start:start + scrobbler.batch_size]
                 tracks = [ScrobbleTrack(**json.loads(row['payload_json'])) for row in batch]
 
                 try:

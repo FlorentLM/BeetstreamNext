@@ -142,13 +142,13 @@
 
         {# Connections tab #}
         <section class="tab-content" id="tab-connections" :class="{ active: active === 'connections' }" role="tabpanel">
+            {{ settings_card('connections', 'External services', icon='cloud') }}
+
             {% with bp_name = 'admin' %}{% include 'partials/app_passwords_card.html' %}{% endwith %}
 
             {% with bp_name = 'admin' %}{% include 'partials/web_sessions_card.html' %}{% endwith %}
 
             {% with bp_name = 'admin' %}{% include 'partials/scrobbling_card.html' %}{% endwith %}
-
-            {{ settings_card('connections', 'External services', icon='cloud') }}
 
         </section>
 

@@ -18,6 +18,11 @@ from beetsplug.beetstreamnext.constants import (
 # Text utilities
 
 
+def md5_hex(value: str) -> str:
+    """Hex MD5 digest of a string (UTF-8)."""
+    return hashlib.md5(value.encode('utf-8'), usedforsecurity=False).hexdigest()    # nosec B324
+
+
 def sha1_hex(value: str) -> str:
     """Hex SHA-1 digest of a string (UTF-8)."""
     return hashlib.sha1(value.encode('utf-8'), usedforsecurity=False).hexdigest()

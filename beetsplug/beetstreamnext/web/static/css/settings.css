@@ -891,7 +891,8 @@ input:focus, select:focus {
     display: block;
 }
 
-.tab-content .card + .card {
+.tab-content .card + .card,
+.tab-content .card + #appPasswordSlot + .card {
     margin-top: 1.5rem;
 }
 
@@ -2833,7 +2834,8 @@ input:focus, select:focus {
     transform: rotate(90deg);
 }
 
-.connection-head + .connection-fields {
+.connection-head + .connection-fields,
+.connection-head + .connection-webauth {
     margin-top: 0.7rem;
 }
 
@@ -2882,6 +2884,40 @@ input:focus, select:focus {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+}
+
+.connection-webauth {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+}
+
+.connection-webauth .card-hint {
+    margin: 0;
+}
+
+.connection-actions {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+}
+
+.connection-actions-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.connection-buttons .btn,
+.connection-actions .btn {
+    padding: 0.55rem 1.1rem;
+    font-size: 0.85rem;
+}
+
+.connection-fields input {
+    display: block;
 }
 
 .connection-hint {

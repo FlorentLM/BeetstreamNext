@@ -11,7 +11,7 @@
 {% for svc in scrobblers if enabled %}
     {% set conn = existing.get(svc.service) %}
     <div class="connection-card">
-        <details class="connection-details" {{ 'open' if message or not conn or conn.last_error }}>
+        <details class="connection-details" {{ 'open' if svc.service == opened or svc.service in pending or (conn and conn.last_error) }}>
             <summary class="connection-head">
                 <h3>{{ svc.label }}</h3>
                 {% if conn and conn.last_error %}
@@ -25,6 +25,51 @@
                     <span class="connection-kind" title="Listens waiting to be sent">{{ conn.queued }} queued</span>
                 {% endif %}
             </summary>
+
+            {% if svc.auth_kind == 'webauth' %}
+                <div class="connection-webauth">
+                    {% if not svc.available() %}
+                        <p class="card-hint">Not available (an admin needs to register this server).</p>
+                    {% elif svc.service in pending %}
+                        <p class="card-hint">Approve access on {{ svc.label }} then confirm here.</p>
+                        <div class="connection-buttons">
+                            <a class="btn btn-outline" href="{{ pending[svc.service] }}" target="_blank"
+                               rel="noopener noreferrer">Open {{ svc.label }}</a>
+                            <button type="button" class="btn btn-primary"
+                                    hx-post="{{ url_for(bp_name ~ '.route_finish_service', service=svc.service) }}"
+                                    hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                    hx-target="#scrobblingList"
+                                    hx-swap="innerHTML"
+                                    hx-disable="this">I've approved it</button>
+                            <button type="button" class="btn btn-outline"
+                                    hx-post="{{ url_for(bp_name ~ '.route_cancel_service', service=svc.service) }}"
+                                    hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                    hx-target="#scrobblingList" hx-swap="innerHTML"
+                                    hx-disable="this">Cancel</button>
+                        </div>
+                    {% else %}
+                        <div class="connection-buttons">
+                            <button type="button" class="btn btn-primary"
+                                    hx-post="{{ url_for(bp_name ~ '.route_authorize_service', service=svc.service) }}"
+                                    hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                    hx-target="#scrobblingList"
+                                    hx-swap="innerHTML"
+                                    hx-disable="this">{{ 'Reconnect' if conn else 'Connect' }}</button>
+                            {% if conn %}
+                                <button type="button" class="icon-btn icon-btn-delete" title="Disconnect"
+                                        aria-label="Disconnect {{ svc.label }}"
+                                        hx-post="{{ url_for(bp_name ~ '.route_disconnect_service', service=svc.service) }}"
+                                        hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                                        hx-target="#scrobblingList"
+                                        hx-swap="innerHTML"
+                                        hx-confirm="Disconnect {{ svc.label }}? Unsent listens will be discarded.">
+                                    {{ icon('delete') }}
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% else %}
 
             <form hx-post="{{ url_for(bp_name ~ '.route_connect_service', service=svc.service) }}"
                   hx-disable="find button[type='submit']"
@@ -46,8 +91,10 @@
                            {% if conn %}value="{{ token_mask }}" title="A token is saved. Paste a new one to replace it."
                            {% else %}placeholder="Your {{ svc.label }} token"{% endif %}>
                 </div>
-                <div class="connection-buttons">
-                    <button type="submit" class="btn btn-primary btn-small">{{ 'Update' if conn else 'Connect' }}</button>
+                <div class="connection-actions">
+                    <label aria-hidden="true">&nbsp;</label>
+                    <div class="connection-actions-row">
+                    <button type="submit" class="btn btn-primary">{{ 'Update' if conn else 'Connect' }}</button>
                     {% if conn %}
                         <button type="button" class="icon-btn icon-btn-delete" title="Disconnect"
                                 aria-label="Disconnect {{ svc.label }}"
@@ -59,14 +106,16 @@
                             {{ icon('delete') }}
                         </button>
                     {% endif %}
+                    </div>
                 </div>
             </form>
 
+            {% endif %}
+
             <p class="card-hint connection-hint">
-                {% if conn and conn.last_error %}{{ conn.last_error }} Paste a new token to reconnect.
+                {% if conn and conn.last_error %}{{ conn.last_error }} {{ 'Reconnect to fix it.' if svc.auth_kind == 'webauth' else 'Paste a new token to reconnect.' }}
                 {% elif conn and conn.last_ok %}Last delivery
                     <span class="chat-time" data-timestamp="{{ (conn.last_ok * 1000) | int }}">Loading...</span>.
-                {% else %}Stored encrypted, only used to submit your listens.
                 {% endif %}
             </p>
         </details>

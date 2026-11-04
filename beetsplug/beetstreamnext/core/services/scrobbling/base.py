@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import Any
 from collections.abc import Sequence
 
-from beetsplug.beetstreamnext.constants import SCROBBLE_HTTP_TIMEOUT_SEC
+from beetsplug.beetstreamnext.constants import SCROBBLE_BATCH_SIZE, SCROBBLE_HTTP_TIMEOUT_SEC
 from beetsplug.beetstreamnext.core.library.resolve import standardise_datadict
 from beetsplug.beetstreamnext.core.services.external import ExternalService
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
@@ -63,6 +63,24 @@ class ScrobblerBase(ExternalService, ABC):
     timeout: int = SCROBBLE_HTTP_TIMEOUT_SEC
     credentials_url: str = ''
     default_url: str = ''
+    batch_size: int = SCROBBLE_BATCH_SIZE   # Max listens per request
+    auth_kind: str = 'token'                # 'token' or 'webauth'
+
+    def available(self) -> bool:
+        """Server has everything the service needs (API keys...)?"""
+        return True
+
+    def auth_page(self, pending_token: str) -> str:
+        """Web auth page (where user approves the token)."""
+        raise NotImplementedError
+
+    def start_auth(self) -> tuple[str, str]:
+        """Web auth step 1. Returns (pending token to keep in session, URL user should go to)."""
+        raise NotImplementedError
+
+    def finish_auth(self, pending_token: str) -> tuple[dict[str, Any], str]:
+        """Web auth step 2 (after user approved). Returns (credentials, remote account name)."""
+        raise NotImplementedError
 
     @abstractmethod
     def verify(self, credentials: dict[str, Any]) -> str:

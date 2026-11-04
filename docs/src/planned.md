@@ -2,7 +2,6 @@
 
 In no particular order:
 
-- [ ] External scrobbling to [Last.fm](https://www.last.fm) and [Libre.fm](https://libre.fm/) ([ListenBrainz](https://listenbrainz.org/) is done)
 - [ ] Chromaprint-based sonic similarity (alternative to AudioMuse-AI)
 - [ ] Jukebox: Web UI control panel, and more backends ([Snapcast](https://github.com/snapcast/snapcast), DLNA/UPnP, [AirPlay](https://github.com/postlund/pyatv))
 - [ ] Web UI player and library browser (in-browser playback, sortable track table)

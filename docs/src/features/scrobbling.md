@@ -1,6 +1,6 @@
 # Scrobbling
 
-You can send what you listen to in **BeetstreamNext** to external listening-history services. Well, service. For now only [ListenBrainz](https://listenbrainz.org/) is supported (but Last.fm and Libre.fm are planned).
+You can send what you listen to in **BeetstreamNext** to external listening-history services. Supported services are [ListenBrainz](https://listenbrainz.org/), [Last.fm](https://www.last.fm/) and [Libre.fm](https://libre.fm/).
 
 To scrobble, a user needs the _Scrobbling_ [role](./accounts-and-permissions.md#user-roles) (it is on by default), and the [`external_scrobbling`](../configuration.md#external_scrobbling) setting needs to be enabled server-wide.
 
@@ -9,6 +9,24 @@ To scrobble, a user needs the _Scrobbling_ [role](./accounts-and-permissions.md#
 1. On ListenBrainz, copy your **user token** from your [settings page](https://listenbrainz.org/settings/).
 
 2. In **BeetstreamNext**, open your account page (or the admin panel's **Connections** tab) and paste the token in the **Scrobble** card.
+
+## Connecting Last.fm or Libre.fm
+
+These need the [`lastfm_api_key`](../configuration.md#lastfm_api_key) and the [`lastfm_shared_secret`](../configuration.md#lastfm_shared_secret) settings, set by an admin. Libre.fm uses the same ones.
+
+> [!NOTE]
+>
+> Last.fm only shows the shared secret once when the API key is created. If you didn't save it, [create a new API key](https://www.last.fm/api/account/create) (leave the callback URL empty) and use its new key and secret.
+
+**Each user:**
+
+1. In the **Scrobble** card, click **Connect** on the service.
+
+2. Click **Open Last.fm**, and approve access to your account on their site.
+
+3. Come back to **BeetstreamNext** and click **I've approved it**.
+
+Your password is never seen by **BeetstreamNext**, only the session key returned by Last.fm is stored (encrypted).
 
 ## Using multi-scrobbler
 

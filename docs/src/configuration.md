@@ -64,9 +64,23 @@ Last.fm API key for fetching metadata.
 
 ---
 
+### `lastfm_shared_secret`
+
+Last.fm API shared secret (only needed for Last.fm and Libre.fm scrobbling, with the API key above).
+
+<span style="color:#6b5c58">**sensitive**</span>
+
+*type:* `str`
+
+*default:* *(empty)*
+
+*env:* `BSN_LASTFM_SHARED_SECRET`
+
+---
+
 ### `external_scrobbling`
 
-Let users connect their external scrobbling accounts and share what they play.
+Let users connect their external scrobbling accounts (ListenBrainz, Last.fm, Libre.fm) and share what they play.
 
 *type:* `bool`
 

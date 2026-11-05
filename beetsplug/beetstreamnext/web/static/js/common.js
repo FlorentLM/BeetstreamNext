@@ -351,12 +351,6 @@
         });
     }
 
-    // Modal bodies start empty before each swap
-    document.body.addEventListener('htmx:before:swap', event => {
-        const target = event.detail.ctx.target;
-        if (target && target.id.endsWith('ModalBody')) target.replaceChildren();
-    });
-
     // Runs handler(target) after a swap into the element if the new content holds a success flash
     function onSwapSuccess(id, handler) {
         onSwap(id, target => {
@@ -472,6 +466,13 @@
             clear() {
                 this.revokeBlob();
                 this.previewSrc = '';
+            },
+
+            // Image fetched server-side: it replaces whatever file was chosen
+            showFetched(event) {
+                this.revokeBlob();
+                this.$refs.file.value = '';
+                this.previewSrc = event.detail.url;
             },
 
             // Icon from Radio Browser result

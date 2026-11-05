@@ -2971,7 +2971,7 @@ input:focus, select:focus {
 /* Artist image edit modal */
 .artist-deezer {
     margin: 1rem 0;
-    padding: 0.9rem 1rem;
+    padding: 0.7rem 0.7rem 0.2rem 0.7rem;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--overlay-sunken);
@@ -2991,13 +2991,4 @@ input:focus, select:focus {
 
 .artist-deezer #artistDeezerResult:not(:empty) {
     margin-top: 0.75rem;
-}
-
-.artist-deezer-image {
-    display: block;
-    width: 96px;
-    height: 96px;
-    margin-top: 0.5rem;
-    border-radius: 8px;
-    object-fit: cover;
 }

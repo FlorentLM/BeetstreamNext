@@ -345,7 +345,7 @@
                 </div>
 
                 <div id="artistImageList" hx-get="{{ url_for('admin.route_artist_images') }}"
-                     hx-trigger="load, artist-fetch from:#adminDashboard throttle:2s"
+                     hx-trigger="load, artist-fetch-done from:#adminDashboard throttle:2s"
                      hx-include="#artistSearch, #artistFilterValue, #artistPageValue">
                 </div>
             </div>

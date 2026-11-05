@@ -1,6 +1,6 @@
 {% import '_macros.html' as macros %}
 
-<form id="artistImageForm" enctype="multipart/form-data" x-data="iconPicker"
+<form id="artistImageForm" enctype="multipart/form-data" x-data="iconPicker" @artist-image-fetched="showFetched"
       data-src="{{ preview_url or '' }}"
       hx-post="{{ url_for('admin.route_save_artist_image') }}"
       hx-encoding="multipart/form-data"
@@ -29,7 +29,7 @@
 
     <div class="artist-deezer">
         <div class="artist-deezer-header">
-            <span class="artist-deezer-title">Deezer</span>
+            <span class="artist-deezer-title">From Deezer</span>
             <button type="button" class="btn btn-outline btn-small"
                     hx-post="{{ url_for('admin.route_fetch_one') }}"
                     hx-params="name"

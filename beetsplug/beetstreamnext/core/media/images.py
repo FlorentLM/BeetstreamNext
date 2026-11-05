@@ -25,6 +25,8 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_coverartarchive
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
 from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
+from beetsplug.beetstreamnext.core.media.artist_images import (
+    artist_keys, fetched_image_path, find_artist, find_uploaded_image)
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 
@@ -492,8 +494,8 @@ def _send_blob(image: bytes, size: int | None) -> flask.Response | None:
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:
-    from beetsplug.beetstreamnext.core.media.artist_images import (
-        artist_image_fetcher, artist_keys, find_artist, find_uploaded_image)
+    # Imported here: the fetcher itself needs this module
+    from beetsplug.beetstreamnext.core.services.external.artist_image_fetch import artist_image_fetcher
     from beetsplug.beetstreamnext.core.library.ids import IDs
     from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
@@ -518,16 +520,16 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     if manual:
         return _send_blob(manual, size)
 
-    local_image_path = artist_image_fetcher.image_path(artist_name)
+    local_image_path = fetched_image_path(artist_name)
 
     # Credit first, then each member of a joint credit
-    entry = AlbumArtistIndex.get().by_name.get(artist_name)
+    entry = AlbumArtistIndex.get().resolve(artist_name)
     candidates = entry.candidates if entry else (artist_name,)
 
     # Try to fetch+save from Deezer if enabled and not already cached
     match = None
-    if app.config['fetch_artists_images'] and not local_image_path.is_file():
-        match, _ = artist_image_fetcher.lookup(artist_keys(artist_name, artist_mbid)[0], artist_name, candidates)
+    if artist_image_fetcher.enabled and not local_image_path.is_file():
+        match = artist_image_fetcher.lookup(artist_keys(artist_name, artist_mbid)[0], artist_name, candidates)
 
     # Serve local if it exists now
     if os.path.isfile(local_image_path):
@@ -538,8 +540,8 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
         return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
 
     # No local file: proxy from Deezer (without saving) if local save is off
-    if app.config['fetch_artists_images'] and match:
-        _, dz_data = match
+    if match and match.found:
+        dz_data = match.data
 
         target_size = next((s for s in sorted(DEEZER_IMAGE_SIZES) if size and s >= size), 1000)
         artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')

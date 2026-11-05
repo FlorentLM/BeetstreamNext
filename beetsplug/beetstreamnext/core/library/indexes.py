@@ -274,6 +274,11 @@ class AlbumArtistIndex(Index):
 
         self.artists: list[AlbumArtist] = artists
         self.by_name: dict[str, AlbumArtist] = {a.name: a for a in artists}
+        self._by_name_folded: dict[str, AlbumArtist] = {a.name.casefold(): a for a in artists}
+
+    def resolve(self, name: str) -> AlbumArtist | None:
+        """Album artist by exact name, or ignoring case."""
+        return self.by_name.get(name) or self._by_name_folded.get((name or '').casefold())
 
     @classmethod
     def _cache_name(cls) -> str:

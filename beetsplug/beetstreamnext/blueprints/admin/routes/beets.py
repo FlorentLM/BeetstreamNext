@@ -27,7 +27,7 @@ def route_read_beets_config() -> str:
 @admin_required
 def route_beets_import_start() -> flask.Response:
     path = (flask.request.form.get('path') or '').strip()
-    ok, message = import_session.start(path)
+    ok, message = import_session.fetch_all(path)
     status = import_session.status()
     return flask.jsonify({'ok': ok, 'message': message, **status})
 
@@ -151,7 +151,7 @@ def route_import_history_reimport(entry_id: int) -> str:
         if path is None:
             return _history_partial('There is no parent folder to import.', False)
 
-    ok, message = import_session.start(path)
+    ok, message = import_session.fetch_all(path)
 
     return _history_partial('' if ok else message, ok)
 

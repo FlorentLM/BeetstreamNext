@@ -26,8 +26,8 @@
 {% for a in listing.rows %}
     <div class="channel-row">
         <div class="channel-row-header">
-            {% if a.image_version %}
-                <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, name=a.name, v=a.image_version) }}" alt="">
+            {% if a.image_url %}
+                <img class="cover-thumb" src="{{ a.image_url }}" alt="">
             {% else %}
                 <span class="cover-thumb cover-thumb-placeholder">{{ a.name[0]|upper }}</span>
             {% endif %}

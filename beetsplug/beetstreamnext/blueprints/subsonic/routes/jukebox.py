@@ -95,7 +95,7 @@ def endpoint_jukebox_control() -> flask.Response:
             player.shuffle()
 
         elif action == 'start':
-            player.fetch_all()
+            player.start()
 
         elif action == 'stop':
             player.stop()

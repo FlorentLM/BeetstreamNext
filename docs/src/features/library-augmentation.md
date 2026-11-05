@@ -10,7 +10,7 @@ A lot of what shows up in your Subsonic client (artist photos, biographies, comm
 
 - **Album/artist ratings**: Either your local users' ratings, or [Discogs](https://www.discogs.com/developers)' public community rating via `discogs_ratings` (`off` / `fallback` / `prefer`).
 
-- **Lyrics**: Served from Beets' stored lyrics if present, or fetched on-the-fly using Beets' `lyrics` plugin (`fetch_lyrics`), optionally written back into Beets with `save_lyrics`.
+- **Lyrics**: Served from Beets' stored lyrics if present, from `.lrc` files next to the audio files, or fetched on-the-fly using Beets' `lyrics` plugin (`fetch_lyrics`), optionally written back into Beets with `save_lyrics`.
 
 - **Album version/edition info** (e.g. "Deluxe Edition", "Japanese Expanded Edition"): From [MusicBrainz](https://musicbrainz.org/), via `fetch_album_version`, optionally saved with `save_album_version`.
 

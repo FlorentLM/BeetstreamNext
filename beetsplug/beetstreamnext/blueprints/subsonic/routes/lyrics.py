@@ -1,5 +1,7 @@
 from __future__ import annotations
-import re
+
+from functools import lru_cache
+from pathlib import Path
 from typing import TYPE_CHECKING
 import flask
 
@@ -7,19 +9,16 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.general import api_bool
+from beetsplug.beetstreamnext.utils.lrc import Lrc
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.resolve import Resolve, beets_abspath
 
 from beetsplug.beetstreamnext.application import app
 
 if TYPE_CHECKING:
     from beetsplug.lyrics import LyricsPlugin
     from beets.plugins import BeetsPlugin
-
-
-# to detect LRC timestamps like [00:12.34]
-_LRC_TIMESTAMP_REGEX = re.compile(r'^\[(\d+:\d+\.\d+)\]')
 
 
 def _get_lyrics_plugin() -> BeetsPlugin | LyricsPlugin | None:
@@ -38,36 +37,56 @@ def _get_lyrics_plugin() -> BeetsPlugin | LyricsPlugin | None:
         return None
 
 
-def _parse_lyrics_content(text: str) -> tuple[list, bool]:
+@lru_cache(maxsize=512)
+def _load_lrc(path: str, mtime_ns: int) -> str | None:
     """
-    Parses raw lyrics text.
-    Detects if it's synced (LRC) and returns structured lines.
+    Decodes an LRC file.
+    (mtime is part of the cache key so modified files are re-read)
     """
-    lines = []
-    is_synced = False
+    raw = Path(path).read_bytes()
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = raw.decode('latin-1')
+    return text.strip() or None
 
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
 
-        match = _LRC_TIMESTAMP_REGEX.match(line)
-        if match:
-            is_synced = True
-            clean_value = _LRC_TIMESTAMP_REGEX.sub('', line).strip()
-            lines.append({'value': clean_value, 'synced': True})
+def _read_sidecar(item) -> str | None:
+    """Reads the `.lrc` file next to the audio file (if any)."""
+    try:
+        audio = beets_abspath(item)
+        exact = audio.with_suffix('.lrc')
+        if exact.is_file():
+            lrc = exact
         else:
-            lines.append({'value': line})
-
-    return lines, is_synced
+            wanted = exact.name.casefold()
+            lrc = next((p for p in audio.parent.iterdir() if p.name.casefold() == wanted and p.is_file()), None)
+        if lrc is None:
+            return None
+        return _load_lrc(str(lrc), lrc.stat().st_mtime_ns)
+    except OSError as e:
+        bsn_logger.debug(f'Could not read sidecar lyrics: {e}')
+        return None
 
 
 def _fetch_lyrics_data(item) -> dict | None:
+
     if not item:
         return None
 
-    # Check database first
-    lyrics_text = item.get('lyrics')
+    sidecar_text = _read_sidecar(item)
+    db_text = str(item.get('lyrics') or '').strip() or None
+
+    candidates = [db_text, sidecar_text]
+
+    # Synced lyrics preferred to plain
+    sets = []
+    for text in sorted((t for t in candidates if t), key=lambda t: not Lrc(t).synced):
+        plain = Lrc(text).plain()
+        if all(plain != Lrc(s).plain() for s in sets):  # Same words = same version, keep the better one
+            sets.append(text)
+
+    lyrics_text = sets[0] if sets else None
 
     if not lyrics_text:
         if not app.config.get('fetch_lyrics'):
@@ -90,8 +109,12 @@ def _fetch_lyrics_data(item) -> dict | None:
     if not lyrics_text:
         return None
 
+    if not sets:
+        sets = [str(lyrics_text)]
+
     return {
         'text': str(lyrics_text),
+        'sets': sets,
         'lang': item.get('lyrics_language') or 'xxx',   # OpenSubsonic's fallback for unknown language is xxx
         'instrumental': bool(item.get('lyrics_instrumental')),
         'artist': item.get('artist') or '',
@@ -133,7 +156,7 @@ def endpoint_get_lyrics() -> flask.Response:
         'lyrics': {
             'artist': data['artist'],
             'title': data['title'],
-            'value': data['text']
+            'value': Lrc(data['text']).plain()
         }
     }
     return subsonic_response(payload, resp_fmt)
@@ -160,22 +183,23 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
     if not data:
         return subsonic_error(70, message='Lyrics not found.', resp_fmt=resp_fmt)
 
-    lines, has_timestamps = _parse_lyrics_content(data['text'])
-
-
-    structured = {
-        'displayArtist': data['artist'],
-        'displayTitle': data['title'],
-        'lang': data['lang'],
-        'synced': has_timestamps,
-        'line': lines
-    }
-    if enhanced:
-        structured['kind'] = 'main'
+    structured_list = []
+    for text in data['sets']:
+        lrc = Lrc(text)
+        structured = {
+            'displayArtist': data['artist'],
+            'displayTitle': data['title'],
+            'lang': data['lang'],
+            'synced': lrc.synced,
+            'line': lrc.structured(cues=enhanced)
+        }
+        if enhanced:
+            structured['kind'] = 'main'
+        structured_list.append(structured)
 
     payload = {
         'lyricsList': {
-            'structuredLyrics': [structured]
+            'structuredLyrics': structured_list
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)

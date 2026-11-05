@@ -373,7 +373,7 @@ def library_keys() -> set[str]:
 
 
 @with_app_context
-def remove_orphan_images() -> int:
+def cleanup_artist_records() -> int:
     """
     Deletes images of artists that are no longer in the library.
     """

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import re
 
 from beetsplug.beetstreamnext.utils.text import parse_duration
@@ -43,10 +44,8 @@ class Lrc:
             elif meta := self.META_RE.match(line):
                 key, value = meta.group(1).lower(), meta.group(2).strip()
                 if key == 'offset':
-                    try:
+                    with contextlib.suppress(ValueError):
                         self.offset = int(value)
-                    except ValueError:
-                        pass
                 else:
                     self.meta[key] = value
             else:
@@ -106,7 +105,7 @@ class Lrc:
                     c.pop('end', None)
                 continue
 
-            for c, nxt in zip(cues, cues[1:] + [None]):
+            for c, nxt in zip(cues, cues[1:] + [None], strict=True):
                 end = min(c['end'], nxt['start']) if nxt else c['end']
                 c['end'] = max(end, c['start'])
 
@@ -151,7 +150,7 @@ class Lrc:
     def cue_lines(self) -> list[dict]:
         """Word-level `cueLine` entries (OpenSubsonic songLyrics v2). Empty for non synced lyrics."""
         out = []
-        for index, (line, cues) in enumerate(zip(self.lines, self._cues)):
+        for index, (line, cues) in enumerate(zip(self.lines, self._cues, strict=True)):
             if not cues:
                 continue
             cue_line = {'index': index, 'start': cues[0]['start'], 'value': line['value'], 'cue': cues}

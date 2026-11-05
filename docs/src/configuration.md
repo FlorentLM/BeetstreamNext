@@ -506,7 +506,7 @@ Optional, mount point used by another container that accesses the beets library 
 
 ### `playlist_dir`
 
-Directory for BeetstreamNext's own playlists. Leave empty to disable.
+Directory where BeetstreamNext writes its playlists as <code>.m3u</code> files (per-user subfolders for user playlists). Existing files in it are imported once. <br><br>Leave empty to disable.
 
 <span style="color:#fab915">**requires restart**</span>
 

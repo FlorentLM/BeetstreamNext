@@ -5,24 +5,11 @@ import flask
 
 from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 
-
-
-def joint_keys(name: str, names_raw: str | None, mbids_raw: str | None) -> list[str]:
-    """
-    Keys of a joint credit, best first: the set of all members' mbids (survives renames) then the credit text.
-    """
-
-    keys = [IDs.encode_artist(name, joint_credit=True)]
-
-    mbids = [validate_mbid(m) for m in split_beets_multi(mbids_raw or '')]
-    if mbids and all(mbids) and len(mbids) == len(split_beets_multi(names_raw or '')):
-        keys.insert(0, IDs.encode_artist('+'.join(sorted(mbids)), joint_credit=True))
-
-    return keys
 
 
 @with_app_context
@@ -47,7 +34,7 @@ def credit_keys(name: str) -> list[str]:
     if not rows or not IDs.is_joint_credit(rows[0][0], name):
         return []
 
-    return joint_keys(name, rows[0][0], rows[0][1])
+    return IDs.joint_credit_keys(name, rows[0][0], rows[0][1])
 
 
 def artist_keys(name: str, mbid: str | None = None) -> list[str]:
@@ -92,7 +79,7 @@ def get_image(key: str) -> bytes | None:
             """
             SELECT image 
             FROM artist_images 
-            WHERE artist_key = ?
+            WHERE artist_key = ? AND image IS NOT NULL
             """, (key,)
         ).fetchone()
 
@@ -107,8 +94,29 @@ def set_image(name: str, mbid: str | None, image: bytes) -> None:
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(artist_key) DO UPDATE SET
                 name = excluded.name, image = excluded.image,
-                source = excluded.source, uploaded_at = excluded.uploaded_at
+                source = excluded.source, uploaded_at = excluded.uploaded_at,
+                matched_name = NULL, checked_at = NULL
             """, (artist_keys(name, mbid)[0], name, image, 'manual', time.time())
+        )
+
+
+def record_status(name: str, mbid: str | None, source: str, matched_name: str | None = None) -> None:
+    """
+    Record outcome of an artist Deezer lookup ('deezer' or 'none').
+    """
+
+    matched = matched_name if matched_name and matched_name != name else None
+
+    with database() as db:
+        db.execute(
+            """
+            INSERT INTO artist_images (artist_key, name, image, source, matched_name, checked_at)
+            VALUES (?, ?, NULL, ?, ?, ?)
+            ON CONFLICT(artist_key) DO UPDATE SET
+                name = excluded.name, source = excluded.source,
+                matched_name = excluded.matched_name, checked_at = excluded.checked_at
+            WHERE artist_images.image IS NULL
+            """, (artist_keys(name, mbid)[0], name, source, matched, time.time())
         )
 
 
@@ -118,7 +126,7 @@ def delete_image(key: str) -> bool:
         cur = db.execute(
             """
             DELETE FROM artist_images 
-            WHERE artist_key = ?
+            WHERE artist_key = ? AND image IS NOT NULL
             """, (key,)
         )
     return cur.rowcount > 0
@@ -131,6 +139,7 @@ def list_images() -> list[dict]:
             """
             SELECT artist_key, name, source, uploaded_at
             FROM artist_images
+            WHERE image IS NOT NULL
             ORDER BY name COLLATE NOCASE
             """
         ).fetchall()
@@ -143,6 +152,101 @@ def list_images() -> list[dict]:
             kind = 'mbids' if len(keys) > 1 and keys[0] == r['artist_key'] else 'name'
         result.append(dict(r) | {'link': kind})
     return result
+
+
+ARTIST_FILTERS = ('all', 'custom', 'missing', 'fallback', 'unchecked', 'orphan')
+ARTISTS_PER_PAGE = 50
+
+
+@with_app_context
+def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int = ARTISTS_PER_PAGE) -> dict:
+    """
+    One row per album artist with the status of the image.
+    Returns {'rows', 'counts', 'filter', 'q', 'page', 'pages', 'total'}.
+    """
+
+    filter_ = filter_ if filter_ in ARTIST_FILTERS else 'all'
+    q = (q or '').strip()
+
+    with database() as db:
+        stored = {
+            r['artist_key']: r for r in db.execute(
+                """
+                SELECT artist_key, name, source, uploaded_at, matched_name, checked_at,
+                       image IS NOT NULL AS has_image
+                FROM artist_images
+                """
+            ).fetchall()
+        }
+
+    entries = []
+    claimed: set[str] = set()
+
+    for artist in AlbumArtistIndex.get().artists:
+        key = next((k for k in artist.keys if k in stored), artist.keys[0])
+        row = stored.get(key)
+        if row is not None:
+            claimed.add(key)
+
+        status, link = 'unchecked', None
+        if row is not None:
+            if row['has_image']:
+                status = 'custom'
+                link = artist.link_kind(key)
+            elif row['source'] == 'none':
+                status = 'missing'
+            elif row['source'] == 'deezer':
+                status = 'fallback' if row['matched_name'] else 'deezer'
+
+        entries.append({
+            'name': artist.name,
+            'joint': artist.joint,
+            'artist_key': key,
+            'status': status,
+            'matched_name': row['matched_name'] if row is not None else None,
+            'uploaded_at': row['uploaded_at'] if row is not None else None,
+            'link': link,
+        })
+
+    for key, row in stored.items():
+        if row['has_image'] and key not in claimed:
+            entries.append({
+                'name': row['name'], 'joint': False, 'artist_key': key, 'status': 'orphan',
+                'matched_name': None, 'uploaded_at': row['uploaded_at'],
+                'link': None,
+            })
+
+    needle = q.lower()
+    if needle:
+        entries = [e for e in entries if needle in e['name'].lower()]
+
+    counts = {f: 0 for f in ARTIST_FILTERS}
+    counts['all'] = len(entries)
+
+    for e in entries:
+        if e['status'] in counts:   # 'deezer' (a direct match) only counts under 'all'
+            counts[e['status']] += 1
+
+    if filter_ != 'all':
+        entries = [e for e in entries if e['status'] == filter_]
+
+    entries.sort(key=lambda e: e['name'].lower())
+
+    total = len(entries)
+    pages = max(1, -(-total // per_page))
+    page = min(max(1, page), pages)
+    start = (page - 1) * per_page
+
+    payload = {
+        'rows': entries[start:start + per_page],
+        'counts': counts,
+        'filter': filter_, 'q': q,
+        'page': page,
+        'pages': pages,
+        'total': total
+    }
+
+    return payload
 
 
 @with_app_context
@@ -243,7 +347,7 @@ def library_keys() -> set[str]:
             if {name_col, names_col, mbids_col} <= cols:
                 for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):  # nosec B608  # noqa: S608 vars are constants
                     if name and IDs.is_joint_credit(names, name):
-                        keys.update(joint_keys(name, names, mbids))
+                        keys.update(IDs.joint_credit_keys(name, names, mbids))
     return keys
 
 

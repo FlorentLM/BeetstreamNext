@@ -322,6 +322,16 @@
                     </button>
                 </div>
 
+                <div class="artist-search">
+                    <input type="text" id="artistSearch" name="q" placeholder="Search artists" autocomplete="off"
+                           aria-label="Search artists"
+                           hx-get="{{ url_for('admin.route_artist_images') }}"
+                           hx-trigger="input changed delay:300ms"
+                           hx-include="#artistFilterValue"
+                           hx-target="#artistImageList"
+                           hx-swap="innerHTML">
+                </div>
+
                 <div id="artistImageList" hx-get="{{ url_for('admin.route_artist_images') }}" hx-trigger="load">
                 </div>
             </div>

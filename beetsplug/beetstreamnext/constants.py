@@ -333,6 +333,7 @@ IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.webp', '.bmp'}
 ## Allowed bitrates and sizes
 
 ALLOWED_BITRATES = frozenset({0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320})
-ALLOWED_THUMBNAIL_SIZES = [56, 120, 250, 500, 1000, 1200]
+DEEZER_IMAGE_SIZES = [56, 120, 250, 500, 1000]
+ALLOWED_THUMBNAIL_SIZES = DEEZER_IMAGE_SIZES + [1200]
 
 BITRATE_CHOICES_STR = [(0, 'No limit')] + [(b, f'{b} kbps') for b in sorted(ALLOWED_BITRATES) if b > 0]

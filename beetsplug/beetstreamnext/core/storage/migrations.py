@@ -220,6 +220,22 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_10_VER
 
+    ## _________ Migration 11: Version 10 -> 11 (artist_images also records Deezer lookup outcomes), 05/11/2026
+    MIGRATION_11_VER = 11
+
+    if curr_version < MIGRATION_11_VER:
+        have_table = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='artist_images'"""
+        ).fetchone()
+
+        if have_table:
+            columns = [row[1] for row in cursor.execute("""PRAGMA table_info(artist_images)""")]
+            for name, definition in (('matched_name', 'TEXT'), ('checked_at', 'REAL')):
+                if name not in columns:
+                    cursor.execute(f"""ALTER TABLE artist_images ADD COLUMN {name} {definition}""")  # nosec B608
+
+        curr_version = MIGRATION_11_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import threading
 from abc import ABC, abstractmethod
+from typing import NamedTuple
 
 import flask
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.concurrency import BuildOnce
 from beetsplug.beetstreamnext.utils.db import get_beets_schema, library_cache
+from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.utils.system import path_hash
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid, sha1_hex
 
@@ -214,6 +216,63 @@ class ArtistHashIndex(Index):
 
     @classmethod
     def _build(cls) -> ArtistHashIndex:
+        return cls(flask.g.lib)
+
+
+class AlbumArtist(NamedTuple):
+    name: str
+    joint: bool
+    keys: tuple[str, ...]
+
+    def link_kind(self, key: str) -> str:
+        """How an image stored with `key` is linked to this artist: 'mbid', 'mbids' (joint credit) or 'name'."""
+        kind = IDs.decode_artist(key)[1]
+        if kind == 'hash':
+            return 'mbids' if len(self.keys) > 1 and key == self.keys[0] else 'name'
+        return kind
+
+
+class AlbumArtistIndex(Index):
+
+    def __init__(self, lib):
+        super().__init__()
+
+        cols = get_beets_schema('albums')
+
+        def column(name: str) -> str:
+            return f'MAX({name})' if name in cols else 'NULL'
+
+        with lib.transaction() as tx:
+            rows = tx.query(
+                f"""
+                SELECT albumartist, {column('mb_albumartistid')}, {column('albumartists')}, {column('mb_albumartistids')}
+                FROM albums
+                WHERE albumartist IS NOT NULL AND albumartist != ''
+                GROUP BY albumartist
+                """)  # nosec B608  # noqa: S608 vars are constants
+
+        artists = []
+        for name, mbid, names_raw, mbids_raw in rows:
+            joint = IDs.is_joint_credit(names_raw, name)
+
+            if joint:
+                keys = IDs.joint_credit_keys(name, names_raw, mbids_raw)
+            else:
+                keys = [IDs.encode_artist(name, is_mbid=False)]
+                mbid = validate_mbid(mbid)
+                if mbid:
+                    keys.insert(0, IDs.encode_artist(mbid, is_mbid=True))
+
+            artists.append(AlbumArtist(name, joint, tuple(keys)))
+
+        self.artists: list[AlbumArtist] = artists
+
+    @classmethod
+    def _cache_name(cls) -> str:
+        return 'album_artists'
+
+    @classmethod
+    def _build(cls) -> AlbumArtistIndex:
         return cls(flask.g.lib)
 
 

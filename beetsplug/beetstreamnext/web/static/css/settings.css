@@ -2929,3 +2929,34 @@ input:focus, select:focus {
         grid-template-columns: 1fr;
     }
 }
+
+/* Artists tab */
+.artist-search {
+    padding: 1rem 1.5rem 0;
+}
+
+.artist-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+}
+
+.badge-artist-custom {
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.badge-artist-fallback,
+.badge-artist-orphan {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.badge-artist-missing {
+    background: rgba(149, 64, 57, 0.2);
+    color: #e76464;
+    border-color: #e76464;
+}

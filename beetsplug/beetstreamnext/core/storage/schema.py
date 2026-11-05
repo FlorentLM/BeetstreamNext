@@ -236,8 +236,10 @@ def initialise_db() -> None:
             artist_key  TEXT PRIMARY KEY, -- the artist's Subsonic ID (IDs.encode_artist: mbid if known, else name)
             name        TEXT NOT NULL,
             image       BLOB,
-            source      TEXT NOT NULL DEFAULT 'manual',
-            uploaded_at REAL
+            source      TEXT NOT NULL DEFAULT 'manual',  -- manual / deezer / none
+            uploaded_at REAL,
+            matched_name TEXT,  -- Deezer candidate that matched
+            checked_at  REAL
         )
         """
     )

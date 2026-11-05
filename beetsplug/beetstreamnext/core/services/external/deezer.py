@@ -27,6 +27,10 @@ def _is_deezer_placeholder(artist_data: dict) -> bool:
     return not bool(url)
 
 
+class DeezerUnavailable(Exception):
+    """Deezer could not be reached or answered with an error."""
+
+
 def query_deezer(artist: str | None = None, album: str | None = None) -> dict:
 
     if not artist and not album:
@@ -74,7 +78,10 @@ def query_deezer(artist: str | None = None, album: str | None = None) -> dict:
                 # Last resort take the one with highest nb_fan
                 return max(pool, key=lambda c: c.get('nb_fan', 0))
 
-    except requests.exceptions.RequestException:
-        pass
+        else:
+            raise DeezerUnavailable(f"HTTP {response.status_code}")
+
+    except requests.exceptions.RequestException as e:
+        raise DeezerUnavailable(str(e)) from e
 
     return {}

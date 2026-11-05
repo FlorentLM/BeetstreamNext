@@ -8,7 +8,7 @@ from .. import admin_bp, admin_required
 from beetsplug.beetstreamnext.blueprints.forms import ArtistImageForm, form_error_messages
 from beetsplug.beetstreamnext.blueprints.views import modal_error
 from beetsplug.beetstreamnext.core.media.artist_images import (
-    list_images, set_image, delete_image, get_image,
+    list_images, list_artists, set_image, delete_image, get_image,
     find_artist, suggest_artists, credit_keys,
 )
 from beetsplug.beetstreamnext.core.media.images import read_uploaded_image, sniff_image
@@ -16,9 +16,16 @@ from beetsplug.beetstreamnext.utils.text import strip_text
 
 
 def _render_list(message: str | None = None, ok: bool = True) -> str:
-    return flask.render_template('partials/artist_images.html',
-                                 artist_images=list_images(),
-                                 message=message, ok=ok)
+
+    args = flask.request.values
+    try:
+        page = int(args.get('page', 1))
+    except ValueError:
+        page = 1
+
+    listed_artists = list_artists(args.get('filter', 'all'), args.get('q', ''), page)
+
+    return flask.render_template('partials/artist_images.html', listing=listed_artists, message=message, ok=ok)
 
 
 @admin_bp.route('/artists', methods=['GET'])
@@ -33,11 +40,13 @@ def route_artist_image_form() -> str:
     key = flask.request.args.get('key')
     entry = next((a for a in list_images() if a['artist_key'] == key), None) if key else None
 
-    form = ArtistImageForm(formdata=None, data={'name': entry['name'] if entry else ''})
+    name = entry['name'] if entry else strip_text(flask.request.args.get('name', ''))
+    form = ArtistImageForm(formdata=None, data={'name': name})
 
     return flask.render_template('partials/edit_artist_form.html',
                                  artist=entry,
-                                 is_joint=bool(entry and credit_keys(entry['name'])),
+                                 name_locked=bool(entry or name),   # Opened from a row so artist is already known
+                                 is_joint=bool(name and credit_keys(name)),
                                  artist_form=form)
 
 

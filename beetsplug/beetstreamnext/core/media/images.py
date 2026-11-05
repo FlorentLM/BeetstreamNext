@@ -17,14 +17,15 @@ from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid, split
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.constants import (
-    MAX_DECODE_PIXELS, FFMPEG_INPUT_ARGS, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
+    MAX_DECODE_PIXELS, FFMPEG_INPUT_ARGS, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM,
+    DEEZER_IMAGE_SIZES
 )
 from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, COVER_EXTRACT_MAX_CONCURRENT, IMAGE_EXTENSIONS
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.services.external.deezer import query_deezer
+from beetsplug.beetstreamnext.core.services.external.deezer import query_deezer, DeezerUnavailable
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_coverartarchive
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
-from beetsplug.beetstreamnext.core.media.artist_images import find_artist, find_uploaded_image
+from beetsplug.beetstreamnext.core.media.artist_images import find_artist, find_uploaded_image, record_status
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 
@@ -484,13 +485,18 @@ def playlist_mosaic(playlist: dict, size: int = 500) -> BytesIO | None:
     return out
 
 
-def _first_deezer_artist(names: list[str]) -> dict:
-    """Try each candidate name in turn, returning the first Deezer artist match found."""
+def _first_deezer_artist(names: list[str]) -> tuple[tuple[str, dict] | None, bool]:
+    """Try each candidate name in turn."""
+    failed = False
     for name in names:
-        dz_data = query_deezer(artist=name)
+        try:
+            dz_data = query_deezer(artist=name)
+        except DeezerUnavailable:
+            failed = True
+            continue
         if dz_data and dz_data.get('type', '') == 'artist':
-            return dz_data
-    return {}
+            return (name, dz_data), not failed
+    return None, not failed
 
 
 def _send_blob(image: bytes, size: int | None) -> flask.Response | None:
@@ -505,7 +511,7 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
     artist = strip_text(artist)
-    artist_mbid = ''
+
     if IDs.decode_type(artist) == 'artist':
         resolved = Resolve.artist(artist)
         artist_name, artist_mbid = resolved if resolved else ('', '')
@@ -542,22 +548,33 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     candidates = [artist_name] + [m for m in members if m and m != artist_name]
 
     # Try to fetch+save from Deezer if enabled and not already cached
+    match = None
     if app.config['fetch_artists_images'] and not local_image_path.is_file():
-        dz_data = _first_deezer_artist(candidates)
+        match, reliable = _first_deezer_artist(candidates)
 
-        if dz_data:
-            img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
-            k = next(filter(dz_data.get, img_keys), None)
-            artist_image_url = str(dz_data[k]) if k else None
+        if reliable:    # Remember the outcome so the admin can see missing and fallback images
+            try:
+                if match:
+                    record_status(artist_name, artist_mbid, 'deezer', matched_name=match[0])
+                else:
+                    record_status(artist_name, artist_mbid, 'none')
+            except Exception as e:
+                bsn_logger.warning(f"Could not record image status of '{artist_name}': {e}")
 
-            if artist_image_url:
-                try:
-                    content = capped_image_fetch(artist_image_url, timeout=5)
-                    if content and app.config['save_artists_images']:
-                        img = _safe_open_image(content)
-                        img.save(local_image_path)
-                except Exception as e:
-                    bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
+    if match:
+        _, dz_data = match
+        img_keys = ['picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small']
+        k = next(filter(dz_data.get, img_keys), None)
+        artist_image_url = str(dz_data[k]) if k else None
+
+        if artist_image_url:
+            try:
+                content = capped_image_fetch(artist_image_url, timeout=5)
+                if content and app.config['save_artists_images']:
+                    img = _safe_open_image(content)
+                    img.save(local_image_path)
+            except Exception as e:
+                bsn_logger.warning(f"Failed to fetch/save artist image for '{artist_name}' from Deezer: {e}")
 
     # Serve local if it exists now
     if os.path.isfile(local_image_path):
@@ -568,24 +585,21 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
         return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
 
     # No local file: proxy from Deezer (without saving) if local save is off
-    if app.config['fetch_artists_images']:
-        dz_data = _first_deezer_artist(candidates)
+    if app.config['fetch_artists_images'] and match:
+        _, dz_data = match
 
-        if dz_data:
-            deezer_avail_sizes = [56, 120, 250, 500, 1000]
-            target_size = next((s for s in sorted(deezer_avail_sizes) if size and s >= size), 1000)
-            artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')
+        target_size = next((s for s in sorted(DEEZER_IMAGE_SIZES) if size and s >= size), 1000)
+        artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')
 
-            if artist_image_url:
-                content = capped_image_fetch(artist_image_url, timeout=5)
-                if content:
-                    try:
-                        if size and size != target_size:
-                            return flask.send_file(resize_image(content, size), mimetype='image/jpeg')
-                        return flask.send_file(BytesIO(content), mimetype='image/jpeg')
-                    except (ImageTooLarge, OSError) as e:
-                        bsn_logger.warning(f"Bad artist image from Deezer for '{artist_name}': {e}")
-            return None
+        if artist_image_url:
+            content = capped_image_fetch(artist_image_url, timeout=5)
+            if content:
+                try:
+                    if size and size != target_size:
+                        return flask.send_file(resize_image(content, size), mimetype='image/jpeg')
+                    return flask.send_file(BytesIO(content), mimetype='image/jpeg')
+                except (ImageTooLarge, OSError) as e:
+                    bsn_logger.warning(f"Bad artist image from Deezer for '{artist_name}': {e}")
 
     return None
 

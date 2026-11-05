@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, sha1_hex
+from beetsplug.beetstreamnext.utils.text import split_beets_multi, sha1_hex, validate_mbid
 from beetsplug.beetstreamnext.utils.system import path_hash
 
 
@@ -179,6 +179,19 @@ class IDs:
     def is_joint_credit(multi_value: str | None, single_name: str = '') -> bool:
         """Whether a beets *artists (multi-value) field represents more than one credited artist."""
         return len(split_beets_multi(multi_value or single_name)) > 1
+
+    @classmethod
+    def joint_credit_keys(cls, name: str, names_raw: str | None, mbids_raw: str | None) -> list[str]:
+        """
+        Keys of a joint credit (set of all members' mbids then the credit text).
+        """
+        keys = [cls.encode_artist(name, joint_credit=True)]
+
+        mbids = [validate_mbid(m) for m in split_beets_multi(mbids_raw or '')]
+        if mbids and all(mbids) and len(mbids) == len(split_beets_multi(names_raw or '')):
+            keys.insert(0, cls.encode_artist('+'.join(sorted(mbids)), joint_credit=True))
+
+        return keys
 
     @classmethod
     def encode_album(cls,

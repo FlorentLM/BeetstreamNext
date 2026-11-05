@@ -1,32 +1,101 @@
 {% from '_macros.html' import icon %}
 
+{% set labels = {'custom': 'Custom', 'deezer': 'Deezer', 'fallback': 'Fallback', 'missing': 'Missing', 'unchecked': 'Not checked', 'orphan': 'Orphan'} %}
+{% set chips = [('all', 'All'), ('custom', 'Custom'), ('missing', 'Missing'), ('fallback', 'Joint fallback'), ('unchecked', 'Not checked'), ('orphan', 'Orphan')] %}
+
 {% if message %}
     <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
 {% endif %}
 
-{% for a in artist_images %}
+<input type="hidden" id="artistFilterValue" name="filter" value="{{ listing.filter }}">
+<input type="hidden" id="artistPageValue" name="page" value="{{ listing.page }}">
+
+<div class="artist-filters">
+    {% for value, label in chips %}
+        {% if value == 'all' or listing.counts[value] or listing.filter == value %}
+            <button type="button" class="btn btn-small {{ 'btn-primary' if listing.filter == value else 'btn-outline' }}"
+                    hx-get="{{ url_for('admin.route_artist_images') }}"
+                    hx-vals='{"filter": "{{ value }}", "page": 1}'
+                    hx-include="#artistSearch"
+                    hx-target="#artistImageList"
+                    hx-swap="innerHTML">{{ label }} ({{ listing.counts[value] }})</button>
+        {% endif %}
+    {% endfor %}
+</div>
+
+{% for a in listing.rows %}
     <div class="channel-row">
         <div class="channel-row-header">
-            <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, v=a.uploaded_at|int) }}" alt="">
+            {% if a.status in ('custom', 'orphan') %}
+                <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, v=a.uploaded_at|int) }}" alt="">
+            {% else %}
+                <span class="cover-thumb cover-thumb-placeholder">{{ a.name[0]|upper }}</span>
+            {% endif %}
             <div class="channel-row-info">
-                <div class="username-name">{{ a.name }}</div>
-                <div class="email-cell">{% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all credited artists{% else %}No MusicBrainz ID (will be lost if artist is renamed){% endif %}</div>
+                <div class="username-name">{{ a.name }} <span class="badge badge-artist-{{ a.status }}">{{ labels[a.status] }}</span></div>
+                <div class="email-cell">
+                    {%- if a.status == 'custom' -%}
+                        {% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all credited artists{% else %}No MusicBrainz ID (will be lost if artist is renamed){% endif %}
+                    {%- elif a.status == 'deezer' -%}
+                        Image found on Deezer
+                    {%- elif a.status == 'fallback' -%}
+                        No Deezer image for the joint credit: using the image of {{ a.matched_name }}
+                    {%- elif a.status == 'missing' -%}
+                        No custom image, and none found on Deezer
+                    {%- elif a.status == 'orphan' -%}
+                        No longer in the library
+                    {%- else -%}
+                        Not looked up yet
+                    {%- endif -%}
+                </div>
             </div>
             <div class="actions-cell">
-                <button class="icon-btn"
-                        hx-get="{{ url_for('admin.route_artist_image_form', key=a.artist_key) }}"
-                        hx-target="#artistImageModalBody"
-                        hx-swap="innerHTML"
-                        title="Replace image" aria-label="Replace image of {{ a.name }}">{{ icon('edit') }}</button>
-                <button class="icon-btn icon-btn-delete" title="Remove" aria-label="Remove image of {{ a.name }}"
-                        hx-post="{{ url_for('admin.route_delete_artist_image') }}"
-                        hx-vals='{"key": {{ a.artist_key|tojson|forceescape }}}'
-                        hx-target="#artistImageList"
-                        hx-swap="innerHTML"
-                        hx-confirm="Remove the custom image of '{{ a.name | e }}'?">{{ icon('delete') }}</button>
+                {% if a.status in ('custom', 'orphan') %}
+                    <button class="icon-btn"
+                            hx-get="{{ url_for('admin.route_artist_image_form', key=a.artist_key) }}"
+                            hx-target="#artistImageModalBody"
+                            hx-swap="innerHTML"
+                            title="Replace image" aria-label="Replace image of {{ a.name }}">{{ icon('edit') }}</button>
+                    <button class="icon-btn icon-btn-delete" title="Remove" aria-label="Remove image of {{ a.name }}"
+                            hx-post="{{ url_for('admin.route_delete_artist_image') }}"
+                            hx-vals='{"key": {{ a.artist_key|tojson|forceescape }}}'
+                            hx-include="#artistSearch, #artistFilterValue, #artistPageValue"
+                            hx-target="#artistImageList"
+                            hx-swap="innerHTML"
+                            hx-confirm="Remove the custom image of '{{ a.name | e }}'?">{{ icon('delete') }}</button>
+                {% else %}
+                    <button class="icon-btn"
+                            hx-get="{{ url_for('admin.route_artist_image_form') }}"
+                            hx-vals='{"name": {{ a.name|tojson|forceescape }}}'
+                            hx-target="#artistImageModalBody"
+                            hx-swap="innerHTML"
+                            title="Add image" aria-label="Add image for {{ a.name }}">{{ icon('add-image') }}</button>
+                {% endif %}
             </div>
         </div>
     </div>
 {% else %}
-    <p class="empty-state">No custom artist images yet. Artists without one use Deezer (if enabled).</p>
+    {% if listing.q or listing.filter != 'all' %}
+        <p class="empty-state">No artists match.</p>
+    {% else %}
+        <p class="empty-state">No artists in the library yet.</p>
+    {% endif %}
 {% endfor %}
+
+{% if listing.pages > 1 %}
+    <div class="table-footer pagination">
+        <button type="button" class="btn btn-small btn-outline" {% if listing.page <= 1 %}disabled{% endif %}
+                hx-get="{{ url_for('admin.route_artist_images') }}"
+                hx-vals='{"page": {{ listing.page - 1 }}}'
+                hx-include="#artistSearch, #artistFilterValue"
+                hx-target="#artistImageList"
+                hx-swap="innerHTML">Previous</button>
+        <span class="pagination-status">Page {{ listing.page }} of {{ listing.pages }}</span>
+        <button type="button" class="btn btn-small btn-outline" {% if listing.page >= listing.pages %}disabled{% endif %}
+                hx-get="{{ url_for('admin.route_artist_images') }}"
+                hx-vals='{"page": {{ listing.page + 1 }}}'
+                hx-include="#artistSearch, #artistFilterValue"
+                hx-target="#artistImageList"
+                hx-swap="innerHTML">Next</button>
+    </div>
+{% endif %}

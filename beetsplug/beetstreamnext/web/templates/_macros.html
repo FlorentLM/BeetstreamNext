@@ -1,6 +1,8 @@
 {% macro icon(name) -%}
     {%- if name == 'edit' -%}
         <span class="material-symbols-outlined">edit</span>
+    {%- elif name == 'add-image' -%}
+        <span class="material-symbols-outlined">add_photo_alternate</span>
     {%- elif name == 'delete' -%}
         <span class="material-symbols-outlined">delete_forever</span>
     {%- elif name == 'download' -%}

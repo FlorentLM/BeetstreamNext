@@ -4,6 +4,7 @@
       data-src="{{ url_for('admin.route_serve_artist_image', key=artist.artist_key, v=artist.uploaded_at|int) if artist else '' }}"
       hx-post="{{ url_for('admin.route_save_artist_image') }}"
       hx-encoding="multipart/form-data"
+      hx-include="#artistSearch, #artistFilterValue, #artistPageValue"
       hx-target="#artistImageList"
       hx-swap="innerHTML">
     {{ artist_form.csrf_token }}
@@ -11,7 +12,7 @@
 
     <div class="form-group">
         <label>Artist</label>
-        {% if artist %}
+        {% if name_locked %}
             {{ artist_form.name(id="artistImageName", readonly=true) }}
         {% else %}
             {{ artist_form.name(id="artistImageName", list="artistSuggestions", autocomplete="off", placeholder="Start typing an artist name",

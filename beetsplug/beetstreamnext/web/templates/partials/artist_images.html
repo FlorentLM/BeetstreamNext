@@ -1,7 +1,7 @@
 {% from '_macros.html' import icon %}
 
-{% set labels = {'custom': 'Custom', 'deezer': 'Deezer', 'fallback': 'Fallback', 'missing': 'Missing', 'unchecked': 'Not checked', 'orphan': 'Orphan'} %}
-{% set chips = [('all', 'All'), ('custom', 'Custom'), ('missing', 'Missing'), ('fallback', 'Joint fallback'), ('unchecked', 'Not checked'), ('orphan', 'Orphan')] %}
+{% set labels = {'custom': 'Custom', 'deezer': 'Deezer', 'fallback': 'Fallback', 'missing': 'Missing', 'unchecked': 'Pending', 'orphan': 'Orphan'} %}
+{% set chips = [('all', 'All'), ('custom', 'Custom'), ('missing', 'Missing'), ('fallback', 'Fallback'), ('unchecked', 'Pending'), ('orphan', 'Orphan')] %}
 
 {% if message %}
     <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
@@ -26,8 +26,8 @@
 {% for a in listing.rows %}
     <div class="channel-row">
         <div class="channel-row-header">
-            {% if a.status in ('custom', 'orphan') %}
-                <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, v=a.uploaded_at|int) }}" alt="">
+            {% if a.image_version %}
+                <img class="cover-thumb" src="{{ url_for('admin.route_serve_artist_image', key=a.artist_key, name=a.name, v=a.image_version) }}" alt="">
             {% else %}
                 <span class="cover-thumb cover-thumb-placeholder">{{ a.name[0]|upper }}</span>
             {% endif %}
@@ -35,17 +35,17 @@
                 <div class="username-name">{{ a.name }} <span class="badge badge-artist-{{ a.status }}">{{ labels[a.status] }}</span></div>
                 <div class="email-cell">
                     {%- if a.status == 'custom' -%}
-                        {% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all credited artists{% else %}No MusicBrainz ID (will be lost if artist is renamed){% endif %}
+                        {% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all members{% else %}No MusicBrainz ID: lost if renamed{% endif %}
                     {%- elif a.status == 'deezer' -%}
-                        Image found on Deezer
+                        From Deezer
                     {%- elif a.status == 'fallback' -%}
-                        No Deezer image for the joint credit: using the image of {{ a.matched_name }}
+                        Using the image of {{ a.matched_name }}
                     {%- elif a.status == 'missing' -%}
-                        No custom image, and none found on Deezer
+                        Not found on Deezer
                     {%- elif a.status == 'orphan' -%}
-                        No longer in the library
+                        Not in the library
                     {%- else -%}
-                        Not looked up yet
+                        Not fetched yet
                     {%- endif -%}
                 </div>
             </div>

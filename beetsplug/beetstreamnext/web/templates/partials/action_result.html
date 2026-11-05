@@ -1,3 +1,6 @@
 {% if message %}
     <div class="flash flash-{{ 'success' if ok else 'error' if ok is sameas false else 'info' }}">{{ message }}</div>
 {% endif %}
+{% if image_url %}
+    <img class="artist-deezer-image" src="{{ image_url }}" alt="">
+{% endif %}

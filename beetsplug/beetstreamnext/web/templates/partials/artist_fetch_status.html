@@ -1,0 +1,10 @@
+{% if message %}
+    <p class="artist-fetch-line">{{ message }}</p>
+{% elif fetcher.running %}
+    <p class="artist-fetch-line">Fetching: {{ fetcher.done }} / {{ fetcher.total }}&hellip;</p>
+{% elif fetcher.finished %}
+    <p class="artist-fetch-line">
+        Last run: {{ fetcher.total }} artists, {{ fetcher.found }} found, {{ fetcher.fallback }} fallback, {{ fetcher.missing }} missing.
+        {% if fetcher.aborted %}Stopped: {{ fetcher.aborted }}{% endif %}
+    </p>
+{% endif %}

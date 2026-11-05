@@ -314,13 +314,25 @@
         <section class="tab-content" id="tab-artists" :class="{ active: active === 'artists' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
-                    <h2>Custom artist images</h2>
-                    <button class="btn btn-primary"
-                            hx-get="{{ url_for('admin.route_artist_image_form') }}"
-                            hx-target="#artistImageModalBody" hx-swap="innerHTML">
-                        + Add Image
-                    </button>
+                    <h2>Artist images</h2>
+                    <div class="table-header-actions">
+                        <button type="button" class="btn btn-outline"
+                                hx-post="{{ url_for('admin.route_fetch_all') }}"
+                                hx-target="#artistFetchStatus" hx-swap="innerHTML">
+                            Fetch images
+                        </button>
+                        <button class="btn btn-primary"
+                                hx-get="{{ url_for('admin.route_artist_image_form') }}"
+                                hx-target="#artistImageModalBody" hx-swap="innerHTML">
+                            + Add Image
+                        </button>
+                    </div>
                 </div>
+
+                <div id="artistFetchStatus"
+                     hx-get="{{ url_for('admin.route_fetch_all_status') }}"
+                     hx-trigger="load, artist-fetch from:#adminDashboard throttle:1s"
+                     hx-swap="innerHTML"></div>
 
                 <div class="artist-search">
                     <input type="text" id="artistSearch" name="q" placeholder="Search artists" autocomplete="off"
@@ -332,7 +344,9 @@
                            hx-swap="innerHTML">
                 </div>
 
-                <div id="artistImageList" hx-get="{{ url_for('admin.route_artist_images') }}" hx-trigger="load">
+                <div id="artistImageList" hx-get="{{ url_for('admin.route_artist_images') }}"
+                     hx-trigger="load, artist-fetch from:#adminDashboard throttle:2s"
+                     hx-include="#artistSearch, #artistFilterValue, #artistPageValue">
                 </div>
             </div>
         </section>

@@ -223,6 +223,12 @@ class AlbumArtist(NamedTuple):
     name: str
     joint: bool
     keys: tuple[str, ...]
+    members: tuple[str, ...]    # artists of a joint credit
+
+    @property
+    def candidates(self) -> tuple[str, ...]:
+        """Names to look up an image."""
+        return (self.name, *(m for m in self.members if m != self.name))
 
     def link_kind(self, key: str) -> str:
         """How an image stored with `key` is linked to this artist: 'mbid', 'mbids' (joint credit) or 'name'."""
@@ -254,6 +260,7 @@ class AlbumArtistIndex(Index):
         artists = []
         for name, mbid, names_raw, mbids_raw in rows:
             joint = IDs.is_joint_credit(names_raw, name)
+            members = tuple(split_beets_multi(names_raw)) if joint else ()
 
             if joint:
                 keys = IDs.joint_credit_keys(name, names_raw, mbids_raw)
@@ -263,9 +270,10 @@ class AlbumArtistIndex(Index):
                 if mbid:
                     keys.insert(0, IDs.encode_artist(mbid, is_mbid=True))
 
-            artists.append(AlbumArtist(name, joint, tuple(keys)))
+            artists.append(AlbumArtist(name, joint, tuple(keys), members))
 
         self.artists: list[AlbumArtist] = artists
+        self.by_name: dict[str, AlbumArtist] = {a.name: a for a in artists}
 
     @classmethod
     def _cache_name(cls) -> str:

@@ -2960,3 +2960,44 @@ input:focus, select:focus {
     color: #e76464;
     border-color: #e76464;
 }
+
+.artist-fetch-line {
+    margin: 0;
+    padding: 0.75rem 1.5rem 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* Artist image edit modal */
+.artist-deezer {
+    margin: 1rem 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--overlay-sunken);
+}
+
+.artist-deezer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.4rem;
+}
+
+.artist-deezer-title {
+    font-weight: 600;
+}
+
+.artist-deezer #artistDeezerResult:not(:empty) {
+    margin-top: 0.75rem;
+}
+
+.artist-deezer-image {
+    display: block;
+    width: 96px;
+    height: 96px;
+    margin-top: 0.5rem;
+    border-radius: 8px;
+    object-fit: cover;
+}

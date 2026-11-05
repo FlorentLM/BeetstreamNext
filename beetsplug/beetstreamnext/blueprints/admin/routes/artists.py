@@ -9,10 +9,15 @@ from beetsplug.beetstreamnext.blueprints.forms import ArtistImageForm, form_erro
 from beetsplug.beetstreamnext.blueprints.views import modal_error
 from beetsplug.beetstreamnext.core.media.artist_images import (
     list_images, list_artists, set_image, delete_image, get_image,
-    find_artist, suggest_artists, credit_keys,
+    find_artist, suggest_artists, credit_keys, artist_image_fetcher, image_version
 )
 from beetsplug.beetstreamnext.core.media.images import read_uploaded_image, sniff_image
 from beetsplug.beetstreamnext.utils.text import strip_text
+
+
+def _image_url(name: str, key: str = '', uploaded_at: int | None = None) -> str | None:
+    version = image_version(uploaded_at, name)
+    return flask.url_for('admin.route_serve_artist_image', key=key, name=name, v=version) if version else None
 
 
 def _render_list(message: str | None = None, ok: bool = True) -> str:
@@ -44,9 +49,11 @@ def route_artist_image_form() -> str:
     form = ArtistImageForm(formdata=None, data={'name': name})
 
     return flask.render_template('partials/edit_artist_form.html',
+                                 preview_url=_image_url(name, key if entry else '', entry['uploaded_at'] if entry else None),
                                  artist=entry,
                                  name_locked=bool(entry or name),   # Opened from a row so artist is already known
                                  is_joint=bool(name and credit_keys(name)),
+                                 deezer_enabled=flask.current_app.config['fetch_artists_images'],
                                  artist_form=form)
 
 
@@ -89,19 +96,66 @@ def route_delete_artist_image() -> str:
 
     key = flask.request.form.get('key', '')
     if delete_image(key):
-        return _render_list('Artist image removed.')
+        return _render_list('Image removed.')
 
-    return _render_list('No such artist image.', ok=False)
+    return _render_list('No such image.', ok=False)
 
 
 @admin_bp.route('/artists/image', methods=['GET'])
 @admin_required
 def route_serve_artist_image() -> flask.Response:
+    """Image shown for an artist: uploaded one (by key) if any, or fetched one (by name)."""
 
-    key = flask.request.args.get('key', '')
+    image = get_image(flask.request.args.get('key', ''))
+    if image:
+        return flask.send_file(BytesIO(image), mimetype=sniff_image(image) or 'image/jpeg')
 
-    image = get_image(key)
-    if not image:
-        flask.abort(404)
+    path = artist_image_fetcher.image_path(flask.request.args.get('name', ''))
+    if path.is_file():
+        return flask.send_file(path, mimetype='image/jpeg')
 
-    return flask.send_file(BytesIO(image), mimetype=sniff_image(image) or 'image/jpeg')
+    flask.abort(404)
+
+
+@admin_bp.route('/artists/fetch-all', methods=['POST'])
+@admin_required
+def route_fetch_all() -> str:
+    started, message = artist_image_fetcher.start()
+    return flask.render_template('partials/artist_fetch_status.html',
+                                 fetcher=artist_image_fetcher, message=None if started else message)
+
+
+@admin_bp.route('/artists/fetch-all/status', methods=['GET'])
+@admin_required
+def route_fetch_all_status() -> str:
+    return flask.render_template('partials/artist_fetch_status.html',
+                                 fetcher=artist_image_fetcher, message=None)
+
+
+@admin_bp.route('/artists/fetch-one', methods=['POST'])
+@admin_required
+def route_fetch_one() -> str:
+
+    if not flask.current_app.config['fetch_artists_images']:
+        return flask.render_template('partials/action_result.html',
+                                     ok=False,
+                                     message='Fetching is off in the settings.')
+
+    result = artist_image_fetcher.fetch_one(strip_text(flask.request.form.get('name', '')))
+
+    if result is None:
+        return flask.render_template('partials/action_result.html',
+                                     ok=False,
+                                     message='Pick a library artist first.')
+
+    messages = {
+        'deezer': 'Found on Deezer.',
+        'fallback': f"No match: using the image of {result['matched_name']}.",
+        'missing': 'Not found on Deezer.',
+        'unavailable': 'Deezer is unreachable.',
+    }
+
+    return flask.render_template('partials/action_result.html',
+                                 ok=result['status'] != 'unavailable',
+                                 message=messages[result['status']],
+                                 image_url=_image_url(result['name']) if result['status'] in ('deezer', 'fallback') else None)

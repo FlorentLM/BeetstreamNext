@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+import hashlib
+import threading
 import time
+from pathlib import Path
+
 import flask
 
-from beetsplug.beetstreamnext.application import with_app_context
+from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
+from beetsplug.beetstreamnext.core.media.images import safe_open_image
+from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.services.external.deezer import query_deezer, DeezerUnavailable
+from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
+from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.utils.concurrency import SingleAccess
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 
@@ -100,7 +110,7 @@ def set_image(name: str, mbid: str | None, image: bytes) -> None:
         )
 
 
-def record_status(name: str, mbid: str | None, source: str, matched_name: str | None = None) -> None:
+def record_status(key: str, name: str, source: str, matched_name: str | None = None) -> None:
     """
     Record outcome of an artist Deezer lookup ('deezer' or 'none').
     """
@@ -116,7 +126,7 @@ def record_status(name: str, mbid: str | None, source: str, matched_name: str | 
                 name = excluded.name, source = excluded.source,
                 matched_name = excluded.matched_name, checked_at = excluded.checked_at
             WHERE artist_images.image IS NULL
-            """, (artist_keys(name, mbid)[0], name, source, matched, time.time())
+            """, (key, name, source, matched, time.time())
         )
 
 
@@ -237,8 +247,12 @@ def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int
     page = min(max(1, page), pages)
     start = (page - 1) * per_page
 
+    page_rows = entries[start:start + per_page]
+    for row in page_rows:
+        row['image_version'] = image_version(row['uploaded_at'], row['name'])
+
     payload = {
-        'rows': entries[start:start + per_page],
+        'rows': page_rows,
         'counts': counts,
         'filter': filter_, 'q': q,
         'page': page,
@@ -247,6 +261,14 @@ def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int
     }
 
     return payload
+
+
+def image_version(uploaded_at: int | None, name: str) -> int:
+    """Version of the iage (for cache busting)."""
+    if uploaded_at:
+        return int(uploaded_at)
+    path = ArtistImageFetcher.image_path(name)
+    return int(path.stat().st_mtime) if path.is_file() else 0
 
 
 @with_app_context
@@ -384,3 +406,197 @@ def remove_orphan_images() -> int:
             )
 
     return len(orphans)
+
+
+class ArtistImageFetcher:
+    """
+    Fetches artist images from Deezer: single artist on demand, or all artists in a background run.
+    """
+
+    RETRY_AFTER = 30 * 24 * 3600        # Seconds before retrying an artist
+    LOOKUP_PAUSE = 0.25                 # Seconds between Deezer requests
+    MAX_CONSECUTIVE_FAILURES = 5
+    PUBLISH_EVERY = 5                   # live progress updates every n artist
+
+    def __init__(self) -> None:
+        self._lock = SingleAccess()
+        self.done = self.total = self.found = self.fallback = self.missing = 0
+        self.aborted = ''
+        self.finished = False           # A run finished since startup
+
+    @property
+    def running(self) -> bool:
+        return self._lock.running
+
+    @staticmethod
+    def image_path(name: str) -> Path:
+        return app.config['ARTIST_IMAGE_DATA_PATH'] / f"{hashlib.md5(name.encode('utf-8'), usedforsecurity=False).hexdigest()}.jpg"
+
+    def lookup(self,
+            key: str,
+            name: str,
+            candidates: tuple[str, ...],
+            pause: float = 0.0
+        ) -> tuple[tuple[str, dict] | None, bool]:
+        """
+        Try each candidate name on Deezer, save the image of the 1st match and record the outcome.
+        """
+        match = None
+        failed = False
+
+        for candidate in candidates:
+            try:
+                dz_data = query_deezer(artist=candidate)
+            except DeezerUnavailable:
+                failed = True
+                continue
+            finally:
+                if pause:
+                    time.sleep(pause)
+
+            if dz_data and dz_data.get('type', '') == 'artist':
+                match = candidate, dz_data
+                break
+
+        if match:
+            self._save_image(name, match[1])
+
+        if not failed:
+            try:
+                if match:
+                    record_status(key, name, 'deezer', matched_name=match[0])
+                else:
+                    record_status(key, name, 'none')
+            except Exception as e:
+                bsn_logger.warning(f"Could not record image status of '{name}': {e}")
+
+        return match, not failed
+
+    def _save_image(self, name: str, dz_data: dict) -> None:
+
+        path = self.image_path(name)
+        if not app.config['save_artists_images'] or path.is_file():
+            return
+
+        key = next(filter(dz_data.get, ('picture_xl', 'picture_big', 'picture_medium', 'picture', 'picture_small')), None)
+        if not key:
+            return
+
+        try:
+            content = capped_image_fetch(str(dz_data[key]), timeout=5)
+            if content:
+                safe_open_image(content).save(path)
+        except Exception as e:
+            bsn_logger.warning(f"Failed to fetch/save artist image for '{name}' from Deezer: {e}")
+
+    def start(self) -> tuple[bool, str]:
+        """
+        Fetches images for all artists that have no custom image (and weren't tried recently)
+        in a background thread.
+        """
+        if not app.config['fetch_artists_images']:
+            return False, 'Fetching is off in the settings.'
+
+        if not self._lock.try_acquire():
+            return False, 'Already running.'
+
+        threading.Thread(target=self._run, daemon=True).start()
+        return True, 'Started.'
+
+    @with_app_context
+    def _run(self) -> None:
+        try:
+            with database() as db:
+                stored = {
+                    r['artist_key']: r for r in db.execute(
+                        """
+                        SELECT artist_key, image IS NOT NULL AS has_image, checked_at
+                        FROM artist_images
+                        """
+                    ).fetchall()
+                }
+
+            cutoff = time.time() - self.RETRY_AFTER
+            todo = []
+
+            for artist in AlbumArtistIndex.get().artists:
+                row = next((stored[k] for k in artist.keys if k in stored), None)
+                if row and (row['has_image'] or (row['checked_at'] or 0) > cutoff):
+                    continue
+                todo.append(artist)
+
+            self.done = self.found = self.fallback = self.missing = 0
+            self.total = len(todo)
+            self.aborted = ''
+            self.finished = False
+
+            admin_events.publish('artist-fetch', '')
+
+            failures = 0
+            for artist in todo:
+                match, reliable = self.lookup(
+                    key=artist.keys[0],
+                    name=artist.name,
+                    candidates=artist.candidates,
+                    pause=self.LOOKUP_PAUSE
+                )
+
+                if not reliable:
+                    failures += 1
+                    if failures >= self.MAX_CONSECUTIVE_FAILURES:
+                        self.aborted = 'Deezer is not responding.'
+                        break
+                else:
+                    failures = 0
+                    if not match:
+                        self.missing += 1
+                    elif match[0] == artist.name:
+                        self.found += 1
+                    else:
+                        self.fallback += 1
+
+                self.done += 1
+                if self.done % self.PUBLISH_EVERY == 0:
+                    admin_events.publish('artist-fetch', '')
+
+            self.finished = True
+            bsn_logger.info(
+                f"Artist image fetch complete: {self.done}/{self.total} artists, {self.found} found on Deezer, "
+                f"{self.fallback} using a member's image, {self.missing} missing."
+                + (f" Stopped: {self.aborted}" if self.aborted else '')
+            )
+        except Exception as e:
+            self.aborted = 'Failed, see the server log.'
+            bsn_logger.error(f"Artist image fetch failed: {e}")
+        finally:
+            self._lock.release()
+            admin_events.publish('artist-fetch', '')
+
+    @with_app_context
+    def fetch_one(self, name: str) -> dict | None:
+        """
+        Fetches one artist image from Deezer.
+        """
+        found = find_artist(name)
+        if not found:
+            return None
+
+        name, mbid = found
+        entry = AlbumArtistIndex.get().by_name.get(name)
+        key = entry.keys[0] if entry else artist_keys(name, mbid)[0]
+        candidates = entry.candidates if entry else (name,)
+
+        match, reliable = self.lookup(key, name, candidates)
+        admin_events.publish('artist-fetch', '')
+
+        if not reliable:
+            status = 'unavailable'
+        elif not match:
+            status = 'missing'
+        else:
+            status = 'deezer' if match[0] == name else 'fallback'
+
+        return {'name': name, 'status': status, 'matched_name': match[0] if match else None}
+
+
+artist_image_fetcher = ArtistImageFetcher()

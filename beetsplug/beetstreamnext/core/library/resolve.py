@@ -236,6 +236,26 @@ class Resolve:
         return result
 
     @classmethod
+    def playlist(cls, subsonic_id: str) -> dict | None:
+        playlist_id = IDs.decode_int(subsonic_id, IDs._PLY_ID_PREF)
+
+        if playlist_id is None:
+            return None
+
+        return app.config['playlist_manager'].get(playlist_id)
+
+    @classmethod
+    def playlist_songs(cls, tracks: Sequence[dict]) -> list[Item]:
+        """Tracks that don't resolve (by song ID, then by path) are omitted."""
+        found = cls.songs([t['song_id'] for t in tracks if t['song_id']])
+
+        path_ids = {t['id']: IDs.encode_song({'path': t['path']}) for t in tracks if t['path'] and t['song_id'] not in found}
+        found_by_path = cls.songs(list(path_ids.values()))
+
+        songs = [found.get(t['song_id']) or found_by_path.get(path_ids.get(t['id'])) for t in tracks]
+        return [song for song in songs if song is not None]
+
+    @classmethod
     def song_ids(cls, subsonic_ids: Sequence[str]) -> dict[str, int]:
         """
         Batched song resolving, without loading the songs. Returns {id: beets_id}.

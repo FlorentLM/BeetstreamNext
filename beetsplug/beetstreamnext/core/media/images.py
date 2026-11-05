@@ -7,7 +7,6 @@ import os
 import tempfile
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
 from io import BytesIO
 from PIL import Image, ImageOps
 import flask
@@ -27,9 +26,6 @@ from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_co
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
 from beetsplug.beetstreamnext.core.media.artist_images import find_artist, find_uploaded_image
 from beetsplug.beetstreamnext.core.storage.connection import database
-
-if TYPE_CHECKING:
-    from beetsplug.beetstreamnext.core.media.playlists import Playlist
 
 
 _ART_PRIORITY = [
@@ -424,34 +420,26 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
     return None # TODO - send a placeholder instead of 404ing
 
 
-def playlist_mosaic(playlist: Playlist, size: int = 500) -> BytesIO | None:
+def playlist_mosaic(playlist: dict, size: int = 500) -> BytesIO | None:
     """
     2x2 grid mosaic from 4 distinct albums' art in a playlist,
     falls back to a single album art if only one album in the playlist
     """
-    if not playlist.songs:
-        return None
-
     from beetsplug.beetstreamnext.core.library.resolve import Resolve
 
     half = max(size // 2, 1)
     tiles = []
     used_album_ids = []
 
-    for song in playlist.songs:
-        sub_album_id = song.get('albumId')
-        if not sub_album_id or sub_album_id in used_album_ids:
+    for song in Resolve.playlist_songs(playlist['tracks']):
+        if not song.album_id or song.album_id in used_album_ids:
             continue
 
-        album = Resolve.album(sub_album_id)
-        if not album:
-            continue
-
-        tile_bytes = _album_art_bytes(album.id, half)
+        tile_bytes = _album_art_bytes(song.album_id, half)
         if not tile_bytes:
             continue
 
-        used_album_ids.append(sub_album_id)
+        used_album_ids.append(song.album_id)
         tiles.append(tile_bytes)
         if len(tiles) >= 4:
             break
@@ -461,7 +449,7 @@ def playlist_mosaic(playlist: Playlist, size: int = 500) -> BytesIO | None:
     if len(tiles) == 1:
         return BytesIO(tiles[0])
 
-    cache_key = f"{playlist.id}_{'-'.join(used_album_ids)}"
+    cache_key = f"{playlist['id']}_{'-'.join(map(str, used_album_ids))}"
     file_hash = hashlib.md5(f"{cache_key}_{size}".encode(), usedforsecurity=False).hexdigest()
     cache_path = app.config['THUMBNAIL_CACHE_PATH'] / f'.mosaic-{file_hash}.jpg'
     

@@ -9,8 +9,8 @@ import flask
 from beetsplug.beetstreamnext.constants import DB_BUSY_TIMEOUT_MS
 
 
-def database() -> sqlite3.Connection:
-    """Get internal database connection."""
+def database(immediate: bool = False) -> sqlite3.Connection:
+    """Get internal database connection. immediate: take the write lock (BEGIN IMMEDIATE)."""
     if 'db' not in flask.g:
         flask.g.db = sqlite3.connect(flask.current_app.config['BSN_DB_PATH'])
         flask.g.db.execute("""PRAGMA main.journal_mode = WAL;""")
@@ -18,6 +18,10 @@ def database() -> sqlite3.Connection:
         flask.g.db.execute(f"""PRAGMA busy_timeout = {int(DB_BUSY_TIMEOUT_MS)};""")
         flask.g.db.execute("""PRAGMA foreign_keys = ON;""")
         flask.g.db.row_factory = sqlite3.Row
+
+    if immediate:
+        flask.g.db.execute("""BEGIN IMMEDIATE""")
+
     return flask.g.db
 
 

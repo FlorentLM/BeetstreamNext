@@ -348,6 +348,49 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS playlists
+        (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner   TEXT REFERENCES users (username) ON DELETE CASCADE, -- NULL if no known user
+            name    TEXT NOT NULL,
+            comment TEXT NOT NULL DEFAULT '',
+            public  INTEGER NOT NULL DEFAULT 0,
+            created REAL NOT NULL DEFAULT (unixepoch()),
+            changed REAL NOT NULL DEFAULT (unixepoch()),
+            version INTEGER NOT NULL DEFAULT 1,
+            source       TEXT UNIQUE, -- corresponding m3u file
+            source_mtime REAL,
+            readonly     INTEGER NOT NULL DEFAULT 0,
+            exported     TEXT -- last m3u file written
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_playlists_name
+        ON playlists (COALESCE(owner, ''), name COLLATE NOCASE)
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS playlist_tracks
+        (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_id INTEGER NOT NULL,
+            position    INTEGER NOT NULL,
+            song_id     TEXT,  -- NULL if it never resolved
+            path        TEXT,  -- fallback for if song_id stops resolving
+            label       TEXT,
+            duration    INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (playlist_id) REFERENCES playlists (id) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS play_queue
         (
             username   TEXT PRIMARY KEY,
@@ -474,16 +517,17 @@ def initialise_db() -> None:
     cur.execute("""DELETE FROM now_playing""")
 
     # Indices for per-user queries (most common accesses)
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username       ON likes(username);""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_username  ON play_stats(username);""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_bookmarks_username   ON bookmarks(username);""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_username     ON ratings(username);""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_queue_username  ON play_queue_entries(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username        ON likes(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_username   ON play_stats(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_bookmarks_username    ON bookmarks(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_username      ON ratings(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_queue_username   ON play_queue_entries(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_playlist_tracks_pos   ON playlist_tracks(playlist_id, position);""")
 
     # These are or JOIN queries in albums (starred, frequent, highest sort)
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_item_id        ON likes(item_id);""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_item_id      ON ratings(item_id);""")
-    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_song_id   ON play_stats(song_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_item_id         ON likes(item_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_item_id       ON ratings(item_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_song_id    ON play_stats(song_id);""")
 
     conn.commit()
     conn.close()

@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.core.media.playlists import Playlist, PlaylistProvider
 from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.core.services.playlists import PlaylistExists, PlaylistNotFound
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
@@ -14,29 +15,23 @@ from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 
 
-def _can_read(playlist: Playlist, username: str, is_admin: bool) -> bool:
-    """BeetstreamNext playlists ones are per-user. External ones are public."""
-    return is_admin or playlist.owner is None or playlist.owner == username
-
-
-def _can_edit(playlist: Playlist, username: str, is_admin: bool) -> bool:
+def _can_edit(playlist: dict, username: str, is_admin: bool) -> bool:
     """
-    Private BSN playlists are only readable and editable by owner (and admin).
-    Public BSN playlists are read/write by everyone.
-    External playlists (Beets' playlist directory) editing is gated by 'external_playlists_editor's setting.
-    Smartplaylist ones are always read-only.
+    Private playlists are only editable by their owner (and admins). Public playlists are editable by everyone.
+    Mirrored m3u playlists (except smartplaylist's) are editable by admins and 'external_playlists_editors'.
     """
 
-    if playlist.dir_id == PlaylistProvider.SMARTPLAYLIST_DIR_ID:
+    if playlist['readonly']:
         return False
+
     if is_admin:
         return True
-    if playlist.owner is not None:
-        return playlist.owner == username
-    if playlist.dir_id == PlaylistProvider.BSN_DIR_ID:
-        return True
-    editors = settings_store.get('external_playlists_editors')
-    return '*' in editors or username in editors
+
+    if playlist['source']:
+        editors = settings_store.get('external_playlists_editors')
+        return '*' in editors or username in editors
+
+    return playlist['public'] or playlist['owner'] == username
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlaylists/
@@ -45,13 +40,11 @@ def _can_edit(playlist: Playlist, username: str, is_admin: bool) -> bool:
 def endpoint_get_playlists() -> flask.Response:
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
-    username = flask.g.username
-    is_admin = bool(flask.g.user_data.get('adminRole'))
 
-    playlists = [
-        p for p in flask.g.playlist_provider.getall()
-        if _can_read(p, username, is_admin)
-    ]
+    manager = flask.g.playlist_manager
+    manager.sync_sources()
+
+    playlists = manager.list_visible(flask.g.username, bool(flask.g.user_data.get('adminRole')))
 
     payload = {
         'playlists': {
@@ -72,9 +65,13 @@ def endpoint_get_playlist() -> flask.Response:
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    playlist = flask.g.playlist_provider.get(playlist_id)
+    playlist = Resolve.playlist(playlist_id)
 
-    if playlist is None or not _can_read(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
+    is_public = bool(playlist['public'])
+    is_admin = bool(flask.g.user_data.get('adminRole'))
+    is_owner = bool(playlist['owner'] == flask.g.username)
+
+    if playlist is None or not (is_admin or is_public or is_owner):
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
@@ -87,31 +84,46 @@ def endpoint_get_playlist() -> flask.Response:
 @subsonic_bp.route('/createPlaylist', methods=['GET', 'POST'])
 @subsonic_bp.route('/createPlaylist.view', methods=['GET', 'POST'])
 def endpoint_create_playlist() -> flask.Response:
+
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     playlist_id = r.get('playlistId', default='', type=safe_str)     # Required if updating
     name = r.get('name', default='', type=safe_str)[:200]            # Required if creating
     songs_ids = cap_ids(r.getlist('songId', type=safe_str))
 
-    if playlist_id:
-        return endpoint_update_playlist()
-
     if not flask.g.user_data.get('playlistRole'):
         return subsonic_error(50, resp_fmt=resp_fmt)
+
+    manager = flask.g.playlist_manager
+
+    if playlist_id:
+
+        playlist = Resolve.playlist(playlist_id)
+        if not playlist:
+            return subsonic_error(70, 'Playlist not found.', resp_fmt=resp_fmt)
+
+        if not _can_edit(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
+            return subsonic_error(50, message='Not authorized to edit this playlist.', resp_fmt=resp_fmt)
+
+        try:
+            manager.replace_tracks(playlist['id'], songs_ids)
+            if name:
+                manager.update(playlist['id'], name=name)
+        except (PlaylistExists, PlaylistNotFound) as e:
+            return subsonic_error(10, message=str(e), resp_fmt=resp_fmt)
+
+        return subsonic_response({}, resp_fmt=resp_fmt)
 
     if not name:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    songs = [s for sid in songs_ids if sid and (s := Resolve.song(sid))]
     try:
-        playlist = Playlist.from_songs(name, songs)
-    except FileExistsError as e:
+        new_id = manager.create(flask.g.username, name, songs_ids)
+    except PlaylistExists as e:
         return subsonic_error(10, message=str(e), resp_fmt=resp_fmt)
 
-    flask.g.playlist_provider.register(playlist)
-
     payload = {
-        'playlist': Serialise.playlist(playlist)
+        'playlist': Serialise.playlist(manager.get(new_id))
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -130,9 +142,7 @@ def endpoint_delete_playlist() -> flask.Response:
     if not playlist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    pp = flask.g.playlist_provider
-
-    playlist = pp.get(playlist_id)
+    playlist = Resolve.playlist(playlist_id)
     if not playlist:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
@@ -140,8 +150,8 @@ def endpoint_delete_playlist() -> flask.Response:
         return subsonic_error(50, message='Not authorized to delete this playlist.', resp_fmt=resp_fmt)
 
     try:
-        pp.delete(playlist_id)
-    except FileNotFoundError as e:
+        flask.g.playlist_manager.delete(playlist['id'])
+    except PlaylistNotFound as e:
         return subsonic_error(70, message=str(e), resp_fmt=resp_fmt)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
@@ -166,43 +176,28 @@ def endpoint_update_playlist() -> flask.Response:
     if not playlist_id:
         return subsonic_error(10, 'Playlist ID is required.', resp_fmt=resp_fmt)
 
-    pp = flask.g.playlist_provider
-
-    playlist = pp.get(playlist_id)
+    playlist = Resolve.playlist(playlist_id)
     if not playlist:
         return subsonic_error(70, 'Playlist not found.', resp_fmt=resp_fmt)
 
     if not _can_edit(playlist, flask.g.username, bool(flask.g.user_data.get('adminRole'))):
         return subsonic_error(50, message='Not authorized to edit this playlist.', resp_fmt=resp_fmt)
 
-    original_id = playlist.id
+    manager = flask.g.playlist_manager
 
     try:
         if to_remove:
-            playlist.remove_songs(to_remove)
+            manager.remove_tracks(playlist['id'], positions=to_remove)
 
         if to_add:
-            beets_items = []
+            manager.add_tracks(playlist['id'], to_add)
 
-            for s_id in to_add:
-                item = Resolve.song(s_id)
-                if item:
-                    beets_items.append(item)
-            playlist.add_songs(beets_items)
-
-        if new_comment is not None:
-            playlist.set_comment(new_comment[:1024])
-
-        if make_public is not None:
-            playlist.set_public(make_public, flask.g.username)
-
-        if new_name:
-            playlist.rename(name=new_name)
-
-        # in case ID changed if playlist moved
-        if playlist.id != original_id:
-            pp.deregister(original_id)
-            pp.register(playlist)
+        manager.update(
+            playlist['id'],
+            name=new_name or None,
+            comment=new_comment[:1024] if new_comment is not None else None,
+            public=make_public,
+        )
 
     except Exception as e:
         bsn_logger.error(f"Error updating playlist: {e}")

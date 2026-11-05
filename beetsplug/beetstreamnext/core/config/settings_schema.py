@@ -374,7 +374,13 @@ SETTINGS_SCHEMA: dict[str, SettingDescriptor] = {
         'type': 'str',
         'default': '',
         'category': 'server',
-        'description': "Directory for BeetstreamNext's own playlists. Leave empty to disable.",
+        'description': (
+            "Directory where BeetstreamNext writes its playlists as <code>.m3u</code> files "
+            "(per-user subfolders for user playlists). Existing files in it are imported once. "
+            "<br>"
+            "<br>"
+            "Leave empty to disable."
+        ),
         'requires_restart': True,
         'env_var': 'BSN_PLAYLIST_DIR',
     },

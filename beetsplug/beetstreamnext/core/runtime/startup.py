@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import socket
@@ -26,7 +27,7 @@ from beetsplug.beetstreamnext.core.library.import_watcher import ImportWatcher
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.health import startup_path_check
 from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL, RedactingTransLogger, apply_logs_redaction, bsn_logger
-from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
+from beetsplug.beetstreamnext.core.services.playlists import PlaylistManager
 from beetsplug.beetstreamnext.core.services.podcasts import PodcastManager
 from beetsplug.beetstreamnext.core.accounts.security import ip_filter
 from beetsplug.beetstreamnext.core.config.store import settings_store
@@ -280,10 +281,19 @@ def run_server(
             f'(root: {music_root}).'
         )
 
-    app.config.update(playlist_provider=PlaylistProvider())
-    app.config.update(podcast_manager=PodcastManager())
+    playlist_manager = PlaylistManager()
+    podcast_manager = PodcastManager()
 
-    reset = app.config['podcast_manager'].resume_downloads()
+    app.config.update(playlist_manager=playlist_manager)
+
+    playlist_manager.import_files()
+    playlist_manager.sync_sources()
+
+    atexit.register(playlist_manager.flush_exports)
+
+    app.config.update(podcast_manager=podcast_manager)
+
+    reset = podcast_manager.resume_downloads()
     if reset:
         details = ', '.join(f'{n} {label}' for label, n in reset.items())
         bsn_logger.info(f'Resumed podcast episode download: {details}.')

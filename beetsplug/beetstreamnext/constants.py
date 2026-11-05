@@ -292,6 +292,9 @@ SCROBBLE_BATCH_SIZE: int = 100                   # Max listens sent to a service
 SCROBBLE_HTTP_TIMEOUT_SEC: int = 15
 SCROBBLE_RETRY_INTERVAL_SEC: int = 60            # How often queued listens that failed are retried
 
+PLAYLIST_SYNC_INTERVAL_SEC: int = 5              # Time between 2 scans of beets playlist dirs
+PLAYLIST_EXPORT_DELAY_SEC: int = 1               # Debounce time for auto m3u export
+
 
 ## Other stuff
 

@@ -175,11 +175,10 @@ class SongIndex(Index):
         for beets_id, path, release_track_id, track_id in rows:
             self.ids.add(beets_id)
 
-            if release_track_id or track_id:
-                for mbid in filter(None, (release_track_id, track_id)):
-                    self.by_mbid[mbid] = beets_id
-            else:
-                self.by_hash[path_hash(path, music_root)] = beets_id
+            self.by_hash[path_hash(path, music_root)] = beets_id
+
+            for mbid in filter(None, (release_track_id, track_id)):
+                self.by_mbid[mbid] = beets_id
 
     @classmethod
     def _cache_name(cls) -> str:

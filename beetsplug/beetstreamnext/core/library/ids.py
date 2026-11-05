@@ -156,14 +156,6 @@ class IDs:
             return '', ''
 
     @classmethod
-    def decode_playlist(cls, subsonic_id: str) -> str | None:
-        """Decode a playlist ID back to its raw stem (dir id, suffix, and optional owner)."""
-        sid = str(subsonic_id)
-        if not sid.startswith(cls._PLY_ID_PREF):
-            return None
-        return sid[len(cls._PLY_ID_PREF):]
-
-    @classmethod
     def encode_artist(cls, name_or_mbid: Any, is_mbid: bool | None = None, *, joint_credit: bool = False) -> str:
         """
         Mint an artist ID from a mbid or a plain name.
@@ -239,13 +231,11 @@ class IDs:
         return f"{cls._SNG_ID_PREF}{song.get('id', 0)}"
 
     @classmethod
-    def encode_playlist(cls, dir_id: int, stem_suffix: str, owner: str | None = None) -> str:
+    def encode_playlist(cls, db_id: int) -> str:
         """
-        Mint a playlist ID from its directory ID and filename stem, optionally scoped to an owner.
+        Mint a playlist ID from its db row ID.
         """
-        if owner:
-            return f"{cls._PLY_ID_PREF}{dir_id}-{owner}/{stem_suffix}"
-        return f"{cls._PLY_ID_PREF}{dir_id}-{stem_suffix}"
+        return f'{cls._PLY_ID_PREF}{db_id}'
 
     @classmethod
     def encode_radio(cls, db_id: int) -> str:

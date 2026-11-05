@@ -106,7 +106,7 @@ def endpoint_get_cover_art() -> flask.Response:
                 return response
 
     elif entry_type == 'playlist':
-        playlist = flask.g.playlist_provider.get(req_id)
+        playlist = Resolve.playlist(req_id)
         if playlist:
             mosaic = playlist_mosaic(playlist, size or 500)
             if mosaic is not None:

@@ -79,7 +79,7 @@ def build_app(root: Path, config: dict | None = None, yaml_defaults: dict | None
     from beetsplug.beetstreamnext.core.runtime.startup import prestartup_config
     from beetsplug.beetstreamnext.core.storage.schema import initialise_db
     from beetsplug.beetstreamnext.core.accounts.users_crud import create_user
-    from beetsplug.beetstreamnext.core.media.playlists import PlaylistProvider
+    from beetsplug.beetstreamnext.core.services.playlists import PlaylistManager
     from beetsplug.beetstreamnext.core.services.podcasts import PodcastManager
     from beetsplug.beetstreamnext.core.config.store import settings_store
 
@@ -96,7 +96,7 @@ def build_app(root: Path, config: dict | None = None, yaml_defaults: dict | None
     playlist_dir = root / 'playlists'
     playlist_dir.mkdir()
     app.config['playlist_dirs'] = {0: playlist_dir, 1: None, 2: None}
-    app.config['playlist_provider'] = PlaylistProvider()
+    app.config['playlist_manager'] = PlaylistManager()
     app.config['podcast_manager'] = PodcastManager()
 
     with app.app_context():

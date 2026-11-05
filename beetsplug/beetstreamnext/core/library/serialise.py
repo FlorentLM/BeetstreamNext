@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from collections.abc import Sequence, Callable
 import flask
 from beets.library import LibModel, Item
@@ -22,10 +22,6 @@ from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
 from beetsplug.beetstreamnext.core.runtime.web import external_url
 from beetsplug.beetstreamnext.utils.system import get_mimetype, relative_to, resolve_path
-
-if TYPE_CHECKING:
-    from beetsplug.beetstreamnext.core.media.playlists import Playlist
-
 
 def _r128_to_rg(value: Any) -> float:
     """
@@ -557,24 +553,29 @@ class Serialise:
         return subsonic_song
 
     @classmethod
-    def playlist(cls, playlist: Playlist, include_songs: bool = False) -> dict:
+    def playlist(cls, playlist: dict, include_songs: bool = False) -> dict:
         """
-        Map a Playlist object to its serialised Subsonic PlaylistWithSongs response dict.
+        Map a playlist to its serialised Subsonic PlaylistWithSongs response dict.
         """
+        playlist_id = IDs.encode_playlist(playlist['id'])
+
         subsonic_playlist = {
-            'id': playlist.id,
-            'name': playlist.name,
-            'comment': playlist.comment,
-            'songCount': playlist.song_count,
-            'duration': playlist.duration,
-            'created': timestamp_to_iso(playlist.ctime),
-            'changed': timestamp_to_iso(playlist.mtime),
-            'owner': playlist.owner or playlist.creator or '',
-            'public': playlist.owner is None,
-            'coverArt': playlist.id,
+            'id': playlist_id,
+            'name': playlist['name'],
+            'comment': playlist['comment'],
+            'songCount': playlist['song_count'],
+            'duration': playlist['duration'],
+            'created': timestamp_to_iso(playlist['created']),
+            'changed': timestamp_to_iso(playlist['changed']),
+            'owner': playlist['owner'] or '',
+            'public': bool(playlist['public']),
+            'coverArt': playlist_id,
         }
-        if include_songs and playlist.songs:
-            subsonic_playlist['entry'] = playlist.songs
+        if include_songs:
+            songs = Resolve.playlist_songs(playlist['tracks'])
+            preload_songs(songs)
+            if songs:
+                subsonic_playlist['entry'] = [cls.song(song) for song in songs]
 
         return subsonic_playlist
 

@@ -129,7 +129,7 @@ def _before_request() -> flask.Response | None:
     flask.g.username = username
     flask.g.app_role = app_role
     flask.g.user_data = get_user_roles(username)
-    flask.g.playlist_provider = app.config['playlist_provider']
+    flask.g.playlist_manager = app.config['playlist_manager']
     flask.g.podcast_manager = app.config['podcast_manager']
 
     run_periodic()

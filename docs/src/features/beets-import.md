@@ -30,7 +30,9 @@ This is _non-interactive_: it runs in [quiet](https://beets.readthedocs.io/en/st
 Pinned folders also have an **incremental** toggle that controls Beets' [`--incremental`](https://beets.readthedocs.io/en/stable/reference/config.html#incremental) / [`--noincremental`](https://beets.readthedocs.io/en/stable/reference/config.html#incremental) modes.
 
 > [!NOTE]
-> Beets imports recursively, so a pinned folder must not overlap your output music library directory (it can't be inside it or contain it).
+> Beets imports recursively, so a pinned folder can't overlap your music library directory (be inside it or contain it) if your Beets config copies, moves or writes files (because the import would then modify the formatted library).
+>
+> If `write`, `copy` and `move` are all disabled in your Beets config's `import` section (an in-place library, where the music folder _is_ new downloads arrive, and files are never modified), overlapping is allowed.
 
 ## Watched folders (auto-import)
 

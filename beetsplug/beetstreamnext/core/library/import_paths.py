@@ -40,11 +40,16 @@ def validate_pinned_path(candidate: str | Path) -> str | None:
     if not candidate.is_dir():
         return f"'{candidate}' is not a directory."
 
-    # Non-interactive import must never touch the formatted library
     path_a, path_b = candidate.resolve(), app.config['music_root'].resolve()
 
     if path_a.is_relative_to(path_b) or path_b.is_relative_to(path_a):
-        return 'Path must not overlap the formatted music directory (be inside it, or contain it).'
+
+        # Importing from inside the library is only possible for read-only imports
+        from beetsplug.beetstreamnext.core.library.beets.interaction import is_import_safe
+
+        if not is_import_safe():
+            return ('Path must not overlap the music directory (be inside it, or contain it) '
+                    'unless the Beets config has write, copy and move disabled.')
 
     return None
 

@@ -480,6 +480,11 @@ class Serialise:
         if isrc_raw:
             subsonic_song['isrc'] = split_beets_multi(isrc_raw)
 
+        groupings = [g.strip() for g in split_beets_multi(data.get('groupings') or data.get('grouping') or '')]
+        groupings = [g for g in groupings if g]
+        if groupings:
+            subsonic_song['groupings'] = groupings
+
         work = data.get('work') or ''
         work_stripped = work.strip()
         if work_stripped in ('-', '–', '—'):

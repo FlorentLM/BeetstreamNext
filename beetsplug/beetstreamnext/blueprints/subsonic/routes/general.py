@@ -66,7 +66,7 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
         },
         {
             'name': 'songLyrics',   # https://opensubsonic.netlify.app/docs/extensions/songlyrics/
-            'versions': [1]
+            'versions': [1, 2]
         },
         {
             'name': 'topSongsByArtistId',  # https://opensubsonic.netlify.app/docs/extensions/topsongsbyartistid/

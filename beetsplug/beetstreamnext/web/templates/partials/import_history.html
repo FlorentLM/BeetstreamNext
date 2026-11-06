@@ -48,7 +48,7 @@
             {% set actions_html %}
                 <div class="history-actions">
                     {% if e.outcome == 'skipped' %}
-                        <button type="button" class="btn btn-outline btn-icon"
+                        <button type="button" class="pinned-path-remove"
                                 hx-post="{{ url_for('admin.route_import_history_reimport', entry_id=e.id) }}"
                                 hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
                                 hx-target="#importHistory" hx-swap="innerHTML"

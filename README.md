@@ -26,8 +26,8 @@ Fully-featured music server for Beets.io music libraries implementing the OpenSu
 BeetstreamNext exposes your [Beets](https://beets.io) music library over the [OpenSubsonic API](https://opensubsonic.netlify.app/), letting you stream your music to any Subsonic/OpenSubsonic/Navidrome client. It supports essentially the whole specification (only video-streaming is left out), and adds a bunch of its own extras :)
 
 <div align="center">
-<img src="docs/src/images/home_screenshot.png" alt="BeetstreamNext home screenshot" width="300">
-<img src="docs/src/images/admin_screenshot.png" alt="BeetstreamNext admin panel screenshot" width="300">
+<img src="docs/src/images/home_screenshot_light.png" alt="BeetstreamNext home screenshot (light mode)" width="300">
+<img src="docs/src/images/home_screenshot_dark.png" alt="BeetstreamNext home screenshot (dark mode)" width="300">
 </div>
 
 

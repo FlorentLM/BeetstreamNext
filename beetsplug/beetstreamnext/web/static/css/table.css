@@ -17,8 +17,14 @@
     border-right: none;
 }
 
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable.tabulator-col-sorter-element:hover,
 .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
     background-color: var(--overlay-strong);
+}
+
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort] .tabulator-col-content .tabulator-col-sorter.tabulator-col-sorter-element .tabulator-arrow:hover {
+    border-bottom-color: var(--text);
+    border-top-color: var(--text);
 }
 
 .tabulator .tabulator-header .tabulator-col .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {

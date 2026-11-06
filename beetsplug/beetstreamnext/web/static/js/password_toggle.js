@@ -1,0 +1,87 @@
+(function () {
+    'use strict';
+
+    function enhance(input) {
+        if (input.dataset.pwToggle) return;
+        input.dataset.pwToggle = '1';
+
+        const wrap = document.createElement('span');
+        wrap.className = 'password-toggle-wrap';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'password-toggle-btn';
+        btn.setAttribute('aria-label', 'Show password');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.title = 'Show password';
+        btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility_off</span>';
+        wrap.appendChild(btn);
+
+        const icon = btn.firstChild;
+
+        function reset() {
+            input.type = 'password';
+            icon.textContent = 'visibility_off';
+            btn.setAttribute('aria-label', 'Show password');
+            btn.setAttribute('aria-pressed', 'false');
+            btn.title = 'Show password';
+        }
+
+        function sync() {
+            const typed = input.value !== '';
+            wrap.classList.toggle('has-value', typed);
+            if (!typed) reset();
+        }
+
+        // Password managers inject their icon at the right edge of the field,
+        // move our eye to the left
+        function detectExtensionIcon() {
+            const foreign = Array.from(wrap.children).some(el => el !== input && el !== btn);
+            const onePassword = !!document.querySelector('com-1password-button');
+            if (foreign || onePassword) wrap.classList.add('has-extension-icon');
+        }
+
+        new MutationObserver(detectExtensionIcon).observe(wrap, {childList: true});
+        input.addEventListener('focus', detectExtensionIcon);
+        input.addEventListener('input', detectExtensionIcon);
+
+        // User input reveals the button
+        input.addEventListener('input', sync);
+        if (input.form) input.form.addEventListener('reset', () => setTimeout(() => {
+            wrap.classList.remove('has-value');
+            reset();
+        }));
+
+        btn.addEventListener('click', () => {
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            icon.textContent = show ? 'visibility' : 'visibility_off';
+            const label = show ? 'Hide password' : 'Show password';
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+            btn.title = label;
+            input.focus();
+        });
+    }
+
+    function scan(root) {
+        if (root.nodeType !== 1) return;
+        if (root.matches('input[type="password"]')) enhance(root);
+        root.querySelectorAll('input[type="password"]').forEach(enhance);
+    }
+
+    function init() {
+        scan(document.body);
+        new MutationObserver(muts => {
+            muts.forEach(m => m.addedNodes.forEach(scan));
+        }).observe(document.body, {childList: true, subtree: true});
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();

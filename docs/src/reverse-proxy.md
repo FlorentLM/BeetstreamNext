@@ -44,6 +44,9 @@ location /beetstreamnext {
 }
 ```
 
+> [!TIP]
+> The admin panel's live views (the import log, notifications, etc) use a long-lived `text/event-stream` connection. If your proxy ignores the `X-Accel-Buffering` header, you should set `proxy_buffering off;` for the admin location, otherwise live updates can show up late.
+
 ## Caddy 2
 
 Caddy passes all the required headers by default:

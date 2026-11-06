@@ -55,4 +55,6 @@ def route_admin_events() -> flask.Response:
                 payload = '\n'.join(f'data: {line}' for line in data.splitlines() or [''])
                 yield f'event: {event}\n{payload}\n\n'
 
-    return flask.Response(stream(), mimetype='text/event-stream')
+    response = flask.Response(stream(), mimetype='text/event-stream')
+    response.headers['X-Accel-Buffering'] = 'no'    # avoids Nginx stalling small events
+    return response

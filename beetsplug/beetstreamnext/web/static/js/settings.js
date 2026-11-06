@@ -226,6 +226,8 @@
                 inputOk: true,
                 startUrl: '',       // inside a handler, $el is what fired the event
                 inputUrl: '',
+                statusUrl: '',
+                logUrl: '',
 
                 get live() {
                     return this.state === 'running' || this.state === 'needs_input';
@@ -258,8 +260,17 @@
                     const d = this.$el.dataset;
                     this.startUrl = d.startUrl;
                     this.inputUrl = d.inputUrl;
-                    if (d.statusUrl) {
-                        fetch(d.statusUrl, {credentials: 'same-origin'})
+                    this.statusUrl = d.statusUrl;
+                    this.logUrl = d.logUrl;
+                    this.resync();
+
+                    // Event stream pauses when tab is in the background, so catch up on every (re)connect
+                    if (dash) dash.addEventListener('htmx:sse:after:connection', () => this.resync());
+                },
+
+                resync() {
+                    if (this.statusUrl) {
+                        fetch(this.statusUrl, {credentials: 'same-origin'})
                             .then(resp => resp.ok ? resp.json() : null)
                             .then(status => {
                                 if (status) this.applyStatus(status);
@@ -267,8 +278,8 @@
                             .catch(() => {
                             });
                     }
-                    if (d.logUrl) {
-                        refreshLogs(d.logUrl, 'beetsImportLogText');
+                    if (this.logUrl) {
+                        refreshLogs(this.logUrl, 'beetsImportLogText');
                     }
                 },
 

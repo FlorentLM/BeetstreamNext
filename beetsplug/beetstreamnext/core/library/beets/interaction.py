@@ -104,6 +104,7 @@ class ImportSession:
 
         self._exit_code: int | None = None
         self._started_at: float | None = None
+        self._finished_at: float | None = None
 
         self._queue: list[dict] = []             # pinned paths waiting to be scanned
 
@@ -111,6 +112,10 @@ class ImportSession:
         """Snapshot of current import state."""
         with self._lock:
             return {'state': self._state, 'path': self._current_path, 'exit_code': self._exit_code}
+
+    def last_finished_at(self) -> float | None:
+        with self._lock:
+            return self._finished_at
 
     def is_running(self) -> bool:
         """Import session is running or waiting on input."""
@@ -339,6 +344,7 @@ class ImportSession:
     def _finish(self, log_file, exit_code: int) -> None:
         with self._lock:
             self._exit_code = exit_code
+            self._finished_at = time.time()
             self._state = 'completed' if exit_code == 0 else 'failed'
             path = self._current_path
             duration = format_elapsed(time.monotonic() - self._started_at) if self._started_at is not None else ''

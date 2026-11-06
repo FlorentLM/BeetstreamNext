@@ -558,7 +558,7 @@ class Serialise:
         return subsonic_song
 
     @classmethod
-    def playlist(cls, playlist: dict, include_songs: bool = False) -> dict:
+    def playlist(cls, playlist: dict, include_songs: bool = False, read_only: bool | None = None) -> dict:
         """
         Map a playlist to its serialised Subsonic PlaylistWithSongs response dict.
         """
@@ -576,6 +576,9 @@ class Serialise:
             'public': bool(playlist['public']),
             'coverArt': playlist_id,
         }
+        if read_only is not None:
+            subsonic_playlist['readOnly'] = read_only
+
         if include_songs:
             songs = Resolve.playlist_songs(playlist['tracks'])
             preload_songs(songs)

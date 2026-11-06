@@ -44,11 +44,13 @@ def endpoint_get_playlists() -> flask.Response:
     manager = flask.g.playlist_manager
     manager.sync_sources()
 
-    playlists = manager.list_visible(flask.g.username, bool(flask.g.user_data.get('adminRole')))
+    is_admin = bool(flask.g.user_data.get('adminRole'))
+    playlists = manager.list_visible(flask.g.username, is_admin)
 
     payload = {
         'playlists': {
-            'playlist': [Serialise.playlist(p) for p in playlists]
+            'playlist': [Serialise.playlist(p, read_only=not _can_edit(p, flask.g.username, is_admin))
+                         for p in playlists]
         }
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
@@ -66,16 +68,21 @@ def endpoint_get_playlist() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     playlist = Resolve.playlist(playlist_id)
+    if playlist is None:
+        return subsonic_error(70, resp_fmt=resp_fmt)
 
     is_public = bool(playlist['public'])
     is_admin = bool(flask.g.user_data.get('adminRole'))
     is_owner = bool(playlist['owner'] == flask.g.username)
 
-    if playlist is None or not (is_admin or is_public or is_owner):
+    if not (is_admin or is_public or is_owner):
         return subsonic_error(70, resp_fmt=resp_fmt)
 
     payload = {
-        'playlist': Serialise.playlist(playlist, include_songs=True)
+        'playlist': Serialise.playlist(
+            playlist, include_songs=True,
+            read_only=not _can_edit(playlist, flask.g.username, is_admin)
+        )
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -122,8 +129,11 @@ def endpoint_create_playlist() -> flask.Response:
     except PlaylistExists as e:
         return subsonic_error(10, message=str(e), resp_fmt=resp_fmt)
 
+    new_playlist = manager.get(new_id)
+    is_admin = bool(flask.g.user_data.get('adminRole'))
+
     payload = {
-        'playlist': Serialise.playlist(manager.get(new_id))
+        'playlist': Serialise.playlist(new_playlist, read_only=not _can_edit(new_playlist, flask.g.username, is_admin))
     }
     return subsonic_response(payload, resp_fmt=resp_fmt)
 

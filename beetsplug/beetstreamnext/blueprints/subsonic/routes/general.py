@@ -4,7 +4,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.general import genres_formatter
+from beetsplug.beetstreamnext.utils.general import genres_formatter, timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import get_beets_schema
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
@@ -253,8 +253,10 @@ def endpoint_start_scan() -> flask.Response:
     resp_fmt = r.get('f', default='xml', type=safe_str)
 
     if not flask.g.user_data.get('adminRole'):
-        return subsonic_error(40, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
+        return subsonic_error(50, message='Only admins can trigger an import.', resp_fmt=resp_fmt)
 
+    # Navidrome's `fullScan` parameter is ignored on purpose: a re-import would retry folders already
+    # imported or skipped, and beets has no 'rescan tags' equivalent in an import.
     ok, message = import_session.start_pinned(list_pinned_paths())
     if not ok:
         return subsonic_error(0, message=message, resp_fmt=resp_fmt)
@@ -276,12 +278,17 @@ def endpoint_get_scan_status() -> flask.Response:
         bsn_logger.warning(f'Could not read item count while a scan is running: {e}')
         items_count = 0
 
-    payload = {
-        'scanStatus': {
-            "scanning": import_session.is_running(),
-            "count": items_count
-        }
+    scan_status = {
+        "scanning": import_session.is_running(),
+        "count": items_count
     }
+
+    # Only known for imports run since current process started
+    last_scan = import_session.last_finished_at()
+    if last_scan is not None:
+        scan_status['lastScan'] = timestamp_to_iso(last_scan)
+
+    payload = {'scanStatus': scan_status}
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 

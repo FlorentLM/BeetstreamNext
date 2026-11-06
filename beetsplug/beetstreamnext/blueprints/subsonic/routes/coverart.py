@@ -27,8 +27,6 @@ def endpoint_get_cover_art() -> flask.Response:
     req_id = r.get('id', default='', type=safe_str)      # Required
     req_size = r.get('size', default=0, type=int)
 
-    # TODO: Return placeholder images
-
     if not req_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 

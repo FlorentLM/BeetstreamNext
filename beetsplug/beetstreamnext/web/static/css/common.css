@@ -94,7 +94,7 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg);
     background-image:
-        radial-gradient(200rem 75rem at 50% 0%, var(--bg-glow), transparent 35%);
+        radial-gradient(200rem 200rem at 50% -10%, var(--bg-glow), transparent 20%);
     background-attachment: fixed;
     color: var(--text);
     margin: 0;

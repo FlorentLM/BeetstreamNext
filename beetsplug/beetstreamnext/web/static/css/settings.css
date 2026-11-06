@@ -852,6 +852,7 @@ input:focus, select:focus {
     width: 100%;
     margin: 0 0 1.5rem;
     padding: 0.3rem;
+    border: 1px solid var(--border);
     border-radius: 10px;
     position: relative;
     background-color: color-mix(in srgb, var(--bg) 60%, transparent);
@@ -863,7 +864,7 @@ input:focus, select:focus {
 
 :root:not([data-theme="light"]) .tabs {
     /* Table header/footer shade (sunken overlay on the card colour), translucent so the blur shows */
-    background-color: rgba(47, 13, 18, 0.6);
+    background-color: rgba(62, 20, 27, 0.6);
 }
 
 .tab {

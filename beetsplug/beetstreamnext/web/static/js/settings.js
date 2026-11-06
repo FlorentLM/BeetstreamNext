@@ -24,6 +24,65 @@
                 this.validTabs = Array.from(this.$el.querySelectorAll('.tab[data-tab]')).map(t => t.dataset.tab);
                 this.syncFromHash();
                 window.addEventListener('hashchange', () => this.syncFromHash());
+                this.initIndicator();
+            },
+
+            initIndicator() {
+                const nav = this.$el.querySelector('.tabs');
+                if (!nav) return;
+                const ind = document.createElement('span');
+                ind.className = 'tab-indicator';
+                ind.setAttribute('aria-hidden', 'true');
+                nav.prepend(ind);
+                nav.classList.add('has-indicator', 'no-anim');
+
+                const layout = () => {
+                    const tabs = Array.from(nav.querySelectorAll('.tab'));
+                    const cs = getComputedStyle(nav);
+                    const inner = nav.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+                    if (!tabs.length || inner <= 0) return;
+                    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                    const gap = parseFloat(cs.columnGap) || 4;
+                    const minW = 9 * rem;
+                    const perRow = Math.max(1, Math.floor((inner + gap) / (minW + gap)));
+                    const rows = Math.ceil(tabs.length / perRow);
+                    const base = Math.floor(tabs.length / rows);
+                    const bigRows = tabs.length % rows;           // rows have base + 1 tabs (placed last)
+                    const sizes = [];
+                    for (let r = 0; r < rows; r++) sizes.push(r >= rows - bigRows ? base + 1 : base);
+                    const gcd = (a, b) => b ? gcd(b, a % b) : a;
+                    const cols = sizes.reduce((acc, k) => acc * k / gcd(acc, k), 1);
+                    nav.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+                    let i = 0;
+                    sizes.forEach(k => {
+                        for (let c = 0; c < k; c++) tabs[i++].style.gridColumn = 'span ' + (cols / k);
+                    });
+                };
+                const place = () => {
+                    const tab = nav.querySelector('.tab[data-tab="' + this.active + '"]');
+                    if (!tab || !tab.offsetWidth) return;
+                    ind.style.width = tab.offsetWidth + 'px';
+                    ind.style.height = tab.offsetHeight + 'px';
+                    ind.style.transform = 'translate(' + tab.offsetLeft + 'px,' + tab.offsetTop + 'px)';
+                };
+                this.$watch('active', place);
+                if (window.ResizeObserver) {
+                    new ResizeObserver(() => {
+                        nav.classList.add('no-anim');
+                        layout();
+                        place();
+                        requestAnimationFrame(() => requestAnimationFrame(() => nav.classList.remove('no-anim')));
+                    }).observe(nav);
+                }
+                if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
+                    nav.classList.add('no-anim');
+                    layout();
+                    place();
+                    requestAnimationFrame(() => requestAnimationFrame(() => nav.classList.remove('no-anim')));
+                });
+                layout();
+                place();
+                requestAnimationFrame(() => requestAnimationFrame(() => nav.classList.remove('no-anim')));
             },
 
             syncFromHash() {

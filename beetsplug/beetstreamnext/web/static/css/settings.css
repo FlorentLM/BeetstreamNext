@@ -846,27 +846,43 @@ input:focus, select:focus {
 
 /* Tabs */
 .tabs {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
     gap: 0.25rem;
+    width: 100%;
     margin: 0 0 1.5rem;
-    border-bottom: 1px solid var(--border);
+    padding: 0.3rem;
+    border-radius: 10px;
+    position: relative;
+    background-color: color-mix(in srgb, var(--bg) 60%, transparent);
+    background-image: var(--bg-noise);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px var(--shadow);
+}
+
+:root:not([data-theme="light"]) .tabs {
+    /* Table header/footer shade (sunken overlay on the card colour), translucent so the blur shows */
+    background-color: rgba(47, 13, 18, 0.6);
 }
 
 .tab {
     background: transparent;
     border: none;
-    padding: 0.6rem 1.1rem;
-    font-size: 0.95rem;
+    padding: 0.5rem 0.95rem;
+    font-size: 0.875rem;
     font-weight: 500;
     font-family: inherit;
     color: var(--text-muted);
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: color 0.15s, border-color 0.15s;
+    border-radius: 7px;
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
+    transition: color 0.15s, background-color 0.15s, box-shadow 0.15s;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
 }
 
@@ -880,7 +896,40 @@ input:focus, select:focus {
 
 .tab.active {
     color: var(--text);
-    border-bottom-color: var(--primary);
+}
+
+:root:not([data-theme="light"]) .tab.active {
+    color: #fff;
+}
+
+.tabs:not(.has-indicator) .tab.active {
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px var(--shadow), 0 1px 2px var(--shadow);
+}
+
+:root:not([data-theme="light"]) .tabs:not(.has-indicator) .tab.active {
+    background: var(--primary);
+}
+
+.tab-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    border-radius: 7px;
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px var(--shadow), 0 1px 2px var(--shadow);
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root:not([data-theme="light"]) .tab-indicator {
+    background: var(--primary);
+}
+
+.tabs.no-anim .tab-indicator {
+    transition: none;
 }
 
 .tab-content {

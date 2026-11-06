@@ -34,7 +34,7 @@ h2 {
     font-weight: 800;
     margin: 0;
     line-height: 1;
-    background: linear-gradient(135deg, var(--primary), #954039);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 10px 20px var(--logo-glow));

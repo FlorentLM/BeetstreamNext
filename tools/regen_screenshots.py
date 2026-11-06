@@ -143,7 +143,7 @@ def main() -> None:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        sys.exit('Playwright is missing. Run with: uv run --with playwright python tools/regen_screenshots.py')
+        sys.exit('Playwright is missing. Run with: uv run --with playwright playwright install chromium && uv run --with playwright python tools/regen_screenshots.py')
 
     (SANDBOX / 'app').mkdir()
     app, lib = build_app(SANDBOX / 'app')
@@ -164,6 +164,7 @@ def main() -> None:
 
     server.shutdown()
 
+    print(f"Screenshots generated. Delete playwright browers cache with: rm -r {os.environ['PLAYWRIGHT_BROWSERS_PATH']}")
 
 if __name__ == '__main__':
     main()

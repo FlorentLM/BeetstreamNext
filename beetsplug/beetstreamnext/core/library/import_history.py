@@ -91,6 +91,7 @@ def record_run(run_path: str, results: dict[str, list[dict[str, Any]]]) -> int:
 
     imported = _merge_imports(results.get('imported', []))
     settled = {folder for record in imported for folder in _subfolders(record)}
+    settled |= {record['path'] for record in imported if record.get('path')}
 
     # Only latest report per skipped folder, no report for folders that are imported
     # (a task that beets replaced with a merged one is reported as skipped)

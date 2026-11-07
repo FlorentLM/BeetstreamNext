@@ -616,18 +616,6 @@ Fetch missing artist images from external services.
 
 ---
 
-### `save_artists_images`
-
-Save fetched artist images to disk.
-
-*type:* `bool`
-
-*default:* `False`
-
-*env:* `BSN_SAVE_ARTISTS_IMAGES`
-
----
-
 ### `fetch_artists_biographies`
 
 Fetch artist short biography from Wikipedia.
@@ -640,7 +628,7 @@ Fetch artist short biography from Wikipedia.
 
 ### `save_album_art`
 
-Save fetched album art on disk, alongside music files.
+Also save fetched album art on disk, alongside music files (in addition to the cache).
 
 *type:* `bool`
 

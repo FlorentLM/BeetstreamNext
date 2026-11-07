@@ -192,6 +192,15 @@ class Serialise:
 
         return subsonic_media
 
+    @staticmethod
+    def _explicit_status(values) -> str:
+        found = {str(v).strip().lower() for v in values if v}
+        if 'explicit' in found:
+            return 'explicit'
+        if 'clean' in found:
+            return 'clean'
+        return ''
+
     @classmethod
     def artist(cls, artist_name: str, with_albums: bool = True, prefetched: dict | None = None) -> dict:
         """
@@ -389,8 +398,25 @@ class Serialise:
                 subsonic_album['songCount'] = len(songs)
                 subsonic_album['duration'] = round(sum(s.get('length', 0) for s in songs))
 
+            explicit_status = cls._explicit_status(s.get('explicit') for s in songs)
+
             songs.sort(key=lambda s: (s.get('disc', 1), s.get('track', 1)))
             subsonic_album['song'] = [cls.song(s, exact_size=True) for s in songs]     # one album is only a few stats
+
+        if not include_songs:
+
+            with flask.g.lib.transaction() as tx:
+                rows = tx.query(
+                    """
+                    SELECT DISTINCT a.value
+                    FROM items i JOIN item_attributes a ON a.entity_id = i.id
+                    WHERE i.album_id = ? AND a.key = 'explicit'
+                    """, (beets_album_id,)
+                )
+            explicit_status = cls._explicit_status(r[0] for r in rows)
+
+        if explicit_status:
+            subsonic_album['explicitStatus'] = explicit_status
 
         local_avg, local_count = avg_rating(subsonic_album_id)
         discogs_mode = app.config.get('discogs_ratings', 'off')
@@ -475,6 +501,10 @@ class Serialise:
             'mediaType': 'song'
         }
         subsonic_song.update(song_specific)
+
+        explicit_status = cls._explicit_status([data.get('explicit')])
+        if explicit_status:
+            subsonic_song['explicitStatus'] = explicit_status
 
         isrc_raw = data.get('isrc') or ''
         if isrc_raw:

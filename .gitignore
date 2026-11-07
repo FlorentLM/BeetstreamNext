@@ -54,3 +54,4 @@ tests/integrated/
 tests/unit/
 tests/conftest.py
 tests/helpers.py
+tests/styling_testpage.html

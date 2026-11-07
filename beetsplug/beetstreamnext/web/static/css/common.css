@@ -252,6 +252,14 @@ pre code {
     background: var(--primary-hover);
 }
 
+:root[data-theme="light"] .btn-primary {
+    background: #b14758;
+}
+
+:root[data-theme="light"] .btn-primary:hover {
+    background: #9c3c4c;
+}
+
 .btn-outline {
     background: transparent;
     border: 1px solid var(--border);

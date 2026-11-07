@@ -168,7 +168,7 @@ h1 {
 .now-playing-label {
     font-size: 0.72rem;
     text-transform: uppercase;
-    color: var(--primary);
+    color: var(--link);
     font-weight: 700;
     letter-spacing: 0.08em;
     margin-bottom: 0.25rem;

@@ -199,7 +199,7 @@ h2 {
 .text-btn {
     background: none;
     border: none;
-    color: var(--primary);
+    color: var(--link);
     font-size: 0.8rem;
     font-family: inherit;
     cursor: pointer;
@@ -342,15 +342,15 @@ td > .roles-cell {
 }
 
 .badge-admin {
-    background: rgba(149, 64, 57, 0.2);
-    color: #e76464;
-    border-color: #e76464;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(231, 100, 100, 0.612);
 }
 
 .badge-you {
     background: rgba(56, 189, 248, 0.1);
     color: #38bdf8;
-    border-color: rgba(56, 189, 248, 0.3);
+    border-color: rgba(56, 189, 248, 0.69);
 }
 
 .badge-limit {
@@ -395,7 +395,7 @@ td > .roles-cell {
 .badge-success {
     background: rgba(34, 197, 94, 0.1);
     color: #4ade80;
-    border-color: rgba(34, 197, 94, 0.3);
+    border-color: rgba(34, 197, 94, 0.58);
 }
 
 .podcast-progress {
@@ -1021,23 +1021,30 @@ input:focus, select:focus {
     color: var(--text);
 }
 
+.setting-row-label-inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+}
+
 .setting-meta-badge {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
-    padding: 0.15rem 0.5rem;
-    background: rgba(74, 222, 128, 0.1);
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 0.25rem 0.6rem;
+    background: rgba(34, 197, 94, 0.1);
     color: #4ade80;
-    border: 1px solid rgba(74, 222, 128, 0.2);
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    border: 1px solid rgba(34, 197, 94, 0.58);
+    border-radius: 99px;
     vertical-align: middle;
 }
 
 .setting-meta-badge-danger {
-    background: rgba(149, 64, 57, 0.2);
-    color: #e76464;
-    border-color: #e76464;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(231, 100, 100, 0.612);
 }
 
 .setting-input-row {
@@ -1919,9 +1926,9 @@ input:focus, select:focus {
 }
 
 .badge-warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: #fbbf24;
-    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border-color: #f59e0b;
 }
 
 .history-frame {
@@ -2995,20 +3002,19 @@ input:focus, select:focus {
 .badge-artist-custom {
     background: rgba(56, 189, 248, 0.1);
     color: #38bdf8;
-    border-color: rgba(56, 189, 248, 0.3);
+    border-color: rgba(56, 189, 248, 0.69);
 }
 
 .badge-artist-fallback,
 .badge-artist-orphan {
     background: rgba(245, 158, 11, 0.1);
     color: #fbbf24;
-    border-color: rgba(245, 158, 11, 0.3);
 }
 
 .badge-artist-missing {
-    background: rgba(149, 64, 57, 0.2);
-    color: #e76464;
-    border-color: #e76464;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(231, 100, 100, 0.61);
 }
 
 .artist-fetch-line {

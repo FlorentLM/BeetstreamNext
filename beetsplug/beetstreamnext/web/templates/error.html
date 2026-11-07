@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block body %}
-    <div class="error-container">
+    <div class="error-container" id="main" role="main" tabindex="-1">
         <div class="logo-container">
             <a href="/">
                 <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
@@ -19,7 +19,7 @@
         <p class="error-message">{{ error.message }}</p>
 
         <a href="/" class="btn btn-primary btn-home">
-            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
                  stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>

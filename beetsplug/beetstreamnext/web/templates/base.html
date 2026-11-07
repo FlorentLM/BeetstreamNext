@@ -29,9 +29,11 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main">Skip to main content</a>
     {% block body %}{% endblock %}
     {% block scripts %}{% endblock %}
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/password_toggle.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/labels.js') }}"></script>
 </body>
 
 </html>

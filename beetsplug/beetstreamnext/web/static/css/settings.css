@@ -210,8 +210,10 @@ h2 {
     color: var(--text-muted);
 }
 
-.text-btn:hover {
+.text-btn:hover,
+.text-btn:focus-visible {
     opacity: 0.8;
+    text-decoration: underline;
 }
 
 .text-btn-icon {
@@ -616,7 +618,6 @@ select {
     color: var(--text);
     padding: 0.8rem;
     border-radius: 8px;
-    outline: none;
     font-family: inherit;
 }
 
@@ -982,7 +983,6 @@ input:focus, select:focus {
     font-family: inherit;
     background: var(--input-bg);
     color: var(--text);
-    outline: none;
 }
 
 .setting-row-control input:focus {
@@ -1676,7 +1676,6 @@ input:focus, select:focus {
     font-family: ui-monospace, monospace;
     background: var(--input-bg);
     color: var(--text);
-    outline: none;
 }
 
 .ip-add-form input:focus {
@@ -2192,7 +2191,6 @@ input:focus, select:focus {
     font-family: ui-monospace, monospace;
     font-size: 0.9rem;
     line-height: 1.4;
-    outline: none;
     resize: vertical;
 }
 
@@ -2819,7 +2817,6 @@ input:focus, select:focus {
     color: var(--text);
     font-family: inherit;
     resize: none;
-    outline: none;
 }
 
 .chat-composer textarea:focus,
@@ -3007,8 +3004,9 @@ input:focus, select:focus {
 
 .badge-artist-fallback,
 .badge-artist-orphan {
-    background: rgba(245, 158, 11, 0.1);
-    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border-color: #f59e0b;
 }
 
 .badge-artist-missing {
@@ -3047,4 +3045,26 @@ input:focus, select:focus {
 
 .artist-deezer #artistDeezerResult:not(:empty) {
     margin-top: 0.75rem;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .tab,
+    .tab-indicator,
+    .tab-menu-toggle,
+    .tab-menu-item,
+    .tab-menu-caret {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal-overlay,
+    .modal-content {
+        transition: none;
+    }
+
+    .modal-content {
+        transform: none;
+    }
 }

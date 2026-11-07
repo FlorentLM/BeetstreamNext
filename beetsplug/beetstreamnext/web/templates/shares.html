@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block body %}
-    <div class="share-wrapper">
+    <div class="share-wrapper" id="main" role="main" tabindex="-1">
         <div class="logo-container">
             <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
         </div>
@@ -52,7 +52,7 @@
                                 <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
                                    class="icon-btn" title="Download"
                                    aria-label="Download &quot;{{ song.title }}&quot;">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                          stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M12 3v12"/>
                                         <path d="M7 10l5 5 5-5"/>

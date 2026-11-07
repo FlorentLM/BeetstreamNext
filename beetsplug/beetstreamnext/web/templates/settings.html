@@ -27,7 +27,7 @@
 
 {% macro settings_card(category, title, icon=None, hint=None) %}
     <div class="card">
-        <div class="table-header"><h2>{% if icon %}<span class="material-symbols-outlined">{{ icon }}</span>{% endif %}{{ title }}</h2></div>
+        <div class="table-header"><h2>{% if icon %}<span aria-hidden="true" class="material-symbols-outlined">{{ icon }}</span>{% endif %}{{ title }}</h2></div>
         {% if hint %}<p class="card-hint">{{ hint }}</p>{% endif %}
         {{ render_settings_form(category, settings_by_category[category], users, host_suggestions, setting_pills) }}
     </div>
@@ -57,9 +57,11 @@
             </div>
         </header>
 
+        <main id="main" tabindex="-1">
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, msg in messages %}
-                <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ msg }}</div>
+                <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ msg }}</div>
             {% endfor %}
         {% endwith %}
 
@@ -100,32 +102,33 @@
         } %}
         {% set tab_order = ['users', 'connections', 'server', 'library', 'audio', 'security', 'podcasts', 'radios',
                             'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
-        <nav class="tabs" role="tablist">
+        <div class="tabs" role="tablist" aria-label="Admin sections">
             {% for cat in tab_order %}
-                <button class="tab" role="tab" data-tab="{{ cat }}" :class="{ active: active === '{{ cat }}' }"
+                <button class="tab" role="tab" id="tab-btn-{{ cat }}" data-tab="{{ cat }}"
+                        :tabindex="active === '{{ cat }}' ? '0' : '-1'" :class="{ active: active === '{{ cat }}' }"
                         :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')"
-                        aria-controls="tab-{{ cat }}"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
+                        aria-controls="tab-{{ cat }}"><span aria-hidden="true" class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
             {% endfor %}
-        </nav>
+        </div>
         <div class="tab-menu" @click.outside="closeMenu" @keydown.escape="closeMenu">
             <button type="button" class="tab-menu-toggle" aria-haspopup="listbox"
                     :aria-expanded="menuOpen ? 'true' : 'false'" @click="toggleMenu">
                 {% for cat in tab_order %}
-                    <span class="tab-menu-current" x-show="active === '{{ cat }}'"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</span>
+                    <span class="tab-menu-current" x-show="active === '{{ cat }}'"><span aria-hidden="true" class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</span>
                 {% endfor %}
-                <span class="material-symbols-outlined tab-menu-caret">keyboard_arrow_down</span>
+                <span aria-hidden="true" class="material-symbols-outlined tab-menu-caret">keyboard_arrow_down</span>
             </button>
             <div class="tab-menu-list" role="listbox" aria-label="Section" x-cloak x-show="menuOpen">
                 {% for cat in tab_order %}
                     <button type="button" class="tab-menu-item" role="option" :class="{ active: active === '{{ cat }}' }"
                             :aria-selected="active === '{{ cat }}' ? 'true' : 'false'"
-                            @click="pickTab('{{ cat }}')"><span class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
+                            @click="pickTab('{{ cat }}')"><span aria-hidden="true" class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
                 {% endfor %}
             </div>
         </div>
 
         {# Users tab #}
-        <section class="tab-content" id="tab-users" :class="{ active: active === 'users' }" role="tabpanel">
+        <section class="tab-content" id="tab-users" aria-labelledby="tab-btn-users" :class="{ active: active === 'users' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
                     <h2>User Directory</h2>
@@ -141,7 +144,7 @@
         </section>
 
         {# Connections tab #}
-        <section class="tab-content" id="tab-connections" :class="{ active: active === 'connections' }" role="tabpanel">
+        <section class="tab-content" id="tab-connections" aria-labelledby="tab-btn-connections" :class="{ active: active === 'connections' }" role="tabpanel">
             {{ settings_card('connections', 'External services', icon='cloud') }}
 
             {% with bp_name = 'admin' %}{% include 'partials/app_passwords_card.html' %}{% endwith %}
@@ -153,7 +156,7 @@
         </section>
 
         {# Chat tab #}
-        <section class="tab-content" id="tab-chat" :class="{ active: active === 'chat' }" role="tabpanel">
+        <section class="tab-content" id="tab-chat" aria-labelledby="tab-btn-chat" :class="{ active: active === 'chat' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
                     <h2>Chat</h2>
@@ -165,7 +168,7 @@
         </section>
 
         {# Shares tab #}
-        <section class="tab-content" id="tab-shares" :class="{ active: active === 'shares' }" role="tabpanel">
+        <section class="tab-content" id="tab-shares" aria-labelledby="tab-btn-shares" :class="{ active: active === 'shares' }" role="tabpanel">
 
             {{ settings_card('shares', 'Default policy', hint='Defaults for new shares. Existing shares are not affected.') }}
 
@@ -180,22 +183,22 @@
         </section>
 
         {# Server tab #}
-        <section class="tab-content" id="tab-server" :class="{ active: active === 'server' }" role="tabpanel">
+        <section class="tab-content" id="tab-server" aria-labelledby="tab-btn-server" :class="{ active: active === 'server' }" role="tabpanel">
             {{ settings_card('server', 'Server Settings') }}
         </section>
 
         {# Library tab #}
-        <section class="tab-content" id="tab-library" :class="{ active: active === 'library' }" role="tabpanel">
+        <section class="tab-content" id="tab-library" aria-labelledby="tab-btn-library" :class="{ active: active === 'library' }" role="tabpanel">
             {{ settings_card('library', 'Library Settings') }}
         </section>
 
         {# Audio tab #}
-        <section class="tab-content" id="tab-audio" :class="{ active: active === 'audio' }" role="tabpanel">
+        <section class="tab-content" id="tab-audio" aria-labelledby="tab-btn-audio" :class="{ active: active === 'audio' }" role="tabpanel">
             {{ settings_card('audio', 'Audio Settings') }}
         </section>
 
         {# Security tab #}
-        <section class="tab-content" id="tab-security" :class="{ active: active === 'security' }" role="tabpanel">
+        <section class="tab-content" id="tab-security" aria-labelledby="tab-btn-security" :class="{ active: active === 'security' }" role="tabpanel">
             {{ settings_card('security', 'Security Settings') }}
             {% for list_type, key in (('whitelist', 'ip_whitelist'), ('blacklist', 'ip_blacklist')) %}
                 {% set ip_list = IP_LIST_META[list_type] %}
@@ -229,7 +232,7 @@
         </section>
 
         {# Podcasts tab #}
-        <section class="tab-content" id="tab-podcasts" :class="{ active: active === 'podcasts' }" role="tabpanel">
+        <section class="tab-content" id="tab-podcasts" aria-labelledby="tab-btn-podcasts" :class="{ active: active === 'podcasts' }" role="tabpanel">
             {{ settings_card('podcasts', 'Podcasts Settings') }}
             <div class="card">
                 <div class="table-header">
@@ -271,7 +274,7 @@
                       hx-swap="innerHTML"
                       hx-disable="find button">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
+                    <input type="text" name="url" id="podcastFeedUrl" aria-label="Podcast feed URL" placeholder="https://example.com/feed.xml"
                            required>
                     <button type="submit" class="btn btn-primary">Subscribe</button>
                 </form>
@@ -295,7 +298,7 @@
         </section>
 
         {# Radios tab #}
-        <section class="tab-content" id="tab-radios" :class="{ active: active === 'radios' }" role="tabpanel">
+        <section class="tab-content" id="tab-radios" aria-labelledby="tab-btn-radios" :class="{ active: active === 'radios' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
                     <h2>My radio stations</h2>
@@ -311,7 +314,7 @@
         </section>
 
         {# Artists tab #}
-        <section class="tab-content" id="tab-artists" :class="{ active: active === 'artists' }" role="tabpanel">
+        <section class="tab-content" id="tab-artists" aria-labelledby="tab-btn-artists" :class="{ active: active === 'artists' }" role="tabpanel">
             <div class="card">
                 <div class="table-header">
                     <h2>Artist images</h2>
@@ -352,7 +355,7 @@
         </section>
 
         {# Beets interaction tab #}
-        <section class="tab-content" id="tab-beets" :class="{ active: active === 'beets' }" role="tabpanel">
+        <section class="tab-content" id="tab-beets" aria-labelledby="tab-btn-beets" :class="{ active: active === 'beets' }" role="tabpanel">
 
             <div class="card">
                 <div class="table-header"><h2>Beets Configuration</h2></div>
@@ -371,7 +374,7 @@
                     <br>
                     <div class="setting-input-row">
                         <div class="beets-path-field">
-                            <input type="text" id="beetsImportPath" name="path"
+                            <input type="text" id="beetsImportPath" name="path" aria-label="Folder to import"
                                    placeholder="e.g. /downloads/music/Radiohead - In Rainbows (2007)"
                                    autocomplete="off" x-ref="path" @keydown.enter.prevent="start()"
                                    hx-get="{{ url_for('admin.route_beets_import_browse') }}"
@@ -383,7 +386,7 @@
                                     hx-post="{{ url_for('admin.route_pinned_paths_add') }}"
                                     hx-include="#beetsImportPath"
                                     hx-vals='{"csrf_token": "{{ csrf_token() }}", "incremental": "1"}'
-                                    hx-target="#pinnedPaths" hx-swap="innerHTML"><span
+                                    hx-target="#pinnedPaths" hx-swap="innerHTML"><span aria-hidden="true"
                                     class="material-symbols-outlined">keep</span></button>
                         </div>
                         <button type="button" class="btn btn-primary" @click="start()" :disabled="startDisabled">Start
@@ -407,7 +410,7 @@
                 <pre class="log-view" id="beetsImportLogText" x-ref="log">(no import run yet)</pre>
                 <form class="card-body-form">
                     <div class="setting-input-row">
-                        <input type="text" id="beetsImportStdin" placeholder="beets is idle" autocomplete="off"
+                        <input type="text" id="beetsImportStdin" aria-label="Send input to beets" placeholder="beets is idle" autocomplete="off"
                                x-ref="stdin" :placeholder="stdinPlaceholder" :disabled="!live"
                                @keydown.enter.prevent="sendInput()">
                         <button type="button" class="btn btn-outline" @click="sendInput()" :disabled="!live">Send
@@ -419,7 +422,7 @@
         </section>
 
         {# Notifications tab #}
-        <section class="tab-content" id="tab-notifications" :class="{ active: active === 'notifications' }"
+        <section class="tab-content" id="tab-notifications" aria-labelledby="tab-btn-notifications" :class="{ active: active === 'notifications' }"
                  role="tabpanel">
             <div class="card">
                 <div class="table-header">
@@ -445,7 +448,7 @@
         </section>
 
         {# Maintenance tab #}
-        <section class="tab-content" id="tab-maintenance" :class="{ active: active === 'maintenance' }" role="tabpanel">
+        <section class="tab-content" id="tab-maintenance" aria-labelledby="tab-btn-maintenance" :class="{ active: active === 'maintenance' }" role="tabpanel">
 
             <div class="card">
                 <div class="table-header"><h2>Offline files & Caches</h2></div>
@@ -651,6 +654,7 @@
                      data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}{{ log_lines|map('safe')|join('') }}{% else %}(no log output yet){% endif %}</pre>
             </div>
         </section>
+        </main>
     </div>
 
     <!-- Confirmation modal -->
@@ -713,10 +717,10 @@
                         <label class="label-inline">Roles &amp; Permissions</label>
                         <div class="roles-actions">
                             <button type="button" class="text-btn text-btn-icon" title="Select all"
-                                    aria-label="Select all" @click="setAll(true, ['adminRole'])"><span
+                                    aria-label="Select all" @click="setAll(true, ['adminRole'])"><span aria-hidden="true"
                                     class="material-symbols-outlined">select_all</span></button>
                             <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection"
-                                    aria-label="Clear selection" @click="setAll(false)"><span
+                                    aria-label="Clear selection" @click="setAll(false)"><span aria-hidden="true"
                                     class="material-symbols-outlined">deselect</span></button>
                         </div>
                     </div>

@@ -8,32 +8,34 @@
 {% endblock %}
 
 {% block body %}
-    <div class="login-wrapper">
+    <div class="login-wrapper" id="main" role="main" tabindex="-1">
         <div class="logo-container">
             <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
         </div>
         <div class="login-card">
-            <h2>Welcome to BeetstreamNext!</h2>
+            <h1>Welcome to BeetstreamNext!</h1>
             <p class="setup-hint">Please create your admin account.</p>
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% for category, msg in messages %}
-                    <div class="flash flash-error">{{ msg }}</div>
+                    <div class="flash flash-error" role="alert">{{ msg }}</div>
                 {% endfor %}
             {% endwith %}
             <form method="POST">
                 {{ form.csrf_token }}
-                <label>Administrator</label>
+                <label for="{{ form.username.id }}">Administrator</label>
                 <div class="input-group">
                     {{ form.username(placeholder="Username", required=True) }}
                 </div>
                 <div class="input-group">
                     {{ macros.password_rules() }}
+                    <label class="sr-only" for="{{ form.password.id }}">Password</label>
                     {{ form.password(placeholder="Password", required=True) }}
                 </div>
                 <div class="input-group">
+                    <label class="sr-only" for="{{ form.confirm_password.id }}">Confirm password</label>
                     {{ form.confirm_password(placeholder="Confirm password", required=True) }}
                 </div>
-                <label>Server key</label>
+                <label for="{{ form.setup_key.id }}">Server key</label>
                 <div class="input-group">
                     {{ form.setup_key(placeholder="BEETSTREAMNEXT_KEY", autofocus=True, required=True) }}
                 </div>

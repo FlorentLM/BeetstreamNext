@@ -34,8 +34,8 @@
             <div class="roles-header">
                 <label class="setting-row-label">{{ key }}</label>
                 <div class="roles-actions">
-                    <button type="button" class="text-btn text-btn-icon" title="Select all" aria-label="Select all" @click="setAll(true)" {{ dis }}><span class="material-symbols-outlined">select_all</span></button>
-                    <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection" aria-label="Clear selection" @click="setAll(false)" {{ dis }}><span class="material-symbols-outlined">deselect</span></button>
+                    <button type="button" class="text-btn text-btn-icon" title="Select all" aria-label="Select all" @click="setAll(true)" {{ dis }}><span aria-hidden="true" class="material-symbols-outlined">select_all</span></button>
+                    <button type="button" class="text-btn text-btn-muted text-btn-icon" title="Clear selection" aria-label="Clear selection" @click="setAll(false)" {{ dis }}><span aria-hidden="true" class="material-symbols-outlined">deselect</span></button>
                 </div>
             </div>
             <div class="roles-grid">
@@ -93,7 +93,7 @@
         <label class="setting-row-label" for="set-{{ key }}">{{ key }}</label>
         <input id="set-{{ key }}" type="number" name="{{ key }}" value="{{ info.value }}" {{ dis }}>
     {%- elif info.type == 'str' and info.sensitive -%}
-        <label class="setting-row-label" for="set-{{ key }}">
+        <label class="setting-row-label setting-row-label-inline" for="set-{{ key }}">
             {{ key }}
             {% if info.is_set %}<span class="setting-meta-badge">currently set</span>{% endif %}
         </label>
@@ -184,14 +184,14 @@
         </div>
         <div class="setting-row-meta">
             {% if message %}
-                <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+                <div class="flash flash-{{ 'success' if ok else 'error' }}" role="{{ 'status' if ok else 'alert' }}">{{ message }}</div>
             {% endif %}
             <p class="setting-description">{{ (PAIRED_DESCRIPTIONS[key] if key in PAIRED_DESCRIPTIONS else info.description) | safe }}</p>
             {% if info.requires_restart %}
-                <p class="setting-restart-note"><span class="material-symbols-outlined">restart_alt</span> Requires server restart</p>
+                <p class="setting-restart-note"><span aria-hidden="true" class="material-symbols-outlined">restart_alt</span> Requires server restart</p>
             {% endif %}
             {% if info.locked %}
-                <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
+                <p class="setting-locked-note"><span aria-hidden="true" class="material-symbols-outlined">lock</span>
                     {{ info.lock_reason or 'Explicitly set via a CLI flag, env var, or config file' }}
                 </p>
             {% elif info.overridden and not info.sensitive %}

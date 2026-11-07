@@ -4,10 +4,10 @@
     <div class="table-header"><h2>{{ ip_list.title }}</h2></div>
     <p class="card-hint">{{ ip_list.hint }}</p>
     {% if message %}
-        <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+        <div class="flash flash-{{ 'success' if ok else 'error' }}" role="{{ 'status' if ok else 'alert' }}">{{ message }}</div>
     {% endif %}
     {% if pinned %}
-        <p class="setting-locked-note"><span class="material-symbols-outlined">lock</span>
+        <p class="setting-locked-note"><span aria-hidden="true" class="material-symbols-outlined">lock</span>
             {{ pinned|length }} pinned via a CLI flag, env var, or config file.</p>
     {% endif %}
     <form hx-post="{{ url_for('admin.route_ip_add', list_type=list_type) }}"

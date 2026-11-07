@@ -1,26 +1,26 @@
 {% macro icon(name) -%}
     {%- if name == 'edit' -%}
-        <span class="material-symbols-outlined">edit</span>
+        <span aria-hidden="true" class="material-symbols-outlined">edit</span>
     {%- elif name == 'add-image' -%}
-        <span class="material-symbols-outlined">add_photo_alternate</span>
+        <span aria-hidden="true" class="material-symbols-outlined">add_photo_alternate</span>
     {%- elif name == 'delete' -%}
-        <span class="material-symbols-outlined">delete_forever</span>
+        <span aria-hidden="true" class="material-symbols-outlined">delete_forever</span>
     {%- elif name == 'download' -%}
-        <span class="material-symbols-outlined">download</span>
+        <span aria-hidden="true" class="material-symbols-outlined">download</span>
     {%- elif name == 'delete-files' -%}
-        <span class="material-symbols-outlined">delete_sweep</span>
+        <span aria-hidden="true" class="material-symbols-outlined">delete_sweep</span>
     {%- elif name == 'refresh' -%}
-        <span class="material-symbols-outlined">refresh</span>
+        <span aria-hidden="true" class="material-symbols-outlined">refresh</span>
     {%- elif name == 'copy' -%}
-        <span class="material-symbols-outlined">content_copy</span>
+        <span aria-hidden="true" class="material-symbols-outlined">content_copy</span>
     {%- elif name == 'sun' -%}
-        <span class="material-symbols-outlined icon-sun">light_mode</span>
+        <span aria-hidden="true" class="material-symbols-outlined icon-sun">light_mode</span>
     {%- elif name == 'moon' -%}
-        <span class="material-symbols-outlined icon-moon">dark_mode</span>
+        <span aria-hidden="true" class="material-symbols-outlined icon-moon">dark_mode</span>
     {%- elif name == 'cancel' -%}
-        <span class="material-symbols-outlined">cancel</span>
+        <span aria-hidden="true" class="material-symbols-outlined">cancel</span>
     {%- elif name == 'chevron-down' -%}
-        <span class="material-symbols-outlined icon-chevron">keyboard_arrow_down</span>
+        <span aria-hidden="true" class="material-symbols-outlined icon-chevron">keyboard_arrow_down</span>
     {%- endif -%}
 {%- endmacro %}
 
@@ -38,8 +38,8 @@
             :class="{ 'icon-picker-dragging': dragging }"
             @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop($event)">
         <img x-show="previewSrc" :src="previewSrc" alt="">
-        {% if overlay %}<span class="icon-picker-edit-overlay"><span class="material-symbols-outlined">edit</span></span>
-        {% else %}<span class="material-symbols-outlined">edit</span>{% endif %}
+        {% if overlay %}<span class="icon-picker-edit-overlay"><span aria-hidden="true" class="material-symbols-outlined">edit</span></span>
+        {% else %}<span aria-hidden="true" class="material-symbols-outlined">edit</span>{% endif %}
     </button>
     <span class="label-hint">{{ hint }}</span>
 </div>

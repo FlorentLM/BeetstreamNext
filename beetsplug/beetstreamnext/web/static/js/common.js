@@ -154,6 +154,7 @@
     function filterIcon() {
         const icon = document.createElement('span');
         icon.className = 'material-symbols-outlined table-filter-icon';
+        icon.setAttribute('aria-hidden', 'true');
         icon.textContent = 'filter_list';
         return icon;
     }

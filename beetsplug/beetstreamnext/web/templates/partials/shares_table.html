@@ -1,13 +1,13 @@
 {% from '_macros.html' import icon, data_table %}
 
 {% if message %}
-    <div class="flash flash-success">{{ message }}</div>
+    <div class="flash flash-success" role="status">{{ message }}</div>
 {% endif %}
 
 {% macro share_link(s) -%}
     <a href="{{ s.url }}" target="_blank" rel="noopener" class="share-link"
        title="{{ s.description or s.id }}">{{ s.description or s.id }}</a>
-    {%- if s.has_password %}<span class="material-symbols-outlined share-lock" title="Password protected">lock</span>
+    {%- if s.has_password %}<span class="material-symbols-outlined share-lock" role="img" aria-label="Password protected" title="Password protected">lock</span>
     {% endif %}
 {%- endmacro %}
 

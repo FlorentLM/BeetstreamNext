@@ -31,15 +31,17 @@
             </div>
         </header>
 
+        <main id="main" tabindex="-1">
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, msg in messages %}
-                <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ msg }}</div>
+                <div class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ msg }}</div>
             {% endfor %}
         {% endwith %}
 
         {# Profile #}
         <div class="card">
-            <div class="table-header"><h2><span class="material-symbols-outlined">person</span>Profile</h2></div>
+            <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">person</span>Profile</h2></div>
 
             <div class="card-section" id="avatarBlock">
                 {% include 'partials/account_avatar.html' %}
@@ -78,7 +80,7 @@
 
         {# Password #}
         <div class="card">
-            <div class="table-header"><h2><span class="material-symbols-outlined">password</span>Change password</h2></div>
+            <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">password</span>Change password</h2></div>
             <form id="passwordForm"
                   hx-post="{{ url_for('account.route_change_password') }}"
                   hx-target="#passwordResult"
@@ -110,7 +112,7 @@
 
         {# Chat #}
         <div class="card">
-            <div class="table-header"><h2><span class="material-symbols-outlined">chat</span>Chat</h2></div>
+            <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">chat</span>Chat</h2></div>
             <div id="accountChat"
                  hx-get="{{ url_for('account.route_chat_panel') }}"
                  hx-trigger="intersect once"
@@ -120,7 +122,7 @@
         {# Shares #}
         {% if user.shareRole %}
             <div class="card">
-                <div class="table-header"><h2><span class="material-symbols-outlined">share</span>My shares</h2></div>
+                <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">share</span>My shares</h2></div>
                 {% if config['share_default_password'] %}
                     <p class="card-hint">New shares are protected by the default password <code>{{ config['share_default_password'] }}</code>. You can set your own with the edit button.</p>
                 {% endif %}
@@ -135,7 +137,7 @@
         {% if user.podcastRole %}
             <div class="card">
                 <div class="table-header">
-                    <h2><span class="material-symbols-outlined">podcasts</span>My podcast subscriptions</h2>
+                    <h2><span aria-hidden="true" class="material-symbols-outlined">podcasts</span>My podcast subscriptions</h2>
                     <a href="{{ url_for('account.route_export_podcast_opml') }}" class="btn btn-outline">Export OPML</a>
                 </div>
 
@@ -166,7 +168,7 @@
                           hx-target="#accountPodcasts"
                           hx-swap="innerHTML"
                           hx-disable="find button">
-                        <input type="text" name="url" id="podcastFeedUrl" placeholder="https://example.com/feed.xml"
+                        <input type="text" name="url" id="podcastFeedUrl" aria-label="Podcast feed URL" placeholder="https://example.com/feed.xml"
                                required>
                         <button type="submit" class="btn btn-primary">Subscribe</button>
                     </form>
@@ -193,7 +195,7 @@
         {# Radio stations #}
         <div class="card">
             <div class="table-header">
-                <h2><span class="material-symbols-outlined">radio</span>My radio stations</h2>
+                <h2><span aria-hidden="true" class="material-symbols-outlined">radio</span>My radio stations</h2>
                 <button class="btn btn-primary" x-data="modalPanel('createRadioModal')" @click="open()">
                     + Add Station
                 </button>
@@ -207,7 +209,7 @@
 
         {# Data export #}
         <div class="card">
-            <div class="table-header"><h2><span class="material-symbols-outlined">database</span>My data</h2></div>
+            <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">database</span>My data</h2></div>
             <p class="card-hint">
                 Download everything stored about you (profile, likes, ratings, bookmarks, play history,
                 play queue, shares, podcast subscriptions, radio stations and chat messages) as a JSON file.
@@ -221,7 +223,7 @@
         <details class="danger-zone">
             <summary>Danger zone</summary>
             <div class="card">
-                <div class="table-header"><h2><span class="material-symbols-outlined">delete_forever</span>Delete account</h2></div>
+                <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">delete_forever</span>Delete account</h2></div>
                 <p class="card-hint">
                     Permanently deletes your account and all of the data above. This cannot be undone.
                 </p>
@@ -240,6 +242,7 @@
                 </form>
             </div>
         </details>
+        </main>
     </div>
 
     <div class="modal-overlay modal-confirm" id="confirmModal" x-data="modalPanel('confirmModal')"

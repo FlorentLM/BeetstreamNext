@@ -6,10 +6,10 @@
     <strong>{{ total_size }}</strong>.</p>
 {% endif %}
 {% if message %}
-    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+    <div class="flash flash-{{ 'success' if ok else 'error' }}" role="{{ 'status' if ok else 'alert' }}">{{ message }}</div>
 {% endif %}
 {% for text, category in notices or [] %}
-    <div class="flash flash-{{ category }}">{{ text }}</div>
+    <div class="flash flash-{{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ text }}</div>
 {% endfor %}
 {% if importing %}
     <div hx-get="{{ url_for('admin.route_podcast_channels' if scope == 'admin' else 'account.route_my_podcasts') }}"

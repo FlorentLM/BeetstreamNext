@@ -13,7 +13,7 @@
         <textarea id="chat-edit-{{ m.id }}" name="message" rows="2" maxlength="{{ CHAT_MAX_CHARS }}"
                   required>{{ draft if draft is defined else m.message }}</textarea>
 
-        {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+        {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
 
         <div class="chat-edit-buttons">
             <button type="button" class="btn btn-outline"

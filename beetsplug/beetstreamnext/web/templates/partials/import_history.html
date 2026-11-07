@@ -18,7 +18,7 @@
                         hx-target="#importHistory" hx-swap="innerHTML"
                         {{ 'disabled' if running }}
                         title="Reimport this folder and all its subfolders"
-                        aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
+                        aria-label="Reimport this folder"><span aria-hidden="true" class="material-symbols-outlined">restart_alt</span>
                 </button>
             {% endset %}
             {% set status_html %}<span class="badge badge-warning">{{ row.count }} skipped</span>{% endset %}
@@ -54,14 +54,14 @@
                                 hx-target="#importHistory" hx-swap="innerHTML"
                                 {{ 'disabled' if running or not e.exists }}
                                 title="{{ 'The folder is gone' if not e.exists else 'Reimport this folder interactively' }}"
-                                aria-label="Reimport this folder"><span class="material-symbols-outlined">restart_alt</span>
+                                aria-label="Reimport this folder"><span aria-hidden="true" class="material-symbols-outlined">restart_alt</span>
                         </button>
                     {% endif %}
                     <button type="button" class="pinned-path-remove" title="Remove from the list"
                             aria-label="Remove from the list"
                             hx-post="{{ url_for('admin.route_import_history_remove', entry_id=e.id) }}"
                             hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
-                            hx-target="#importHistory" hx-swap="innerHTML"><span
+                            hx-target="#importHistory" hx-swap="innerHTML"><span aria-hidden="true"
                             class="material-symbols-outlined">close</span></button>
                 </div>
             {% endset %}

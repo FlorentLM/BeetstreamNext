@@ -31,7 +31,7 @@
                       hx-target="#pinnedPaths"
                       hx-swap="innerHTML">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="pinned-path-remove" title="Unpin" aria-label="Unpin"><span class="material-symbols-outlined">close</span></button>
+                    <button type="submit" class="pinned-path-remove" title="Unpin" aria-label="Unpin"><span aria-hidden="true" class="material-symbols-outlined">close</span></button>
                 </form>
             {% endset %}
             {% set _ = rows.append({

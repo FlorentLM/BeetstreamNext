@@ -25,6 +25,54 @@
                 this.syncFromHash();
                 window.addEventListener('hashchange', () => this.syncFromHash());
                 this.initIndicator();
+                this.initKeyboard();
+            },
+
+            // Arrow key navigation for tab list and small-screen section menu
+            initKeyboard() {
+                const nav = this.$el.querySelector('.tabs');
+                if (nav) {
+                    nav.addEventListener('keydown', event => {
+                        const tabs = Array.from(nav.querySelectorAll('.tab'));
+                        const i = tabs.indexOf(document.activeElement);
+                        if (i < 0) return;
+                        const last = tabs.length - 1;
+                        const next = {
+                            ArrowRight: i === last ? 0 : i + 1,
+                            ArrowDown: i === last ? 0 : i + 1,
+                            ArrowLeft: i === 0 ? last : i - 1,
+                            ArrowUp: i === 0 ? last : i - 1,
+                            Home: 0,
+                            End: last
+                        }[event.key];
+                        if (next === undefined) return;
+                        event.preventDefault();
+                        this.set(tabs[next].dataset.tab);
+                        tabs[next].focus();
+                    });
+                }
+
+                const menu = this.$el.querySelector('.tab-menu');
+                if (menu) {
+                    menu.addEventListener('keydown', event => {
+                        const items = Array.from(menu.querySelectorAll('.tab-menu-item'));
+                        const i = items.indexOf(document.activeElement);
+                        if (event.key === 'Escape' && this.menuOpen) {
+                            this.closeMenu();
+                            menu.querySelector('.tab-menu-toggle').focus();
+                            return;
+                        }
+                        if (!this.menuOpen || !items.length) return;
+                        let next;
+                        if (event.key === 'ArrowDown') next = i < 0 || i === items.length - 1 ? 0 : i + 1;
+                        else if (event.key === 'ArrowUp') next = i <= 0 ? items.length - 1 : i - 1;
+                        else if (event.key === 'Home') next = 0;
+                        else if (event.key === 'End') next = items.length - 1;
+                        else return;
+                        event.preventDefault();
+                        items[next].focus();
+                    });
+                }
             },
 
             initIndicator() {
@@ -98,6 +146,7 @@
             pickTab(name) {
                 this.set(name);
                 this.menuOpen = false;
+                this.$el.querySelector('.tab-menu-toggle')?.focus();
             },
 
             toggleMenu() {

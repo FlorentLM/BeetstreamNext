@@ -1,5 +1,5 @@
 {% if message %}
-    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+    <div class="flash flash-{{ 'success' if ok else 'error' }}" role="{{ 'status' if ok else 'alert' }}">{{ message }}</div>
 {% endif %}
 <div class="avatar-cell">
     {% if user.avatarLastChanged %}

@@ -2,7 +2,7 @@
     --primary: #6c1e2b;
     --primary-hover: #7d2634;
     --link: #d86161;
-    --focus-ring: #ffb3c0;
+    --focus-ring: #38bdf8;
     --bg: #2f0e0b;
     --card-bg: #3b1017;
     --input-bg: rgba(0, 0, 0, 0.4);
@@ -45,7 +45,7 @@
     --primary: #9c3c4c;
     --primary-hover: #4f1720;
     --link: #a23548;
-    --focus-ring: #9c3c4c;
+    --focus-ring: #0284c7;
     --bg: #faf6f4;
     --card-bg: #ffffff;
     --input-bg: rgba(0, 0, 0, 0.035);
@@ -136,6 +136,49 @@ a {
     text-underline-offset: 0.15em;
     font-weight: 600;
     transition: opacity 0.2s;
+}
+
+a:hover,
+a:focus-visible {
+    text-decoration: underline;
+}
+
+:root a.btn,
+:root .logo-container a,
+:root .brand-section {
+    text-decoration: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.flash {
+    gap: 0.75rem;
+}
+
+.flash-dismiss {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.3rem;
+    line-height: 1;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.flash-dismiss:hover {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flash {
+        animation: none;
+    }
 }
 
 a:hover {
@@ -411,4 +454,25 @@ pre code {
 
 .password-toggle-btn .material-symbols-outlined {
     font-size: 1.25rem;
+}
+
+.skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: -4rem;
+    z-index: 2000;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 0.5rem;
+}
+
+[tabindex="-1"]:focus {
+    outline: none;
 }

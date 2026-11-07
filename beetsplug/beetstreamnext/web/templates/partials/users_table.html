@@ -1,7 +1,7 @@
 {% import '_macros.html' as macros %}
 
 {% if message %}
-    <div class="flash flash-{{ 'success' if ok else 'error' }}">{{ message }}</div>
+    <div class="flash flash-{{ 'success' if ok else 'error' }}" role="{{ 'status' if ok else 'alert' }}">{{ message }}</div>
 {% endif %}
 
 <div class="table-container">

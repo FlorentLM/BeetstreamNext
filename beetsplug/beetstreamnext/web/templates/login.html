@@ -9,7 +9,7 @@
 {% block body %}
     <div class="top-nav">
         <a href="{{ url_for('public.home') }}" class="btn btn-outline">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
                  stroke-linecap="round" stroke-linejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -18,23 +18,25 @@
         </a>
     </div>
 
-    <div class="login-wrapper">
+    <div class="login-wrapper" id="main" role="main" tabindex="-1">
         <div class="logo-container">
             <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
         </div>
         <div class="login-card">
-            <h2>Login</h2>
+            <h1>Login</h1>
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% for category, msg in messages %}
-                    <div class="flash flash-error">{{ msg }}</div>
+                    <div class="flash flash-error" role="alert">{{ msg }}</div>
                 {% endfor %}
             {% endwith %}
             <form method="POST">
                 {{ form.csrf_token }}
                 <div class="input-group">
+                    <label class="sr-only" for="{{ form.username.id }}">Username</label>
                     {{ form.username(placeholder="Username", autofocus=True, required=True) }}
                 </div>
                 <div class="input-group">
+                    <label class="sr-only" for="{{ form.password.id }}">Password</label>
                     {{ form.password(placeholder="Password", required=True) }}
                 </div>
                 <button type="submit" class="btn-submit">Log In</button>

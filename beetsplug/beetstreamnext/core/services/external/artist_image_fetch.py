@@ -113,7 +113,7 @@ class ArtistImageFetcher:
     def _save_image(name: str, data: dict, overwrite: bool) -> None:
 
         path = fetched_image_path(name)
-        if not app.config['save_artists_images'] or (path.is_file() and not overwrite):
+        if path.is_file() and not overwrite:
             return
 
         field_name = next(filter(data.get, PICTURE_FIELDS), None)

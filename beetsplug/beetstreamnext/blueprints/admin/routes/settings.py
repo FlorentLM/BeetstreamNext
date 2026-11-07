@@ -186,8 +186,7 @@ def _settings_ui(only: str | None = None) -> tuple[dict[str, dict[str, dict]], d
     library_ro = bool(library_db_path) and not is_writable(library_db_path)
 
     if music_ro:
-        for key in ('save_album_art', 'follow_playlist_embedded_urls'):
-            setting_pills[key] = ('music folder is read-only', 'danger')
+        setting_pills['save_album_art'] = ('music folder is read-only', 'danger')
 
     if library_ro:
         for key in ('save_lyrics', 'save_album_version', 'ratings_writeback_user'):

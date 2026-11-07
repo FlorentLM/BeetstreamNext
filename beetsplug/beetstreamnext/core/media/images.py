@@ -6,6 +6,7 @@ import subprocess
 import os
 import tempfile
 import threading
+from collections.abc import Iterator
 from pathlib import Path
 from io import BytesIO
 from PIL import Image, ImageOps
@@ -17,8 +18,7 @@ from beetsplug.beetstreamnext.utils.text import strip_text, validate_mbid
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.system import get_mimetype, make_hidden, find_binary, resolve_path
 from beetsplug.beetstreamnext.constants import (
-    MAX_DECODE_PIXELS, FFMPEG_INPUT_ARGS, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM,
-    DEEZER_IMAGE_SIZES
+    MAX_DECODE_PIXELS, FFMPEG_INPUT_ARGS, RAW_ART_MAX_BYTES, AUDIO_EXTENSIONS, MAX_AVATAR_BYTES, MAX_AVATAR_DIM
 )
 from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, COVER_EXTRACT_MAX_CONCURRENT, IMAGE_EXTENSIONS
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -195,46 +195,6 @@ def _image_from_folder(album_dir: str | Path) -> Path | None:
     return images[0]
 
 
-def fetch_playlist_images(item, url: str) -> None:
-    """
-    Try to get an image from a #EXTALBUMARTURL line from a foreign m3u (if the song's
-    album has no art locally). The fetched image is then saved in the album folder as
-    'cover.jpg' so the normal folder-scan lookup picks it up.
-    """
-    if not app.config.get('follow_playlist_embedded_urls') or not url:
-        return
-
-    album_id = item.get('album_id')
-    if not album_id:
-        return
-
-    album = flask.g.lib.get_album(album_id)
-    if not album:
-        return
-
-    if os.fsdecode(album.get('artpath') or b''):
-        return  # beets already knows about a cover
-
-    album_dir_raw = os.fsdecode(album.item_dir() or b'')
-    if not album_dir_raw:
-        return
-
-    album_dir = resolve_path(album_dir_raw, app.config['music_root'])
-
-    if _image_from_folder(album_dir):
-        return  # already has art on disk
-
-    image_bytes = capped_image_fetch(url)
-    if not image_bytes:
-        return
-
-    try:
-        img = safe_open_image(image_bytes)
-        img.convert('RGB').save(album_dir / 'cover.jpg', format='JPEG')
-    except Exception as e:
-        bsn_logger.warning(f"Failed to save captured playlist art for album {album_id}: {e}")
-
-
 _cover_extractions = threading.BoundedSemaphore(COVER_EXTRACT_MAX_CONCURRENT)
 
 
@@ -288,28 +248,77 @@ def image_from_song(path: str | Path) -> bytes | None:
 
 
 ##
-# Main logic for album art and for artist images
 
-def _persist_album_art(image_bytes: bytes, album, album_dir: Path | None) -> None:
-    """Persist CoverArtArchive-fetched bytes as cover.jpg in the album folder, if enabled."""
-    if not (app.config.get('save_album_art') and album_dir):
-        return
-    save_path = album_dir / 'cover.jpg'
-    if save_path.exists():
-        return
+def _art_cache_path(album_id, playlist: bool = False) -> Path:
+    """Where the cover is kept in the cache directory."""
+    return app.config['THUMBNAIL_CACHE_PATH'] / f"{'.playlist-cover' if playlist else '.cover'}-{album_id}.jpg"
+
+
+def _album_dir(album) -> Path | None:
+    raw = os.fsdecode(album.item_dir() or b'')
+    return resolve_path(raw, app.config['music_root']) if raw else None
+
+
+def _cache_album_art(image_bytes: bytes, album, album_dir: Path | None, playlist: bool = False) -> Path | None:
+    """
+    Keep a fetched cover in the cache and return where.
+    If `save_album_art` is enabled, also save it in the album folder as cover.jpg.
+    """
+
+    path = _art_cache_path(album.id, playlist)
     try:
-        img = safe_open_image(image_bytes)
-        img.save(save_path, format='JPEG')
-        bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {save_path}")
+        img = safe_open_image(image_bytes).convert('RGB')
+
+        fd, tmp_path = tempfile.mkstemp(dir=path.parent)
+        with os.fdopen(fd, 'wb') as f:
+            img.save(f, format='JPEG')
+        os.replace(tmp_path, path)
+
+        if app.config.get('save_album_art') and not playlist and album_dir and not (album_dir / 'cover.jpg').exists():
+            img.save(album_dir / 'cover.jpg', format='JPEG')
+            bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {album_dir / 'cover.jpg'}")
+
+        return path
+
     except Exception as e:
-        bsn_logger.warning(f"Could not save album art to {save_path}: {e}")
+        bsn_logger.warning(f"Could not store album art for album {album.id}: {e}")
+        return None
+
+
+def _album_art_candidates(album) -> Iterator[Path]:
+    """
+    Beets' artpath > image in the album folder > cover fetched before > query CoverArtArchive
+    > embedded in track file > from a playlist foreign url
+    """
+    # TODO: Reorder this maybe
+
+    art_path = os.fsdecode(album.get('artpath') or b'')
+    if art_path and (art_file := resolve_path(art_path, app.config['music_root'])).is_file():
+        yield art_file
+
+    album_dir = _album_dir(album)
+    if album_dir and (found_art := _image_from_folder(album_dir)):
+        yield found_art
+
+    if (cached := _art_cache_path(album.id)).is_file():
+        yield cached
+
+    playlist_cover = _art_cache_path(album.id, playlist=True)
+    mbid = validate_mbid(album.get('mb_albumid'))
+
+    image_bytes = (
+        (query_coverartarchive(mbid) if mbid else b'')
+        or (image_from_song(album_dir) if album_dir else b'')
+        or (playlist_cover.read_bytes() if playlist_cover.is_file() else b'')
+    )
+
+    if image_bytes and (fetched := _cache_album_art(image_bytes, album, album_dir)):
+        yield fetched
 
 
 def _album_art_bytes(album_id, size: int) -> bytes | None:
-    """
-    Resised jpg bytes for an album's art at a given size
-    (order is local file -> folder scan -> CoverArtArchive).
-    """
+    """Resized jpg bytes for an album's art at a given size."""
+
     if album_id is None:
         return None
 
@@ -317,46 +326,48 @@ def _album_art_bytes(album_id, size: int) -> bytes | None:
     if not album:
         return None
 
-    art_path = os.fsdecode(album.get('artpath') or b'')
-    if art_path:
-        art_path = str(resolve_path(art_path, app.config['music_root']))
-
-        if os.path.isfile(art_path):
-            resized = _cached_resize(art_path, size)
-            if resized:
-                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
-
-    album_dir_raw = os.fsdecode(album.item_dir() or b'')
-    album_dir = None
-    if album_dir_raw:
-        album_dir = resolve_path(album_dir_raw, app.config['music_root'])
-
-        found_art = _image_from_folder(album_dir)
-        if found_art:
-            resized = _cached_resize(found_art, size)
-            if resized:
-                return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
-
-    mbid = validate_mbid(album.get('mb_albumid'))
-    if mbid:
-        image_bytes = query_coverartarchive(mbid)
-        if image_bytes:
-            _persist_album_art(image_bytes, album, album_dir)
-            return resize_image(image_bytes, size).getvalue()
-
-    if album_dir:
-        embedded_bytes = image_from_song(album_dir)
-        if embedded_bytes:
-            _persist_album_art(embedded_bytes, album, album_dir)
-            return resize_image(embedded_bytes, size).getvalue()
+    for art_file in _album_art_candidates(album):
+        resized = _cached_resize(art_file, size)
+        if resized:
+            return Path(resized).read_bytes() if isinstance(resized, str) else resized.getvalue()
 
     return None
+
+
+def fetch_playlist_images(item, url: str) -> None:
+    """
+    Try to get an image from a #EXTALBUMARTURL line from a foreign m3u
+    (if the song's album has no art locally).
+    """
+    if not app.config.get('follow_playlist_embedded_urls') or not url:
+        return
+
+    album_id = item.get('album_id')
+    if not album_id:
+        return
+
+    album = flask.g.lib.get_album(album_id)
+    if not album:
+        return
+
+    if os.fsdecode(album.get('artpath') or b''):
+        return  # beets already has a cover
+
+    album_dir = _album_dir(album)
+    if not album_dir:
+        return
+
+    if _image_from_folder(album_dir) or _art_cache_path(album_id).is_file() or _art_cache_path(album_id, playlist=True).is_file():
+        return  # already has art in folder
+
+    image_bytes = capped_image_fetch(url)
+    if image_bytes:
+        _cache_album_art(image_bytes, album, album_dir, playlist=True)
 
 
 def send_album_art(album_id, size=None)  -> flask.Response | None:
     """
     Generates a response with the album art for the given album ID and (optional) size.
-    Uses the local file first, then falls back to coverartarchive.org
     """
 
     if album_id is None:
@@ -371,53 +382,15 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
         return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg') if image_bytes else None
 
     # No size requested: serve original file as-is (if not oversized)
-    art_path = os.fsdecode(album.get('artpath') or b'')
-    if art_path:
-        art_path = str(resolve_path(art_path, app.config['music_root']))
+    for art_file in _album_art_candidates(album):
+        try:
+            if art_file.stat().st_size > RAW_ART_MAX_BYTES or art_file.suffix.lower() in ('.tiff', '.tif'):
+                resized = _cached_resize(art_file, size=ALLOWED_THUMBNAIL_SIZES[-1])
+                return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
-        if os.path.isfile(art_path):
-            try:
-                if os.path.getsize(art_path) > RAW_ART_MAX_BYTES:
-                    resized = _cached_resize(art_path, size=ALLOWED_THUMBNAIL_SIZES[-1])
-                    return flask.send_file(resized, mimetype='image/jpeg') if resized else None
-
-                return flask.send_file(art_path, mimetype=get_mimetype(art_path))
-            except Exception as e:
-                bsn_logger.warning(f"Failed to serve image for album {album_id} ({art_path!r}): {e}")
-
-    # Check disk
-    album_dir_raw = os.fsdecode(album.item_dir() or b'')
-    album_dir = None
-    if album_dir_raw:
-        album_dir = resolve_path(album_dir_raw, app.config['music_root'])
-
-        found_art = _image_from_folder(album_dir)
-
-        if found_art:
-            try:
-                oversized = found_art.stat().st_size > RAW_ART_MAX_BYTES
-                if oversized or found_art.suffix.lower() in ('.tiff', '.tif'):
-                    resized = _cached_resize(found_art, size=ALLOWED_THUMBNAIL_SIZES[-1])
-                    return flask.send_file(resized, mimetype='image/jpeg') if resized else None
-
-                return flask.send_file(found_art, mimetype=get_mimetype(found_art))
-            except Exception as e:
-                bsn_logger.warning(f"Failed to serve folder art for album {album_id} ({found_art}): {e}")
-
-    # Proxy from CoverArtArchive
-    mbid = validate_mbid(album.get('mb_albumid'))
-    if mbid:
-        image_bytes = query_coverartarchive(mbid)
-        if image_bytes:
-            _persist_album_art(image_bytes, album, album_dir)
-            return flask.send_file(BytesIO(image_bytes), mimetype='image/jpeg')
-
-    # Last resort: extract an embedded picture from one of the album's tracks
-    if album_dir:
-        embedded_bytes = image_from_song(album_dir)
-        if embedded_bytes:
-            _persist_album_art(embedded_bytes, album, album_dir)
-            return flask.send_file(BytesIO(embedded_bytes), mimetype='image/jpeg')
+            return flask.send_file(art_file, mimetype=get_mimetype(art_file))
+        except Exception as e:
+            bsn_logger.warning(f"Failed to serve art for album {album_id} ({art_file}): {e}")
 
     return None # TODO - send a placeholder instead of 404ing
 
@@ -494,7 +467,7 @@ def _send_blob(image: bytes, size: int | None) -> flask.Response | None:
 
 
 def send_artist_image(artist, size=None) -> flask.Response | None:
-    # Imported here: the fetcher itself needs this module
+
     from beetsplug.beetstreamnext.core.services.external.artist_image_fetch import artist_image_fetcher
     from beetsplug.beetstreamnext.core.library.ids import IDs
     from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -526,10 +499,9 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     entry = AlbumArtistIndex.get().resolve(artist_name)
     candidates = entry.candidates if entry else (artist_name,)
 
-    # Try to fetch+save from Deezer if enabled and not already cached
-    match = None
+    # Fetch from Deezer if enabled
     if artist_image_fetcher.enabled and not local_image_path.is_file():
-        match = artist_image_fetcher.lookup(artist_keys(artist_name, artist_mbid)[0], artist_name, candidates)
+        artist_image_fetcher.lookup(artist_keys(artist_name, artist_mbid)[0], artist_name, candidates)
 
     # Serve local if it exists now
     if os.path.isfile(local_image_path):
@@ -538,23 +510,6 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
             return flask.send_file(resized, mimetype='image/jpeg') if resized else None
 
         return flask.send_file(local_image_path, mimetype=get_mimetype(local_image_path))
-
-    # No local file: proxy from Deezer (without saving) if local save is off
-    if match and match.found:
-        dz_data = match.data
-
-        target_size = next((s for s in sorted(DEEZER_IMAGE_SIZES) if size and s >= size), 1000)
-        artist_image_url = dz_data.get('picture_small', '').replace('56x56', f'{target_size}x{target_size}')
-
-        if artist_image_url:
-            content = capped_image_fetch(artist_image_url, timeout=5)
-            if content:
-                try:
-                    if size and size != target_size:
-                        return flask.send_file(resize_image(content, size), mimetype='image/jpeg')
-                    return flask.send_file(BytesIO(content), mimetype='image/jpeg')
-                except (ImageTooLarge, OSError) as e:
-                    bsn_logger.warning(f"Bad artist image from Deezer for '{artist_name}': {e}")
 
     return None
 

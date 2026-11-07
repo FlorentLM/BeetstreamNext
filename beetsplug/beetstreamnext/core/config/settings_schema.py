@@ -495,14 +495,6 @@ SETTINGS_SCHEMA: dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'env_var': 'BSN_FETCH_ARTISTS_IMAGES',
     },
-    'save_artists_images': {
-        'type': 'bool',
-        'default': False,
-        'category': 'library',
-        'description': 'Save fetched artist images to disk.',
-        'requires_restart': False,
-        'env_var': 'BSN_SAVE_ARTISTS_IMAGES',
-    },
     'fetch_artists_biographies': {
         'type': 'bool',
         'default': False,
@@ -514,7 +506,7 @@ SETTINGS_SCHEMA: dict[str, SettingDescriptor] = {
         'type': 'bool',
         'default': False,
         'category': 'library',
-        'description': 'Save fetched album art on disk, alongside music files.',
+        'description': 'Also save fetched album art on disk, alongside music files (in addition to the cache).',
         'requires_restart': False,
         'env_var': 'BSN_SAVE_ALBUM_ART',
     },

@@ -25,7 +25,7 @@
 # Usage
 
 - [CLI](./usage/cli.md)
-- [Web UI](usage/webui.md)
+- [Web UI (screenshots)](usage/webui.md)
 
 # Configuration
 

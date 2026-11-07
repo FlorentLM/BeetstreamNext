@@ -245,6 +245,44 @@ img.screenshot {
     box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
 }
 
+.screenshot-pair {
+    display: grid;
+    margin: 1.5rem auto;
+    max-width: 100%;
+    width: fit-content;
+}
+.screenshot-pair img.screenshot {
+    grid-area: 1 / 1;
+    margin: 0;
+}
+/* light book themes: light below, dark on top */
+.screenshot-pair img.light { z-index: 0; }
+.screenshot-pair img.dark {
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.screenshot-pair:hover img.dark { opacity: 1; }
+
+/* dark book themes: dark below, light on top */
+.coal .screenshot-pair img.dark,
+.navy .screenshot-pair img.dark,
+.ayu .screenshot-pair img.dark {
+    z-index: 0;
+    opacity: 1;
+    transition: none;
+}
+.coal .screenshot-pair img.light,
+.navy .screenshot-pair img.light,
+.ayu .screenshot-pair img.light {
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.coal .screenshot-pair:hover img.light,
+.navy .screenshot-pair:hover img.light,
+.ayu .screenshot-pair:hover img.light { opacity: 1; }
+
 /* Admonitions: semi-transparent background in each category's colour */
 .blockquote-tag {
     padding-top: 8px;

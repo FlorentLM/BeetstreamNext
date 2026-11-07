@@ -54,6 +54,7 @@ plugins: fetchart embedart lastgenre
 shots = {
     'home': ('/', None, None),
     'users': ('/admin/', 'users', '#tab-users'),
+    'connections': ('/admin/', 'connections', '#tab-connections'),
     'server': ('/admin/', 'server', '#tab-server'),
     'library': ('/admin/', 'library', '#tab-library'),
     'audio': ('/admin/', 'audio', '#tab-audio'),
@@ -62,6 +63,7 @@ shots = {
     'podcasts': ('/admin/', 'podcasts', '#tab-podcasts'),
     'chat': ('/admin/', 'chat', '#tab-chat'),
     'beets': ('/admin/', 'beets', '#tab-beets'),
+    'maintenance': ('/admin/', 'maintenance', '#tab-maintenance'),
 }
 
 

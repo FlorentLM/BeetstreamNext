@@ -130,7 +130,7 @@ def template_endpoints(app: Flask) -> None:     # Used by integrated tests
 
     missing = sorted(
         f"{name}: {call.args[0].value}"
-        for name in env.list_templates()
+        for name in env.list_templates(extensions=['html', 'svg'])    # skip unwanted files like .DS_Store
         for call in env.parse(env.loader.get_source(env, name)[0]).find_all(nodes.Call)
         if getattr(call.node, 'name', None) == 'url_for'
         and call.args and isinstance(call.args[0], nodes.Const)

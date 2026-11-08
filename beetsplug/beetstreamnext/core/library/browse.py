@@ -49,7 +49,7 @@ class LibraryView:
 
             cache['columns'] = {name: sql_type for name, (_, sql_type) in columns.items()}
             cache['source'] = (
-                'SELECT ' + ', '.join(f'{expr} AS {quote_identifier(name)}' for name, (expr, _) in columns.items()) +
+                'SELECT ' + ', '.join(f'{expr} AS {quote_identifier(name)}' for name, (expr, _) in columns.items()) +  # nosec B608  # noqa: S608 identifiers come from the schema
                 ' FROM items i LEFT JOIN albums a ON a.id = i.album_id'
             )
             cache['params'] = [name.rsplit('attr.', 1)[1] for name, (expr, _) in columns.items() if '?' in expr]
@@ -57,11 +57,11 @@ class LibraryView:
             # Columns with at least one value
             with flask.g.lib.transaction() as tx:
                 flags = tx.query(
-                    'SELECT ' + ', '.join(f"MAX({quote_identifier(n)} IS NOT NULL AND {quote_identifier(n)} != '')" for n in columns) +
-                    f" FROM ({cache['source']})",   # nosec B608  # noqa: S608 identifiers come from the schema
+                    'SELECT ' + ', '.join(f"MAX({quote_identifier(n)} IS NOT NULL AND {quote_identifier(n)} != '')" for n in columns) +  # nosec B608  # noqa: S608 identifiers come from the schema
+                    f" FROM ({cache['source']})",
                     cache['params']
                 )[0]
-            cache['populated'] = {name for name, flag in zip(columns, flags) if flag}
+            cache['populated'] = {name for name, flag in zip(columns, flags, strict=True) if flag}
 
         self.columns: dict[str, str] = cache['columns']     # name -> col type
         self.source: str = cache['source']
@@ -124,7 +124,7 @@ class LibraryView:
         for row in rows:
             record = {}
 
-            for name, value in zip(self.columns, row):
+            for name, value in zip(self.columns, row, strict=True):
 
                 if isinstance(value, bytes):
                     value = value.decode('utf-8', 'replace')

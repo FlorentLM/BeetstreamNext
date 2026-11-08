@@ -484,9 +484,7 @@
             <div class="card">
                 <div class="table-header"><h2>Database Cleanup</h2></div>
                 <p class="card-hint">
-                    Removes stale entries in the database (bookmarks, likes, ratings, play stats, queue entries and
-                    shares that
-                    point at a song or podcast episode that no longer exists). Also runs periodically in the background.
+                    Clean up stale entries in the database. Runs periodically in the background.
                 </p>
                 <form hx-post="{{ url_for('admin.route_database_cleanup') }}"
                       hx-target="#db-cleanup-result"
@@ -502,9 +500,7 @@
             <div class="card">
                 <div class="table-header"><h2>Audio Health Scan</h2></div>
                 <p class="card-hint">
-                    Look for bitstream corruption (bad bits that make some clients hang instead of playing,
-                    even though the file isn't completely broken). Flagged songs are then transparently transcoded
-                    on stream instead of direct-played. Runs incrementally in the background.
+                    Identify and flag any audio file problems, to be healed on-the-fly when played. Runs incrementally in the background.
                 </p>
                 <dl class="kv-grid" id="health-scan-status"
                     hx-get="{{ url_for('admin.route_health_scan_status') }}"
@@ -518,13 +514,12 @@
                     <dd>&mdash;</dd>
                 </dl>
 
-                <details class="podcast-episodes card-section">
-                    <summary><span id="flagged-songs-summary">Flagged songs</span></summary>
-                    <div class="table-container" id="flagged-songs"
+                <div class="card-section">
+                    <div class="table-container lib" id="flagged-songs"
                          hx-get="{{ url_for('admin.route_flagged_songs') }}"
                          hx-trigger="load, health-scan from:#adminDashboard throttle:1s"
                          hx-swap="innerHTML"></div>
-                </details>
+                </div>
                 <div class="button-row">
                     <form hx-post="{{ url_for('admin.route_health_scan') }}"
                           hx-target="#health-scan-status"
@@ -536,7 +531,7 @@
                           hx-trigger="confirmed"
                           hx-target="#health-scan-status"
                           hx-swap="innerHTML"
-                          data-confirm="Re-check every song in the library, including ones already checked? This can take a while on large libraries.">
+                          data-confirm="Re-check the whole library? This can take a while.">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="full" value="1">
                         <button type="submit" class="btn btn-outline">Full re-scan</button>
@@ -547,20 +542,14 @@
             <div class="card">
                 <div class="table-header"><h2>AudioMuse-AI Fingerprinting</h2></div>
                 <p class="card-hint">
-                    Triggers a full-library sonic-similarity analysis on AudioMuse-AI in the background. Requires
+                    Triggers a full-library sonic-similarity analysis on AudioMuse-AI. Needs
                     <code>audiomuse_url</code> to be configured under Connections.
-                </p>
-                <p class="card-hint">
-                    Note: AudioMuse-AI computes a Chromaprint fingerprint internally (for its own duplicate detection)
-                    but it doesn't expose them through its API. So writing them back into beets'
-                    <code>acoustid_id</code>
-                    / <code>acoustid_fingerprint</code> fields isn't currently possible.
                 </p>
                 <form hx-post="{{ url_for('admin.route_audiomuse_fingerprint') }}"
                       hx-trigger="confirmed"
                       hx-target="#fingerprint-result"
                       hx-swap="innerHTML" class="card-body-form"
-                      data-confirm="Trigger AudioMuse-AI fingerprinting for the entire library? This runs in the background on the AudioMuse-AI server.">
+                      data-confirm="Fingerprint the whole library? This runs on the AudioMuse-AI server.">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline">Fingerprint library</button>
                 </form>

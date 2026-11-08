@@ -282,14 +282,22 @@
             const spec = JSON.parse(el.dataset.table);
             loadTabulator(el).then(() => {
                 const table = new Tabulator(el, {
-                    data: spec.rows,
+                    ...(spec.remote ? {
+                        ajaxURL: spec.remote.url,
+                        ajaxParams: () => ({...el.tableParams}),
+                        paginationMode: 'remote',
+                        sortMode: 'remote',
+                        paginationSizeSelector: [25, 50, 100, 200]
+                    } : {data: spec.rows}),
+                    movableColumns: Boolean(spec.movable),
+                    ...(spec.height ? {height: spec.height} : {}),
                     columns: spec.columns.map(col => withFilter({
                         ...col,
                         ...TABLE_COLUMN_TYPES[col.type],
                         ...(col.html ? {formatter: htmlFormatter(col.html)} : {}),
                         minWidth: 60,
                         tooltip: !col.html
-                    }, spec.rows)),
+                    }, spec.rows || [])),
 
                     layout: spec.layout || 'fitData',
                     headerSort: spec.sortable !== false,
@@ -300,6 +308,8 @@
                     pagination: true,
                     paginationSize: spec.pageSize || 25
                 });
+                el.tabulatorTable = table;
+                table.on('tableBuilt', () => el.dispatchEvent(new CustomEvent('table:ready', {bubbles: true, detail: table})));
                 if (!spec.layout) fitTable(table, el);
                 table.on('renderComplete', () => el.dispatchEvent(new CustomEvent('table:render', {bubbles: true})));
             }).catch(() => {

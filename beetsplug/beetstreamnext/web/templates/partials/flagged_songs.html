@@ -1,8 +1,5 @@
 {% import '_macros.html' as macros %}
 
-<span id="flagged-songs-summary"
-      hx-swap-oob="true">{{ flagged_songs|length }} flagged song{{ 's' if flagged_songs|length != 1 }}</span>
-
 {% if flagged_songs %}
     {% set rows = [] %}
     {% for s in flagged_songs %}
@@ -17,7 +14,7 @@
     {% endfor %}
     {% set table = {
         'columns': [
-            {'title': 'Title', 'field': 'title', 'width': 220},
+            {'title': 'Title', 'field': 'title', 'width': 240},
             {'title': 'Artist', 'field': 'artist', 'width': 160},
             {'title': 'Album', 'field': 'album', 'width': 220},
             {'title': 'Issue', 'field': 'issue', 'width': 140, 'type': 'badge', 'filter': 'select'},
@@ -25,7 +22,7 @@
             {'title': 'Detail', 'field': 'detail', 'width': 500},
         ],
         'rows': rows,
-        'layout': 'fitDataFill',
+        'movable': True,
     } %}
     {{ macros.data_table(table) }}
 

@@ -154,6 +154,9 @@ def flagged_songs() -> list[dict]:
     for row in rows:
         item = resolved.get(row['song_id'])
         result.append({
+            'song_id': row['song_id'],
+            'album_id': item.get('album_id') if item else None,
+            'missing': item is None,
             'title': item.get('title') if item else '(deleted)',
             'artist': item.get('artist') if item else '',
             'album': item.get('album') if item else '',

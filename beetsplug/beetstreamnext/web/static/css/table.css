@@ -90,6 +90,11 @@
     opacity: 0.4;
 }
 
+.tabulator .tabulator-footer .tabulator-paginator label {
+    display: inline;
+    margin: 0 .4rem 0 0;
+}
+
 .tabulator .tabulator-footer .tabulator-page-size {
     background-color: transparent;
     border: 1px solid var(--border);

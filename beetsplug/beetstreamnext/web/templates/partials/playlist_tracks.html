@@ -12,6 +12,7 @@
 {% if playlist.comment %}<p class="card-hint"><strong>Description:</strong> {{ playlist.comment }}</p>{% endif %}
 
 {% if rows %}
+    <p class="card-hint">CSV export: {{ export_stats.total }} track{{ '' if export_stats.total == 1 else 's' }}, {{ export_stats.isrc }} with an ISRC, {{ export_stats.missing }} not in the library.</p>
     {% set art = url_for(bp_name ~ '.route_art', album_id=0) %}
     {{ macros.data_table({
         'columns': [

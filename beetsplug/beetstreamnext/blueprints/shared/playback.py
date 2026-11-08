@@ -13,6 +13,7 @@ from beetsplug.beetstreamnext.core.media.images import round_image_size, send_al
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, get_normalization_filter, try_transcode
 from beetsplug.beetstreamnext.core.runtime.web import send_file
 from beetsplug.beetstreamnext.utils.system import resolve_path, safe_filename
+from beetsplug.beetstreamnext.utils.text import split_list
 
 
 def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> None:
@@ -101,8 +102,10 @@ def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> N
         songs = Resolve.songs([t['song_id'] for t in tracks if t['song_id']])
 
         rows = []
+        with_isrc = 0
         for position, track in enumerate(tracks, start=1):
             song = songs.get(track['song_id']) if track['song_id'] else None
+            with_isrc += bool(song and split_list(song.get('isrc'), ';'))
             rows.append({
                 # Tracks missing from library greyed out
                 'id': track['song_id'] if song else None,
@@ -115,7 +118,17 @@ def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> N
                 '_class': '' if song else 'unmatched',
             })
 
-        return flask.render_template('partials/playlist_tracks.html', playlist=found, rows=rows, bp_name=bp.name)
+        export_stats = {
+            'total': len(rows),
+            'isrc': with_isrc,
+            'missing': sum(not r['id'] for r in rows)
+        }
+
+        return flask.render_template('partials/playlist_tracks.html',
+                                     playlist=found,
+                                     rows=rows,
+                                     bp_name=bp.name,
+                                     export_stats=export_stats)
 
     @route('/playlists/<int:playlist_id>/export.<fmt>', ['GET'])
     @with_app_context

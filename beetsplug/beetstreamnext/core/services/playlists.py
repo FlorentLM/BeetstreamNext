@@ -25,6 +25,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.concurrency import Throttle
 from beetsplug.beetstreamnext.utils.system import creation_date, path_hash, relative_to, safe_filename
+from beetsplug.beetstreamnext.utils.text import split_list
 
 
 IMPORT_FLAG = 'playlists_imported'
@@ -430,7 +431,8 @@ class PlaylistManager:
             song = songs.get(track['song_id']) if track['song_id'] else None
             if song:
                 writer.writerow([
-                    song.get('title'), song.get('artist'), song.get('album'), song.get('albumartist'), song.get('isrc'),
+                    song.get('title'), song.get('artist'), song.get('album'), song.get('albumartist'),
+                    next(iter(split_list(song.get('isrc'), ';')), ''),
                     round(song.get('length') or 0), song.get('mb_releasetrackid') or song.get('mb_trackid'),
                 ])
             else:

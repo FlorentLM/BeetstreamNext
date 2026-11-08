@@ -19,6 +19,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_erro
 
 
 WEBUI_PREFIXES = ('/admin', '/account', '/login', '/logout')
+WEBUI_CACHEABLE_PREFIXES = ('/admin/stream/', '/admin/art/', '/account/stream/', '/account/art/')
 
 
 def _any_users_exist() -> bool:
@@ -156,7 +157,7 @@ def _add_security_headers(response):
 
     is_webui = flask.request.path.startswith(WEBUI_PREFIXES)
 
-    if is_webui:
+    if is_webui and not flask.request.path.startswith(WEBUI_CACHEABLE_PREFIXES):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
 
     if is_webui or (response.mimetype == 'text/html' and 'Content-Security-Policy' not in response.headers):

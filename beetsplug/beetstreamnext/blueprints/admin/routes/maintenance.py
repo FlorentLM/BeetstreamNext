@@ -131,7 +131,7 @@ def route_health_scan_status() -> str:
 @admin_bp.route('/maintenance/flagged-songs', methods=['GET'])
 @admin_required
 def route_flagged_songs() -> str:
-    return flask.render_template('partials/flagged_songs.html', flagged_songs=flagged_songs())
+    return flask.render_template('partials/flagged_songs.html', flagged_songs=flagged_songs(), bp_name='admin')
 
 
 @admin_bp.route('/maintenance/logs', methods=['GET'])

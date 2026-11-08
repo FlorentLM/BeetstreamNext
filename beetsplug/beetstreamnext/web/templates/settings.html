@@ -9,6 +9,7 @@
     {# settings.css defines .htmx-indicator/.htmx-request rules, so prevent htmx from injecting its own indicator CSS. #}
     <meta name="htmx-config" content='{"includeIndicatorCSS": false, "noSwap": [204, 304, "4xx", "5xx"]}'>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
 {% endblock %}
 
 
@@ -649,6 +650,7 @@
                      data-url="{{ url_for('admin.route_logs') }}">{% if log_lines %}{{ log_lines|map('safe')|join('') }}{% else %}(no log output yet){% endif %}</pre>
             </div>
         </section>
+        {% with player_hidden = true, bp_name = 'admin' %}{% include 'partials/player.html' %}{% endwith %}
         </main>
     </div>
 
@@ -769,6 +771,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/password_rules.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/player.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/yaml_editor.js') }}"></script>

@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.blueprints.shared.app_passwords import register_ap
 from beetsplug.beetstreamnext.blueprints.shared.sessions import register_session_routes
 from beetsplug.beetstreamnext.blueprints.shared.scrobbling import register_scrobbling_routes
 from beetsplug.beetstreamnext.blueprints.shared.chat import register_chat_routes
+from beetsplug.beetstreamnext.blueprints.shared.playback import register_playback_routes
 
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -59,3 +60,4 @@ register_app_password_routes(admin_bp, admin_required)
 register_session_routes(admin_bp, admin_required)
 register_scrobbling_routes(admin_bp, admin_required)
 register_chat_routes(admin_bp, admin_required, moderator=True)
+register_playback_routes(admin_bp, admin_required)

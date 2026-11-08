@@ -4,9 +4,11 @@
     {% set rows = [] %}
     {% for s in flagged_songs %}
         {% set _ = rows.append({
+            'id': none if s.missing else s.song_id,
             'title': s.title or '(untitled)',
             'artist': s.artist or '—',
             'album': s.album or '—',
+            'album_id': s.album_id,
             'issue': s.label,
             'checked': (s.checked_at * 1000) | int,
             'detail': s.detail or 'No further detail available.',
@@ -14,7 +16,7 @@
     {% endfor %}
     {% set table = {
         'columns': [
-            {'title': 'Title', 'field': 'title', 'width': 240},
+            {'title': 'Title', 'field': 'title', 'width': 240, 'type': 'track', 'formatterParams': {'art': url_for(bp_name ~ '.route_art', album_id=0)}},
             {'title': 'Artist', 'field': 'artist', 'width': 160},
             {'title': 'Album', 'field': 'album', 'width': 220},
             {'title': 'Issue', 'field': 'issue', 'width': 140, 'type': 'badge', 'filter': 'select'},
@@ -23,6 +25,7 @@
         ],
         'rows': rows,
         'movable': True,
+        'play': True,
     } %}
     {{ macros.data_table(table) }}
 

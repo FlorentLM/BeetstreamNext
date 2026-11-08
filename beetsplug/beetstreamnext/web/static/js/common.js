@@ -120,6 +120,25 @@
         };
     }
 
+    // Album cover (or a colour block derived from the album name)
+    function coverArt(track, template, size) {
+        const block = () => {
+            const span = document.createElement('span');
+            span.className = 'track-art';
+            const hue = [...(track.album || '')].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 360, 7);
+            span.style.background = `hsl(${hue} 45% 38%)`;
+            return span;
+        };
+        if (!track.album_id || !template) return block();
+        const img = document.createElement('img');
+        img.className = 'track-art';
+        img.alt = '';
+        img.loading = 'lazy';
+        img.src = template.slice(0, -1) + track.album_id + '?size=' + size;
+        img.addEventListener('error', () => img.replaceWith(block()), {once: true});
+        return img;
+    }
+
     const TABLE_COLUMN_TYPES = {
         badge: {
             formatter: (cell, params) => {
@@ -140,6 +159,26 @@
         },
         number: {
             sorter: 'number'
+        },
+        length: {
+            sorter: 'number',
+            hozAlign: 'right',
+            formatter: cell => {
+                const secs = cell.getValue();
+                return secs ? Math.floor(secs / 60) + ':' + String(Math.floor(secs % 60)).padStart(2, '0') : '—';
+            }
+        },
+        // Track title + album cover
+        track: {
+            formatter: (cell, params) => {
+                const track = cell.getData();
+                const wrap = document.createElement('div');
+                wrap.className = 'track-title';
+                const text = document.createElement('span');
+                text.textContent = track.title;
+                wrap.append(coverArt(track, params?.art, 64), text);
+                return wrap;
+            }
         },
         actions: {
             headerSort: false,
@@ -205,7 +244,7 @@
                 headerFilterFunc: '='
             };
         }
-        if (col.filter === false || ['time', 'actions', 'number', 'badge'].includes(col.type)) return col;
+        if (col.filter === false || ['time', 'actions', 'number', 'length', 'badge'].includes(col.type)) return col;
         return {
             ...col,
             headerPopup: filterPopup,
@@ -276,6 +315,10 @@
         new ResizeObserver(fit).observe(el);
     }
 
+    const trackTables = new Set();
+
+    document.addEventListener('player:change', () => trackTables.forEach(table => table.getRows().forEach(row => row.reformat())));
+
     function initTables(root = document) {
         root.querySelectorAll('[data-table]:not([data-table-ready])').forEach(el => {
             el.dataset.tableReady = '1';
@@ -290,6 +333,7 @@
                         paginationSizeSelector: [25, 50, 100, 200]
                     } : {data: spec.rows}),
                     movableColumns: Boolean(spec.movable),
+                    selectableRows: spec.play ? 1 : false,
                     ...(spec.height ? {height: spec.height} : {}),
                     columns: spec.columns.map(col => withFilter({
                         ...col,
@@ -302,14 +346,27 @@
                     layout: spec.layout || 'fitData',
                     headerSort: spec.sortable !== false,
                     rowFormatter: row => {
-                        const cls = row.getData()._class;
-                        if (cls) row.getElement().classList.add(...cls.split(' '));
+                        const data = row.getData();
+                        if (data._class) row.getElement().classList.add(...data._class.split(' '));
+                        if (spec.play) row.getElement().classList.toggle('now-playing', Boolean(data.id) && data.id === document.body.dataset.nowPlaying);
                     },
                     pagination: true,
                     paginationSize: spec.pageSize || 25
                 });
                 el.tabulatorTable = table;
                 table.on('tableBuilt', () => el.dispatchEvent(new CustomEvent('table:ready', {bubbles: true, detail: table})));
+
+                // double-click or Enter to play
+                if (spec.play) {
+                    trackTables.add(table);
+                    const play = row => row.getData().id && el.dispatchEvent(new CustomEvent('table:play', {bubbles: true, cancelable: true, detail: {table, data: row.getData()}}));
+                    table.on('rowDblClick', (event, row) => play(row));
+                    el.tabIndex = 0;
+                    el.addEventListener('keydown', event => {
+                        const selected = event.key === 'Enter' && table.getSelectedRows()[0];
+                        if (selected) play(selected);
+                    });
+                }
                 if (!spec.layout) fitTable(table, el);
                 table.on('renderComplete', () => el.dispatchEvent(new CustomEvent('table:render', {bubbles: true})));
             }).catch(() => {
@@ -426,7 +483,7 @@
         }
     });
 
-    window.bsnCommon = {copyText, onSwap, onSwapSuccess, closeModalsOnSuccess};
+    window.bsnCommon = {copyText, onSwap, onSwapSuccess, closeModalsOnSuccess, coverArt};
 
     document.addEventListener('alpine:init', () => {
         // Image picker (radio icons, user avatars)

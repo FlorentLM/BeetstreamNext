@@ -1,0 +1,34 @@
+<div class="player" id="player" role="group" aria-label="Player" {% if player_hidden %}hidden{% endif %}
+     data-stream="{{ url_for(bp_name ~ '.route_stream', track_id='0') }}"
+     data-art="{{ url_for(bp_name ~ '.route_art', album_id=0) }}">
+
+    <div class="now">
+        <span class="track-art" id="pArt" aria-hidden="true"></span>
+        <div class="meta"><b id="pTitle">Nothing playing</b><small id="pSub" role="status">Select a track, then press
+            play</small></div>
+    </div>
+
+    <div class="transport">
+        <div class="buttons">
+            <button type="button" id="pPrev" aria-label="Previous"><span class="material-symbols-outlined"
+                                                                         aria-hidden="true">skip_previous</span>
+            </button>
+            <button type="button" id="pPlay" class="main" aria-label="Play"><span class="material-symbols-outlined"
+                                                                                  id="pPlayIcon" aria-hidden="true">play_arrow</span>
+            </button>
+            <button type="button" id="pNext" aria-label="Next"><span class="material-symbols-outlined"
+                                                                     aria-hidden="true">skip_next</span></button>
+        </div>
+        <div class="seek">
+            <span id="pCur">0:00</span>
+            <input type="range" id="pSeek" min="0" max="1000" value="0" aria-label="Seek">
+            <span id="pDur">0:00</span>
+        </div>
+    </div>
+    <div class="vol">
+        <span class="material-symbols-outlined" id="pVolIcon" aria-hidden="true">volume_up</span>
+        <input type="range" id="pVol" min="0" max="100" value="60" aria-label="Volume">
+    </div>
+</div>
+
+<audio id="audio" preload="none"></audio>

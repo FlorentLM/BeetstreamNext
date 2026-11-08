@@ -1,0 +1,181 @@
+/* Library viewer */
+.lib .tabulator-row .tabulator-cell {
+    padding: .35rem .6rem;
+    line-height: 1.6rem
+}
+
+.lib .tabulator-row {
+    user-select: none       /* double click should not select text */
+}
+
+.lib .tabulator-footer select {
+    width: auto
+}
+
+.lib .tabulator .tabulator-header .tabulator-col .tabulator-col-content {
+    padding: .5rem .6rem
+}
+
+.lib .tabulator-row.now-playing {
+    background-color: var(--overlay-strong);
+    color: var(--link)
+}
+
+.lib .tabulator {
+    width: 100%;
+    max-width: 100%
+}
+
+.track-art {
+    display: inline-block;
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 4px;
+    vertical-align: middle;
+    object-fit: cover
+}
+
+.track-title {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    min-width: 0
+}
+
+.track-title > :last-child {
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.lib .tabulator-row.tabulator-selected {
+    background-color: var(--overlay-strong);
+    box-shadow: inset 3px 0 0 var(--primary)
+}
+
+.player button .material-symbols-outlined {
+    font-size: 1.3rem
+}
+
+.player[hidden] {
+    display: none
+}
+
+.player {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 5;
+    background-color: color-mix(in srgb, var(--card-bg) 60%, transparent);
+    background-image: var(--bg-noise);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px var(--shadow);
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) 2fr minmax(6rem, 1fr);
+    gap: 1rem;
+    align-items: center;
+    margin-top: .8rem;
+    padding: .6rem .9rem;
+    border: 1px solid var(--border);
+    border-radius: 12px
+}
+
+.player .now {
+    display: flex;
+    gap: .7rem;
+    align-items: center;
+    min-width: 0
+}
+
+.player .now .track-art {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 6px
+}
+
+.player .meta {
+    min-width: 0;
+    line-height: 1.25
+}
+
+.player .meta b, .player .meta small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.player .meta small {
+    color: var(--text-muted)
+}
+
+.player .transport {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem
+}
+
+.player .buttons {
+    display: flex;
+    gap: .4rem;
+    justify-content: center
+}
+
+.player .buttons button {
+    background: none;
+    border: 0;
+    color: var(--text);
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer
+}
+
+.player .buttons button:hover {
+    background: var(--overlay-strong)
+}
+
+.player .buttons .main {
+    background: var(--primary);
+    color: #fff
+}
+
+.player .seek {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    font-size: .78rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums
+}
+
+.player .seek input {
+    flex: 1;
+    accent-color: var(--primary)
+}
+
+.player .vol {
+    display: flex;
+    gap: .4rem;
+    align-items: center;
+    justify-content: flex-end;
+    color: var(--text-muted)
+}
+
+.player .vol input {
+    width: 100%;
+    max-width: 7rem;
+    accent-color: var(--primary)
+}
+
+@media (max-width: 720px) {
+    .player {
+        grid-template-columns: 1fr
+    }
+
+    .player .vol {
+        display: none
+    }
+}

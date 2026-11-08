@@ -29,20 +29,20 @@ MP3_ESTIMATE_MARGIN = 4096
 
 FORMAT_MAP = {
     # Lossy
-    'mp3':  {'f': 'mp3',  'c': 'libmp3lame', 'mime': 'audio/mpeg',      'lossless': False},
-    'ogg':  {'f': 'ogg',  'c': 'libvorbis',  'mime': 'audio/ogg',       'lossless': False},
-    'opus': {'f': 'opus', 'c': 'libopus',    'mime': 'audio/ogg',       'lossless': False},
-    'aac':  {'f': 'adts', 'c': 'aac',         'mime': 'audio/aac',      'lossless': False},
-    'm4a':  {'f': 'mp4',  'c': 'aac',         'mime': 'audio/mp4',      'lossless': False,
+    'mp3':  {'f': 'mp3',  'c': 'libmp3lame', 'mime': 'audio/mpeg', 'lossless': False, 'browser_playable': True},
+    'ogg':  {'f': 'ogg',  'c': 'libvorbis',  'mime': 'audio/ogg',  'lossless': False, 'browser_playable': True},
+    'opus': {'f': 'opus', 'c': 'libopus',    'mime': 'audio/ogg',  'lossless': False, 'browser_playable': True},
+    'aac':  {'f': 'adts', 'c': 'aac',        'mime': 'audio/aac',  'lossless': False, 'browser_playable': True},
+    'm4a':  {'f': 'mp4',  'c': 'aac',        'mime': 'audio/mp4',  'lossless': False, 'browser_playable': True,
              'flags': 'frag_keyframe+empty_moov+default_base_moof'},
     'wma':  {'f': 'asf',  'c': 'wmav2',       'mime': 'audio/x-ms-wma', 'lossless': False},
 
     # Lossless
-    'flac': {'f': 'flac', 'c': 'flac',        'mime': 'audio/flac',     'lossless': True},
-    'alac': {'f': 'ipod', 'c': 'alac',        'mime': 'audio/mp4',      'lossless': True,
+    'flac': {'f': 'flac', 'c': 'flac',       'mime': 'audio/flac', 'lossless': True, 'browser_playable': True},
+    'alac': {'f': 'ipod', 'c': 'alac',       'mime': 'audio/mp4',  'lossless': True,
              'flags': 'frag_keyframe+empty_moov+default_base_moof'},
-    'wav':  {'f': 'wav',  'c': 'pcm_s16le',   'mime': 'audio/wav',      'lossless': True},
-    'aiff': {'f': 'aiff', 'c': 'pcm_s16be',   'mime': 'audio/aiff',     'lossless': True},
+    'wav':  {'f': 'wav',  'c': 'pcm_s16le',  'mime': 'audio/wav',  'lossless': True, 'browser_playable': True},
+    'aiff': {'f': 'aiff', 'c': 'pcm_s16be',  'mime': 'audio/aiff', 'lossless': True},
 }
 
 

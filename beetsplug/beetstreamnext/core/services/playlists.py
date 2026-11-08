@@ -397,6 +397,24 @@ class PlaylistManager:
         for playlist_id in pending:
             self._export(playlist_id)
 
+    @staticmethod
+    def m3u_text(playlist: dict) -> str:
+        """The playlist as extended m3u text."""
+
+        lines = ['#EXTM3U']
+        if playlist['comment']:
+            lines.append(f"#PLAYLIST-DESC:{' '.join(playlist['comment'].split())}")
+        if playlist['owner']:
+            lines.append(f"#PLAYLIST-CREATOR:{playlist['owner']}")
+
+        for t in playlist['tracks']:
+            if t['path']:
+                props = f" id={t['song_id']}" if t['song_id'] else ''
+                lines.append(f"#EXTINF:{t['duration']}{props},{' '.join((t['label'] or '').split())}")
+                lines.append(t['path'])
+
+        return '\n'.join(lines) + '\n'
+
     @with_app_context
     def _export(self, playlist_id: int) -> None:
         """
@@ -430,24 +448,12 @@ class PlaylistManager:
             if target != current and target.exists():
                 target = folder / f"{name} ({playlist_id}).m3u"
 
-        lines = ['#EXTM3U']
-        if playlist['comment']:
-            lines.append(f"#PLAYLIST-DESC:{' '.join(playlist['comment'].split())}")
-        if playlist['owner']:
-            lines.append(f"#PLAYLIST-CREATOR:{playlist['owner']}")
-
-        for t in playlist['tracks']:
-            if t['path']:
-                props = f" id={t['song_id']}" if t['song_id'] else ''
-                lines.append(f"#EXTINF:{t['duration']}{props},{' '.join((t['label'] or '').split())}")
-                lines.append(t['path'])
-
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             fd, tmp_path = tempfile.mkstemp(dir=target.parent)
             try:
                 with os.fdopen(fd, 'w', encoding='UTF-8') as f:
-                    f.write('\n'.join(lines) + '\n')
+                    f.write(self.m3u_text(playlist))
                 os.replace(tmp_path, target)
             except OSError:
                 with contextlib.suppress(OSError):

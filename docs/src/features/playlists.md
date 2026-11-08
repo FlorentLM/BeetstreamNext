@@ -21,3 +21,13 @@
 ---
 
 See [`playlist_dir`](../configuration.md#server--network) and [`external_playlists_editors`](../configuration.md#library--metadata) in the configuration reference.
+
+## Moving playlists to a streaming service
+
+If you want to export your playlists to Spotify, Deezer, Tidal and others, you can:
+
+1. Export as CSV from the Web UI, and upload it to [Tune My Music](https://www.tunemymusic.com/transfer)
+
+2. Connect **BeetstreamNext** directly to [Soundiiz](https://soundiiz.com/tutorial/subsonic-to-spotify) using the OpenSubsonic connection
+
+Both can then export to most existing streaming services.

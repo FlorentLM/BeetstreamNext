@@ -36,6 +36,10 @@ Your existing [app passwords](../features/app-passwords.md) and signed-in web se
 
 <span class="screenshot-pair"><img class="screenshot light" src="../images/light/screenshot_connections.png" alt="Connections"><img class="screenshot dark" src="../images/dark/screenshot_connections.png" alt="" aria-hidden="true"></span>
 
+### Playlists
+
+Browse and play playlists, and export them as M3U or CSV (see [Moving a playlist to a streaming service](../features/playlists.md#moving-playlists-to-a-streaming-service)).
+
 ### Server
 
 Every [Server & Network](../configuration.md#server--network) related setting.

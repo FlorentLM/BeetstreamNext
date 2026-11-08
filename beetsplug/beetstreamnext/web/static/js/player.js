@@ -10,13 +10,13 @@
     const fmt = secs => Math.floor(secs / 60) + ':' + String(Math.floor(secs % 60)).padStart(2, '0');
 
     const pageTitle = document.title;
-    let queue = [];
-    let index = -1;
+    let track = null;
+    let table = null;
 
-    function playAt(i) {
-        const track = queue[i];
-        if (!track) return;
-        index = i;
+    function playTrack(next, source) {
+        if (!next) return;
+        track = next;
+        table = source;
         audio.src = player.dataset.stream.slice(0, -1) + encodeURIComponent(track.id);
         audio.play().catch(() => {
         });
@@ -32,42 +32,30 @@
     }
 
     function step(direction) {
-        if (queue[index + direction]) playAt(index + direction);
+        const rows = table.getData('active').filter(row => row.id);
+        const at = rows.findIndex(row => row.id === track.id);
+        playTrack(at < 0 ? rows[0] : rows[at + direction], table);
     }
 
-    window.bsnPlayer = {
-        play(tracks, start) {
-            queue = tracks;
-            playAt(start);
-        },
-        current: () => queue[index]?.id ?? null,
-        pick: null
-    };
-
-    document.addEventListener('table:play', event => {
-        if (event.defaultPrevented) return;
-        const tracks = event.detail.table.getData('active').filter(row => row.id);
-        window.bsnPlayer.play(tracks, tracks.findIndex(row => row.id === event.detail.data.id));
-    });
+    document.addEventListener('table:play', event => playTrack(event.detail.data, event.detail.table));
 
     $('pPlay').addEventListener('click', () => {
-        if (index >= 0 && !audio.paused) return audio.pause();
-        if (window.bsnPlayer.pick?.()) return;
-        if (index >= 0) audio.play();
+        if (!track) return;
+        audio.paused ? audio.play() : audio.pause();
     });
     $('pClose').addEventListener('click', () => {
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
-        queue = [];
-        index = -1;
+        track = null;
+        table = null;
         player.hidden = true;
         delete document.body.dataset.nowPlaying;
         document.title = pageTitle;
         document.dispatchEvent(new CustomEvent('player:change'));
     });
-    $('pPrev').addEventListener('click', () => audio.currentTime > 3 ? (audio.currentTime = 0) : step(-1));
-    $('pNext').addEventListener('click', () => step(1));
+    $('pPrev').addEventListener('click', () => !track || audio.currentTime > 3 ? (audio.currentTime = 0) : step(-1));
+    $('pNext').addEventListener('click', () => track && step(1));
     $('pSeek').addEventListener('input', event => {
         if (audio.duration) audio.currentTime = event.target.value / 1000 * audio.duration;
     });
@@ -98,10 +86,10 @@
     audio.addEventListener('pause', syncPlayButton);
     audio.addEventListener('timeupdate', () => {
         $('pCur').textContent = fmt(audio.currentTime);
-        $('pDur').textContent = fmt(audio.duration || queue[index]?.secs || 0);
+        $('pDur').textContent = fmt(audio.duration || track?.secs || 0);
         if (audio.duration) $('pSeek').value = audio.currentTime / audio.duration * 1000;
     });
-    audio.addEventListener('ended', () => step(1));
+    audio.addEventListener('ended', () => track && step(1));
     audio.addEventListener('error', () => {
         if (audio.getAttribute('src')) $('pSub').textContent = 'This track could not be played.';
     });

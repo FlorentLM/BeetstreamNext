@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.utils.db import get_beets_schema
+from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.utils.text import md5_hex, split_beets_multi, validate_mbid
 
 
@@ -350,7 +350,7 @@ def library_keys() -> set[str]:
     with flask.g.lib.transaction() as tx:
 
         for table, column_pairs in sources:
-            cols = set(get_beets_schema(table))
+            cols = set(library_cache.schema(table))
 
             for name_col, mbid_col in column_pairs:
 

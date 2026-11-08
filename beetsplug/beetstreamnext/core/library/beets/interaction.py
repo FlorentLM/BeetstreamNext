@@ -20,7 +20,7 @@ from beetsplug.beetstreamnext.constants import (
     BEETS_IMPORT_LOG_PATH, BEETS_IMPORT_RESULTS_PATH, ALPHANUM_CHARS, DEFAULT_CONFIG_PATH
 )
 from beetsplug.beetstreamnext.core.storage.connection import dual_database
-from beetsplug.beetstreamnext.utils.db import get_beets_schema
+from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.library.beets import import_results
 from beetsplug.beetstreamnext.core.library import import_history
@@ -710,7 +710,7 @@ def write_beets_field(
 
     db = dual_database()
 
-    if key in get_beets_schema(core_table):
+    if key in library_cache.schema(core_table):
         cur = db.execute(
             f"""
             UPDATE beets.{core_table} 

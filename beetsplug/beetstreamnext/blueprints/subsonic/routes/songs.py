@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.storage.cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, validate_mbid
-from beetsplug.beetstreamnext.utils.db import get_beets_schema, sql_conditions_for
+from beetsplug.beetstreamnext.utils.db import library_cache, sql_conditions_for
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -63,7 +63,7 @@ def endpoint_songs_by_genre() -> flask.Response:
 
     genre_pattern = f"%{genre}%"
 
-    cols = get_beets_schema('items')
+    cols = library_cache.schema('items')
     conditions = []
     params = []
 
@@ -117,7 +117,7 @@ def endpoint_get_random_songs() -> flask.Response:
         params.extend([lo, hi])
 
     if genre:
-        cols = get_beets_schema('items')
+        cols = library_cache.schema('items')
         genre_conditions = []
         pattern = f"%{genre.strip().lower()}%"
         if 'genres' in cols:
@@ -177,7 +177,7 @@ def endpoint_get_top_songs() -> flask.Response:
 
         if lastfm_track_names:
             placeholders = ','.join(['?'] * len(lastfm_track_names))
-            columns = get_beets_schema('items')
+            columns = library_cache.schema('items')
             name_conditions, name_params = sql_conditions_for(artist_name, [f for f in ('artist', 'artists') if f in columns])
             sql = f"""
                    SELECT * FROM items 
@@ -326,7 +326,7 @@ def endpoint_get_similar_songs() -> flask.Response:
             similar_artists[req_artist_name] = req_artist_mbid
 
         # Filter to columns that actually exist in current beets library
-        available_cols = set(get_beets_schema('items'))
+        available_cols = set(library_cache.schema('items'))
         mbid_fields = [f for f in ['mb_artistid', 'mb_artistids'] if f in available_cols]
         name_fields = [f for f in ['artist', 'artists', 'composer', 'composers', 'lyricist', 'lyricists'] if f in available_cols]
 

@@ -8,7 +8,7 @@ import flask
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.concurrency import BuildOnce
-from beetsplug.beetstreamnext.utils.db import get_beets_schema, library_cache
+from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.utils.system import path_hash
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid, sha1_hex
@@ -51,7 +51,7 @@ class ArtistIndex(Index):
     def __init__(self, lib):
         super().__init__()
 
-        cols = get_beets_schema('items')
+        cols = library_cache.schema('items')
 
         def column(*names: str) -> str:
             return next((n for n in names if n in cols), 'NULL')
@@ -243,7 +243,7 @@ class AlbumArtistIndex(Index):
     def __init__(self, lib):
         super().__init__()
 
-        cols = get_beets_schema('albums')
+        cols = library_cache.schema('albums')
 
         def column(name: str) -> str:
             return f'MAX({name})' if name in cols else 'NULL'

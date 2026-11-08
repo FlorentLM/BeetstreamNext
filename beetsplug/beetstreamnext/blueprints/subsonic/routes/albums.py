@@ -6,7 +6,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.db import get_beets_schema, chunked_query
+from beetsplug.beetstreamnext.utils.db import library_cache, chunked_query
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -212,7 +212,7 @@ def endpoint_get_album_list() -> flask.Response:
             params.extend([min(from_year, to_year), max(from_year, to_year)])
 
         if sort_by == 'byGenre':
-            cols = get_beets_schema('albums')
+            cols = library_cache.schema('albums')
             genre_conditions = []
             pattern = f"%{genre_filter.strip().lower()}%"
 

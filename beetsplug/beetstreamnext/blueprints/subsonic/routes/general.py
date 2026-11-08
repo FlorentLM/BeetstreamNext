@@ -6,7 +6,7 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import genres_formatter, timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.db import get_beets_schema
+from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
 
@@ -101,13 +101,13 @@ def endpoint_get_genres() -> flask.Response:
 
     queries = []
 
-    item_cols = get_beets_schema('items')
+    item_cols = library_cache.schema('items')
     if 'genres' in item_cols:
         queries.append("""SELECT genres AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genres""")
     if 'genre' in item_cols:
         queries.append("""SELECT genre AS g, COUNT(*) AS n_s, 0 AS n_a FROM items GROUP BY genre""")
 
-    alb_cols = get_beets_schema('albums')
+    alb_cols = library_cache.schema('albums')
     if 'genres' in alb_cols:
         queries.append("""SELECT genres AS g, 0 AS n_s, COUNT(*) AS n_a FROM albums GROUP BY genres""")
     if 'genre' in alb_cols:

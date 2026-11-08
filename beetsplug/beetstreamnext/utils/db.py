@@ -4,7 +4,6 @@ import os
 import threading
 from sqlite3 import Connection
 from typing import Any, Literal, overload
-from collections.abc import Hashable
 
 import flask
 from beets.dbcore.db import Transaction
@@ -16,98 +15,66 @@ from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
 # Beets' database access utilities
 
 
-class SchemaCache:
+class LibraryCache:
     """
-    Thread-safe cache of the beets db schema. Clear itself when mtime
-    of the db changes.
+    Process-wide dicts for stuff derived from the beets library.
+    Dicts are dropped when the db changes.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._stamp: Hashable = None
-        self._data: dict[Hashable, Any] = {}
+        self._stamp: tuple = ()
+        self._buckets: dict[str, dict[Any, Any]] = {}
 
-    def _sync(self, stamp: Hashable) -> None:
-        """Drop everything if `stamp` has changed."""
-        if self._stamp != stamp:
-            self._data.clear()
-            self._stamp = stamp
+    def __call__(self, name: str) -> dict[Any, Any]:
 
-    def get(self, stamp: Hashable, key: Hashable) -> Any:
+        path = os.fsdecode(flask.g.lib.path)
+        stamp = (path, *(os.stat(p).st_mtime if os.path.exists(p) else None for p in (path, path + '-wal')))
+
         with self._lock:
-            self._sync(stamp)
-            return self._data.get(key)
+            if stamp != self._stamp:
+                self._buckets.clear()
+                self._stamp = stamp
 
-    def put(self, stamp: Hashable, key: Hashable, value: Any) -> None:
-        with self._lock:
-            if self._stamp == stamp:
-                self._data[key] = value
+            return self._buckets.setdefault(name, {})
 
-    def bucket(self, stamp: Hashable, name: Hashable) -> dict[Any, Any]:
-        """Dict private to `name`."""
-        with self._lock:
-            self._sync(stamp)
-            return self._data.setdefault(name, {})
+    def tables(self) -> list[str]:
+        """Names of all the tables in the beets db."""
 
+        cache = self('tables')
+        if 'names' not in cache:
+            with flask.g.lib.transaction() as tx:
+                cache['names'] = [row[0] for row in tx.query(
+                    """
+                    SELECT name 
+                    FROM sqlite_master 
+                    WHERE type = 'table' AND name NOT LIKE 'sqlite!_%' ESCAPE '!' ORDER BY name"""
+                )]
 
-schema_cache = SchemaCache()
+        return list(cache['names'])
 
+    @overload
+    def schema(self, table_name: str = 'items', with_types: Literal[False] = False) -> list[str]: ...
 
-_beets_table_names = frozenset(['items', 'albums'])
+    @overload
+    def schema(self, table_name: str, with_types: Literal[True]) -> dict[str, str]: ...
 
+    def schema(self, table_name: str = 'items', with_types: bool = False) -> list[str] | dict[str, str]:
+        """Column names of a table of the beets db (or a {name: declared sqlite type} dict if `with_types`)."""
 
-@overload
-def get_beets_schema(table_name: str = 'items', with_types: Literal[False] = False) -> list[str]: ...
+        if table_name not in self.tables():
+            raise AttributeError(f"Table {table_name} does not exist in Beets' db.")
 
+        cache = self('schema')
+        if table_name not in cache:
+            with flask.g.lib.transaction() as tx:
+                # SQLite PRAGMA doesnt support bound parameters for table name (checked against the db's tables above)
+                cache[table_name] = {row[1]: (row[2] or '').upper() for row in tx.query(f'PRAGMA table_info("{table_name}")')}
 
-@overload
-def get_beets_schema(table_name: str, with_types: Literal[True]) -> dict[str, str]: ...
-
-
-def get_beets_schema(table_name: str = 'items', with_types: bool = False) -> list[str] | dict[str, str]:
-    """
-    Returns column names for the beets db (or a {name: declared sqlite type} dict if `with_types`).
-    Cache is invalidated when the beets db changes.
-    """
-
-    if table_name not in _beets_table_names:
-        raise AttributeError(f"Table {table_name} does not exist in Beets' db.")
-
-    lib_path = flask.g.lib.path
-    current_mtime = os.path.getmtime(os.fsdecode(lib_path))
-    cached = schema_cache.get(current_mtime, table_name)
-
-    if cached is None:
-        # Query outside lock to avoid holding during IO
-        with flask.g.lib.transaction() as tx:
-            # SQLite PRAGMA doesnt support bound parameters for table name
-            cursor = tx.query(f"PRAGMA table_info({table_name})")
-            cached = {row[1]: (row[2] or '').upper() for row in cursor}
-
-        schema_cache.put(current_mtime, table_name, cached)   # dropped if db changed while querying
-
-    return dict(cached) if with_types else list(cached)
+        return dict(cache[table_name]) if with_types else list(cache[table_name])
 
 
-_lib_cache = SchemaCache()
-
-
-def _library_stamp() -> tuple:
-    path = os.fsdecode(flask.g.lib.path)
-    mtimes = []
-    for p in (path, path + '-wal'):
-        try:
-            mtimes.append(os.path.getmtime(p))
-        except OSError:
-            mtimes.append(None)
-    return (path, *mtimes)
-
-
-def library_cache(name: str) -> dict[Any, Any]:
-    """
-    Process-wide dict for things derived from the beets library, shared across requests.
-    """
-    return _lib_cache.bucket(_library_stamp(), name)
+library_cache = LibraryCache()
 
 
 def chunked_query(

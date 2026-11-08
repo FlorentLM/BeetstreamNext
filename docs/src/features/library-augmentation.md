@@ -25,7 +25,7 @@ A lot of what shows up in your Subsonic client (artist photos, biographies, comm
 
   - Controlled by `fetch_artists_images`.
 
-  - `save_artists_images`/`save_album_art` optionally persist what was fetched to disk.
+  - `save_album_art` allows saving album art next to the music files.
 
   - `follow_playlist_embedded_urls` lets cover art be pulled from a foreign playlist's `#EXTALBUMARTURL` lines, for albums that have no local art. (_only enable for playlist sources you trust!)_
 

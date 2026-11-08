@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import csv
+import io
 import os
 import sqlite3
 import tempfile
@@ -414,6 +416,27 @@ class PlaylistManager:
                 lines.append(t['path'])
 
         return '\n'.join(lines) + '\n'
+
+    @staticmethod
+    def csv_text(playlist: dict) -> str:
+        """The playlist as CSV text."""
+
+        songs = Resolve.songs([t['song_id'] for t in playlist['tracks'] if t['song_id']])
+        out = io.StringIO()
+        writer = csv.writer(out)
+        writer.writerow(['Track name', 'Artist', 'Album', 'Album artist', 'ISRC', 'Duration', 'MusicBrainz ID'])
+
+        for track in playlist['tracks']:
+            song = songs.get(track['song_id']) if track['song_id'] else None
+            if song:
+                writer.writerow([
+                    song.get('title'), song.get('artist'), song.get('album'), song.get('albumartist'), song.get('isrc'),
+                    round(song.get('length') or 0), song.get('mb_releasetrackid') or song.get('mb_trackid'),
+                ])
+            else:
+                writer.writerow([track['label'] or track['path'], '', '', '', '', track['duration'], ''])
+
+        return out.getvalue()
 
     @with_app_context
     def _export(self, playlist_id: int) -> None:

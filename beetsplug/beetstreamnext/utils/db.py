@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import threading
 from sqlite3 import Connection
-from typing import Any
+from typing import Any, Literal, overload
 from collections.abc import Hashable
 
 import flask
@@ -56,8 +56,19 @@ schema_cache = SchemaCache()
 _beets_table_names = frozenset(['items', 'albums'])
 
 
-def get_beets_schema(table_name: str = 'items') -> list[str]:
-    """Returns column names for the beets db, invalidating the cache if the beets db has changed."""
+@overload
+def get_beets_schema(table_name: str = 'items', with_types: Literal[False] = False) -> list[str]: ...
+
+
+@overload
+def get_beets_schema(table_name: str, with_types: Literal[True]) -> dict[str, str]: ...
+
+
+def get_beets_schema(table_name: str = 'items', with_types: bool = False) -> list[str] | dict[str, str]:
+    """
+    Returns column names for the beets db (or a {name: declared sqlite type} dict if `with_types`).
+    Cache is invalidated when the beets db changes.
+    """
 
     if table_name not in _beets_table_names:
         raise AttributeError(f"Table {table_name} does not exist in Beets' db.")
@@ -65,17 +76,17 @@ def get_beets_schema(table_name: str = 'items') -> list[str]:
     lib_path = flask.g.lib.path
     current_mtime = os.path.getmtime(os.fsdecode(lib_path))
     cached = schema_cache.get(current_mtime, table_name)
-    if cached is not None:
-        return cached
 
-    # Query outside lock to avoid holding during IO
-    with flask.g.lib.transaction() as tx:
-        # SQLite PRAGMA doesnt support bound parameters for table name
-        cursor = tx.query(f"PRAGMA table_info({table_name})")
-        columns = [row[1] for row in cursor]
+    if cached is None:
+        # Query outside lock to avoid holding during IO
+        with flask.g.lib.transaction() as tx:
+            # SQLite PRAGMA doesnt support bound parameters for table name
+            cursor = tx.query(f"PRAGMA table_info({table_name})")
+            cached = {row[1]: (row[2] or '').upper() for row in cursor}
 
-    schema_cache.put(current_mtime, table_name, columns)    # dropped if the db changed while querying
-    return columns
+        schema_cache.put(current_mtime, table_name, cached)   # dropped if db changed while querying
+
+    return dict(cached) if with_types else list(cached)
 
 
 _lib_cache = SchemaCache()

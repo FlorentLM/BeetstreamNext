@@ -12,8 +12,6 @@
 
     .share-meta {
         margin-bottom: 2rem;
-        border-bottom: 1px solid var(--border);
-        padding-bottom: 1.5rem;
     }
 
     .share-desc {
@@ -27,6 +25,10 @@
         margin-bottom: 2rem;
     }
 
+    .track-header {
+        border-bottom: none;
+    }
+
     .album-download {
         display: flex;
         align-items: center;
@@ -37,11 +39,6 @@
         display: flex;
         align-items: center;
         gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .track-title {
-        font-weight: 600;
     }
 
     .track-number {
@@ -75,41 +72,15 @@
         height: 16px;
     }
 
-    .track-card {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .track-cover {
-        width: 64px;
-        height: 64px;
-        border-radius: 8px;
-        object-fit: cover;
-        flex-shrink: 0;
-    }
-
-    .track-card-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .track-card-title {
-        font-weight: 600;
-        font-size: 1.05rem;
-    }
-
 .share-wrapper .logo-container {
     text-align: center;
     margin-bottom: 2rem;
 }
 
 .album-title .user-avatar {
-    border-radius: 8px;
-    width: 44px;
-    height: 44px;
+    border-radius: 10px;
+    width: 96px;
+    height: 96px;
 }
 
 .album-title h2 {

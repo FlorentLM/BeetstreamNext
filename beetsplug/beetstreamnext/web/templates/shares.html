@@ -61,6 +61,9 @@
                                 </a>
                             {% endset %}
                             {% set _ = rows.append({
+                                'id': song.id,
+                                'album_id': album.id,
+                                'album': album.name,
                                 'track': song.track or none,
                                 'title': song.title,
                                 'duration': song.duration or 0,
@@ -88,23 +91,76 @@
             {% endfor %}
         {% endif %}
 
-        {# Display shared songs: one plain card per track, no table/header needed #}
-        {% if songs %}
-            {% for song in songs %}
-                <div class="card track-card">
-                    <img class="track-cover"
-                         src="{{ url_for('public.share_cover', share_id=share.id, entry_id=song.id) }}" alt="">
-                    <div class="track-card-info">
-                        <div class="track-card-title">{{ song.title }}</div>
-                        <div class="email-cell">{{ song.artist }} &bull; {{ song.album }}</div>
-                        <div class="session-user">{{ song.duration | duration }} &bull; {{ song.suffix | upper }} &bull; {{ song.size | filesize }}</div>
+        {# Single shared track #}
+        {% if songs | length == 1 %}
+            {% set song = songs[0] %}
+            <div class="card album-group">
+                <div class="table-header track-header">
+                    <div class="album-title">
+                        <img class="user-avatar"
+                             src="{{ url_for('public.share_cover', share_id=share.id, entry_id=song.id) }}" alt="">
+                        <div>
+                            <h2>{{ song.title }}</h2>
+                            <div class="email-cell">{{ song.artist }} &bull; {{ song.album }}</div>
+                            <div class="session-user">{{ song.duration | duration }} &bull; {{ song.suffix | upper }}</div>
+                        </div>
                     </div>
-                    <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
-                       class="btn btn-outline">
-                        Download
-                    </a>
+                    <div class="album-download">
+                        <span class="session-user">{{ song.size | filesize }}</span>
+                        <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+                           class="btn btn-primary">
+                            Download
+                        </a>
+                    </div>
                 </div>
-            {% endfor %}
+            </div>
+
+        {# Several shared tracks #}
+        {% elif songs %}
+            <div class="card album-group">
+                <div class="table-container">
+                    {% set rows = [] %}
+                    {% for song in songs %}
+                        {% set actions_html %}
+                            <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+                               class="icon-btn" title="Download"
+                               aria-label="Download &quot;{{ song.title }}&quot;">
+                                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 3v12"/>
+                                    <path d="M7 10l5 5 5-5"/>
+                                    <path d="M5 21h14"/>
+                                </svg>
+                            </a>
+                        {% endset %}
+                        {% set _ = rows.append({
+                            'id': song.id,
+                            'title': song.title,
+                            'artist': song.artist,
+                            'album': song.album,
+                            'duration': song.duration or 0,
+                            'duration_text': song.duration | duration,
+                            'format': (song.suffix or '') | upper,
+                            'size': song.size or 0,
+                            'size_text': song.size | filesize,
+                            'actions': actions_html,
+                        }) %}
+                    {% endfor %}
+                    {{ macros.data_table({
+                        'columns': [
+                            {'title': 'Title', 'field': 'title', 'cssClass': 'cell-wrap', 'minWidth': 200},
+                            {'title': 'Artist', 'field': 'artist'},
+                            {'title': 'Album', 'field': 'album'},
+                            {'title': 'Duration', 'field': 'duration', 'type': 'number', 'html': 'duration_text', 'filter': false},
+                            {'title': 'Format', 'field': 'format', 'filter': 'select'},
+                            {'title': 'Size', 'field': 'size', 'type': 'number', 'html': 'size_text', 'filter': false},
+                            {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+                        ],
+                        'rows': rows,
+                        'pageSize': 100,
+                    }) }}
+                </div>
+            </div>
         {% endif %}
     </div>
 {% endblock %}

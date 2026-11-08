@@ -367,7 +367,7 @@
                     }, spec.rows || [])),
 
                     layout: spec.layout || 'fitData',
-                    headerSort: spec.sortable !== false,
+                    columnDefaults: {headerSort: spec.sortable !== false},
                     rowFormatter: row => {
                         const data = row.getData();
                         if (data._class) row.getElement().classList.add(...data._class.split(' '));

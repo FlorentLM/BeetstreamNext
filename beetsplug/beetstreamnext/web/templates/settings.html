@@ -96,25 +96,31 @@
             'artists': 'artist',
             'shares': 'share',
             'chat': 'chat',
-            'beets': 'database',
             'notifications': 'notifications',
             'maintenance': 'build',
         } %}
-        {% set tab_order = ['users', 'connections', 'server', 'library', 'audio', 'security', 'podcasts', 'radios',
+        {% macro tab_icon(cat, icons) -%}
+            {%- if cat == 'beets' -%}
+                <span aria-hidden="true" class="icon-beets">{% include 'beets.svg' %}</span>
+            {%- else -%}
+                <span aria-hidden="true" class="material-symbols-outlined">{{ icons.get(cat, 'circle') }}</span>
+            {%- endif -%}
+        {%- endmacro %}
+        {% set tab_order = ['users', 'connections', 'server', 'library', 'playlists', 'audio', 'security', 'podcasts', 'radios',
                             'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <div class="tabs" role="tablist" aria-label="Admin sections">
             {% for cat in tab_order %}
                 <button class="tab" role="tab" id="tab-btn-{{ cat }}" data-tab="{{ cat }}"
                         :tabindex="active === '{{ cat }}' ? '0' : '-1'" :class="{ active: active === '{{ cat }}' }"
                         :aria-selected="active === '{{ cat }}' ? 'true' : 'false'" @click="set('{{ cat }}')"
-                        aria-controls="tab-{{ cat }}"><span aria-hidden="true" class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
+                        aria-controls="tab-{{ cat }}">{{ tab_icon(cat, tab_icons) }}{{ cat|capitalize }}</button>
             {% endfor %}
         </div>
         <div class="tab-menu" @click.outside="closeMenu" @keydown.escape="closeMenu">
             <button type="button" class="tab-menu-toggle" aria-haspopup="listbox"
                     :aria-expanded="menuOpen ? 'true' : 'false'" @click="toggleMenu">
                 {% for cat in tab_order %}
-                    <span class="tab-menu-current" x-show="active === '{{ cat }}'"><span aria-hidden="true" class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</span>
+                    <span class="tab-menu-current" x-show="active === '{{ cat }}'">{{ tab_icon(cat, tab_icons) }}{{ cat|capitalize }}</span>
                 {% endfor %}
                 <span aria-hidden="true" class="material-symbols-outlined tab-menu-caret">keyboard_arrow_down</span>
             </button>
@@ -122,7 +128,7 @@
                 {% for cat in tab_order %}
                     <button type="button" class="tab-menu-item" role="option" :class="{ active: active === '{{ cat }}' }"
                             :aria-selected="active === '{{ cat }}' ? 'true' : 'false'"
-                            @click="pickTab('{{ cat }}')"><span aria-hidden="true" class="material-symbols-outlined">{{ tab_icons.get(cat, 'circle') }}</span>{{ cat|capitalize }}</button>
+                            @click="pickTab('{{ cat }}')">{{ tab_icon(cat, tab_icons) }}{{ cat|capitalize }}</button>
                 {% endfor %}
             </div>
         </div>

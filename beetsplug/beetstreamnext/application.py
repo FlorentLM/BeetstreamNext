@@ -6,6 +6,7 @@ import flask
 from flask import Flask
 from flask.sessions import SecureCookieSessionInterface
 from flask_wtf.csrf import CSRFProtect
+from jinja2 import ChoiceLoader, FileSystemLoader
 
 from beetsplug.beetstreamnext.constants import PROJECT_ROOT, CACHE_DATA_DIR, DATA_LOCATION, MAX_REQUEST_BYTES
 from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL
@@ -31,6 +32,8 @@ app = Flask(
     static_folder='web/static',
     static_url_path='/static',
 )
+
+app.jinja_loader = ChoiceLoader([app.jinja_loader, FileSystemLoader(os.path.join(app.static_folder, 'images'))])
 
 app.session_interface = SessionInterface()
 

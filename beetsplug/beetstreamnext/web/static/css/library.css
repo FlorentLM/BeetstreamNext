@@ -21,6 +21,10 @@
     color: var(--link)
 }
 
+.table-container.lib {
+    margin-bottom: 1.5rem
+}
+
 .lib .tabulator {
     width: 100%;
     max-width: 100%

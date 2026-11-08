@@ -103,7 +103,7 @@
         } %}
         {% macro tab_icon(cat, icons) -%}
             {%- if cat == 'beets' -%}
-                <span aria-hidden="true" class="icon-beets">{% include 'beets.svg' %}</span>
+                <span aria-hidden="true" class="icon-beets">{% include 'icons/beets.svg' %}</span>
             {%- else -%}
                 <span aria-hidden="true" class="material-symbols-outlined">{{ icons.get(cat, 'circle') }}</span>
             {%- endif -%}

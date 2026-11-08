@@ -1,0 +1,32 @@
+{% import '_macros.html' as macros %}
+
+<div class="table-header">
+    <h2>{{ playlist.name }}</h2>
+    <div class="table-header-actions">
+        <a class="btn btn-outline btn-small" href="{{ url_for(bp_name ~ '.route_playlist_export',
+        playlist_id=playlist.id, fmt='m3u') }}" download>Export M3U</a>
+        <a class="btn btn-outline btn-small" href="{{ url_for(bp_name ~ '.route_playlist_export',
+        playlist_id=playlist.id, fmt='csv') }}" download>Export CSV</a>
+    </div>
+</div>
+{% if playlist.comment %}<p class="card-hint"><strong>Description:</strong> {{ playlist.comment }}</p>{% endif %}
+
+{% if rows %}
+    {% set art = url_for(bp_name ~ '.route_art', album_id=0) %}
+    {{ macros.data_table({
+        'columns': [
+            {'title': '#', 'field': 'pos', 'width': 70, 'type': 'number', 'hozAlign': 'right'},
+            {'title': 'Title', 'field': 'title', 'width': 280, 'type': 'track', 'formatterParams': {'art': art}},
+            {'title': 'Artist', 'field': 'artist', 'width': 170},
+            {'title': 'Album', 'field': 'album', 'width': 190},
+            {'title': 'Length', 'field': 'secs', 'width': 100, 'type': 'length'},
+        ],
+        'rows': rows,
+        'layout': 'fitDataFill',
+        'movable': True,
+        'play': True,
+        'height': 420,
+    }) }}
+{% else %}
+    <p class="empty-state">This playlist is empty.</p>
+{% endif %}

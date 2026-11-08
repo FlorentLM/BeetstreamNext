@@ -90,6 +90,7 @@
             'connections': 'devices',
             'server': 'dns',
             'library': 'library_music',
+            'playlists': 'queue_music',
             'audio': 'graphic_eq',
             'security': 'shield',
             'podcasts': 'podcasts',
@@ -107,8 +108,8 @@
                 <span aria-hidden="true" class="material-symbols-outlined">{{ icons.get(cat, 'circle') }}</span>
             {%- endif -%}
         {%- endmacro %}
-        {% set tab_order = ['users', 'connections', 'server', 'library', 'audio', 'security', 'podcasts', 'radios',
-                            'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
+        {% set tab_order = ['users', 'connections', 'server', 'library', 'playlists', 'audio', 'security', 'podcasts',
+                            'radios', 'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <div class="tabs" role="tablist" aria-label="Admin sections">
             {% for cat in tab_order %}
                 <button class="tab" role="tab" id="tab-btn-{{ cat }}" data-tab="{{ cat }}"
@@ -197,6 +198,14 @@
         {# Library tab #}
         <section class="tab-content" id="tab-library" aria-labelledby="tab-btn-library" :class="{ active: active === 'library' }" role="tabpanel">
             {{ settings_card('library', 'Library Settings') }}
+        </section>
+
+        {# Playlists tab #}
+        <section class="tab-content" id="tab-playlists" aria-labelledby="tab-btn-playlists" :class="{ active: active === 'playlists' }" role="tabpanel">
+            <div class="card">
+                <div class="table-header"><h2>Playlists</h2></div>
+                {% with bp_name = 'admin' %}{% include 'partials/playlists_panel.html' %}{% endwith %}
+            </div>
         </section>
 
         {# Audio tab #}

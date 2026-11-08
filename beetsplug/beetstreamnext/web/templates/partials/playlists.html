@@ -1,0 +1,19 @@
+{% if playlists %}
+    <ul class="lib-list" aria-label="Playlists">
+        {% for p in playlists %}
+            <li>
+                <button type="button"
+                        hx-get="{{ url_for(bp_name ~ '.route_playlist', playlist_id=p.id) }}"
+                        hx-target="#playlistTracks"
+                        hx-swap="innerHTML"{% if loop.first %}
+                        hx-trigger="click, load"{% endif %}>
+                    <span aria-hidden="true" class="material-symbols-outlined">queue_music</span>
+                    <span>{{ p.name }}</span>
+                    <small>{{ p.song_count }}</small>
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="empty-state">No playlists yet.</p>
+{% endif %}

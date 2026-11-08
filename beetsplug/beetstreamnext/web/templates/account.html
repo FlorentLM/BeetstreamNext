@@ -8,6 +8,7 @@
     <meta name="htmx-config" content='{"includeIndicatorCSS": false, "noSwap": [204, 304, "4xx", "5xx"]}'>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
 {% endblock %}
 
 {% block body %}
@@ -207,6 +208,13 @@
                  hx-swap="innerHTML"></div>
         </div>
 
+        {% if user.streamRole %}
+            <div class="card">
+                <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">queue_music</span>Playlists</h2></div>
+                {% with bp_name = 'account' %}{% include 'partials/playlists_panel.html' %}{% endwith %}
+            </div>
+        {% endif %}
+
         {# Data export #}
         <div class="card">
             <div class="table-header"><h2><span aria-hidden="true" class="material-symbols-outlined">database</span>My data</h2></div>
@@ -242,6 +250,7 @@
                 </form>
             </div>
         </details>
+        {% with player_hidden = true, bp_name = 'account' %}{% include 'partials/player.html' %}{% endwith %}
         </main>
     </div>
 
@@ -268,6 +277,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/flash.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/password_rules.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/player.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/account.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/radio.js') }}"></script>

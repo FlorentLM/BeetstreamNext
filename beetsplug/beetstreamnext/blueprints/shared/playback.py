@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.media.images import round_image_size, send_album_art
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, get_normalization_filter, try_transcode
 from beetsplug.beetstreamnext.core.runtime.web import send_file
-from beetsplug.beetstreamnext.utils.system import resolve_path
+from beetsplug.beetstreamnext.utils.system import resolve_path, safe_filename
 
 
 def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> None:
@@ -28,6 +28,15 @@ def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> N
         if not (roles.get('streamRole') or roles.get('adminRole')):
             flask.abort(403)
         return roles
+
+    def visible_playlist(playlist_id: int) -> dict:
+        roles = streamer_roles()
+        playlist = app.config['playlist_manager'].get(playlist_id)
+
+        if not (playlist and (playlist['public'] or playlist['owner'] == flask.session['username'] or roles.get('adminRole'))):
+            flask.abort(404)
+
+        return playlist
 
     @route('/stream/<track_id>', ['GET'])
     @with_app_context
@@ -75,3 +84,49 @@ def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> N
             flask.abort(404)
 
         return response
+
+    @route('/playlists', ['GET'])
+    @with_app_context
+    def playlists() -> str:
+        roles = streamer_roles()
+        listing = app.config['playlist_manager'].list_visible(flask.session['username'], is_admin=bool(roles.get('adminRole')))
+        return flask.render_template('partials/playlists.html', playlists=listing, bp_name=bp.name)
+
+    @route('/playlists/<int:playlist_id>', ['GET'])
+    @with_app_context
+    def playlist(playlist_id: int) -> str:
+        found = visible_playlist(playlist_id)
+
+        tracks = found['tracks']
+        songs = Resolve.songs([t['song_id'] for t in tracks if t['song_id']])
+
+        rows = []
+        for position, track in enumerate(tracks, start=1):
+            song = songs.get(track['song_id']) if track['song_id'] else None
+            rows.append({
+                # Tracks missing from library greyed out
+                'id': track['song_id'] if song else None,
+                'pos': position,
+                'title': (song.get('title') if song else None) or track['label'] or track['path'] or '',
+                'artist': (song.get('artist') if song else '') or '',
+                'album': (song.get('album') if song else '') or '',
+                'album_id': song.get('album_id') if song else None,
+                'secs': round((song.get('length') if song else track['duration']) or 0),
+                '_class': '' if song else 'unmatched',
+            })
+
+        return flask.render_template('partials/playlist_tracks.html', playlist=found, rows=rows, bp_name=bp.name)
+
+    @route('/playlists/<int:playlist_id>/export.<fmt>', ['GET'])
+    @with_app_context
+    def playlist_export(playlist_id: int, fmt: str) -> flask.Response:
+        if fmt not in ('m3u', 'csv'):
+            flask.abort(404)
+
+        found = visible_playlist(playlist_id)
+
+        manager = app.config['playlist_manager']
+        body, mimetype = (manager.m3u_text(found), 'audio/x-mpegurl') if fmt == 'm3u' else (manager.csv_text(found), 'text/csv')
+
+        filename = safe_filename(found['name'], fallback='playlist') + '.' + fmt
+        return flask.Response(body, mimetype=mimetype, headers={'Content-Disposition': f'attachment; filename="{filename}"'})

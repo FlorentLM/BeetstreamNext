@@ -1,0 +1,7 @@
+<div class="lib lib-split" id="playlistsPanel">
+    <div id="playlistList"
+         hx-get="{{ url_for(bp_name ~ '.route_playlists') }}"
+         hx-trigger="load"
+         hx-swap="innerHTML"></div>
+    <div id="playlistTracks"></div>
+</div>

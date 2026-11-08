@@ -69,7 +69,7 @@ class LibraryCache:
         if table_name not in cache:
             with flask.g.lib.transaction() as tx:
                 # SQLite PRAGMA doesnt support bound parameters for table name (checked against the db's tables above)
-                cache[table_name] = {row[1]: (row[2] or '').upper() for row in tx.query(f'PRAGMA table_info("{table_name}")')}
+                cache[table_name] = {row[1]: (row[2] or '').upper() for row in tx.query(f'PRAGMA table_info({quote_identifier(table_name)})')}
 
         return dict(cache[table_name]) if with_types else list(cache[table_name])
 
@@ -128,6 +128,11 @@ def chunked_execute(
         affected += max(db_obj.execute(sql, chunk + trailing_params).rowcount, 0)
 
     return affected
+
+
+def quote_identifier(name: str) -> str:
+    """Just a quoting for a table or column name for SQL."""
+    return '"' + name.replace('"', '""') + '"'
 
 
 def escape_like(s: str, escape: str = '!') -> str:

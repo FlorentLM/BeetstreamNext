@@ -40,6 +40,99 @@
     max-width: 100%
 }
 
+.lib-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: .6rem;
+    align-items: center;
+    margin: 0.5rem;
+}
+
+.lib-search {
+    position: relative;
+    width: 14rem;
+    max-width: 100%
+}
+
+.lib-search .material-symbols-outlined {
+    position: absolute;
+    left: .6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    pointer-events: none
+}
+
+.lib-search input {
+    width: 100%;
+    padding-left: 2.2rem
+}
+
+#libColumns {
+    background: transparent;
+    color: var(--text-muted)
+}
+
+#libColumns:hover {
+    background: var(--overlay-weak);
+    color: var(--text)
+}
+
+#libColumns .material-symbols-outlined {
+    vertical-align: middle
+}
+
+.tabulator-menu .lib-menu-preset {
+    justify-content: flex-start;
+    gap: .4rem
+}
+
+.tabulator-menu .lib-preset {
+    background: none;
+    border: 0;
+    border-radius: 8px;
+    padding: .2rem;
+    display: flex;
+    color: inherit;
+    cursor: pointer
+}
+
+.tabulator-menu .lib-preset svg {
+    width: 1.4rem;
+    height: 1.4rem
+}
+
+.tabulator-menu .lib-preset:hover {
+    background: var(--overlay-weak)
+}
+
+.tabulator-popup-container.tabulator-menu {
+    max-height: 22rem;
+    overflow-y: auto;
+    border-radius: 14px;
+    background-color: color-mix(in srgb, var(--card-bg) 60%, transparent);
+    background-image: var(--bg-noise);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px)
+}
+
+.tabulator-popup-container.tabulator-menu .tabulator-menu-item:not(.tabulator-menu-item-disabled):hover {
+    background: var(--overlay-weak)
+}
+
+.tabulator-menu .lib-menu-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.2rem
+}
+
+.tabulator-menu .material-symbols-outlined {
+    width: 1.1rem;
+    font-size: 1.1rem
+}
+
 .lib-split {
     display: grid;
     grid-template-columns: 13rem minmax(0, 1fr);
@@ -266,4 +359,17 @@
     .player .vol {
         display: none
     }
+}
+
+/* Small vertical divider between columns */
+.lib .tabulator .tabulator-header .tabulator-col::after,
+.lib .tabulator-row .tabulator-cell::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 1px;
+    background: var(--border);
+    pointer-events: none
 }

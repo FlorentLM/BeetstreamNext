@@ -6,7 +6,9 @@ import flask
 from .. import admin_bp, admin_required, back_to
 
 from beetsplug.beetstreamnext.blueprints.admin.routes.security import IP_LIST_META
+from beetsplug.beetstreamnext.application import with_app_context
 from beetsplug.beetstreamnext.core.library.health import get_server_info
+from beetsplug.beetstreamnext.core.library.browse import LibraryView
 from beetsplug.beetstreamnext.utils.text import format_bytes
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.library.maintenance import cache_breakdown
@@ -212,6 +214,7 @@ def _settings_ui(only: str | None = None) -> tuple[dict[str, dict[str, dict]], d
 
 @admin_bp.route('/')
 @admin_required
+@with_app_context
 def route_settings() -> flask.Response:
     settings_by_category, setting_pills = _settings_ui()
     host_suggestions = flask.current_app.config.get('HOST_LIST', [])
@@ -225,10 +228,33 @@ def route_settings() -> flask.Response:
 
     users = list_users(fields=list(PUBLIC_USER_FIELDS) + ['avatarLastChanged'])
 
+    library = LibraryView()
+
+    default_cols = ('title', 'artist', 'album', 'year', 'format', 'bitrate', 'length', 'path')
+
+    library_types = library.columns
+    library_columns = [
+        {
+            'title': name,
+            'field': name,
+            'visible': name in default_cols,
+            'default': name in default_cols,
+            'populated': name in library.non_empty,
+            'filter': True,
+            'maxInitialWidth': 320,
+            **({'type': 'track', 'width': 260, 'formatterParams': {'art': flask.url_for('admin.route_art', album_id=0)}} if name == 'title'
+               else {'type': 'length'} if name == 'length'
+               else {'type': 'number'} if library_types[name] in ('INTEGER', 'REAL')
+               else {})
+        }
+        for name in (*default_cols, *(n for n in library_types if n not in default_cols))
+    ]
+
     resp = flask.make_response(
         flask.render_template(
             'settings.html',
             users=users,
+            library_columns=library_columns,
             cache_size=cache_size,
             cache_sizes=cache_sizes,
             radios=list_radios(flask.session['username']),

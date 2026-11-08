@@ -1,0 +1,37 @@
+{% import '_macros.html' as macros %}
+
+<div class="card lib" id="library">
+
+    <div class="table-header">
+        <h2>Beets library</h2>
+    </div>
+    <p class="card-hint">
+        Beets database explorer is read-only for now.
+    </p>
+    <div class="lib-toolbar">
+        <div class="lib-search">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <input type="text" role="searchbox" id="libSearch" aria-label="Search all columns" autocomplete="off">
+        </div>
+        <button type="button" class="btn btn-small" id="libColumns" title="Columns" aria-label="Columns" aria-haspopup="menu">
+            <span class="material-symbols-outlined" aria-hidden="true">view_week</span>
+        </button>
+    </div>
+
+    <template id="libPresets">
+        <button type="button" class="lib-preset" data-preset="all" title="Select all" aria-label="Select all">{% include 'show_all.svg' %}</button>
+        <button type="button" class="lib-preset" data-preset="non-empty" title="Select non-empty" aria-label="Select non-empty">{% include 'show_non-empty.svg' %}</button>
+        <button type="button" class="lib-preset" data-preset="default" title="Default" aria-label="Default">{% include 'show_default.svg' %}</button>
+    </template>
+
+    {{ macros.data_table({
+        'columns': library_columns,
+        'remote': {'url': url_for('admin.route_library_rows')},
+        'layout': 'fitDataFill',
+        'movable': True,
+        'persist': 'library',
+        'play': True,
+        'height': 630,
+        'pageSize': 50,
+    }) }}
+</div>

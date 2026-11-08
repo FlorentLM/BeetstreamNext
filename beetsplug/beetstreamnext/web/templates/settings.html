@@ -373,6 +373,8 @@
         {# Beets interaction tab #}
         <section class="tab-content" id="tab-beets" aria-labelledby="tab-btn-beets" :class="{ active: active === 'beets' }" role="tabpanel">
 
+            {% include 'partials/library_browser.html' %}
+
             <div class="card">
                 <div class="table-header"><h2>Beets Configuration</h2></div>
                 {% include 'partials/beets_config.html' %}
@@ -779,6 +781,7 @@
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/password_rules.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/player.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/library.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/yaml_editor.js') }}"></script>

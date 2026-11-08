@@ -44,6 +44,7 @@ from .routes import (
     beets,
     events,
     jukebox,
+    library,
     maintenance,
     notifications,
     podcasts,

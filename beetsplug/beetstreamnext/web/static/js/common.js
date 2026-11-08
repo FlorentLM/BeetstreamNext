@@ -205,9 +205,11 @@
         input.type = 'text';
         input.placeholder = 'Filter ' + column.getDefinition().title.toLowerCase();
         input.value = column.getHeaderFilterValue() || '';
+        let timer = null;
         input.addEventListener('input', () => {
-            column.setHeaderFilterValue(input.value);
             column.getElement().querySelector('.table-filter-icon')?.classList.toggle('active', input.value !== '');
+            clearTimeout(timer);
+            timer = setTimeout(() => column.setHeaderFilterValue(input.value), 300);
         });
         wrap.append(input);
         onRendered(() => input.focus());
@@ -244,7 +246,7 @@
                 headerFilterFunc: '='
             };
         }
-        if (col.filter === false || ['time', 'actions', 'number', 'length', 'badge'].includes(col.type)) return col;
+        if (col.filter === false || (col.filter !== true && ['time', 'actions', 'number', 'length', 'badge'].includes(col.type))) return col;
         return {
             ...col,
             headerPopup: filterPopup,
@@ -330,8 +332,29 @@
                         ajaxParams: () => ({...el.tableParams}),
                         paginationMode: 'remote',
                         sortMode: 'remote',
+                        filterMode: 'remote',
                         paginationSizeSelector: [25, 50, 100, 200]
                     } : {data: spec.rows}),
+                    nestedFieldSeparator: false,    // Column names could contain dots
+                    ...(spec.persist ? {
+                        persistence: {columns: ['visible']},
+                        persistenceMode: false,
+                        persistenceID: 'bsn-' + spec.persist,
+                        persistenceReaderFunc: (id, type) => {
+                            try {
+                                return JSON.parse(sessionStorage.getItem(id + '-' + type));
+                            } catch (e) {
+                                return false;
+                            }
+                        },
+                        persistenceWriterFunc: (id, type, data) => {
+                            try {
+                                sessionStorage.setItem(id + '-' + type, JSON.stringify(data));
+                            } catch (e) {
+                                // Storage unavailable
+                            }
+                        }
+                    } : {}),
                     movableColumns: Boolean(spec.movable),
                     selectableRows: spec.play ? 1 : false,
                     ...(spec.height ? {height: spec.height} : {}),

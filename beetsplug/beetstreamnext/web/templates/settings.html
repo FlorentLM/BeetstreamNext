@@ -107,7 +107,7 @@
                 <span aria-hidden="true" class="material-symbols-outlined">{{ icons.get(cat, 'circle') }}</span>
             {%- endif -%}
         {%- endmacro %}
-        {% set tab_order = ['users', 'connections', 'server', 'library', 'playlists', 'audio', 'security', 'podcasts', 'radios',
+        {% set tab_order = ['users', 'connections', 'server', 'library', 'audio', 'security', 'podcasts', 'radios',
                             'artists', 'shares', 'chat', 'beets', 'notifications', 'maintenance'] %}
         <div class="tabs" role="tablist" aria-label="Admin sections">
             {% for cat in tab_order %}

@@ -2,6 +2,9 @@
      data-stream="{{ url_for(bp_name ~ '.route_stream', track_id='0') }}"
      data-art="{{ url_for(bp_name ~ '.route_art', album_id=0) }}">
 
+    <button type="button" id="pClose" class="close" aria-label="Close player"><span
+            class="material-symbols-outlined" aria-hidden="true">close</span></button>
+
     <div class="now">
         <span class="track-art" id="pArt" aria-hidden="true"></span>
         <div class="meta"><b id="pTitle">Nothing playing</b><small id="pSub" role="status">Select a track, then press

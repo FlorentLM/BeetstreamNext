@@ -84,6 +84,30 @@
     border-radius: 12px
 }
 
+.player .close {
+    position: absolute;
+    top: .3rem;
+    right: .4rem;
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: none;
+    border: 0;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer
+}
+
+.player .close:hover {
+    background: var(--overlay-strong);
+    color: var(--text)
+}
+
+.player .close .material-symbols-outlined {
+    font-size: 1.1rem
+}
+
 .player .now {
     display: flex;
     gap: .7rem;
@@ -161,6 +185,8 @@
 }
 
 .player .vol {
+    align-self: end;
+    padding-bottom: .1rem;
     display: flex;
     gap: .4rem;
     align-items: center;

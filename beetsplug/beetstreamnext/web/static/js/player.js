@@ -9,6 +9,7 @@
     const $ = id => document.getElementById(id);
     const fmt = secs => Math.floor(secs / 60) + ':' + String(Math.floor(secs % 60)).padStart(2, '0');
 
+    const pageTitle = document.title;
     let queue = [];
     let index = -1;
 
@@ -53,6 +54,17 @@
         if (index >= 0 && !audio.paused) return audio.pause();
         if (window.bsnPlayer.pick?.()) return;
         if (index >= 0) audio.play();
+    });
+    $('pClose').addEventListener('click', () => {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+        queue = [];
+        index = -1;
+        player.hidden = true;
+        delete document.body.dataset.nowPlaying;
+        document.title = pageTitle;
+        document.dispatchEvent(new CustomEvent('player:change'));
     });
     $('pPrev').addEventListener('click', () => audio.currentTime > 3 ? (audio.currentTime = 0) : step(-1));
     $('pNext').addEventListener('click', () => step(1));

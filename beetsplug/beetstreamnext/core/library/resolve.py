@@ -178,7 +178,7 @@ class Resolve:
                     LIMIT 1
                     """, (value,)
                 )
-                if not rows:    # Fallback: ID recorded by non-MB source plugin (Spotify, Deezer...)
+                if not rows:    # Fallback: Spotify/Deezer plugin ID
                     rows = tx.query(
                         f"""
                         SELECT DISTINCT i.album_id
@@ -218,7 +218,7 @@ class Resolve:
                     LIMIT 1
                     """, (value, value)
                 )
-                if not rows:    # Fallback: ID recorded by a source plugin (Spotify, Deezer...)
+                if not rows:    # Fallback: Spotify/Deezer plugin ID
                     rows = tx.query(
                         f"""
                         SELECT entity_id

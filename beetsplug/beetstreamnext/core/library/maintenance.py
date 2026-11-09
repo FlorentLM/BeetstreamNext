@@ -6,19 +6,21 @@ from datetime import datetime
 from pathlib import Path
 
 from beetsplug.beetstreamnext.constants import (
-    CACHE_LOCATION, CLEANUP_INTERVAL_SEC, SCROBBLE_RETRY_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME,
+    CACHE_LOCATION, CLEANUP_INTERVAL_SEC, SOURCE_TRACK_ID_FIELDS, SOURCE_ALBUM_ID_FIELDS, SCROBBLE_RETRY_INTERVAL_SEC, MAX_CACHE_AGE_DAYS, SERVER_NAME,
     TRANSCODE_TMP_DIR, HLS_CACHE_DIR, ZIP_CACHE_DIR,
     TRANSCODE_MAX_AGE_SEC, HLS_MAX_AGE_SEC, ZIP_MAX_AGE_SEC,
 )
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
-from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
+from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.health import scan_library
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.accounts.sessions import purge_expired_sessions
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.utils.system import purge, dir_size
-from beetsplug.beetstreamnext.utils.db import chunked_execute
+from beetsplug.beetstreamnext.utils.db import chunked_execute, library_cache
+from beetsplug.beetstreamnext.utils.text import validate_mbid
 from beetsplug.beetstreamnext.utils.concurrency import Throttle
 
 _cleanup_throttle = Throttle()
@@ -126,6 +128,103 @@ _SONG_REF_TABLES = (
 
 _SWEEP_MIN_REFS = 20
 _SWEEP_MAX_STALE_RATIO = 0.5
+
+
+@with_app_context
+def remap_source_ids() -> int:
+    """
+    Rewrites all references (from IDs minted when mb_* fields were Spotify/Deezer IDs) to the current IDs.
+    Artists also move from name-based IDs to MusicBrainz IDs.
+
+    Returns rewritten or dropped count.
+    """
+
+    id_map: dict[str, str] = {}
+    changed = 0
+
+    with dual_database() as db:
+
+        # Tracks
+        track_rows = db.execute(
+            f"""
+            SELECT i.id, i.mb_trackid, i.mb_releasetrackid, i.path, a.value
+            FROM beets.item_attributes a
+            JOIN beets.items i ON i.id = a.entity_id
+            WHERE a.key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))})
+            """, SOURCE_TRACK_ID_FIELDS  # nosec B608  # noqa: S608 vars are constants
+        ).fetchall()
+
+        for trow in track_rows:
+            new = IDs.encode_song({'id': trow[0], 'mb_trackid': trow[1], 'mb_releasetrackid': trow[2], 'path': trow[3]})
+            old = IDs.encode_song({'mb_trackid': str(trow[4])})
+            if old != new:
+                id_map[old] = new
+
+        # Albums
+        album_rows = db.execute(
+            f"""
+            SELECT DISTINCT al.id, al.mb_albumid, al.albumartist, al.album, a.value
+            FROM beets.item_attributes a
+            JOIN beets.items i ON i.id = a.entity_id
+            JOIN beets.albums al ON al.id = i.album_id
+            WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))})
+            """, SOURCE_ALBUM_ID_FIELDS  # nosec B608  # noqa: S608 vars are constants
+        ).fetchall()
+
+        for arow in album_rows:
+            new = IDs.encode_album(arow[0], arow[1], arow[2], arow[3])
+            old = IDs.encode_album(None, str(arow[4]))
+            if old != new:
+                id_map[old] = new
+
+        # Artists
+        item_cols, album_cols = library_cache.schema('items'), library_cache.schema('albums')
+        artist_queries = (
+            (
+                f"""
+                SELECT DISTINCT al.albumartist, al.mb_albumartistid, {'al.albumartists' if 'albumartists' in album_cols else 'NULL'}
+                FROM beets.item_attributes a
+                JOIN beets.items i ON i.id = a.entity_id
+                JOIN beets.albums al ON al.id = i.album_id
+                WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))})
+                """, SOURCE_ALBUM_ID_FIELDS
+            ), (
+                f"""
+                SELECT DISTINCT i.artist, i.mb_artistid, {'i.artists' if 'artists' in item_cols else 'NULL'}
+                FROM beets.item_attributes a
+                JOIN beets.items i ON i.id = a.entity_id
+                WHERE a.key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))})
+                """, SOURCE_TRACK_ID_FIELDS
+            )
+        )  # nosec B608  # noqa: S608 vars are constants
+
+        for query, params in artist_queries:
+
+            for name, mbid, multi in db.execute(query, params).fetchall():
+                mbid = validate_mbid(mbid)
+
+                if name and mbid and not IDs.is_joint_credit(multi, name):
+                    id_map[IDs.encode_artist(name, is_mbid=False)] = IDs.encode_artist(mbid, is_mbid=True)
+
+        for old, new in id_map.items():
+
+            for table, column in _SONG_REF_TABLES:
+                # "OR IGNORE" to keep existing row for new ID, drop old one
+                changed += db.execute(
+                    f"""
+                    UPDATE OR IGNORE {table}
+                    SET {column} = ?
+                    WHERE {column} = ?
+                    """, (new, old)  # nosec B608  # noqa: S608 vars are constants
+                ).rowcount
+                changed += db.execute(
+                    f"""
+                    DELETE FROM {table}
+                    WHERE {column} = ?
+                    """, (old,)  # nosec B608  # noqa: S608 vars are constants
+                ).rowcount
+
+    return changed
 
 
 @with_app_context
@@ -263,6 +362,15 @@ def run_periodic():
             app.config['podcast_manager'].resume_downloads()
         except Exception as e:
             bsn_logger.error(f'Podcast episode download recovery failed: {e}')
+
+        # Follow IDs replaced by a MusicBrainz re-import
+        try:
+            remapped = remap_source_ids()
+            if remapped:
+                bsn_logger.info(f'{SERVER_NAME} remapped {remapped} stored reference(s) to IDs that changed source')
+
+        except Exception as e:
+            bsn_logger.error(f'{SERVER_NAME} ID remapping failed: {e}')
 
         # Purge stale refs
         try:

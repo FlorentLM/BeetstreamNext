@@ -366,6 +366,15 @@ class ImportSession:
 
         notify(event, path=path, exit_code=exit_code, duration=duration, **results_summary)
 
+        # A reimport using MusicBrainz could have replaced Spotify/Deezer IDs
+        try:
+            from beetsplug.beetstreamnext.core.library.maintenance import remap_source_ids
+
+            if remapped := remap_source_ids():
+                bsn_logger.info(f'Remapped {remapped} stored reference(s) to IDs changed by the import')
+        except Exception as e:
+            bsn_logger.error(f'ID remapping after import failed: {e}')
+
         self._start_next_queued()
 
     def _pump_output_posix(self, proc: subprocess.Popen, master_fd: int) -> None:

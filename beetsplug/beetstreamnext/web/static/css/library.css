@@ -4,10 +4,6 @@
     line-height: 1.6rem
 }
 
-.lib .tabulator-row {
-    user-select: none       /* double click should not select text */
-}
-
 .lib .tabulator-footer select {
     width: auto
 }
@@ -372,4 +368,102 @@
     width: 1px;
     background: var(--border);
     pointer-events: none
+}
+
+.tabulator-menu .lib-detail {
+    display: grid;
+    grid-template-columns: 13rem minmax(0, 1fr) 2.5rem;
+    align-items: baseline;
+    gap: 1rem;
+    width: 40rem;
+    max-width: 100%;
+    text-align: left
+}
+
+.tabulator-menu .lib-detail-name {
+    overflow-wrap: anywhere;
+    opacity: .65
+}
+
+.tabulator-menu .lib-detail-value {
+    text-align: left;
+    overflow-wrap: anywhere
+}
+
+.tabulator-menu .lib-menu-play {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-weight: 600
+}
+
+.tabulator-menu .tabulator-menu-separator {
+    margin: .4rem 0
+}
+
+.tabulator-menu .lib-detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .1rem
+}
+
+.tabulator-menu .lib-detail-icon {
+    opacity: 0;
+    cursor: pointer
+}
+
+.tabulator-menu .tabulator-menu-item:hover .lib-detail-icon {
+    opacity: .7
+}
+
+.tabulator-menu .lib-detail-icon:hover {
+    opacity: 1
+}
+
+.mb-link {
+    color: inherit;
+    text-decoration: none
+}
+
+.mb-link:hover {
+    text-decoration: underline
+}
+
+.lib-filters {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: .4rem;
+    min-width: 0
+}
+
+.lib-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding-right: .35rem;
+    color: var(--text)
+}
+
+.lib-filter-label {
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.lib-filter-dismiss {
+    display: flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer
+}
+
+.lib-filter-dismiss:hover {
+    color: var(--text)
+}
+
+.lib-filter-dismiss .material-symbols-outlined {
+    font-size: 1rem
 }

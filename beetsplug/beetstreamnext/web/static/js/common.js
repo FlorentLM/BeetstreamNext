@@ -319,6 +319,19 @@
 
     const trackTables = new Set();
 
+    function idLinks(link, value) {
+        const ids = link && value ? String(value).match(new RegExp(link.pattern, 'g')) : null;
+        return ids && ids.map(id => {
+            const anchor = document.createElement('a');
+            anchor.className = 'mb-link';
+            anchor.href = link.url.replace('{}', () => encodeURIComponent(id));
+            anchor.target = '_blank';
+            anchor.rel = 'noopener noreferrer';
+            anchor.textContent = id;
+            return anchor;
+        });
+    }
+
     document.addEventListener('player:change', () => trackTables.forEach(table => table.getRows().forEach(row => row.reformat())));
 
     function initTables(root = document) {
@@ -326,6 +339,7 @@
             el.dataset.tableReady = '1';
             const spec = JSON.parse(el.dataset.table);
             loadTabulator(el).then(() => {
+                const playRow = row => row.getData().id && el.dispatchEvent(new CustomEvent('table:play', {bubbles: true, cancelable: true, detail: {table, data: row.getData()}}));
                 const table = new Tabulator(el, {
                     ...(spec.remote ? {
                         ajaxURL: spec.remote.url,
@@ -357,11 +371,112 @@
                     } : {}),
                     movableColumns: Boolean(spec.movable),
                     selectableRows: spec.play ? 1 : false,
+
+                    // Right click menu
+                    ...(spec.details ? {
+                        rowContextMenu: (event, row) => {
+                            row.select();
+                            const data = row.getData();
+                            const icon = name => {
+                                const span = document.createElement('span');
+                                span.className = 'material-symbols-outlined';
+                                span.textContent = name;
+                                return span;
+                            };
+                            const detail = column => {
+                                const value = data[column.field];
+                                const empty = value === null || value === undefined || value === '';
+                                const label = document.createElement('span');
+                                label.className = 'lib-detail';
+                                const name = document.createElement('span');
+                                name.className = 'lib-detail-name';
+                                name.textContent = column.title;
+                                const text = document.createElement('span');
+                                text.className = 'lib-detail-value';
+                                const links = idLinks(column.link, value);
+                                if (links) {
+                                    links.forEach((link, i) => text.append(...(i ? [document.createElement('br')] : []), link));
+                                } else {
+                                    text.textContent = empty ? '-' : String(value);
+                                }
+                                const copy = icon('content_copy');
+                                copy.title = 'Copy';
+                                const actions = document.createElement('span');
+                                actions.className = 'lib-detail-actions';
+                                const tableColumn = table.getColumn(column.field);
+                                if (!empty && tableColumn?.getDefinition().headerFilter) {
+                                    const filter = icon('frame_inspect');
+                                    filter.classList.add('lib-detail-icon');
+                                    filter.title = 'Filter table by this value';
+                                    actions.append(filter);
+                                }
+                                actions.append(copy);
+                                copy.classList.add('lib-detail-icon');
+                                label.append(name, text, actions);
+                                return {
+                                    label,
+                                    action: event => {
+                                        if (!event.target.closest('.lib-detail-icon')) return event.stopPropagation();    // Keep menu open
+                                        if (event.target.closest('.lib-detail-icon').textContent === 'frame_inspect') {
+                                            // Closes the menu so the filtered table is visible
+                                            tableColumn.setHeaderFilterValue(String(value));
+                                            tableColumn.getElement().querySelector('.table-filter-icon')?.classList.add('active');
+                                            return;
+                                        }
+                                        event.stopPropagation();    // Keep menu open
+                                        if (empty) return;
+                                        const flash = symbol => {
+                                            copy.textContent = symbol;
+                                            setTimeout(() => copy.textContent = 'content_copy', 1200);
+                                        };
+                                        // navigator.clipboard needs secure context -> fallback to execCommand
+                                        const legacy = () => {
+                                            const area = document.createElement('textarea');
+                                            area.value = String(value);
+                                            area.style.cssText = 'position:fixed;opacity:0';
+                                            document.body.append(area);
+                                            area.select();
+                                            let ok = false;
+                                            try {
+                                                ok = document.execCommand('copy');
+                                            } catch (e) {
+                                                // Not permitted
+                                            }
+                                            area.remove();
+                                            flash(ok ? 'check' : 'error');
+                                        };
+                                        if (navigator.clipboard) {
+                                            navigator.clipboard.writeText(String(value)).then(() => flash('check'), legacy);
+                                        } else {
+                                            legacy();
+                                        }
+                                    }
+                                };
+                            };
+                            const play = document.createElement('span');
+                            play.className = 'lib-menu-play';
+                            play.append(icon('play_arrow'), 'Play');
+                            return [
+                                {label: play, disabled: !data.id, action: () => playRow(row)},
+                                {separator: true},
+                                ...spec.columns.map(detail)
+                            ];
+                        }
+                    } : {}),
                     ...(spec.height ? {height: spec.height} : {}),
                     columns: spec.columns.map(col => withFilter({
                         ...col,
                         ...TABLE_COLUMN_TYPES[col.type],
                         ...(col.html ? {formatter: htmlFormatter(col.html)} : {}),
+                        ...(col.link && !col.html ? {
+                            formatter: cell => {
+                                const links = idLinks(col.link, cell.getValue());
+                                if (!links) return cell.getValue() ?? '';
+                                const span = document.createElement('span');
+                                links.forEach((link, i) => span.append(...(i ? [', '] : []), link));
+                                return span;
+                            }
+                        } : {}),
                         minWidth: 60,
                         tooltip: !col.html
                     }, spec.rows || [])),
@@ -379,15 +494,13 @@
                 el.tabulatorTable = table;
                 table.on('tableBuilt', () => el.dispatchEvent(new CustomEvent('table:ready', {bubbles: true, detail: table})));
 
-                // double-click or Enter to play
                 if (spec.play) {
                     trackTables.add(table);
-                    const play = row => row.getData().id && el.dispatchEvent(new CustomEvent('table:play', {bubbles: true, cancelable: true, detail: {table, data: row.getData()}}));
-                    table.on('rowDblClick', (event, row) => play(row));
+                    table.on('rowDblClick', (event, row) => spec.details ? row.select() : playRow(row));  // tables with details menu select on double click
                     el.tabIndex = 0;
                     el.addEventListener('keydown', event => {
                         const selected = event.key === 'Enter' && table.getSelectedRows()[0];
-                        if (selected) play(selected);
+                        if (selected) playRow(selected);    // tables without details menu play on double-click (or Enter)
                     });
                 }
                 if (!spec.layout) fitTable(table, el);

@@ -13,6 +13,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input type="text" role="searchbox" id="libSearch" aria-label="Search all columns" autocomplete="off">
         </div>
+        <div class="lib-filters" id="libFilters" aria-label="Active filters"></div>
         <button type="button" class="btn btn-small" id="libColumns" title="Columns" aria-label="Columns" aria-haspopup="menu">
             <span class="material-symbols-outlined" aria-hidden="true">view_week</span>
         </button>
@@ -31,6 +32,7 @@
         'movable': True,
         'persist': 'library',
         'play': True,
+        'details': True,
         'height': 630,
         'pageSize': 50,
     }) }}

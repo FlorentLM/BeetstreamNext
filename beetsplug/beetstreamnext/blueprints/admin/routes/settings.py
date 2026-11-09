@@ -28,12 +28,46 @@ from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
 _CAN_MULTISELECT = {'external_playlists_editors'}
+
 _COMMA_LISTS = {'public_hosts', 'admin_hosts', 'local_services'}      # List settings edited as comma-separated text
 
 # Settings rendered together in a single row: {primary key: secondary key}
 _PAIRED_WITH = {
     'audiomuse_url': 'audiomuse_api_token',
     'podcastindex_api_key': 'podcastindex_api_secret',
+}
+
+##
+# Beets library specific splitting / regex
+# TODO: Maybe the library-related stuff need to move outside of route_settings()
+
+
+_UUID = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+_MUSICBRAINZ = {
+    'mb_trackid': 'recording',
+    'mb_releasetrackid': 'track',
+    'mb_albumid': 'release',
+    'mb_releasegroupid': 'release-group',
+    'mb_artistid': 'artist',
+    'mb_artistids': 'artist',
+    'mb_albumartistid': 'artist',
+    'mb_albumartistids': 'artist',
+    'lyricists_ids': 'artist',
+    'composers_ids': 'artist',
+    'mb_workid': 'work',
+}
+# TODO: Add other IDs (Deezer, Spotify etc)
+_ISRC = {
+    'pattern': r'[A-Z]{2}[A-Z0-9]{3}\d{7}',
+    'url': 'https://isrcsearch.ifpi.org/?tab=%22code%22&isrcCode=%22{}%22'
+}
+_LIBRARY_LINKS = {
+    **{name: {'pattern': _UUID, 'url': f'https://musicbrainz.org/{kind}/{{}}'} for name, kind in _MUSICBRAINZ.items()},
+    'isrc': _ISRC,
+    'isrcs': _ISRC,
+    'barcode': {'pattern': r'\d{8,14}', 'url': 'https://www.barcodelookup.com/{}'},
+    'catalognum': {'pattern': r'\S(?:.*\S)?', 'url': 'https://www.discogs.com/search?catno={}'},
+    'asin': {'pattern': r'[0-9A-Z]{10}', 'url': 'https://www.amazon.com/dp/{}'},
 }
 
 
@@ -242,6 +276,7 @@ def route_settings() -> flask.Response:
             'populated': name in library.non_empty,
             'filter': True,
             'maxInitialWidth': 320,
+            **({'link': _LIBRARY_LINKS[name.removeprefix('albums.')]} if name.removeprefix('albums.') in _LIBRARY_LINKS else {}),
             **({'type': 'track', 'width': 260, 'formatterParams': {'art': flask.url_for('admin.route_art', album_id=0)}} if name == 'title'
                else {'type': 'length'} if name == 'length'
                else {'type': 'number'} if library_types[name] in ('INTEGER', 'REAL')

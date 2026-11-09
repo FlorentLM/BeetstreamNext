@@ -5,7 +5,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
-from beetsplug.beetstreamnext.utils.text import safe_str
+from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import library_cache, chunked_query
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -89,7 +89,7 @@ def endpoint_get_album_info() -> flask.Response:
     tag = 'albumInfo2' if 'getAlbumInfo2' in flask.request.path else 'albumInfo'
     payload = {
         tag: {
-            'musicBrainzId': album.get('mb_albumid', ''),
+            'musicBrainzId': validate_mbid(album.get('mb_albumid')),
             'lastFmUrl': lastfm_url,
             'smallImageUrl': tokenised_image_url(image_id, size=250),
             'mediumImageUrl': tokenised_image_url(image_id, size=500),

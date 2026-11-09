@@ -8,6 +8,7 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.constants import SOURCE_TRACK_ID_FIELDS, SOURCE_ALBUM_ID_FIELDS
 from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex, SongIndex, ArtistHashIndex, AlbumHashIndex
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -177,6 +178,17 @@ class Resolve:
                     LIMIT 1
                     """, (value,)
                 )
+                if not rows:    # Fallback: ID recorded by non-MB source plugin (Spotify, Deezer...)
+                    rows = tx.query(
+                        f"""
+                        SELECT DISTINCT i.album_id
+                        FROM item_attributes a JOIN items i ON i.id = a.entity_id
+                        WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))})
+                          AND a.value = ? AND i.album_id IS NOT NULL
+                        ORDER BY i.album_id
+                        LIMIT 1
+                        """, (*SOURCE_ALBUM_ID_FIELDS, value)
+                    )
             return flask.g.lib.get_album(rows[0][0]) if rows else None
 
         if kind == 'hash':
@@ -206,6 +218,16 @@ class Resolve:
                     LIMIT 1
                     """, (value, value)
                 )
+                if not rows:    # Fallback: ID recorded by a source plugin (Spotify, Deezer...)
+                    rows = tx.query(
+                        f"""
+                        SELECT entity_id
+                        FROM item_attributes
+                        WHERE key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))}) AND value = ?
+                        ORDER BY entity_id
+                        LIMIT 1
+                        """, (*SOURCE_TRACK_ID_FIELDS, value)
+                    )
             return flask.g.lib.get_item(rows[0][0]) if rows else None
 
         if kind == 'hash':

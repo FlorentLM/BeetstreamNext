@@ -7,6 +7,7 @@ from typing import NamedTuple
 import flask
 
 from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.constants import SOURCE_TRACK_ID_FIELDS
 from beetsplug.beetstreamnext.utils.concurrency import BuildOnce
 from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -181,6 +182,21 @@ class SongIndex(Index):
 
             for mbid in filter(None, (release_track_id, track_id)):
                 self.by_mbid[mbid] = beets_id
+
+        # Fallback: IDs recorded by non-MB source plugin (Spotify, Deezer...)
+        with lib.transaction() as tx:
+            source_rows = tx.query(
+                f"""
+                SELECT entity_id, value
+                FROM item_attributes
+                WHERE key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))})
+                ORDER BY entity_id DESC
+                """, SOURCE_TRACK_ID_FIELDS)
+
+        primary = set(self.by_mbid)
+        for beets_id, value in source_rows:
+            if str(value) not in primary:
+                self.by_mbid[str(value)] = beets_id
 
     @classmethod
     def _cache_name(cls) -> str:

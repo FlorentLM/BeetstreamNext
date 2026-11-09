@@ -92,6 +92,10 @@ ALPHANUM_CHARS: re.Pattern = re.compile(r'^[a-zA-Z0-9_]+$')
 
 MBID_VALIDATOR = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
 
+# Flexible fields where Spotify/Deezer plugins keep their IDs
+SOURCE_TRACK_ID_FIELDS = ('spotify_track_id', 'deezer_track_id')
+SOURCE_ALBUM_ID_FIELDS = ('spotify_album_id', 'deezer_album_id')
+
 GENRE_MAP = {
     "rnb": "R&B",
     "r'n'b": "R&B",

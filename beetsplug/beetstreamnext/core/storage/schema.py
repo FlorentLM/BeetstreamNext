@@ -146,6 +146,19 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS user_changes
+        (
+            username   TEXT NOT NULL,
+            kind       TEXT NOT NULL,
+            changed_at REAL NOT NULL,
+            PRIMARY KEY (username, kind),
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS bookmarks
         (
             username TEXT NOT NULL,

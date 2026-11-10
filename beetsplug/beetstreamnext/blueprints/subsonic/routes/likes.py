@@ -5,7 +5,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import MAX_ITEM_ID_CHAR
 from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
-from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts, touch_change
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
@@ -33,6 +33,9 @@ def item_exists(item_id: str) -> bool:
 def _set_liked(username: str, item_id: str, liked: bool) -> None:
 
     with database() as db:
+
+        touch_change(db, username, 'exclusions')
+
         if liked:
             db.execute("""DELETE FROM dislikes WHERE username = ? AND item_id = ?""", (username, item_id))
             db.execute(
@@ -95,6 +98,9 @@ def _set_disliked(username: str, item_id: str, disliked: bool) -> bool:
     """
 
     with database() as db:
+
+        touch_change(db, username, 'exclusions')
+
         if disliked:
             unstarred = db.execute(
                 """DELETE FROM likes WHERE username = ? AND item_id = ?""", (username, item_id)

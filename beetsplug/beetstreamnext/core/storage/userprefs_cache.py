@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import flask
 
 from beetsplug.beetstreamnext.core.storage.connection import database
@@ -23,6 +24,22 @@ def _batch_cache(cache_key: str, fetch_fn, ids: list):
     # All queried IDs are marked seen (even those not found)
     cache.update({i: _MISSING for i in missing})
     cache.update(rows)   # overwrites with real values if found
+
+
+##
+# Change times
+
+def touch_change(db, username: str, kind: str) -> None:
+    """
+    Record timestamp of when user changed some setting.
+    """
+    db.execute(
+        """
+        INSERT INTO user_changes (username, kind, changed_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT (username, kind) DO UPDATE SET changed_at = excluded.changed_at
+        """, (username, kind, time.time())
+    )
 
 
 ##

@@ -5,6 +5,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import touch_change
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
@@ -36,6 +37,9 @@ def endpoint_set_rating() -> flask.Response:
     username = flask.g.username
 
     with database() as db:
+
+        touch_change(db, username, 'exclusions')
+
         if rating == 0:
             db.execute(
                 """

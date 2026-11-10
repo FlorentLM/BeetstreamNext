@@ -188,16 +188,16 @@ def remap_source_ids() -> int:
                 JOIN beets.items i ON i.id = a.entity_id
                 JOIN beets.albums al ON al.id = i.album_id
                 WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))})
-                """, SOURCE_ALBUM_ID_FIELDS
+                """, SOURCE_ALBUM_ID_FIELDS  # nosec B608  # noqa: S608 vars are constants
             ), (
                 f"""
                 SELECT DISTINCT i.artist, i.mb_artistid, {'i.artists' if 'artists' in item_cols else 'NULL'}
                 FROM beets.item_attributes a
                 JOIN beets.items i ON i.id = a.entity_id
                 WHERE a.key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))})
-                """, SOURCE_TRACK_ID_FIELDS
+                """, SOURCE_TRACK_ID_FIELDS  # nosec B608  # noqa: S608 vars are constants
             )
-        )  # nosec B608  # noqa: S608 vars are constants
+        )
 
         for query, params in artist_queries:
 

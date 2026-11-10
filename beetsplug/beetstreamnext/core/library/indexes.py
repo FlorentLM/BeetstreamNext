@@ -191,7 +191,7 @@ class SongIndex(Index):
                 FROM item_attributes
                 WHERE key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))})
                 ORDER BY entity_id DESC
-                """, SOURCE_TRACK_ID_FIELDS)
+                """, SOURCE_TRACK_ID_FIELDS)  # nosec B608  # noqa: S608 vars are constants
 
         primary = set(self.by_mbid)
         for beets_id, value in source_rows:

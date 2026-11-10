@@ -187,7 +187,7 @@ class Resolve:
                           AND a.value = ? AND i.album_id IS NOT NULL
                         ORDER BY i.album_id
                         LIMIT 1
-                        """, (*SOURCE_ALBUM_ID_FIELDS, value)
+                        """, (*SOURCE_ALBUM_ID_FIELDS, value)  # nosec B608  # noqa: S608 vars are constants
                     )
             return flask.g.lib.get_album(rows[0][0]) if rows else None
 
@@ -226,7 +226,7 @@ class Resolve:
                         WHERE key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))}) AND value = ?
                         ORDER BY entity_id
                         LIMIT 1
-                        """, (*SOURCE_TRACK_ID_FIELDS, value)
+                        """, (*SOURCE_TRACK_ID_FIELDS, value)  # nosec B608  # noqa: S608 vars are constants
                     )
             return flask.g.lib.get_item(rows[0][0]) if rows else None
 

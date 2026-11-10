@@ -175,6 +175,19 @@ class IDs:
         prefix = cls._ART_MBID_PREF if is_mbid else cls._ART_NAME_PREF
         return f"{prefix}{encoded}"
 
+    @classmethod
+    def encode_artist_of(cls, data: dict) -> str:
+        """Main artist ID of a song or album."""
+
+        name = data.get('albumartist') or data.get('artist') or ''
+        mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
+        multi = data.get('albumartists') or data.get('artists') or ''
+
+        if cls.is_joint_credit(multi, name):
+            return cls.encode_artist(name, joint_credit=True)
+
+        return cls.encode_artist(mbid or name, is_mbid=bool(mbid))
+
     @staticmethod
     def is_joint_credit(multi_value: str | None, single_name: str = '') -> bool:
         """Whether a beets *artists (multi-value) field represents more than one credited artist."""

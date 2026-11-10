@@ -148,13 +148,7 @@ class Serialise:
         track_artist_name = data.get('artist') or data.get('albumartist') or ''
 
         main_ar_name = data.get('albumartist') or data.get('artist') or ''
-        main_ar_mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
-        main_ar_multi = data.get('albumartists') or data.get('artists') or ''
-
-        if IDs.is_joint_credit(main_ar_multi, main_ar_name):
-            artist_id = IDs.encode_artist(main_ar_name, joint_credit=True)
-        else:
-            artist_id = IDs.encode_artist(main_ar_mbid or main_ar_name, is_mbid=bool(main_ar_mbid))
+        artist_id = IDs.encode_artist_of(data)
 
         artists, album_artists, contributors, display_composer = _get_artists(data)
 

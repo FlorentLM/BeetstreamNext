@@ -155,6 +155,9 @@ def _add_security_headers(response):
     if flask.request.path.startswith(('/rest', '/tokenised-')):
         response.headers['Content-Security-Policy'] = "sandbox; default-src 'none'"
 
+    if flask.request.path.startswith('/rest') and response.mimetype in ('application/json', 'application/xml', 'text/xml'):
+        response.headers.setdefault('Cache-Control', 'no-cache')
+
     is_webui = flask.request.path.startswith(WEBUI_PREFIXES)
 
     if is_webui and not flask.request.path.startswith(WEBUI_CACHEABLE_PREFIXES):

@@ -980,6 +980,18 @@ Download limit for new shares (`0` = unlimited).
 
 ---
 
+### `share_link_previews`
+
+Add metadata to share pages to allow chat apps (Discord, Slack, Telegram, ...) show a preview with the title and cover art (their servers fetch the page and cover without logging in).
+
+*type:* `bool`
+
+*default:* `True`
+
+*env:* `BSN_SHARE_LINK_PREVIEWS`
+
+---
+
 ### `share_default_password`
 
 Password for new shares (visible to share owners on their account page).

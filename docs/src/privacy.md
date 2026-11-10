@@ -37,6 +37,10 @@ Some features contact third-party services **from your server** (never from the 
 
 Each service has its own privacy policy. Features you don't use don't make any requests, and the corresponding settings can be turned off in the [configuration](./configuration.md).
 
+### Share link previews
+
+The reverse also applies: when a [public share](./features/public-shares.md#link-previews) link is posted in a chat app, that platform's servers fetch the share page and its cover to build a preview. You can turn this off with [`share_link_previews`](./configuration.md#share_link_previews).
+
 ## The web UI
 
 The web UI loads everything (scripts, styles and fonts) from your own server. It doesn't use third-party CDNs, trackers or cookies other than the session cookie needed to stay logged in.

@@ -167,6 +167,20 @@ A few things to know regarding these two plugins:
 
 - `unskipper` keeps its own record next to the state file. Albums that **BeetstreamNext** retried or recorded are detected by `unskipper` at its next start.
 
+### Spotify / Deezer import matching
+
+Let's say it once: _**MusicBrainz is the recommended autotagger source**_.
+
+With the [`spotify`](https://beets.readthedocs.io/en/stable/plugins/spotify.html) or [`deezer`](https://beets.readthedocs.io/en/stable/plugins/deezer.html) plugins (if their priority is above [`musicbrainz`](https://beets.readthedocs.io/en/stable/plugins/musicbrainz.html)'s in your beets config), Beets records the Spotify/Deezer IDs instead of the MusicBrainz ID, which complicates a lot of things. 
+
+**BeetstreamNext** does its best to cope with that. _If you ever decide_ to retag an album to replace Spotify/Deezer IDs with MusicBrainz IDs, **BeetstreamNext** will update everything it stores for the old ID (likes, ratings, play counts, bookmarks, play queues, shares) to use the new one.
+
+> [!IMPORTANT]
+> Your clients can still have the old IDs in cache, so force a refresh or resync in the client. Any local data (offline downloads, local play counts, etc) will likely need to be regenerated.
+
+> [!WARNING]
+> Going the other way (replacing MusicBrainz tags with Spotify/Deezer) is **not** supported. Beets overwrites the MusicBrainz ID gets and it can't be recovered, so all IDs that were communicated to clients stop resolving.
+
 ### Moving your library
 
 `beet unskipper --remap OLD=NEW --migrate-db` only updates what Beets and unskipper store. So if you are moving your music, also remember to update **BeetstreamNext**:

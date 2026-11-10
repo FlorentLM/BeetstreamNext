@@ -19,8 +19,10 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.media.shares import claim_download, is_unlocked, release_download, unlock_share
 from beetsplug.beetstreamnext.core.notifications import notify
+from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.runtime.web import external_url, send_file
 from beetsplug.beetstreamnext.utils.system import safe_filename
+from beetsplug.beetstreamnext.utils.text import format_duration
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
@@ -202,7 +204,42 @@ def share_view(share_id: str) -> str | tuple[str, str]:
     songs = [Serialise.song(s, exact_size=True) for s in resolved_songs]
     albums = [Serialise.album(a, include_songs=True) for a in resolved_albums]
 
-    return render_template('shares.html', share=share, songs=songs, albums=albums)
+    preview = None
+
+    if settings_store.get('share_link_previews') and (songs or albums):
+
+        if len(albums) == 1 and not songs:
+            first, kind = albums[0], 'music.album'
+            headline = first['name']
+            count = len(first.get('song') or [])
+            details = f"{first['artist']} · {count} track{'s' * (count != 1)} · {format_duration(first.get('duration') or 0)}"
+
+        elif len(songs) == 1 and not albums:
+            first, kind = songs[0], 'music.song'
+            headline = f"{first['artist']} - {first['title']}"
+            details = f"{first['album']} · {format_duration(first.get('duration') or 0)}"
+
+        else:
+            first, kind = (albums or songs)[0], 'website'
+            count = len(albums) + len(songs)
+            headline = 'Shared music'
+            details = f"{count} item{'s' * (count != 1)}"
+
+        if share['description']:
+            details = f'{headline} · {details}'
+            headline = share['description']
+
+        preview = {
+            'type': kind,
+            'title': headline,
+            'description': f"{details} · shared by {share['username']}",
+            'url': external_url(flask.url_for('public.share_view', share_id=share_id)),
+            'image': external_url(flask.url_for('public.share_cover', share_id=share_id, entry_id=first['id'], size=600)),
+        }
+
+    response = flask.make_response(render_template('shares.html', share=share, songs=songs, albums=albums, preview=preview))
+    response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
 
 
 @public_bp.route('/share/<share_id>/unlock', methods=['POST'])

@@ -889,6 +889,15 @@ SETTINGS_SCHEMA: dict[str, SettingDescriptor] = {
         'requires_restart': False,
         'validator': validate_int_range(0, 1_000_000),
     },
+    'share_link_previews': {
+        'type': 'bool',
+        'default': True,
+        'category': 'shares',
+        'description': 'Add metadata to share pages to allow chat apps (Discord, Slack, Telegram, ...) show a preview '
+                       'with the title and cover art (their servers fetch the page and cover without logging in).',
+        'requires_restart': False,
+        'env_var': 'BSN_SHARE_LINK_PREVIEWS',
+    },
     'share_default_password': {
         'type': 'str',
         'default': '',

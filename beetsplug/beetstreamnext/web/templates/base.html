@@ -17,6 +17,7 @@
     </script>
 
     <title>BeetstreamNext{% block title %}{% endblock %}</title>
+    {% block head %}{% endblock %}
 
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/logo.svg') }}">
     <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='images/logo.png') }}">

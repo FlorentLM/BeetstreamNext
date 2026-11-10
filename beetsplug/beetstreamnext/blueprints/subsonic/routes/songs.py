@@ -7,7 +7,7 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
-from beetsplug.beetstreamnext.core.storage.cache import preload_songs
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.db import library_cache, sql_conditions_for

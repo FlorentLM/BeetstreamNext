@@ -117,6 +117,7 @@ def clear_offline_files() -> dict[str, int]:
 _SONG_REF_TABLES = (
     ('bookmarks', 'song_id'),
     ('likes', 'item_id'),
+    ('dislikes', 'item_id'),
     ('ratings', 'item_id'),
     ('play_stats', 'song_id'),
     ('play_queue', 'current'),

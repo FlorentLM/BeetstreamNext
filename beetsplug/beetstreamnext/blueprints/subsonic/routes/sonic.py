@@ -10,7 +10,7 @@ from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 from beetsplug.beetstreamnext.utils.general import page_size
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.core.storage.cache import preload_songs
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
 from beetsplug.beetstreamnext.core.services.external.audiomuse import audiomuse_get
 
 

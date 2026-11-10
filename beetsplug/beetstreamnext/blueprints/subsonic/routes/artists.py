@@ -13,7 +13,7 @@ from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_wikidata_title
-from beetsplug.beetstreamnext.core.storage.cache import preload_artists
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_artists
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs

@@ -48,6 +48,7 @@ def export_user_data(username: str) -> dict[str, Any]:
             'app_passwords': app_passwords,
             'connections': list_connections(username),
             'likes': _get_rows(db, "SELECT item_id, starred_at FROM likes WHERE username = ?", (username,)),
+            'dislikes': _get_rows(db, "SELECT item_id, disliked_at FROM dislikes WHERE username = ?", (username,)),
             'ratings': _get_rows(db, "SELECT item_id, rating, rated_at FROM ratings WHERE username = ?", (username,)),
             'bookmarks': _get_rows(db, "SELECT song_id, position, comment, created, changed FROM bookmarks WHERE username = ?", (username,)),
             'play_stats': _get_rows(db, "SELECT song_id, play_count, last_played FROM play_stats WHERE username = ?", (username,)),

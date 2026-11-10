@@ -14,7 +14,7 @@ from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.core.storage.cache import preload_albums, get_song_counts
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_albums, get_song_counts
 
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:

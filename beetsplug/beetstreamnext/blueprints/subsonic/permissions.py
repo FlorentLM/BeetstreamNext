@@ -15,7 +15,7 @@ WRITE_ENDPOINTS = frozenset({
     'downloadPodcastEpisode', 'refreshPodcasts',
     'savePlayQueue', 'savePlayQueueByIndex',
     'scrobble', 'reportPlayback',
-    'setRating', 'star', 'unstar',
+    'setRating', 'star', 'unstar', 'dislike', 'undislike',
     'startScan', 'jukeboxControl',
 })
 # TODO: this may be too restrictive...

@@ -5,7 +5,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import MAX_ITEM_ID_CHAR
 from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
-from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_albums, preload_artists, get_song_counts
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import chunked_query
@@ -34,6 +34,7 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
 
     with database() as db:
         if liked:
+            db.execute("""DELETE FROM dislikes WHERE username = ? AND item_id = ?""", (username, item_id))
             db.execute(
                 """
                 INSERT INTO likes (username, item_id)
@@ -84,6 +85,59 @@ def endpoint_star_or_unstar() -> flask.Response:
     if username and username == settings_store.get('ratings_writeback_user'):
         for id_ in to_like:
             commit_likes(id_, 'starred', int(liked))
+
+    return subsonic_response({}, resp_fmt=resp_fmt)
+
+
+def _set_disliked(username: str, item_id: str, disliked: bool) -> bool:
+    """
+    Returns whether a star was removed (disliking an item un-stars it).
+    """
+
+    with database() as db:
+        if disliked:
+            unstarred = db.execute(
+                """DELETE FROM likes WHERE username = ? AND item_id = ?""", (username, item_id)
+            ).rowcount > 0
+            db.execute(
+                """
+                INSERT INTO dislikes (username, item_id)
+                VALUES (?, ?)
+                ON CONFLICT (username, item_id)
+                    DO UPDATE SET disliked_at = unixepoch()
+                """, (username, item_id)
+            )
+            return unstarred
+
+        db.execute("""DELETE FROM dislikes WHERE username = ? AND item_id = ?""", (username, item_id))
+        return False
+
+
+# BSN extension ('bsnDislike'), mirrors star/unstar
+@subsonic_bp.route('/dislike', methods=['GET', 'POST'])
+@subsonic_bp.route('/dislike.view', methods=['GET', 'POST'])
+@subsonic_bp.route('/undislike', methods=['GET', 'POST'])
+@subsonic_bp.route('/undislike.view', methods=['GET', 'POST'])
+def endpoint_dislike_or_undislike() -> flask.Response:
+    r = flask.request.values
+    resp_fmt = r.get('f', default='xml', type=safe_str)
+    ids = r.getlist('id', type=safe_str) + r.getlist('albumId', type=safe_str) + r.getlist('artistId', type=safe_str)
+
+    disliked = 'undislike' not in flask.request.path
+
+    if not ids:
+        return subsonic_error(10, resp_fmt=resp_fmt)
+
+    username = flask.g.username
+
+    to_set = cap_ids(ids)
+    if disliked:    # undisliking is not checked so IDs of removed items can be cleaned up
+        to_set = [id_ for id_ in to_set if item_exists(id_)]
+
+    writeback = bool(username) and username == settings_store.get('ratings_writeback_user')
+    for id_ in to_set:
+        if _set_disliked(username, id_, disliked) and writeback:
+            commit_likes(id_, 'starred', 0)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

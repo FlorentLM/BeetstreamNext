@@ -133,6 +133,19 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS dislikes
+        (
+            username    TEXT    NOT NULL,
+            item_id     TEXT    NOT NULL, -- subsonic ID (song, album or artist), mutually exclusive with likes
+            disliked_at REAL    NOT NULL DEFAULT (unixepoch()),
+            PRIMARY KEY (username, item_id),
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS bookmarks
         (
             username TEXT NOT NULL,
@@ -520,6 +533,7 @@ def initialise_db() -> None:
 
     # Indices for per-user queries (most common accesses)
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username        ON likes(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_dislikes_username     ON dislikes(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_username   ON play_stats(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_bookmarks_username    ON bookmarks(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_username      ON ratings(username);""")

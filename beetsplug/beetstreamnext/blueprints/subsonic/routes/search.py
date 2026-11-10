@@ -3,7 +3,7 @@ import flask
 
 from .. import subsonic_bp
 
-from beetsplug.beetstreamnext.core.storage.cache import preload_songs, preload_albums, preload_artists, get_song_counts
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error

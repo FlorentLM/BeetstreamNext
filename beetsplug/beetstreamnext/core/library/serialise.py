@@ -12,8 +12,8 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.beets.interaction import write_beets_field
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_musicbrainz
 from beetsplug.beetstreamnext.core.services.external.discogs import query_discogs
-from beetsplug.beetstreamnext.core.storage.cache import (
-    preload_songs, preload_albums, one_rating, one_like, one_play_stats, avg_rating, get_song_counts
+from beetsplug.beetstreamnext.core.storage.userprefs_cache import (
+    preload_songs, preload_albums, one_rating, one_like, one_dislike, one_play_stats, avg_rating, get_song_counts
 )
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
@@ -286,6 +286,10 @@ class Serialise:
         if liked_at:
             subsonic_artist['starred'] = timestamp_to_iso(liked_at)
 
+        disliked_at = one_dislike(subsonic_artist_id)
+        if disliked_at:
+            subsonic_artist['disliked'] = timestamp_to_iso(disliked_at)
+
         return subsonic_artist
 
     @classmethod
@@ -441,6 +445,10 @@ class Serialise:
         if liked_at:
             subsonic_album['starred'] = timestamp_to_iso(liked_at)
 
+        disliked_at = one_dislike(subsonic_album_id)
+        if disliked_at:
+            subsonic_album['disliked'] = timestamp_to_iso(disliked_at)
+
         return subsonic_album
 
     @classmethod
@@ -584,6 +592,10 @@ class Serialise:
         liked_at = one_like(subsonic_song['id'])
         if liked_at:
             subsonic_song['starred'] = timestamp_to_iso(liked_at)
+
+        disliked_at = one_dislike(subsonic_song['id'])
+        if disliked_at:
+            subsonic_song['disliked'] = timestamp_to_iso(disliked_at)
 
         return subsonic_song
 

@@ -68,6 +68,48 @@ def one_like(item_id: str) -> float | None:
 
 
 ##
+# Dislikes
+
+def batch_dislikes(subsonic_ids: list[str]):
+
+    def fetch(ids):
+        query = """
+            SELECT item_id, disliked_at
+            FROM dislikes
+            WHERE username=? AND item_id IN ({q})
+        """
+        with database() as db:
+            rows = chunked_query(
+                db_obj=db,
+                query_template=query,
+                chunked_values=ids,
+                base_params=[flask.g.username]
+            )
+        return dict(rows)
+
+    _batch_cache('_dislikes', fetch, subsonic_ids)
+
+
+def one_dislike(item_id: str) -> float | None:
+    cache = flask.g.setdefault('_dislikes', {})
+
+    if item_id not in cache:
+        with database() as db:
+            row = db.execute(
+                """
+                SELECT disliked_at
+                FROM dislikes
+                WHERE username=? AND item_id=?
+                """, (flask.g.username, item_id)
+            ).fetchone()
+
+        cache[item_id] = row[0] if row else _MISSING
+
+    result = cache[item_id]
+    return None if result is _MISSING else result
+
+
+##
 # Ratings
 
 def batch_ratings(subsonic_ids: list[str]):
@@ -183,6 +225,7 @@ def preload_songs(beets_items: list):
     sub_ids = [IDs.encode_song(standardise_datadict(s)) for s in beets_items]
 
     batch_likes(sub_ids)
+    batch_dislikes(sub_ids)
     batch_ratings(sub_ids)
     batch_play_stats(sub_ids)
 
@@ -199,6 +242,7 @@ def preload_albums(beets_albums: list):
     ]
 
     batch_likes(sub_ids)
+    batch_dislikes(sub_ids)
     batch_ratings(sub_ids)
 
 
@@ -236,6 +280,7 @@ def preload_artists(artists_data):
 
     if sub_ids:
         batch_likes(sub_ids)
+        batch_dislikes(sub_ids)
         batch_ratings(sub_ids)
 
 

@@ -53,6 +53,10 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
             'versions': [1]
         },
         {
+            'name': 'bsnDislike',   # BSN custom extension: dislike/undislike + 'disliked' field
+            'versions': [1]
+        },
+        {
             'name': 'formPost',    # https://opensubsonic.netlify.app/docs/extensions/formpost/
             'versions': [1]
         },

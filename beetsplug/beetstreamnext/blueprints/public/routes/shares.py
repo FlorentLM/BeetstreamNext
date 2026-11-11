@@ -52,7 +52,7 @@ def _get_active_share(share_id: str, *, unlocked: bool = True):
 
 
 def _is_shared(share_id: str, entry_id: str) -> bool:
-    """Whether entry_id is shared or is part of an album that is shared."""
+    """Whether entry_id is shared, or is part of an album or playlist that is shared."""
 
     with database() as db:
         explicit_match = db.execute(
@@ -63,12 +63,24 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
             """, (share_id, entry_id)
         ).fetchone()
 
-    if explicit_match:
-        return True
+        if explicit_match:
+            return True
+
+        entries = [r['item_id'] for r in db.execute(
+            """
+            SELECT item_id 
+            FROM share_entries 
+            WHERE share_id = ?
+            """, (share_id,)
+        ).fetchall()]
 
     entry_type, item = Resolve.any(entry_id)
     if entry_type != 'song':
         return False
+
+    playlists = [e for e in entries if IDs.decode_type(e) == 'playlist']
+    if item and playlists and any(song.id == item.id for song in Resolve.shared_items(playlists)[0]):
+        return True
 
     album_id = item.get('album_id') if item else None
     if not album_id:
@@ -103,20 +115,21 @@ def _zip_cache_path(entry_id: str, files: list[tuple[Path, str]]) -> Path:
     return ZIP_CACHE_DIR / f'{digest.hexdigest()}.zip'
 
 
-def _zip_album(entry_id: str, items: list) -> Path | None:
+def _zip_album(entry_id: str, items: list, by_position: bool = False) -> Path | None:
     """
-    Zip an album and returns the (cached) path, or None if too many zips are being built
+    Zip an album (or a playlist, numbering files by position) and returns the (cached) path,
+    or None if too many zips are being built
     """
 
     files: list[tuple[Path, str]] = []
 
-    for item in items:
+    for position, item in enumerate(items, 1):
         path_obj = beets_abspath(item)
         if not path_obj.is_file():
             bsn_logger.warning(f"Skipping missing file for album zip: '{path_obj}'")
             continue
 
-        track = item.get('track') or 0
+        track = position if by_position else (item.get('track') or 0)
         title = safe_filename(item.get('title') or path_obj.stem, 'untitled')
         arcname = f'{track:02d} - {title}{path_obj.suffix}' if track else f'{title}{path_obj.suffix}'
         files.append((path_obj, arcname))
@@ -200,28 +213,50 @@ def share_view(share_id: str) -> str | tuple[str, str]:
 
     entry_ids = [r['item_id'] for r in entry_rows]
 
-    resolved_songs, resolved_albums = Resolve.shared_items(entry_ids)
+    resolved_songs, resolved_albums = Resolve.shared_items([e for e in entry_ids if IDs.decode_type(e) != 'playlist'])
     songs = [Serialise.song(s, exact_size=True) for s in resolved_songs]
     albums = [Serialise.album(a, include_songs=True) for a in resolved_albums]
 
+    # Playlists are listed in order and resolved now, so they are always up to date
+    playlists = []
+    for entry_id in entry_ids:
+        playlist = Resolve.playlist(entry_id) if IDs.decode_type(entry_id) == 'playlist' else None
+        if playlist:
+            playlist_songs = [Serialise.song(s, exact_size=True) for s in Resolve.playlist_songs(playlist['tracks'])]
+            playlists.append({'id': entry_id, 'name': playlist['name'], 'comment': playlist['comment'], 'songs': playlist_songs})
+
     preview = None
 
-    if settings_store.get('share_link_previews') and (songs or albums):
 
-        if len(albums) == 1 and not songs:
+    playlist_songs_flat = [song for playlist in playlists for song in playlist['songs']]
+    cover_source = (albums or songs or playlist_songs_flat)
+
+    if settings_store.get('share_link_previews') and cover_source:
+
+        image_id = cover_source[0]['id']
+
+        if not albums and not songs and len(playlists) == 1:
+            playlist = playlists[0]
+            count = len(playlist['songs'])
+            kind = 'website'
+            headline = f"Shared playlist: {playlist['name']}"
+            details = f"{count} track{'s' * (count != 1)} · {format_duration(sum(x.get('duration') or 0 for x in playlist['songs']))}"
+            image_id = playlists[0]['id']
+
+        elif not songs and not playlists and len(albums) == 1:
             first, kind = albums[0], 'music.album'
             headline = first['name']
             count = len(first.get('song') or [])
             details = f"{first['artist']} · {count} track{'s' * (count != 1)} · {format_duration(first.get('duration') or 0)}"
 
-        elif len(songs) == 1 and not albums:
+        elif not albums and not playlists and len(songs) == 1:
             first, kind = songs[0], 'music.song'
             headline = f"{first['artist']} - {first['title']}"
             details = f"{first['album']} · {format_duration(first.get('duration') or 0)}"
 
         else:
-            first, kind = (albums or songs)[0], 'website'
-            count = len(albums) + len(songs)
+            kind = 'website'
+            count = len(albums) + len(songs) + len(playlists)
             headline = 'Shared music'
             details = f"{count} item{'s' * (count != 1)}"
 
@@ -234,10 +269,10 @@ def share_view(share_id: str) -> str | tuple[str, str]:
             'title': headline,
             'description': f"{details} · shared by {share['username']}",
             'url': external_url(flask.url_for('public.share_view', share_id=share_id)),
-            'image': external_url(flask.url_for('public.share_cover', share_id=share_id, entry_id=first['id'], size=600)),
+            'image': external_url(flask.url_for('public.share_cover', share_id=share_id, size=600, entry_id=image_id)),
         }
 
-    response = flask.make_response(render_template('shares.html', share=share, songs=songs, albums=albums, preview=preview))
+    response = flask.make_response(render_template('shares.html', share=share, songs=songs, albums=albums, playlists=playlists, preview=preview))
     response.headers['X-Robots-Tag'] = 'noindex, nofollow'
     return response
 
@@ -340,6 +375,67 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     return flask.send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=download_name)
 
 
+def _shared_playlist(share_id: str, entry_id: str) -> dict:
+
+    _get_active_share(share_id)
+
+    if IDs.decode_type(entry_id) != 'playlist':
+        flask.abort(404)
+
+    with database() as db:
+        explicit_match = db.execute(
+            """
+            SELECT 1 FROM share_entries 
+            WHERE share_id = ? AND item_id = ?
+            """, (share_id, entry_id)
+        ).fetchone()
+
+    if not explicit_match:
+        flask.abort(403)
+
+    playlist = Resolve.playlist(entry_id)
+    if not playlist:
+        flask.abort(404)
+
+    return playlist
+
+
+@public_bp.route('/share/<share_id>/download-playlist/<entry_id>')
+def share_download_playlist(share_id: str, entry_id: str) -> flask.Response:
+
+    playlist = _shared_playlist(share_id, entry_id)
+
+    items = Resolve.playlist_songs(playlist['tracks'])
+    if not items:
+        flask.abort(404)
+
+    if not claim_download(share_id):
+        return flask.make_response('This share has reached its download limit.', 410)
+
+    zip_path = _zip_album(entry_id, items, by_position=True)
+    if zip_path is None:
+        release_download(share_id)
+
+        response = flask.make_response('Too many downloads are being prepared, try again shortly.', 503)
+        response.headers['Retry-After'] = '10'
+        return response
+
+    return flask.send_file(zip_path, mimetype='application/zip', as_attachment=True,
+                           download_name=f"{safe_filename(playlist['name'], 'playlist')}.zip")
+
+
+@public_bp.route('/share/<share_id>/export-playlist/<entry_id>')
+def share_export_playlist(share_id: str, entry_id: str) -> flask.Response:
+    """The shared playlist as a CSV that import tools accept (doesn't count as a download)."""
+
+    playlist = _shared_playlist(share_id, entry_id)
+    body = flask.current_app.config['playlist_manager'].csv_text(playlist)
+
+    return flask.Response(body, mimetype='text/csv', headers={
+        'Content-Disposition': f"attachment; filename=\"{safe_filename(playlist['name'], 'playlist')}.csv\""
+    })
+
+
 @public_bp.route('/share/<share_id>/stream/<entry_id>')
 def share_stream(share_id: str, entry_id: str) -> flask.Response:
     """Stream a shared song in the web player (doesn't count as a download)."""
@@ -362,14 +458,20 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
     if not _is_shared(share_id, entry_id):
         flask.abort(403)
 
-    from beetsplug.beetstreamnext.core.media.images import send_album_art, round_image_size
+    from beetsplug.beetstreamnext.core.media.images import send_album_art, round_image_size, playlist_mosaic
 
     size = flask.request.args.get('size', default=0, type=int)
     rounded_size = round_image_size(size)
 
     entry_type, entry = Resolve.any(entry_id)
 
-    if entry_type == 'album':
+    if entry_type == 'playlist':
+        playlist = Resolve.playlist(entry_id)
+        mosaic = playlist_mosaic(playlist, rounded_size or 500) if playlist else None
+        if mosaic is not None:
+            return flask.send_file(mosaic, mimetype='image/jpeg')
+
+    elif entry_type == 'album':
         response = send_album_art(entry.id, rounded_size) if entry else None
         if response:
             return response

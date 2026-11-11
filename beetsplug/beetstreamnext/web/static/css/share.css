@@ -25,6 +25,15 @@
         margin-bottom: 2rem;
     }
 
+    .share-wrapper .lib .tabulator .tabulator-header .tabulator-col::after,
+    .share-wrapper .lib .tabulator-row .tabulator-cell::after {
+        display: none;
+    }
+
+    .share-wrapper .table-container.lib {
+        margin-bottom: 0;
+    }
+
     .track-header {
         border-bottom: none;
     }

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% import '_macros.html' as macros %}
 
-{% block title %} - {{ 'Shared album' if albums else ('Shared track' if songs else 'Shared files') }}{% endblock %}
+{% set only_playlist = playlists | length == 1 and not albums and not songs %}
+{% block title %} - {{ 'Shared playlist' if only_playlist else ('Shared album' if albums else ('Shared track' if songs | length == 1 and not playlists else ('Shared tracks' if songs else ('Shared playlists' if playlists else 'Shared files')))) }}{% endblock %}
 
 {% block head %}
     <meta name="robots" content="noindex, nofollow">
@@ -35,9 +36,9 @@
             <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="BeetstreamNext" class="logo-medium">
         </div>
 
-        {% if albums or songs %}
+        {% if albums or songs or playlists %}
             <div class="share-meta">
-                <h1>{{ 'Shared album' if albums else 'Shared track' }}</h1>
+                <h1>{{ 'Shared playlist' if only_playlist else ('Shared album' if albums else ('Shared track' if songs | length == 1 and not playlists else ('Shared tracks' if songs else 'Shared playlists'))) }}</h1>
                 {% if share.description %}
                     <p class="share-desc">"{{ share.description }}"</p>
                 {% endif %}
@@ -114,6 +115,76 @@
                 </div>
             {% endfor %}
         {% endif %}
+
+        {# Shared playlists #}
+        {% for playlist in playlists %}
+            <div class="card album-group">
+                <div class="table-header">
+                    <div class="album-title">
+                        {% if playlist.songs %}
+                            <img class="user-avatar"
+                                 src="{{ url_for('public.share_cover', share_id=share.id, entry_id=playlist.id, size=128) }}" alt="">
+                        {% endif %}
+                        <div>
+                            <h2>{{ playlist.name }}</h2>
+                            <span class="session-user">{{ playlist.songs | length }} track{{ '' if playlist.songs | length == 1 else 's' }} &bull; {{ playlist.songs | sum(attribute='duration') | duration }}</span>
+                            {% if playlist.comment %}<div class="email-cell">{{ playlist.comment }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="album-download">
+                        <span class="session-user">{{ playlist.songs | sum(attribute='size') | filesize }}</span>
+                        <a href="{{ url_for('public.share_export_playlist', share_id=share.id, entry_id=playlist.id) }}"
+                           class="btn btn-outline" download>Export as CSV</a>
+                        {% if playlist.songs %}
+                            <a href="{{ url_for('public.share_download_playlist', share_id=share.id, entry_id=playlist.id) }}"
+                               class="btn btn-primary">Download files</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="table-container lib">
+                    {% set rows = [] %}
+                    {% for song in playlist.songs %}
+                        {% set actions_html %}
+                            <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
+                               class="icon-btn" title="Download"
+                               aria-label="Download &quot;{{ song.title }}&quot;">
+                                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 3v12"/>
+                                    <path d="M7 10l5 5 5-5"/>
+                                    <path d="M5 21h14"/>
+                                </svg>
+                            </a>
+                        {% endset %}
+                        {% set _ = rows.append({
+                            'id': song.id,
+                            'album_id': song.id,
+                            'pos': loop.index,
+                            'title': song.title,
+                            'artist': song.artist,
+                            'duration': song.duration or 0,
+                            'secs': song.duration or 0,
+                            'duration_text': song.duration | duration,
+                            'format': (song.suffix or '') | upper,
+                            'actions': actions_html,
+                        }) %}
+                    {% endfor %}
+                    {{ macros.data_table({
+                        'columns': [
+                            {'title': '#', 'field': 'pos', 'type': 'number'},
+                            {'title': 'Title', 'field': 'title', 'cssClass': 'cell-wrap', 'minWidth': 240, 'type': 'track', 'formatterParams': {'art': url_for('public.share_cover', share_id=share.id, entry_id='0')}},
+                            {'title': 'Artist', 'field': 'artist'},
+                            {'title': 'Duration', 'field': 'duration', 'type': 'number', 'html': 'duration_text', 'filter': false},
+                            {'title': 'Format', 'field': 'format', 'filter': false},
+                            {'title': '', 'field': 'actions', 'type': 'actions', 'html': 'actions', 'filter': false},
+                        ],
+                        'rows': rows,
+                        'pageSize': 100,
+                        'play': true,
+                    }) }}
+                </div>
+            </div>
+        {% endfor %}
 
         {# Single shared track #}
         {% if songs | length == 1 %}
@@ -194,7 +265,7 @@
             </div>
         {% endif %}
 
-        {% if albums or songs %}
+        {% if albums or songs or playlists %}
             {% with player_hidden = true,
                     stream_url = url_for('public.share_stream', share_id=share.id, entry_id='0'),
                     art_url = url_for('public.share_cover', share_id=share.id, entry_id='0') %}

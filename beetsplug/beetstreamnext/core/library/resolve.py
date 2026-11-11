@@ -467,6 +467,7 @@ class Resolve:
     def shared_items(cls, entry_ids: Sequence[str]) -> tuple[list[Item], list[LibModel]]:
         """
         Returns a public share's entry IDs, split into song items and album objects.
+        Playlists are expanded to their current songs on every call.
         """
         songs = []
         albums = []
@@ -474,12 +475,16 @@ class Resolve:
         for entry_id in entry_ids:
             entry_type, obj = cls.any(entry_id)
 
-            if entry_type == 'song' and obj:
+            if entry_type == 'playlist':
+                playlist = cls.playlist(entry_id)
+                if playlist:
+                    songs.extend(cls.playlist_songs(playlist['tracks']))
+            elif entry_type == 'song' and obj:
                 songs.append(obj)
             elif entry_type == 'album' and obj:
                 albums.append(obj)
 
-        return songs, albums
+        return list({song.id: song for song in songs}.values()), albums
 
 
 Resolve._method_map = {

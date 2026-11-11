@@ -7,6 +7,8 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.accounts.passwords import hash_password
 from beetsplug.beetstreamnext.core.notifications import notify
@@ -71,6 +73,13 @@ def endpoint_create_share() -> flask.Response:
 
     if not ids:
         return subsonic_error(10, resp_fmt=resp_fmt)
+
+    is_admin = bool(flask.g.user_data.get('adminRole'))
+    for entry_id in ids:
+        if IDs.decode_type(entry_id) == 'playlist':
+            playlist = Resolve.playlist(entry_id)
+            if not (playlist and (playlist['public'] or playlist['owner'] == flask.g.username or is_admin)):
+                return subsonic_error(70, resp_fmt=resp_fmt)
 
     share_id = secrets.token_urlsafe(12)
 

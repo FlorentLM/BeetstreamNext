@@ -436,7 +436,7 @@ class PlaylistManager:
                     round(song.get('length') or 0), song.get('mb_releasetrackid') or song.get('mb_trackid'),
                 ])
             else:
-                writer.writerow([track['label'] or track['path'], '', '', '', '', track['duration'], ''])
+                writer.writerow([track['label'] or os.path.basename(track['path'] or ''), '', '', '', '', track['duration'], ''])
 
         return out.getvalue()
 

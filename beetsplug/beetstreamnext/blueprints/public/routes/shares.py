@@ -13,7 +13,7 @@ from flask import render_template
 
 from .. import public_bp
 
-from beetsplug.beetstreamnext.constants import RATE_LIMIT_BLOCK_WINDOW, ZIP_CACHE_DIR, ZIP_MAX_CONCURRENT
+from beetsplug.beetstreamnext.constants import RATE_LIMIT_BLOCK_WINDOW, SHARE_STREAM_MAX_BITRATE, ZIP_CACHE_DIR, ZIP_MAX_CONCURRENT
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -338,6 +338,20 @@ def share_download_album(share_id: str, entry_id: str) -> flask.Response:
     download_name = f"{safe_filename(album.albumartist, 'untitled')} - {safe_filename(album.album, 'untitled')}.zip"
 
     return flask.send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=download_name)
+
+
+@public_bp.route('/share/<share_id>/stream/<entry_id>')
+def share_stream(share_id: str, entry_id: str) -> flask.Response:
+    """Stream a shared song in the web player (doesn't count as a download)."""
+
+    from beetsplug.beetstreamnext.blueprints.shared.playback import browser_play
+
+    _get_active_share(share_id)
+
+    if not _is_shared(share_id, entry_id):
+        flask.abort(403)
+
+    return browser_play(entry_id, SHARE_STREAM_MAX_BITRATE)
 
 
 @public_bp.route('/share/<share_id>/cover/<entry_id>')

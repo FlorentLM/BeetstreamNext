@@ -12,7 +12,8 @@
     padding: .5rem .6rem
 }
 
-.lib .tabulator-row.now-playing {
+.lib .tabulator-row.now-playing,
+.share-wrapper .tabulator-row.now-playing {
     background-color: var(--overlay-strong);
     color: var(--link)
 }
@@ -195,7 +196,8 @@
     text-overflow: ellipsis
 }
 
-.lib .tabulator-row.tabulator-selected {
+.lib .tabulator-row.tabulator-selected,
+.share-wrapper .tabulator-row.tabulator-selected {
     background-color: var(--overlay-strong);
     box-shadow: inset 3px 0 0 var(--primary)
 }

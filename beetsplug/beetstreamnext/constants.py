@@ -259,6 +259,7 @@ HLS_MAX_CACHE_BYTES: int = 2 * 1024 ** 3    # Total size of all HLS sessions on 
 ZIP_MAX_CONCURRENT: int = 2                 # album zips being built at once
 TRANSCODE_MAX_CONCURRENT: int = 16          # max ffmpeg transcodes at once
 TRANSCODE_MAX_PER_USER: int = 4
+SHARE_STREAM_MAX_BITRATE: int = 192         # kbps cap for playback in public shares
 PUBLIC_LISTENER_MAX_THREADS: int = 8        # dedicated worker pool so that public-only listeners can't starve the full one
 COVER_EXTRACT_MAX_CONCURRENT: int = 8       # max ffmpeg cover art extractions at once
 PODCAST_MAX_CONCURRENT_DOWNLOADS: int = 3   # episode downloads running at once

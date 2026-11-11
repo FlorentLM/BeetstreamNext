@@ -32,11 +32,16 @@
     }
 
     function step(direction) {
+        if (!table) return;     // Single track no queue
         const rows = table.getData('active').filter(row => row.id);
         const at = rows.findIndex(row => row.id === track.id);
         playTrack(at < 0 ? rows[0] : rows[at + direction], table);
     }
 
+    document.addEventListener('click', event => {
+        const button = event.target.closest('[data-play]');
+        if (button) playTrack(JSON.parse(button.dataset.play), null);
+    });
     document.addEventListener('table:play', event => playTrack(event.detail.data, event.detail.table));
 
     $('pPlay').addEventListener('click', () => {

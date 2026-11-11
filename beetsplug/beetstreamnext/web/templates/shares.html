@@ -25,6 +25,7 @@
 
 {% block styles %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/share.css') }}">
 {% endblock %}
 
@@ -84,9 +85,11 @@
                                 'id': song.id,
                                 'album_id': album.id,
                                 'album': album.name,
+                                'artist': song.artist,
                                 'track': song.track or none,
                                 'title': song.title,
                                 'duration': song.duration or 0,
+                                'secs': song.duration or 0,
                                 'duration_text': song.duration | duration,
                                 'format': (song.suffix or '') | upper,
                                 'size': song.size or 0,
@@ -105,6 +108,7 @@
                             ],
                             'rows': rows,
                             'pageSize': 100,
+                            'play': true,
                         }) }}
                     </div>
                 </div>
@@ -127,6 +131,10 @@
                     </div>
                     <div class="album-download">
                         <span class="session-user">{{ song.size | filesize }}</span>
+                        <button type="button" class="btn btn-outline"
+                                data-play='{{ {'id': song.id, 'album_id': song.id, 'title': song.title, 'artist': song.artist, 'album': song.album, 'secs': song.duration or 0} | tojson }}'>
+                            Play
+                        </button>
                         <a href="{{ url_for('public.share_download', share_id=share.id, entry_id=song.id) }}"
                            class="btn btn-primary">
                             Download
@@ -155,10 +163,12 @@
                         {% endset %}
                         {% set _ = rows.append({
                             'id': song.id,
+                            'album_id': song.id,
                             'title': song.title,
                             'artist': song.artist,
                             'album': song.album,
                             'duration': song.duration or 0,
+                            'secs': song.duration or 0,
                             'duration_text': song.duration | duration,
                             'format': (song.suffix or '') | upper,
                             'size': song.size or 0,
@@ -178,13 +188,24 @@
                         ],
                         'rows': rows,
                         'pageSize': 100,
+                        'play': true,
                     }) }}
                 </div>
             </div>
         {% endif %}
+
+        {% if albums or songs %}
+            {% with player_hidden = true,
+                    stream_url = url_for('public.share_stream', share_id=share.id, entry_id='0'),
+                    art_url = url_for('public.share_cover', share_id=share.id, entry_id='0') %}
+                {% include 'partials/player.html' %}
+            {% endwith %}
+        {% endif %}
+
     </div>
 {% endblock %}
 
 {% block scripts %}
     <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script nonce="{{ g.csp_nonce }}" src="{{ url_for('static', filename='js/player.js') }}"></script>
 {% endblock %}

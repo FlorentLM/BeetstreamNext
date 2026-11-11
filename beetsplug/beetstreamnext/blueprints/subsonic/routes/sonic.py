@@ -11,6 +11,7 @@ from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.utils.general import page_size
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
+from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.core.services.external.audiomuse import audiomuse_get
 
 
@@ -23,7 +24,8 @@ def _parse_audiomuse_result(tracks: list, with_distance: bool = True) -> list:
         return []
 
     ids_in_order = [t['item_id'] for t in tracks if t.get('item_id')]
-    resolved = Resolve.songs(ids_in_order)
+    resolved = {sid: item for sid, item in Resolve.songs(ids_in_order).items() if exclusions().songs([item], 'lists')}
+
     preload_songs(list(resolved.values()))
 
     matches = []

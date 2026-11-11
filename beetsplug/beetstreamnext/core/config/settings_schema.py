@@ -566,6 +566,70 @@ SETTINGS_SCHEMA: dict[str, SettingDescriptor] = {
         'choices': ('off', 'fallback', 'prefer'),
         'validator': validate_choice('off', 'fallback', 'prefer'),
     },
+    'hide_dislikes': {
+        'type': 'str',
+        'default': 'off',
+        'category': 'library',
+        'description': (
+            "Whether and how to hide disliked songs, albums or artists."
+            "<br>"
+            "<br>"
+            "<code>off</code>: Disliked items are not hidden."
+            "<br>"
+            "<br>"
+            "<code>lists</code>: Hidden from random, similar and other auto-generated lists. Still shown when "
+            "browsing and searching."
+            "<br>"
+            "<br>"
+            "<code>everywhere</code>: Also hidden when browsing and searching."
+        ),
+        'requires_restart': False,
+        'choices': ('off', 'lists', 'everywhere'),
+        'validator': validate_choice('off', 'lists', 'everywhere'),
+    },
+    'hide_low_ratings': {
+        'type': 'str',
+        'default': 'off',
+        'category': 'library',
+        'description': (
+            "Whether and how to hide low rated songs, albums or artists."
+            "<br>"
+            "<br>"
+            "<code>off</code>: Low rated items are not hidden."
+            "<br>"
+            "<br>"
+            "<code>lists</code>: Hidden from random, similar and other auto-generated lists. Still shown when "
+            "browsing and searching."
+            "<br>"
+            "<br>"
+            "<code>everywhere</code>: Also hidden when browsing and searching."
+        ),
+        'requires_restart': False,
+        'choices': ('off', 'lists', 'everywhere'),
+        'validator': validate_choice('off', 'lists', 'everywhere'),
+    },
+    'low_rating_cutoff': {
+        'type': 'int',
+        'default': 1,
+        'category': 'library',
+        'description': (
+            "What counts as low rated (for instance 2 hides 1- and 2-star items)."
+        ),
+        'requires_restart': False,
+        'validator': validate_int_range(1, 4),
+    },
+    'high_rating_cutoff': {
+        'type': 'int',
+        'default': 5,
+        'category': 'library',
+        'description': (
+            "What counts as high rated (a high rated song on a hidden album will stay visible)."
+            "<br>"
+            "Set to 0 to disable."
+        ),
+        'requires_restart': False,
+        'validator': validate_int_range(0, 5),
+    },
     'ignored_articles': {
         'type': 'str',
         'default': (

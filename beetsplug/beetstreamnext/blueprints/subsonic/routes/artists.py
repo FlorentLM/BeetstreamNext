@@ -8,12 +8,14 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, split_beets_multi
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_wikidata_title
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_artists
+from beetsplug.beetstreamnext.core.storage.connection import database
+from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -51,11 +53,28 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
 
     tag = 'indexes' if 'getIndexes' in flask.request.path else 'artists'
 
-    # Beets db modification time
+    # Beets db modification time, or when user hides something
     lib_path = flask.g.lib.path
     latest_mtime = int(os.path.getmtime(os.fsdecode(lib_path)) * 1000)
 
-    if modified_since:
+    with database() as db:
+        hidden_changed = db.execute(
+            """
+            SELECT MAX(changed) FROM (
+                SELECT changed_at AS changed FROM user_changes WHERE username = ? AND kind = 'exclusions'
+                UNION ALL
+                SELECT updated_at FROM settings WHERE key IN ('hide_dislikes', 'hide_low_ratings', 'low_rating_cutoff', 'high_rating_cutoff')
+            )
+            """, (flask.g.username,)
+        ).fetchone()[0]
+
+    latest_mtime = max(latest_mtime, int((hidden_changed or 0) * 1000))
+
+    exc = exclusions()
+    hiding = exc.active(scope='browse')
+
+    # includeDisliked changes the content without changing latest_mtime
+    if modified_since and 'includeDisliked' not in r:
         try:
             if latest_mtime <= modified_since:
                 # library hasn't changed: return empty payload
@@ -83,8 +102,19 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
     artists = []
     for row in rows:
         name, count, mbid, sort_name, albumartists_raw = row
-        artists.append(name)
+
         is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
+        if hiding:
+            if is_joint:
+                artist_id = IDs.encode_artist(name, joint_credit=True)
+            else:
+                maybe_mbid = validate_mbid(mbid)
+                artist_id = IDs.encode_artist(maybe_mbid or name, is_mbid=bool(maybe_mbid))
+
+            if exc.artist_hidden(artist_id, scope='browse'):
+                continue
+
+        artists.append(name)
         artist_prefetch[name] = {
             'album_count': count, 'mbid': mbid, 'sort_name': sort_name, 'is_joint': is_joint
         }
@@ -133,6 +163,10 @@ def endpoint_get_artist() -> flask.Response:
     payload = artist_payload(artist_id, with_albums=True)   # getArtist endpoint needs to include albums
     if not payload:
         return subsonic_error(70, resp_fmt=resp_fmt)
+
+    albums = payload['artist'].get('album')
+    if albums:
+        payload['artist']['album'] = exclusions().album_entries(albums, scope='browse', inherit=False)
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
 

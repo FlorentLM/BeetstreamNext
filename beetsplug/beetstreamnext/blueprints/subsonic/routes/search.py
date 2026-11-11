@@ -5,9 +5,11 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
-from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi
+from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
+from beetsplug.beetstreamnext.core.library.exclusions import exclusions
+from beetsplug.beetstreamnext.core.library.ids import IDs
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
 @subsonic_bp.route('/search', methods=['GET', 'POST'])
@@ -63,13 +65,16 @@ def endpoint_search() -> flask.Response:
 
     artist_prefetch = {}
 
+    exc = exclusions()
+    hiding = exc.active(scope='browse')    # remove hidden entries before pages are cut
+
     # Beets query
     if main_query.startswith(('b:', 'beets:')):
         clean_query = main_query.split(':', 1)[1].strip()
 
         try:
-            beets_albums = list(flask.g.lib.albums(clean_query))
-            beets_songs = list(flask.g.lib.items(clean_query))
+            beets_albums = exc.albums(list(flask.g.lib.albums(clean_query)), scope='browse')
+            beets_songs = exc.songs(list(flask.g.lib.items(clean_query)), scope='browse')
 
             # Dedup artists (from albums and songs)
             a_artists = {a.albumartist for a in beets_albums if a.albumartist}
@@ -121,29 +126,33 @@ def endpoint_search() -> flask.Response:
 
         # Search songs
         where, params = build_where('items', 'title')
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                f"""
-                SELECT * FROM items {where} 
-                ORDER BY title 
-                COLLATE NOCASE 
-                LIMIT ? OFFSET ?
-                """, params + [song_count, song_offset]  # nosec B608  # noqa: S608 vars are constants
-            )
-        songs = list(rows)
+        def fetch_songs(limit, skip):
+            with flask.g.lib.transaction() as tx:
+                return list(tx.query(
+                    f"""
+                    SELECT * FROM items {where} 
+                    ORDER BY title 
+                    COLLATE NOCASE 
+                    LIMIT ? OFFSET ?
+                    """, params + [limit, skip]  # nosec B608  # noqa: S608 vars are constants
+                ))
+
+        songs = exc.page(fetch_songs, keep=exc.songs, scope='browse', offset=song_offset, count=song_count)
 
         # Search albums
         where, params = build_where('albums', 'album')
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                f"""
-                SELECT * FROM albums {where} 
-                ORDER BY album 
-                COLLATE NOCASE 
-                LIMIT ? OFFSET ?
-                """, params + [album_count, album_offset]  # nosec B608  # noqa: S608 vars are constants
-            )
-        albums = list(rows)
+        def fetch_albums(limit, skip):
+            with flask.g.lib.transaction() as tx:
+                return list(tx.query(
+                    f"""
+                    SELECT * FROM albums {where} 
+                    ORDER BY album 
+                    COLLATE NOCASE 
+                    LIMIT ? OFFSET ?
+                    """, params + [limit, skip]  # nosec B608  # noqa: S608 vars are constants
+                ))
+
+        albums = exc.page(fetch_albums, keep=exc.albums, scope='browse', offset=album_offset, count=album_count)
 
         # Search artists
         conds, params = [], []
@@ -161,15 +170,37 @@ def endpoint_search() -> flask.Response:
                 GROUP BY albumartist
                 ORDER BY albumartist COLLATE NOCASE
                 LIMIT ? OFFSET ?
-                """, params + [artist_count, artist_offset]  # nosec B608  # noqa: S608 vars are constants
+                """, params + ([-1, 0] if hiding else [artist_count, artist_offset])  # nosec B608  # noqa: S608 vars are constants
             )
+        # TODO: LIMIT -1 is probably fine for artists but maybe to revise later
         artist_rows = list(rows)
 
         artists = []
+        skipped = 0
         for row in artist_rows:
             name, count, mbid, sort_name, albumartists_raw = row
-            artists.append(name)
             is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
+
+            if hiding:
+
+                if is_joint:
+                    artist_id = IDs.encode_artist(name, joint_credit=True)
+                else:
+                    maybe_mbid = validate_mbid(mbid)
+                    artist_id = IDs.encode_artist(maybe_mbid or name, is_mbid=bool(maybe_mbid))
+
+                if exc.artist_hidden(artist_id, scope='browse'):
+                    continue
+
+                if skipped < artist_offset:
+                    skipped += 1
+                    continue
+
+                if len(artists) >= artist_count:
+                    break
+
+            artists.append(name)
+
             artist_prefetch[name] = {
                 'album_count': count, 'mbid': mbid, 'sort_name': sort_name, 'is_joint': is_joint
             }

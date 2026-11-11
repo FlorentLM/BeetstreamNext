@@ -15,6 +15,7 @@ from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_resp
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_albums, get_song_counts
+from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 
 
 def album_payload(subsonic_album_id: str, include_songs: bool = True) -> dict:
@@ -42,6 +43,10 @@ def endpoint_get_album() -> flask.Response:
     payload = album_payload(album_id, include_songs=True)
     if not payload:
         return subsonic_error(70, resp_fmt=resp_fmt)
+
+    songs = payload['album'].get('song')
+    if songs:
+        payload['album']['song'] = exclusions().song_entries(songs, scope='browse', inherit=False)
 
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
@@ -128,6 +133,9 @@ def endpoint_get_album_list() -> flask.Response:
 
     tag = 'albumList2' if 'getAlbumList2' in flask.request.path else 'albumList'
 
+    exc = exclusions()
+    hiding = exc.active(scope='browse')
+
     if sort_by in ('starred', 'highest'):
 
         with database() as db:
@@ -155,7 +163,7 @@ def endpoint_get_album_list() -> flask.Response:
         skipped = 0
         for row in rows:
             album = Resolve.album(row['item_id'])
-            if album is None:
+            if album is None or not exc.albums([album], scope='browse'):
                 continue
             if skipped < offset:
                 skipped += 1
@@ -193,10 +201,22 @@ def endpoint_get_album_list() -> flask.Response:
         ranked = sorted(per_album, key=lambda album_id: per_album[album_id][ranking], reverse=True)
 
         albums_list = []
-        for album_id in ranked[offset:]:
+        skipped = 0
+        for album_id in ranked:
+
+            if skipped < offset and not hiding:
+                skipped += 1
+                continue
+
             album = flask.g.lib.get_album(album_id)
-            if album is not None:
-                albums_list.append(dict(album))
+            if album is None or not exc.albums([album], scope='browse'):
+                continue
+
+            if skipped < offset:
+                skipped += 1
+                continue
+
+            albums_list.append(dict(album))
             if len(albums_list) >= size:
                 break
 
@@ -244,10 +264,18 @@ def endpoint_get_album_list() -> flask.Response:
             query += " ORDER BY RANDOM()"
 
         query += " LIMIT ? OFFSET ?"
-        params.extend([size, offset])
 
-        with flask.g.lib.transaction() as tx:
-            albums = list(tx.query(query, params))
+        def fetch_albums(limit, skip):
+            with flask.g.lib.transaction() as tx:
+                return list(tx.query(query, [*params, limit, skip]))
+
+        if sort_by == 'random' and hiding:
+            # Every query reshuffles, so paging in chunks would repeat
+            big_limit = size * 4  # we just query a larger set
+
+            albums = exc.albums(fetch_albums(limit=big_limit, skip=0), scope='browse')[:size]
+        else:
+            albums = exc.page(fetch_albums, keep=exc.albums, scope='browse', offset=offset, count=size)
 
         albums_list = [dict(album) for album in albums]
 

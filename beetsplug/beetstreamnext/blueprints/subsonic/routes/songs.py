@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
+from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.db import library_cache, sql_conditions_for
@@ -76,15 +77,19 @@ def endpoint_songs_by_genre() -> flask.Response:
 
     songs = []
     if conditions:
+
         sql = f"""
         SELECT * FROM items 
         WHERE ({' OR '.join(conditions)}) 
         ORDER BY title LIMIT ? OFFSET ?
         """  # nosec B608  # noqa: S608 vars are constants
-        params.extend([count, offset])
 
-        with flask.g.lib.transaction() as tx:
-            songs = list(tx.query(sql, params))
+        def fetch_songs(limit, skip):
+            with flask.g.lib.transaction() as tx:
+                return list(tx.query(sql, [*params, limit, skip]))
+
+        exc = exclusions()
+        songs = exc.page(fetch_songs, keep=exc.songs, scope='browse', offset=offset, count=count)
 
     preload_songs(songs)
 
@@ -100,6 +105,7 @@ def endpoint_songs_by_genre() -> flask.Response:
 @subsonic_bp.route('/getRandomSongs', methods=['GET', 'POST'])
 @subsonic_bp.route('/getRandomSongs.view', methods=['GET', 'POST'])
 def endpoint_get_random_songs() -> flask.Response:
+
     r = flask.request.values
     resp_fmt = r.get('f', default='xml', type=safe_str)
     size = r.get('size', default=10, type=page_size)
@@ -120,6 +126,7 @@ def endpoint_get_random_songs() -> flask.Response:
         cols = library_cache.schema('items')
         genre_conditions = []
         pattern = f"%{genre.strip().lower()}%"
+
         if 'genres' in cols:
             genre_conditions.append("lower(genres) LIKE ?")
             params.append(pattern)
@@ -133,10 +140,26 @@ def endpoint_get_random_songs() -> flask.Response:
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY RANDOM() LIMIT ?"
-    params.append(size)
 
-    with flask.g.lib.transaction() as tx:
-        songs = list(tx.query(sql, params))
+    songs = []
+    seen = set()
+
+    exc = exclusions()
+
+    # Draw more until list is full (or nothing new comes up) to fill the gaps
+    for _ in range(5 if exc.active(scope='lists') else 1):
+
+        with flask.g.lib.transaction() as tx:
+            drawn = list(tx.query(sql, [*params, size * 2 if exc.active(scope='lists') else size]))
+
+        fresh = [s for s in drawn if s['id'] not in seen]
+        seen.update(s['id'] for s in fresh)
+        songs.extend(exc.songs(fresh, scope='lists'))
+
+        if len(songs) >= size or not fresh:
+            break
+
+    songs = songs[:size]
 
     preload_songs(songs)
 
@@ -187,6 +210,7 @@ def endpoint_get_top_songs() -> flask.Response:
             with flask.g.lib.transaction() as tx:
                 top_tracks_available = list(tx.query(sql, [artist_name, *name_params, *lastfm_track_names]))
 
+            top_tracks_available = exclusions().songs(top_tracks_available, scope='lists')
             if top_tracks_available:
                 preload_songs(top_tracks_available)
 
@@ -221,6 +245,7 @@ def endpoint_get_top_songs() -> flask.Response:
             if len(matches) >= count:
                 break
 
+    matches = exclusions().songs(matches, scope='lists')
     preload_songs(matches)
 
     payload = {
@@ -375,7 +400,7 @@ def endpoint_get_similar_songs() -> flask.Response:
 
     tag = 'similarSongs2' if 'getSimilarSongs2' in flask.request.path else 'similarSongs'
 
-    final_songs = list(matched_songs.values())[:limit]
+    final_songs = exclusions().songs(list(matched_songs.values()), scope='lists')[:limit]
     preload_songs(final_songs)
 
     payload = {

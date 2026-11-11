@@ -105,7 +105,7 @@
 > [!IMPORTANT]
 > Following the reference Subsonic specification, error responses are returned with an _HTTP 200_ status. The real outcome is in the response body's `status` field (`"ok"` or `"failed"`, with an error `code`/`message` on failure).
 
-## Extensions
+## OpenSubsonic Extensions
 
 Alongside the base spec, **BeetstreamNext** implements all the [OpenSubsonic extensions](https://opensubsonic.netlify.app/docs/extensions/).
 
@@ -124,6 +124,17 @@ Alongside the base spec, **BeetstreamNext** implements all the [OpenSubsonic ext
 
 > [!NOTE]
 > These extensions are always advertised by the server except for `sonicSimilarity` which only appears if an [**AudioMuse-AI** instance is configured](./configuration.md#audiomuse_url).
+
+### BeetstreamNext-only endpoints
+
+These are not part of the OpenSubsonic specification. They are advertised to clients through custom Extensions.
+
+| Endpoint    | Description                                                                                         | Advertised extension |
+|-------------|-----------------------------------------------------------------------------------------------------|----------------------|
+| `dislike`   | Dislikes a song, album or artist. Takes the same parameters as `star` (`id`, `albumId`, `artistId`) | `bsnDislike` (v1)    |
+| `undislike` | Removes a dislike. Takes the same parameters as `unstar`                                            | `bsnDislike` (v1)    |
+
+See [Library augmentation](features/library-augmentation.md) for more info about how dislikes can be used.
 
 ## Authentication
 

@@ -154,6 +154,13 @@ a:focus-visible {
     outline-offset: 2px;
 }
 
+input:is([type="text"], [type="password"], [type="email"], [type="url"], [type="number"], [type="search"], :not([type])):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+}
+
 .flash {
     gap: 0.75rem;
 }
@@ -406,27 +413,57 @@ pre code {
 
 /* Show / hide password toggle */
 .password-toggle-wrap {
-    position: relative;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     flex: 1;
     min-width: 0;
     width: 100%;
+    box-sizing: border-box;
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 13.3333px;
+    cursor: text;
+    transition: border-color 0.2s;
 }
 
-.password-toggle-wrap > input {
-    width: 100%;
-    padding-right: 2.75rem;
+.password-toggle-wrap:focus-within {
+    border-color: var(--primary);
+}
+
+.password-toggle-wrap:has(> input:disabled) {
+    background: var(--overlay-weak);
+    color: var(--text-muted);
+    border-style: dashed;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.password-toggle-wrap > input[data-pw-toggle][type] {
+    all: unset;
+    flex: 1;
+    min-width: 0;
     box-sizing: border-box;
+    color: inherit;
+    font: inherit;
+    cursor: inherit;
+}
+
+.password-toggle-wrap > input[data-pw-toggle][type]::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
 }
 
 .password-toggle-btn {
-    display: none;
-    position: absolute;
-    top: 50%;
-    right: 0.5rem;
-    transform: translateY(-50%);
+    display: inline-flex;
+    visibility: hidden;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
+    margin-block: -0.25rem;
     padding: 0.25rem;
     border: none;
     border-radius: 6px;
@@ -435,16 +472,8 @@ pre code {
     cursor: pointer;
 }
 
-.password-toggle-wrap.has-extension-icon > input {
-    padding-right: 5.5rem;
-}
-
-.password-toggle-wrap.has-extension-icon > .password-toggle-btn {
-    right: 3rem;
-}
-
 .password-toggle-wrap.has-value > .password-toggle-btn {
-    display: inline-flex;
+    visibility: visible;
 }
 
 .password-toggle-btn:hover,

@@ -10,6 +10,13 @@
         input.parentNode.insertBefore(wrap, input);
         wrap.appendChild(input);
 
+        wrap.addEventListener('mousedown', e => {
+            if (e.target === wrap) {
+                e.preventDefault();
+                input.focus();
+            }
+        });
+
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'password-toggle-btn';
@@ -34,18 +41,6 @@
             wrap.classList.toggle('has-value', typed);
             if (!typed) reset();
         }
-
-        // Password managers inject their icon at the right edge of the field,
-        // move our eye to the left
-        function detectExtensionIcon() {
-            const foreign = Array.from(wrap.children).some(el => el !== input && el !== btn);
-            const onePassword = !!document.querySelector('com-1password-button');
-            if (foreign || onePassword) wrap.classList.add('has-extension-icon');
-        }
-
-        new MutationObserver(detectExtensionIcon).observe(wrap, {childList: true});
-        input.addEventListener('focus', detectExtensionIcon);
-        input.addEventListener('input', detectExtensionIcon);
 
         // User input reveals the button
         input.addEventListener('input', sync);

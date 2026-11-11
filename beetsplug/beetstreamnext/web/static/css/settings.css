@@ -997,6 +997,12 @@ input:focus, select:focus {
     color: var(--text);
 }
 
+.setting-row-control .password-toggle-wrap {
+    padding: 0.5rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
 .setting-row-control input:focus {
     border-color: var(--primary);
 }
@@ -2874,11 +2880,6 @@ input:focus, select:focus {
     background: var(--overlay-weak);
 }
 
-.connection-card:has(.connection-switch input:not(:checked)) .connection-fields,
-.connection-card:has(.connection-switch input:not(:checked)) .connection-hint {
-    opacity: 0.6;
-}
-
 .connection-head {
     display: flex;
     align-items: center;
@@ -2986,6 +2987,11 @@ input:focus, select:focus {
 
 .connection-fields input {
     display: block;
+}
+
+.connection-fields input::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
 }
 
 .connection-hint {

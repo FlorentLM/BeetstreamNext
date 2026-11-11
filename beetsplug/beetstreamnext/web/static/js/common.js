@@ -622,6 +622,16 @@
     window.bsnCommon = {copyText, onSwap, onSwapSuccess, closeModalsOnSuccess, coverArt};
 
     document.addEventListener('alpine:init', () => {
+        Alpine.data('tokenForm', () => ({
+            token: '',
+            init() {
+                this.token = this.$root.querySelector('input[name="token"]').value;
+            },
+            get empty() {
+                return !this.token.trim();
+            }
+        }));
+
         // Image picker (radio icons, user avatars)
         Alpine.data('iconPicker', () => ({
             previewSrc: '',

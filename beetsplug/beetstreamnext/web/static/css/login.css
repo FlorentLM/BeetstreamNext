@@ -70,6 +70,11 @@ input:focus {
     border-color: var(--primary);
 }
 
+.password-toggle-wrap {
+    padding: 0.9rem;
+    font-size: 0.95rem;
+}
+
 .btn-submit {
     width: 100%;
     padding: 0.9rem;

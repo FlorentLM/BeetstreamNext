@@ -74,7 +74,7 @@
             <form hx-post="{{ url_for(bp_name ~ '.route_connect_service', service=svc.service) }}"
                   hx-disable="find button[type='submit']"
                   hx-target="#scrobblingList"
-                  hx-swap="innerHTML" class="connection-fields">
+                  hx-swap="innerHTML" class="connection-fields" x-data="tokenForm">
                 {{ token_form.csrf_token }}
                 <div class="form-group">
                     <label>URL</label>
@@ -87,14 +87,14 @@
                                rel="noopener noreferrer">(click here to get your token)</a>
                         {% endif %}
                     </label>
-                    <input type="password" name="token" id="token" maxlength="128" autocomplete="new-password"
+                    <input type="password" name="token" id="token" maxlength="128" autocomplete="new-password" x-model="token"
                            {% if conn %}value="{{ token_mask }}" title="A token is saved. Paste a new one to replace it."
                            {% else %}placeholder="Your {{ svc.label }} token"{% endif %}>
                 </div>
                 <div class="connection-actions">
                     <label aria-hidden="true">&nbsp;</label>
                     <div class="connection-actions-row">
-                    <button type="submit" class="btn btn-primary">{{ 'Update' if conn else 'Connect' }}</button>
+                    <button type="submit" class="btn btn-primary" :disabled="empty">{{ 'Update' if conn else 'Connect' }}</button>
                     {% if conn %}
                         <button type="button" class="icon-btn icon-btn-delete" title="Disconnect"
                                 aria-label="Disconnect {{ svc.label }}"

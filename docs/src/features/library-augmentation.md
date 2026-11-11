@@ -35,6 +35,22 @@ To expose OpenSubsonic's `sonicSimilarity` extension, BeetstreamNext integrates 
 
 Point `audiomuse_url` at your **AudioMuse-AI** instance and set `audiomuse_api_token` to enable it. The admin panel can trigger a full-library fingerprinting run on AudioMuse-AI directly.
 
+## Hiding items
+
+Songs, albums or artists you dislike or rate low can be hidden (on a per user basis). See [`hide_dislikes`](../configuration.md#hide_dislikes) and [`hide_low_ratings`](../configuration.md#hide_low_ratings). Use [`low_rating_cutoff`](../configuration.md#low_rating_cutoff) to set what counts as _low rated_.
+
+Starred or high rated items are still shown, even if the parent album/artist is hidden. Use [`high_rating_cutoff`](../configuration.md#high_rating_cutoff) to set what counts as _high rated_
+
+> [!NOTE]
+> Dislikes are not part of the Subsonic or OpenSubsonic specification. The `dislike` endpoint is experimental and is a **BeetstreamNext**-only extension, so no clients officially support it (yet?).
+>
+> See [GitHub discussion](https://github.com/opensubsonic/open-subsonic-api/discussions/193) about dislikes in OpenSubsonic.
+
+> [!IMPORTANT]
+> Some clients heavily cache the library, and so they don't play too nice with hidden items.
+> 
+> If hidden items keep showing up, resync the library or clear the client's cache.
+
 ## Advanced search: Beets query passthrough
 
 Any search request can be turned into a raw Beets query by prefixing it with  `beets:` or `b:`, for example `b:length:..3:30` to find tracks under 3:30. This runs Beets' own complex query DSL (regex, field-specific, fuzzy matching) straight from your client's search bar, instead of a normal search.

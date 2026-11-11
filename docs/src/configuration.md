@@ -698,6 +698,46 @@ Use Discogs' public community rating for an album's average rating.<br><br><code
 
 ---
 
+### `hide_dislikes`
+
+Whether and how to hide disliked songs, albums or artists.<br><br><code>off</code>: Disliked items are not hidden.<br><br><code>lists</code>: Hidden from random, similar and other auto-generated lists. Still shown when browsing and searching.<br><br><code>everywhere</code>: Also hidden when browsing and searching.
+
+*type:* `str`
+
+*default:* `off`, *choices:* `off`, `lists`, `everywhere`
+
+---
+
+### `hide_low_ratings`
+
+Whether and how to hide low rated songs, albums or artists.<br><br><code>off</code>: Low rated items are not hidden.<br><br><code>lists</code>: Hidden from random, similar and other auto-generated lists. Still shown when browsing and searching.<br><br><code>everywhere</code>: Also hidden when browsing and searching.
+
+*type:* `str`
+
+*default:* `off`, *choices:* `off`, `lists`, `everywhere`
+
+---
+
+### `low_rating_cutoff`
+
+What counts as low rated (for instance 2 hides 1- and 2-star items).
+
+*type:* `int`
+
+*default:* `1`
+
+---
+
+### `high_rating_cutoff`
+
+What counts as high rated (a high rated song on a hidden album will stay visible).<br>Set to 0 to disable.
+
+*type:* `int`
+
+*default:* `5`
+
+---
+
 ### `ignored_articles`
 
 Space-separated articles (across any language) to ignore when sorting artists alphabetically (for instance, "The Beatles" -> B).

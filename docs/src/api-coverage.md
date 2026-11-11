@@ -134,7 +134,14 @@ These are not part of the OpenSubsonic specification. They are advertised to cli
 | `dislike`   | Dislikes a song, album or artist. Takes the same parameters as `star` (`id`, `albumId`, `artistId`) | `bsnDislike` (v1)    |
 | `undislike` | Removes a dislike. Takes the same parameters as `unstar`                                            | `bsnDislike` (v1)    |
 
-See [Library augmentation](features/library-augmentation.md) for more info about how dislikes can be used.
+### BeetstreamNext-only extensions
+
+| Extension          | Description                                                                                                                                                                                                                                                              |
+|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bsnDislike` (v1)  | The `dislike` / `undislike` endpoints above, and a `disliked` field on songs, albums and artists                                                                                                                                                                         |
+| `bsnHiding` (v1)   | The server hides disliked and low rated items on a per-user basis (see [`hide_dislikes`](./configuration.md#hide_dislikes) and [`hide_low_ratings`](./configuration.md#hide_low_ratings)). Clients can pass `includeDisliked=true` to bypass dislike hiding on a request |
+
+See [Library augmentation](features/library-augmentation.md) for more info about how dislikes and hiding can be used.
 
 ## Authentication
 

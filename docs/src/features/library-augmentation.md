@@ -42,7 +42,10 @@ Songs, albums or artists you dislike or rate low can be hidden (on a per user ba
 Starred or high rated items are still shown, even if the parent album/artist is hidden. Use [`high_rating_cutoff`](../configuration.md#high_rating_cutoff) to set what counts as _high rated_
 
 > [!NOTE]
-> Dislikes are not part of the Subsonic or OpenSubsonic specification. The `dislike` endpoint is experimental and is a **BeetstreamNext**-only extension, so no clients officially support it (yet?).
+>
+> Dislikes and Hiding are not part of the Subsonic or OpenSubsonic specification.
+>
+> The `dislike` endpoint is advertised to clients via a **BeetstreamNext**-only `bsnDislike` extension, Hiding is advertised via the `bsnHiding` extension. Clients can pass `includeDisliked=true` to bypass dislike hiding on a request.
 >
 > See [GitHub discussion](https://github.com/opensubsonic/open-subsonic-api/discussions/193) about dislikes in OpenSubsonic.
 

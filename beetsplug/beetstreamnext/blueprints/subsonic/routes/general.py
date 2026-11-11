@@ -57,6 +57,10 @@ def endpoint_get_open_subsonic_extensions() -> flask.Response:
             'versions': [1]
         },
         {
+            'name': 'bsnHiding',    # BSN custom extension: per-user hiding of disliked/low-rated items + 'includeDisliked' param
+            'versions': [1]
+        },
+        {
             'name': 'formPost',    # https://opensubsonic.netlify.app/docs/extensions/formpost/
             'versions': [1]
         },

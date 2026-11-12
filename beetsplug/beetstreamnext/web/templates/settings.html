@@ -516,9 +516,11 @@
             </div>
 
             <div class="card">
-                <div class="table-header"><h2>Audio Health Scan</h2></div>
+                <div class="table-header"><h2>Health Scan</h2></div>
                 <p class="card-hint">
-                    Identify and flag any audio file problems, to be healed on-the-fly when played. Runs incrementally in the background.
+                    Identify and flag any audio file problems, to be healed on-the-fly when played. Also reports library quality issues
+                    (duplicates, lossy copies of lossless albums, inconsistent tags, missing tracks, missing IDs).
+                    Runs incrementally in the background.
                 </p>
                 <dl class="kv-grid" id="health-scan-status"
                     hx-get="{{ url_for('admin.route_health_scan_status') }}"
@@ -528,7 +530,9 @@
                     <dd>Loading...</dd>
                     <dt>Songs checked</dt>
                     <dd>&mdash;</dd>
-                    <dt>Flagged songs</dt>
+                    <dt>Decode-flagged songs</dt>
+                    <dd>&mdash;</dd>
+                    <dt>Quality issues</dt>
                     <dd>&mdash;</dd>
                 </dl>
 

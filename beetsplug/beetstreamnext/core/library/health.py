@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from typing import NamedTuple
 
 import beets
 from beets.library import Album, Item, Library as BeetsLibrary
@@ -27,21 +28,145 @@ from beetsplug.beetstreamnext.utils.db import chunked_execute
 from beetsplug.beetstreamnext.utils.concurrency import SingleAccess, Throttle
 
 
-DECODE_ERRORS_CHECK = 'decode_errors'
-MISSING_FILE_CHECK = 'missing_file'
+class Check(NamedTuple):
+    label: str
+    badge: str
+    sql: str = ''
 
-_KIND_LABELS = {
-    DECODE_ERRORS_CHECK: 'Decode errors',
-    MISSING_FILE_CHECK: 'Missing file',
+
+CHECKS = {
+
+    'decode_errors': Check('Decode errors', 'badge-red'),
+    'missing_file': Check('Missing file', 'badge-rose'),
+
+    'quality_duplicate': Check('Duplicate', 'badge-blue', """
+        WITH k AS (
+            SELECT id,
+                   CASE WHEN TRIM(COALESCE(mb_trackid, '')) != '' THEN mb_trackid
+                        ELSE LOWER(TRIM(artist)) || '|' || LOWER(TRIM(title)) || '|' || CAST(COALESCE(length, 0) / 3 AS INT)
+                   END AS key
+            FROM beets.items
+            WHERE TRIM(COALESCE(title, '')) != ''
+        ), g AS (
+            SELECT id, COUNT(*) OVER (PARTITION BY key) AS copies FROM k
+        )
+        SELECT id, copies || ' copies of this track (same ID, or same artist, title and length)'
+        FROM g WHERE copies > 1
+    """),
+
+    'quality_lossy_copy': Check('Lossy copy', 'badge-amber', """
+        WITH a AS (
+            SELECT al.id AS album_id, MIN(i.id) AS rep, COUNT(*) AS n,
+                   SUM(UPPER(i.format) IN ('FLAC', 'ALAC', 'WAV', 'AIFF', 'APE', 'WAVPACK', 'WV', 'DSF', 'DSDIFF', 'TTA')) AS lossless,
+                   MIN(i.format) AS format,
+                   LOWER(TRIM(al.albumartist)) || '|' || LOWER(TRIM(al.album)) AS key
+            FROM beets.albums al JOIN beets.items i ON i.album_id = al.id
+            GROUP BY al.id
+        )
+        SELECT a.rep, 'Lossy (' || a.format || ') copy, a lossless version of this album is also in the library'
+        FROM a
+        WHERE a.lossless = 0 AND EXISTS (
+            SELECT 1 FROM a b WHERE b.key = a.key AND b.album_id != a.album_id AND b.lossless = b.n
+        )
+    """),
+
+    'quality_inconsistent': Check('Inconsistent tags', 'badge-violet', """
+        SELECT MIN(id), 'Tracks of this album disagree on the year (' || GROUP_CONCAT(DISTINCT NULLIF(year, 0)) || ')'
+        FROM beets.items
+        WHERE album_id IS NOT NULL
+        GROUP BY album_id
+        HAVING COUNT(DISTINCT NULLIF(year, 0)) > 1
+        UNION ALL
+        SELECT MIN(id), 'Tracks of disc ' || disc || ' disagree on the track total ('
+                        || GROUP_CONCAT(DISTINCT NULLIF(tracktotal, 0)) || ')'
+        FROM beets.items
+        WHERE album_id IS NOT NULL
+        GROUP BY album_id, disc
+        HAVING COUNT(DISTINCT NULLIF(tracktotal, 0)) > 1
+        UNION ALL
+        SELECT MIN(id), 'Tracks of this album disagree on the album title (' || COUNT(DISTINCT album) || ' variants)'
+        FROM beets.items
+        WHERE album_id IS NOT NULL
+        GROUP BY album_id
+        HAVING COUNT(DISTINCT album) > 1
+        UNION ALL
+        SELECT MIN(id), 'Tracks of this album disagree on the album artist (' || COUNT(DISTINCT albumartist) || ' variants)'
+        FROM beets.items
+        WHERE album_id IS NOT NULL
+        GROUP BY album_id
+        HAVING COUNT(DISTINCT albumartist) > 1
+    """),
+
+    'quality_missing_tracks': Check('Missing tracks', 'badge-cyan', """
+        SELECT MIN(id), 'Disc ' || disc || ' is missing ' || (MAX(track) - MIN(track) + 1 - COUNT(DISTINCT track))
+                        || ' track(s) between ' || MIN(track) || ' and ' || MAX(track)
+        FROM beets.items
+        WHERE album_id IS NOT NULL AND track > 0
+        GROUP BY album_id, disc
+        HAVING MAX(track) - MIN(track) + 1 > COUNT(DISTINCT track)
+    """),
+
+    'quality_mixed_release': Check('Mixed releases', 'badge-orange', """
+        SELECT MIN(id),
+               'Tracks of this album come from ' || COUNT(DISTINCT NULLIF(TRIM(mb_albumid), '')) || ' different releases'
+               || CASE COUNT(DISTINCT NULLIF(TRIM(mb_releasegroupid), ''))
+                      WHEN 0 THEN ''
+                      WHEN 1 THEN ' (same release group)'
+                      ELSE ' (' || COUNT(DISTINCT NULLIF(TRIM(mb_releasegroupid), '')) || ' release groups)'
+                  END
+        FROM beets.items
+        WHERE album_id IS NOT NULL
+        GROUP BY album_id
+        HAVING COUNT(DISTINCT NULLIF(TRIM(mb_albumid), '')) > 1
+    """),
+
+    'quality_artist_mismatch': Check('Artist mismatch', 'badge-lime', """
+        SELECT MIN(id), 'None of the track artist IDs is the album artist ID'
+        FROM beets.items
+        WHERE album_id IS NOT NULL
+          AND TRIM(COALESCE(mb_albumartistid, '')) != ''
+          AND mb_albumartistid != '89ad4ac3-39f7-470e-963a-56509c546377'
+          AND COALESCE(comp, 0) = 0
+          AND LOWER(TRIM(albumartist)) NOT IN ('various artists', 'various')
+        GROUP BY album_id
+        HAVING SUM(TRIM(COALESCE(mb_artistid, '')) != '') > 0
+           AND SUM(mb_artistid = mb_albumartistid OR INSTR(COALESCE(mb_artistids, ''), mb_albumartistid) > 0) = 0
+    """),
+
+    'quality_missing_tags': Check('Missing tags', 'badge-fuchsia', """
+        SELECT id, 'No ' || RTRIM(missing, ', ')
+        FROM (
+            SELECT id,
+                   CASE WHEN TRIM(COALESCE(title, '')) = '' THEN 'title, ' ELSE '' END
+                   || CASE WHEN TRIM(COALESCE(artist, '')) = '' THEN 'artist, ' ELSE '' END
+                   || CASE WHEN album_id IS NOT NULL AND TRIM(COALESCE(albumartist, '')) = '' THEN 'album artist, ' ELSE '' END
+                   || CASE WHEN album_id IS NOT NULL AND TRIM(COALESCE(album, '')) = '' THEN 'album, ' ELSE '' END
+                   || CASE WHEN album_id IS NOT NULL AND COALESCE(track, 0) <= 0 THEN 'track number, ' ELSE '' END
+                   AS missing
+            FROM beets.items
+        )
+        WHERE missing != ''
+    """),
+
+    'quality_no_id': Check('No ID', '', """
+        SELECT id, 'No MusicBrainz recording ID'
+        FROM beets.items
+        WHERE TRIM(COALESCE(mb_trackid, '')) = '' AND TRIM(COALESCE(mb_releasetrackid, '')) = ''
+    """),
+
 }
 
+INTEGRITY_CATEGORIES = tuple(cat for cat, check in CHECKS.items() if not check.sql)
+
+MAX_QUAL_REPORTS = 500   # max flagged items per quality type
+MAX_ERRORS = 10   # max error timestamps shown per track (in details column)
+
+
 health_scan = SingleAccess()
-_status_push = Throttle()
+status_push = Throttle()
 
 
 _DTS_WARNING_RE = re.compile(r'non monotonically increasing dts to muxer in stream \d+: (\d+) >=')
-_MAX_POSITIONS_SHOWN = 10
-
 
 def _parse_error_positions(stderr: str, samplerate: int) -> list[str]:
 
@@ -88,8 +213,9 @@ def check_decode_errors(file_path: str | Path, samplerate: int = 0) -> tuple[boo
     detail = f'{error_count} decode error{"s" if error_count != 1 else ""}'
 
     positions = _parse_error_positions(stderr, samplerate)
+
     if positions:
-        shown = positions[:_MAX_POSITIONS_SHOWN]
+        shown = positions[:MAX_ERRORS]
         more = len(positions) - len(shown)
         detail += f" (near {', '.join(shown)})"
         if more:
@@ -99,32 +225,35 @@ def check_decode_errors(file_path: str | Path, samplerate: int = 0) -> tuple[boo
 
 
 def needs_healing(song_id: str) -> bool:
-    """True if a song is flagged with an unresolved health issue (any kind)."""
+    """True if a song is flagged with an unresolved file integrity issue (quality findings don't count)."""
 
     with database() as db:
         row = db.execute(
             """
             SELECT 1 
             FROM song_checks 
-            WHERE song_id = ? AND ok = 0 
+            WHERE song_id = ? AND ok = 0 AND kind IN (?, ?)
             LIMIT 1
-            """, (song_id,)
+            """, (song_id, *INTEGRITY_CATEGORIES)
         ).fetchone()
 
     return row is not None
 
 
 def health_stats() -> dict[str, int]:
-    """Counts sum of all health errors. Returns total songs checked, and how many are flagged."""
+    """Returns total songs checked, how many have a file integrity issue, and how many quality findings there are."""
 
     with database() as db:
         row = db.execute(
             """
-            SELECT COUNT(*) AS total, COALESCE(SUM(ok = 0), 0) AS flagged FROM song_checks
-            """
+            SELECT COALESCE(SUM(kind IN (?, ?)), 0) AS total,
+                   COALESCE(SUM(ok = 0 AND kind IN (?, ?)), 0) AS flagged,
+                   COALESCE(SUM(ok = 0 AND kind NOT IN (?, ?)), 0) AS quality
+            FROM song_checks
+            """, INTEGRITY_CATEGORIES * 3
         ).fetchone()
 
-    return {'total': row['total'], 'flagged': row['flagged']}
+    return {'total': row['total'], 'flagged': row['flagged'], 'quality': row['quality']}
 
 
 @with_app_context
@@ -153,6 +282,8 @@ def flagged_songs() -> list[dict]:
     result = []
     for row in rows:
         item = resolved.get(row['song_id'])
+        check = CHECKS.get(row['kind']) or Check(row['kind'], '')
+
         result.append({
             'song_id': row['song_id'],
             'album_id': item.get('album_id') if item else None,
@@ -161,7 +292,8 @@ def flagged_songs() -> list[dict]:
             'artist': item.get('artist') if item else '',
             'album': item.get('album') if item else '',
             'kind': row['kind'],
-            'label': _KIND_LABELS.get(row['kind'], row['kind']),
+            'label': check.label,
+            'badge': check.badge,
             'detail': row['detail'],
             'checked_at': row['checked_at'],
         })
@@ -169,23 +301,164 @@ def flagged_songs() -> list[dict]:
     return result
 
 
+def scan_errors(db: sqlite3.Connection, items: list[sqlite3.Row], song_ids: dict[int, str], full: bool) -> dict[str, int]:
+    """
+    Check for missing files and decode errors, incrementally
+    (and prune the results of songs that aren't in the library anymore)
+    """
+
+    counts = {'checked': 0, 'flagged': 0, 'skipped': 0, 'pruned': 0}
+    music_root = app.config['music_root']
+
+    can_decode = bool(find_binary('ffmpeg'))
+    if not can_decode:
+        bsn_logger.warning('Health scan: ffmpeg not found, skipping decode checks.')
+
+    existing: dict[str, dict[str, tuple[float, int]]] = {}
+    for row in db.execute(
+        """
+        SELECT song_id, kind, mtime, ok
+        FROM song_checks
+        WHERE kind IN (?, ?)
+        """, INTEGRITY_CATEGORIES
+    ).fetchall():
+        existing.setdefault(row['song_id'], {})[row['kind']] = (row['mtime'], row['ok'])
+
+    seen_song_ids: set[str] = set()
+
+    for item in items:
+        if status_push.allow(1.0):
+            admin_events.publish('health-scan', '')
+        path = os.fsdecode(item['path'] or b'')
+        if not path:
+            continue
+
+        song_id = song_ids[item['id']]
+        seen_song_ids.add(song_id)
+
+        path_obj = resolve_path(path, music_root)
+        prev_missing = None if full else existing.get(song_id, {}).get('missing_file')
+
+        try:
+            mtime = os.path.getmtime(path_obj)
+        except OSError:
+            if prev_missing is not None and prev_missing[1] == 0:
+                counts['skipped'] += 1
+                continue   # already flagged missing, nothing new to record
+
+            counts['checked'] += 1
+            counts['flagged'] += 1
+            bsn_logger.warning(f"Health check flagged missing file: '{path_obj}'")
+
+            db.execute(
+                """
+                INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
+                VALUES (?, ?, 0, 0, 'File not found on disk')
+                ON CONFLICT (song_id, kind) DO UPDATE SET
+                    mtime = 0, ok = 0,
+                    detail = 'File not found on disk', checked_at = unixepoch()
+                """, (song_id, 'missing_file')
+            )
+            db.commit()
+            continue
+
+        if prev_missing is not None and prev_missing[1] == 0:
+            # File reappeared since last flagged missing: clear flag
+            db.execute(
+                """
+                INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
+                VALUES (?, ?, ?, 1, '')
+                ON CONFLICT (song_id, kind) DO UPDATE SET
+                    mtime = excluded.mtime, ok = 1,
+                    detail = '', checked_at = unixepoch()
+                """, (song_id, 'missing_file', mtime)
+            )
+            db.commit()
+            bsn_logger.info(f"Health check: '{path_obj}' reappeared, cleared missing-file flag.")
+
+        if not can_decode:
+            continue
+
+        prev = None if full else existing.get(song_id, {}).get('decode_errors')
+        if prev is not None and prev[0] == mtime:
+            counts['skipped'] += 1
+            continue
+
+        ok, detail = check_decode_errors(path_obj, samplerate=item['samplerate'] or 0)
+        counts['checked'] += 1
+        if not ok:
+            counts['flagged'] += 1
+            bsn_logger.warning(f"Health check flagged '{path_obj.name}': {detail}")
+
+        db.execute(
+            """
+            INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (song_id, kind) DO UPDATE SET
+                mtime = excluded.mtime, ok = excluded.ok,
+                detail = excluded.detail, checked_at = unixepoch()
+            """, (song_id, 'decode_errors', mtime, int(ok), detail)
+        )
+        db.commit()
+
+    stale_ids = existing.keys() - seen_song_ids
+    if stale_ids:
+        chunked_execute(
+            db,
+            """
+            DELETE FROM song_checks
+            WHERE song_id IN ({q}) AND kind IN (?, ?)
+            """, list(stale_ids), list(INTEGRITY_CATEGORIES)
+        )
+        db.commit()
+        counts['pruned'] = len(stale_ids)
+
+    return counts
+
+
+def scan_quality(db: sqlite3.Connection, song_ids: dict[int, str]) -> int:
+    """
+    Runs quality check and update any previous findings.
+    """
+
+    findings = []
+    for kind, check in CHECKS.items():
+        if not check.sql:
+            continue
+
+        rows = db.execute(check.sql).fetchall()
+        if len(rows) > MAX_QUAL_REPORTS:
+            bsn_logger.warning(f"Quality check '{kind}': {len(rows)} findings, only the first "
+                               f"{MAX_QUAL_REPORTS} are listed.")
+
+        findings += [(song_ids[row[0]], kind, row[1]) for row in rows[:MAX_QUAL_REPORTS] if row[0] in song_ids]
+
+    db.execute(
+        """
+        DELETE FROM song_checks WHERE kind LIKE 'quality\\_%' ESCAPE '\\'
+        """
+    )
+    db.executemany(
+        """
+        INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
+        VALUES (?, ?, 0, 0, ?)
+        ON CONFLICT (song_id, kind) DO UPDATE SET detail = detail || '; ' || excluded.detail, checked_at = unixepoch()
+        """, findings
+    )
+
+    return len(findings)
+
+
 @with_app_context
 def scan_library(full: bool = False) -> dict[str, int]:
     """
-    Checks library audio files for health issues (currently just decode errors) incrementally.
-
-    Args:
-        - full: True to force checking everything
+    Run the file checks (decode errors, missing files) incrementally, then refresh the quality findings.
     """
-    counts = {'checked': 0, 'flagged': 0, 'skipped': 0, 'pruned': 0}
 
-    if not find_binary('ffmpeg'):
-        bsn_logger.warning('Health scan skipped: ffmpeg not found.')
-        notify('health_scan_failed', details='ffmpeg not found')
-        return counts
+    counts = {'checked': 0, 'flagged': 0, 'skipped': 0, 'pruned': 0, 'quality': 0}
 
     if not health_scan.try_acquire():
-        bsn_logger.info('Health scan already running, skipping this trigger.')
+        bsn_logger.info('Health scan already running.')
         return counts
 
     admin_events.publish('health-scan', '')
@@ -193,115 +466,23 @@ def scan_library(full: bool = False) -> dict[str, int]:
 
     try:
         with dual_database() as db:
-            item_rows = db.execute(
+            items = db.execute(
                 """
                 SELECT id, mb_trackid, mb_releasetrackid, path, samplerate FROM beets.items
                 """
             ).fetchall()
 
-            existing: dict[str, dict[str, tuple[float, int]]] = {}
-            for row in db.execute(
-                """
-                SELECT song_id, kind, mtime, ok
-                FROM song_checks
-                WHERE kind IN (?, ?)
-                """, (DECODE_ERRORS_CHECK, MISSING_FILE_CHECK)
-            ).fetchall():
-                existing.setdefault(row['song_id'], {})[row['kind']] = (row['mtime'], row['ok'])
+            song_ids = {
+                item['id']: IDs.encode_song({**item, 'path': os.fsdecode(item['path'] or b'')}) for item in items
+            }
 
-            seen_song_ids: set[str] = set()
+            counts.update(scan_errors(db, items, song_ids, full))
+            counts['quality'] = scan_quality(db, song_ids)
 
-            for beets_id, mb_trackid, mb_releasetrackid, raw_path, samplerate in item_rows:
-                if _status_push.allow(1.0):
-                    admin_events.publish('health-scan', '')
-                path = os.fsdecode(raw_path or b'')
-                if not path:
-                    continue
-
-                song_id = IDs.encode_song({
-                    'id': beets_id,
-                    'mb_trackid': mb_trackid,
-                    'mb_releasetrackid': mb_releasetrackid,
-                    'path': path
-                })
-                seen_song_ids.add(song_id)
-
-                path_obj = resolve_path(path, music_root)
-                prev_missing = None if full else existing.get(song_id, {}).get(MISSING_FILE_CHECK)
-
-                try:
-                    mtime = os.path.getmtime(path_obj)
-                except OSError:
-                    if prev_missing is not None and prev_missing[1] == 0:
-                        counts['skipped'] += 1
-                        continue   # already flagged missing, nothing new to record
-
-                    counts['checked'] += 1
-                    counts['flagged'] += 1
-                    bsn_logger.warning(f"Health check flagged missing file: '{path_obj}'")
-
-                    db.execute(
-                        """
-                        INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
-                        VALUES (?, ?, 0, 0, 'File not found on disk')
-                        ON CONFLICT (song_id, kind) DO UPDATE SET
-                            mtime = 0, ok = 0,
-                            detail = 'File not found on disk', checked_at = unixepoch()
-                        """, (song_id, MISSING_FILE_CHECK)
-                    )
-                    db.commit()
-                    continue
-
-                if prev_missing is not None and prev_missing[1] == 0:
-                    # File reappeared since it was last flagged missing: clear that flag
-                    db.execute(
-                        """
-                        INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
-                        VALUES (?, ?, ?, 1, '')
-                        ON CONFLICT (song_id, kind) DO UPDATE SET
-                            mtime = excluded.mtime, ok = 1,
-                            detail = '', checked_at = unixepoch()
-                        """, (song_id, MISSING_FILE_CHECK, mtime)
-                    )
-                    db.commit()
-                    bsn_logger.info(f"Health check: '{path_obj}' reappeared, cleared missing-file flag.")
-
-                prev = None if full else existing.get(song_id, {}).get(DECODE_ERRORS_CHECK)
-                if prev is not None and prev[0] == mtime:
-                    counts['skipped'] += 1
-                    continue
-
-                ok, detail = check_decode_errors(path_obj, samplerate=samplerate or 0)
-                counts['checked'] += 1
-                if not ok:
-                    counts['flagged'] += 1
-                    bsn_logger.warning(f"Health check flagged '{path_obj.name}': {detail}")
-
-                db.execute(
-                    """
-                    INSERT INTO song_checks (song_id, kind, mtime, ok, detail)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT (song_id, kind) DO UPDATE SET
-                        mtime = excluded.mtime, ok = excluded.ok,
-                        detail = excluded.detail, checked_at = unixepoch()
-                    """, (song_id, DECODE_ERRORS_CHECK, mtime, int(ok), detail)
-                )
-                db.commit()
-
-            stale_ids = existing.keys() - seen_song_ids
-            if stale_ids:
-                chunked_execute(
-                    db,
-                    """
-                    DELETE FROM song_checks
-                    WHERE song_id IN ({q}) AND kind IN (?, ?)
-                    """, list(stale_ids), [DECODE_ERRORS_CHECK, MISSING_FILE_CHECK]
-                )
-                db.commit()
-                counts['pruned'] = len(stale_ids)
     except Exception as e:
         notify('health_scan_failed', details=str(e))
         raise
+
     finally:
         health_scan.release()
         admin_events.publish('health-scan', '')
@@ -418,7 +599,7 @@ def start_health_scan(full: bool = False) -> tuple[bool, str]:
         bsn_logger.info(
             f"Health scan complete: {counts['checked']} checked, "
             f"{counts['flagged']} flagged, {counts['skipped']} unchanged (skipped), "
-            f"{counts['pruned']} stale entries pruned."
+            f"{counts['pruned']} stale entries pruned, {counts['quality']} quality findings."
         )
 
     threading.Thread(target=_run, daemon=True).start()

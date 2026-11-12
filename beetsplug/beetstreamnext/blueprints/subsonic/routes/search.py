@@ -5,7 +5,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
-from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi, validate_mbid
+from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.library.exclusions import exclusions
@@ -183,13 +183,7 @@ def endpoint_search() -> flask.Response:
 
             if hiding:
 
-                if is_joint:
-                    artist_id = IDs.encode_artist(name, joint_credit=True)
-                else:
-                    maybe_mbid = validate_mbid(mbid)
-                    artist_id = IDs.encode_artist(maybe_mbid or name, is_mbid=bool(maybe_mbid))
-
-                if exc.artist_hidden(artist_id, scope='browse'):
+                if exc.artist_hidden(IDs.artist_id(name, mbid, joint=is_joint), scope='browse'):
                     continue
 
                 if skipped < artist_offset:

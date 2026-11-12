@@ -227,10 +227,7 @@ def endpoint_get_music_directory() -> flask.Response:
         children = []
         for row in rows:
             artist_name, artist_mbid, albumartists_raw = row
-            if IDs.is_joint_credit(albumartists_raw, artist_name):
-                artist_id = IDs.encode_artist(artist_name, joint_credit=True)
-            else:
-                artist_id = IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
+            artist_id = IDs.artist_id(artist_name, artist_mbid, albumartists_raw)
 
             children.append({
                 'id': artist_id,

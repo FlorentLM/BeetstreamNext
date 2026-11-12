@@ -176,17 +176,48 @@ class IDs:
         return f"{prefix}{encoded}"
 
     @classmethod
-    def encode_artist_of(cls, data: dict) -> str:
-        """Main artist ID of a song or album."""
+    def artist_id(cls, name: str, mbid: Any = None, multi: str | None = None, *, joint: bool | None = None) -> str:
+        """
+        ID of an artist credit: hash of the credit text for joint credits, otherwise the MBID, or the name.
+            mbid: the MBID (Spotify/Deezer values ignored)
+            multi: the multi-value field (albumartists / artists)
+            joint: if the caller already knows (skips detection here)
+        """
+        if joint is None:
+            joint = cls.is_joint_credit(multi, name)
 
-        name = data.get('albumartist') or data.get('artist') or ''
-        mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
-        multi = data.get('albumartists') or data.get('artists') or ''
-
-        if cls.is_joint_credit(multi, name):
+        if joint:
             return cls.encode_artist(name, joint_credit=True)
 
+        mbid = validate_mbid(mbid)
         return cls.encode_artist(mbid or name, is_mbid=bool(mbid))
+
+    @staticmethod
+    def main_artist_of(data: dict) -> tuple[str, str, str]:
+        """
+        (name, mbid, multi-value names) of the main artist for a song or album
+        (the album artist, or fallback to the track artist)
+        """
+        albumartist = data.get('albumartist') or ''
+        artist = data.get('artist') or ''
+
+        if not albumartist:
+            return artist, validate_mbid(data.get('mb_artistid')), data.get('artists') or ''
+
+        mbid = validate_mbid(data.get('mb_albumartistid'))
+        multi = data.get('albumartists') or ''
+
+        if artist == albumartist:
+            mbid = mbid or validate_mbid(data.get('mb_artistid'))
+            multi = multi or data.get('artists') or ''
+
+        return albumartist, mbid, multi
+
+    @classmethod
+    def encode_artist_of(cls, data: dict) -> str:
+        """Main artist ID of a song or album."""
+        name, mbid, multi = cls.main_artist_of(data)
+        return cls.artist_id(name, mbid, multi)
 
     @staticmethod
     def is_joint_credit(multi_value: str | None, single_name: str = '') -> bool:

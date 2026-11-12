@@ -9,7 +9,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, split_beets_multi, validate_mbid
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, split_beets_multi
 from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
@@ -105,15 +105,8 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
         name, count, mbid, sort_name, albumartists_raw = row
 
         is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
-        if hiding:
-            if is_joint:
-                artist_id = IDs.encode_artist(name, joint_credit=True)
-            else:
-                maybe_mbid = validate_mbid(mbid)
-                artist_id = IDs.encode_artist(maybe_mbid or name, is_mbid=bool(maybe_mbid))
-
-            if exc.artist_hidden(artist_id, scope='browse'):
-                continue
+        if hiding and exc.artist_hidden(IDs.artist_id(name, mbid, joint=is_joint), scope='browse'):
+            continue
 
         artists.append(name)
         artist_prefetch[name] = {
@@ -242,11 +235,7 @@ def endpoint_artist_info() -> flask.Response:
             )
 
         is_joint = bool(rows and IDs.is_joint_credit(rows[0][0], artist_name))
-
-        image_id = (
-            IDs.encode_artist(artist_name, joint_credit=True) if is_joint
-            else IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
-        )
+        image_id = IDs.artist_id(artist_name, artist_mbid, joint=is_joint)
 
     payload = {
         tag: {

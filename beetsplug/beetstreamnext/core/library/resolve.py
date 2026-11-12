@@ -95,10 +95,10 @@ class Resolve:
             if not obj:
                 return None
 
-            name = obj.get('albumartist') or obj.get('artist') or ''
-            mbid = validate_mbid(obj.get('mb_albumartistid')) or validate_mbid(obj.get('mb_artistid'))
+            name, mbid, _ = IDs.main_artist_of(obj)
             if not mbid:
-                mbids = split_beets_multi(obj.get('mb_albumartistids') or obj.get('mb_artistids') or '')
+                own_mbids = 'mb_albumartistids' if obj.get('albumartist') else 'mb_artistids'
+                mbids = split_beets_multi(obj.get(own_mbids) or '')
                 mbid = next(filter(None, (validate_mbid(m) for m in mbids)), '')
 
             return name, mbid

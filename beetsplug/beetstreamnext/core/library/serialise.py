@@ -244,10 +244,7 @@ class Serialise:
         sort_name = sort_name if sort_name != artist_name else meta['sort_name']
         roles = meta['roles']
 
-        if is_joint:
-            subsonic_artist_id = IDs.encode_artist(artist_name, joint_credit=True)
-        else:
-            subsonic_artist_id = IDs.encode_artist(mbid or artist_name, is_mbid=bool(mbid))
+        subsonic_artist_id = IDs.artist_id(artist_name, mbid, joint=is_joint)
 
         subsonic_artist = {
             'id': subsonic_artist_id,

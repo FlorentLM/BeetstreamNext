@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Pinned action SHAs ("# vN" comments are updated too)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Base image digest in docker/Dockerfile
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+
+  # Python dependencies (pyproject.toml / uv.lock)
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python-deps:
+        patterns: ["*"]

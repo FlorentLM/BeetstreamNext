@@ -25,6 +25,7 @@ class Lrc:
         self.offset = 0                     # in ms
         self.lines: list[dict] = []         # {'value', and 'start' (ms) when synced}
         self._cues: list[list[dict]] = []   # Word cues parallel to `lines` (for synced lyrics)
+        self._ends: list[int | None] = []   # Exact line ends (from a trailing word tag)
         self.synced = False
         self._parse()
 
@@ -54,35 +55,39 @@ class Lrc:
         self.synced = any(stamps for stamps, _ in parsed)
         shift = -self.offset
 
-        pairs: list[tuple[dict, list[dict]]] = []
+        pairs: list[tuple[dict, list[dict], int | None]] = []
 
         for stamps, body in parsed:
             if self.synced and not stamps:
                 continue    # Every line needs a start in synced lyrics
 
-            value, cues = self._words(body, shift)
+            value, cues, tail = self._words(body, shift)
             for stamp in stamps or [None]:
                 entry = {'value': value}
                 line_cues = []
+                line_end = None
 
                 if stamp is not None:
                     entry['start'] = max(stamp + shift, 0)
+                    delta = stamp - stamps[0]
+                    if tail is not None:
+                        line_end = max(tail + delta, entry['start'])
 
                     # Word times are absolute, so for repeated lines they are moved to each repetition
-                    delta = stamp - stamps[0]
                     for cue in cues:
                         moved = dict(cue, start=cue['start'] + delta)
                         if 'end' in cue:
                             moved['end'] = cue['end'] + delta
                         line_cues.append(moved)
 
-                pairs.append((entry, line_cues))
+                pairs.append((entry, line_cues, line_end))
 
         if self.synced:
             pairs.sort(key=lambda p: p[0]['start'])
 
-        self.lines = [entry for entry, _ in pairs]
-        self._cues = [cues for _, cues in pairs]
+        self.lines = [entry for entry, _, _ in pairs]
+        self._cues = [cues for _, cues, _ in pairs]
+        self._ends = [end for _, _, end in pairs]
 
         self._complete_cue_ends()
 
@@ -109,14 +114,14 @@ class Lrc:
                 end = min(c['end'], nxt['start']) if nxt else c['end']
                 c['end'] = max(end, c['start'])
 
-    def _words(self, body: str, shift: int) -> tuple[str, list[dict]]:
+    def _words(self, body: str, shift: int) -> tuple[str, list[dict], int | None]:
         """
-        Strip <mm:ss.xx> tags, return text and word cues.
+        Strip <mm:ss.xx> tags, return text, word cues, and when possible line ends (ms, or None).
         """
 
         tags = list(self.WORD_TS_RE.finditer(body))
         if not tags:
-            return body, []
+            return body, [], None
 
         value = body[:tags[0].start()]
 
@@ -141,11 +146,22 @@ class Lrc:
                     cue['end'] = max(round(parse_duration(tags[i + 1].group(1)) * 1000) + shift, 0)
                 cues.append(cue)
 
-        return value, cues
+        tail = None
+        if cues and not body[tags[-1].end():].strip():
+            tail = max(round(parse_duration(tags[-1].group(1)) * 1000) + shift, 0)
 
-    def structured(self) -> list[dict]:
-        """Lines for `structuredLyrics`."""
-        return [dict(ln) for ln in self.lines]
+        return value, cues, tail
+
+    def structured(self, enhanced: bool = False) -> list[dict]:
+        """
+        Lines for `structuredLyrics`. With `enhanced`: songLyrics v2.
+        """
+        out = [dict(ln) for ln in self.lines]
+        if enhanced and self.synced:
+            for ln, end in zip(out, self._ends, strict=True):
+                if end is not None:
+                    ln['end'] = end
+        return out
 
     def cue_lines(self) -> list[dict]:
         """Word-level `cueLine` entries (OpenSubsonic songLyrics v2). Empty for non synced lyrics."""

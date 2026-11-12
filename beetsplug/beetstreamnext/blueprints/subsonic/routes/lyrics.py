@@ -191,7 +191,7 @@ def endpoint_get_lyrics_by_song_id() -> flask.Response:
             'displayTitle': data['title'],
             'lang': data['lang'],
             'synced': lrc.synced,
-            'line': lrc.structured()
+            'line': lrc.structured(enhanced=enhanced)
         }
         if enhanced:
             structured['kind'] = 'main'

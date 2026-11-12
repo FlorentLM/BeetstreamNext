@@ -334,6 +334,33 @@
 
     document.addEventListener('player:change', () => trackTables.forEach(table => table.getRows().forEach(row => row.reformat())));
 
+    // Star / dislike / rating of songs (on pages where player has a userprefs URL)
+    const userprefsUrl = id => {
+        const template = document.getElementById('player')?.dataset.prefs;
+        return template && id ? template.slice(0, -1) + encodeURIComponent(id) : null;
+    };
+
+    async function fetchUserprefs(id) {
+        const resp = await fetch(userprefsUrl(id), {credentials: 'same-origin'});
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.json();
+    }
+
+    // Action: star | unstar | dislike | undislike | rating
+    async function setUserpref(id, action, rating = 0) {
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        const resp = await fetch(userprefsUrl(id), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfInput ? csrfInput.value : ''},
+            body: new URLSearchParams({action, rating})
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const state = await resp.json();
+        document.dispatchEvent(new CustomEvent('userprefs:change', {detail: {id, state}}));
+        return state;
+    }
+
     function initTables(root = document) {
         root.querySelectorAll('[data-table]:not([data-table-ready])').forEach(el => {
             el.dataset.tableReady = '1';
@@ -620,7 +647,7 @@
         }
     });
 
-    window.bsnCommon = {copyText, onSwap, onSwapSuccess, closeModalsOnSuccess, coverArt};
+    window.bsnCommon = {copyText, onSwap, onSwapSuccess, closeModalsOnSuccess, coverArt, userprefsUrl, fetchUserprefs, setUserpref};
 
     document.addEventListener('alpine:init', () => {
         Alpine.data('tokenForm', () => ({

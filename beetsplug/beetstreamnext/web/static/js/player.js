@@ -5,7 +5,7 @@
     const audio = document.getElementById('audio');
     if (!player || !audio) return;
 
-    const {coverArt} = bsnCommon;
+    const {coverArt, userprefsUrl, fetchUserprefs, setUserpref} = bsnCommon;
     const $ = id => document.getElementById(id);
     const fmt = secs => Math.floor(secs / 60) + ':' + String(Math.floor(secs % 60)).padStart(2, '0');
 
@@ -29,7 +29,44 @@
 
         document.body.dataset.nowPlaying = track.id;
         document.dispatchEvent(new CustomEvent('player:change'));
+        loadUserprefs();
     }
+
+    // Heart and thumbs down icons
+    const likeButton = $('pLike');
+    const dislikeButton = $('pDislike');
+
+    function renderUserprefs(state) {
+        if (!likeButton) return;
+        likeButton.hidden = dislikeButton.hidden = !state;
+        if (!state) return;
+        likeButton.classList.toggle('active', state.starred);
+        likeButton.setAttribute('aria-pressed', String(state.starred));
+        likeButton.setAttribute('aria-label', state.starred ? 'Remove from favorites' : 'Add to favorites');
+        dislikeButton.classList.toggle('active', state.disliked);
+        dislikeButton.setAttribute('aria-pressed', String(state.disliked));
+        dislikeButton.setAttribute('aria-label', state.disliked ? 'Remove dislike' : 'Dislike');
+    }
+
+    function loadUserprefs() {
+        renderUserprefs(null);
+        const asked = track;
+        if (!likeButton || !userprefsUrl(asked.id)) return;
+        fetchUserprefs(asked.id).then(state => track === asked && renderUserprefs(state), () => {});
+    }
+
+    function toggleUserpref(button, on, off) {
+        const asked = track;
+        if (!asked) return;
+        setUserpref(asked.id, button.classList.contains('active') ? off : on).then(state => track === asked && renderUserprefs(state), () => {});
+    }
+
+    likeButton?.addEventListener('click', () => toggleUserpref(likeButton, 'star', 'unstar'));
+    dislikeButton?.addEventListener('click', () => toggleUserpref(dislikeButton, 'dislike', 'undislike'));
+
+    document.addEventListener('userprefs:change', event => {
+        if (track && event.detail.id === track.id) renderUserprefs(event.detail.state);
+    });
 
     function step(direction) {
         if (!table) return;     // Single track no queue
@@ -54,6 +91,7 @@
         audio.load();
         track = null;
         table = null;
+        renderUserprefs(null);
         player.hidden = true;
         delete document.body.dataset.nowPlaying;
         document.title = pageTitle;

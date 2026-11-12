@@ -310,6 +310,26 @@
     background: var(--overlay-strong)
 }
 
+.player .buttons .pref {
+    color: var(--text-muted)
+}
+
+.player .buttons .pref[hidden] {
+    display: none
+}
+
+.player .buttons .pref.active {
+    color: var(--text)
+}
+
+:root[data-theme="light"] .player .buttons .pref.active {
+    color: var(--primary)
+}
+
+.player .buttons .pref.active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1
+}
+
 .player .buttons .main {
     background: var(--primary);
     color: #fff

@@ -375,6 +375,7 @@
                     // Right click menu
                     ...(spec.details ? {
                         rowContextMenu: (event, row) => {
+                            table.deselectRow();
                             row.select();
                             const data = row.getData();
                             const icon = name => {

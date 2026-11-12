@@ -24,13 +24,38 @@ BeetstreamNext can apply ReplayGain normalization server-side during transcoding
 
 - `audio_peak_limit` prevents the result from clipping (peaks capped at 0 dB) regardless of the gain applied.
 
-## Error detection & healed streams
+## Health scan & healed streams
 
-A background scan probes files for decode errors. If a track is flagged, it is automatically routed through a transcode pass instead of direct play, so a corrupt/broken file doesn't just fail to play.
+A background scan keeps a list of eventual problems found in your library. It runs periodically, and can also be started on demand from the web UI.
 
-This healing pass keeps the original container/codec (when the client doesn't ask for something else).
+There are two sorts of findings:
 
-A healed lossless file is re-encoded _losslessly_ rather than streamed byte-for-byte.
+### Broken files
+
+| Issue             | Flagged when                                                |
+|-------------------|-------------------------------------------------------------|
+| **Missing file**  | The file Beets has listed in its database can't be found    |
+| **Decode errors** | File can't be read, or reports corruption while decoding it |
+
+A song flagged with decode errors is automatically routed through a transcode pass instead of direct play. This healing pass keeps the original container/codec (when the client doesn't ask for something else), so a lossless file is re-encoded _losslessly_, but without the corruption.
+
+### Library quality
+
+**BeetstreamNext** doesn't edit your Beets library, if you want to fix them you should do it in in Beets (`beet ls`, `beet modify`, `beet remove`, etc).
+
+| Issue                 | Flagged when                                                                                                                  |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| **Duplicate**         | Songs share a recording ID, or the same artist, title and length                                                              |
+| **Lossy copy**        | An album is entirely lossy, and an album with the same artist and title is entirely lossless                                  |
+| **Inconsistent tags** | Tracks of one album disagree on the year, album title, album artist, etc                                                      |
+| **Missing tracks**    | A disc has non contiguous track numbers                                                                                       |
+| **Mixed releases**    | Tracks of one album carry different release IDs (typically a multi-disc album where discs were matched to different releases) |
+| **Artist mismatch**   | None of an album's track artist IDs is its album artist ID (except for compilations)                                          |
+| **Missing tags**      | A track has no title, artist, album, album artist or track number                                                             |
+| **No ID**             | A track has neither a `mb_trackid` nor a `mb_releasetrackid`                                                                  |
+
+> [!NOTE]
+> Findings about a whole album are listed on its first track.
 
 ## Reverse-proxy file offloading
 

@@ -108,6 +108,6 @@ Create and manage [notifications](../features/notifications.md) sent through App
 
 ### Maintenance
 
-Trigger a library health scan (see [Encoding errors detection & self-healing streams](../features/streaming.md#encoding-errors-detection--self-healing-streams)), cleanup BeetstreamNext's database, clear disk caches, and view the server logs.
+Trigger a library health scan for broken files and library quality issues (see [Health scan & healed streams](../features/streaming.md#health-scan--healed-streams)), cleanup BeetstreamNext's database, clear disk caches, and view the server logs.
 
 <span class="screenshot-pair"><img class="screenshot light" src="../images/light/screenshot_maintenance.png" alt="Maintenance"><img class="screenshot dark" src="../images/dark/screenshot_maintenance.png" alt="" aria-hidden="true"></span>

@@ -476,10 +476,9 @@ def share_cover(share_id: str, entry_id: str) -> flask.Response:
         if response:
             return response
 
-    elif entry_type == 'song':
-        if entry and entry.get('album_id'):
-            response = send_album_art(entry.get('album_id'), rounded_size)
-            if response:
-                return response
+    elif entry_type == 'song' and entry and entry.get('album_id'):
+        response = send_album_art(entry.get('album_id'), rounded_size)
+        if response:
+            return response
 
     flask.abort(404)

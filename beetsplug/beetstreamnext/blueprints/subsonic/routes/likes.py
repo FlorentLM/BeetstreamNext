@@ -30,7 +30,7 @@ def item_exists(item_id: str) -> bool:
     return Resolve.any(item_id)[1] is not None
 
 
-def _set_liked(username: str, item_id: str, liked: bool) -> None:
+def set_liked(username: str, item_id: str, liked: bool) -> None:
 
     with database() as db:
 
@@ -55,6 +55,9 @@ def _set_liked(username: str, item_id: str, liked: bool) -> None:
                   AND item_id = ?
                 """, (username, item_id)
             )
+
+    if username and username == settings_store.get('ratings_writeback_user'):
+        commit_likes(item_id, 'starred', int(liked))
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/star/
@@ -83,20 +86,21 @@ def endpoint_star_or_unstar() -> flask.Response:
         to_like = [id_ for id_ in to_like if item_exists(id_)]
 
     for id_ in to_like:
-        _set_liked(username, id_,  liked)
-
-    if username and username == settings_store.get('ratings_writeback_user'):
-        for id_ in to_like:
-            commit_likes(id_, 'starred', int(liked))
+        set_liked(username, id_, liked)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 
 
-def _set_disliked(username: str, item_id: str, disliked: bool) -> bool:
-    """
-    Returns whether a star was removed (disliking an item un-stars it).
-    """
+def set_disliked(username: str, item_id: str, disliked: bool) -> None:
+    unstarred = _write_disliked(username, item_id, disliked)
+    if unstarred and username == settings_store.get('ratings_writeback_user'):
+        commit_likes(item_id, 'starred', 0)
 
+
+def _write_disliked(username: str, item_id: str, disliked: bool) -> bool:
+    """
+    Returns whether a star was removed.
+    """
     with database() as db:
 
         touch_change(db, username, 'exclusions')
@@ -140,10 +144,8 @@ def endpoint_dislike_or_undislike() -> flask.Response:
     if disliked:    # undisliking is not checked so IDs of removed items can be cleaned up
         to_set = [id_ for id_ in to_set if item_exists(id_)]
 
-    writeback = bool(username) and username == settings_store.get('ratings_writeback_user')
     for id_ in to_set:
-        if _set_disliked(username, id_, disliked) and writeback:
-            commit_likes(id_, 'starred', 0)
+        set_disliked(username, id_, disliked)
 
     return subsonic_response({}, resp_fmt=resp_fmt)
 

@@ -13,6 +13,34 @@ from beetsplug.beetstreamnext.blueprints.subsonic.routes.likes import item_exist
 from beetsplug.beetstreamnext.core.library.beets.interaction import commit_likes
 
 
+def set_rating(username: str, item_id: str, rating: int) -> None:
+
+    with database() as db:
+
+        touch_change(db, username, 'exclusions')
+
+        if rating == 0:
+            db.execute(
+                """
+                DELETE FROM ratings
+                WHERE username = ? AND item_id = ?
+                """, (username, item_id)
+            )
+        else:
+            db.execute(
+                """
+                INSERT INTO ratings (username, item_id, rating, rated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (username, item_id) DO UPDATE SET
+                                                              rating   = excluded.rating,
+                                                              rated_at = excluded.rated_at
+                """, (username, item_id, rating, time.time())
+            )
+
+    if username and username == settings_store.get('ratings_writeback_user'):
+        commit_likes(item_id, 'rating', rating)
+
+
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/setRating/
 @subsonic_bp.route('/setRating', methods=['GET', 'POST'])
 @subsonic_bp.route('/setRating.view', methods=['GET', 'POST'])
@@ -34,31 +62,6 @@ def endpoint_set_rating() -> flask.Response:
     if rating and not item_exists(req_id):
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    username = flask.g.username
-
-    with database() as db:
-
-        touch_change(db, username, 'exclusions')
-
-        if rating == 0:
-            db.execute(
-                """
-                DELETE FROM ratings 
-                WHERE username = ? AND item_id = ?
-                """, (username, req_id)
-            )
-        else:
-            db.execute(
-                """
-                INSERT INTO ratings (username, item_id, rating, rated_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT (username, item_id) DO UPDATE SET
-                                                              rating   = excluded.rating,
-                                                              rated_at = excluded.rated_at
-                """, (username, req_id, rating, time.time())
-            )
-
-    if username and username == settings_store.get('ratings_writeback_user'):
-        commit_likes(req_id, 'rating', rating)
+    set_rating(flask.g.username, req_id, rating)
 
     return subsonic_response({}, resp_fmt=resp_fmt)

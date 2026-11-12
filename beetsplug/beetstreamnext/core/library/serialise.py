@@ -253,6 +253,7 @@ class Serialise:
             'id': subsonic_artist_id,
             'name': artist_name,
             'sortName': sort_name,
+            # 'disambiguation': "French electronic duo",    # TODO, but beets does not store this :(
             'roles': roles,
             'musicBrainzId': mbid,
             'title': artist_name,

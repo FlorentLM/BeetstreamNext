@@ -32,7 +32,7 @@
                 <span class="cover-thumb cover-thumb-placeholder">{{ a.name[0]|upper }}</span>
             {% endif %}
             <div class="channel-row-info">
-                <div class="username-name">{{ a.name }} <span class="badge badge-artist-{{ a.status }}">{{ labels[a.status] }}</span></div>
+                <div class="username-name">{{ a.name }} {% set colour = {'custom': 'blue', 'fallback': 'amber', 'orphan': 'amber', 'missing': 'red'}.get(a.status) %}<span class="badge{{ ' badge-' ~ colour if colour else '' }}">{{ labels[a.status] }}</span></div>
                 <div class="email-cell">
                     {%- if a.status == 'custom' -%}
                         {% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all members{% else %}No MusicBrainz ID: lost if renamed{% endif %}

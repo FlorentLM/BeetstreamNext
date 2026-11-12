@@ -40,7 +40,7 @@
                 </div>{% endif %}
             </div>
             <div class="roles-cell">
-    <span class="badge{% if ch.status == 'error' %} badge-admin{% endif %}"
+    <span class="badge{% if ch.status == 'error' %} badge-red{% endif %}"
           id="podcast-channel-status-{{ ch.id }}"
           data-status="{{ ch.status }}"
           data-label="{{ ch.status_label }}"{% if ch.error_message %} title="{{ ch.error_message }}"{% endif %}>{{ ch.status_label }}</span>

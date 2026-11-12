@@ -561,7 +561,7 @@
                 badge.dataset.status = info.status;
                 badge.dataset.label = info.status_label || info.status;
                 badge.title = info.error_message || '';
-                badge.classList.toggle('badge-admin', info.status === 'error');
+                badge.classList.toggle('badge-red', info.status === 'error');
             }
 
             const sizeEl = document.getElementById(`podcast-channel-size-${id}`);
@@ -577,7 +577,7 @@
                 badge.dataset.status = info.status;
                 badge.dataset.label = info.status_label || info.status;
                 badge.title = info.error_message || '';
-                badge.classList.toggle('badge-admin', info.status === 'error');
+                badge.classList.toggle('badge-red', info.status === 'error');
 
                 const dl = document.getElementById(`podcast-episode-dl-${id}`);
                 const cancel = document.getElementById(`podcast-episode-cancel-${id}`);

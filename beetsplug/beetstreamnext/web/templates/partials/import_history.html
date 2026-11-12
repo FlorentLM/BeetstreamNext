@@ -21,7 +21,7 @@
                         aria-label="Reimport this folder"><span aria-hidden="true" class="material-symbols-outlined">restart_alt</span>
                 </button>
             {% endset %}
-            {% set status_html %}<span class="badge badge-warning">{{ row.count }} skipped</span>{% endset %}
+            {% set status_html %}<span class="badge badge-amber">{{ row.count }} skipped</span>{% endset %}
             {% set _ = table_rows.append({
                 'when': '',
                 'album': row.parent,
@@ -40,9 +40,9 @@
             {% endset %}
             {% set status_html %}
                 {% if e.outcome == 'imported' %}
-                    <span class="badge badge-success">Imported{% if e.tracks %} ({{ e.tracks }}){% endif %}</span>
+                    <span class="badge badge-green">Imported{% if e.tracks %} ({{ e.tracks }}){% endif %}</span>
                 {% else %}
-                    <span class="badge badge-warning">Skipped</span>
+                    <span class="badge badge-amber">Skipped</span>
                 {% endif %}
             {% endset %}
             {% set actions_html %}

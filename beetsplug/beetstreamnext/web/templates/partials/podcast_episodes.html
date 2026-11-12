@@ -5,7 +5,7 @@
     {% for e in episodes %}
         {% set title_html %}{{ e.title or '(untitled)' }}<div id="podcast-episode-msg-{{ e.id }}"></div>{% endset %}
         {% set status_html %}
-            <span class="badge{{ ' badge-admin' if e.status == 'error' else '' }}"
+            <span class="badge{{ ' badge-red' if e.status == 'error' else '' }}"
                   id="podcast-episode-status-{{ e.id }}" data-status="{{ e.status }}"
                   data-label="{{ e.status_label }}"{% if e.error_message %} title="{{ e.error_message }}"{% endif %}>{{ e.status_label }}</span>
         {% endset %}

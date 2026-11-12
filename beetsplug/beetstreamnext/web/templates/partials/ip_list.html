@@ -28,7 +28,7 @@
             <li>
                 <code>{{ ip }}</code>
                 {% if ip in pinned %}
-                    <span class="setting-meta-badge" title="Explicitly set via a CLI flag, env var, or config file">pinned</span>
+                    <span class="badge badge-green" title="Explicitly set via a CLI flag, env var, or config file">pinned</span>
                 {% else %}
                     <button type="button" class="action-link action-link-delete"
                             hx-post="{{ url_for('admin.route_ip_remove', list_type=list_type) }}"

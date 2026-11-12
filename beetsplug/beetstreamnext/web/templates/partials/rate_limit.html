@@ -10,7 +10,7 @@
 {% else %}
     {% set rows = [] %}
     {% for e in report.entries %}
-        {% set status_html %}{% if e.blocked %}<span class="badge badge-admin">BLOCKED</span>{% else %}<span class="badge">warning</span>{% endif %}{% endset %}
+        {% set status_html %}{% if e.blocked %}<span class="badge badge-red">BLOCKED</span>{% else %}<span class="badge">warning</span>{% endif %}{% endset %}
         {% set _ = rows.append({
             'ip': e.ip,
             'username': e.username or '—',

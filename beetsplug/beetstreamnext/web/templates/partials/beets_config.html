@@ -4,7 +4,7 @@
 <p class="card-hint" id="beetsConfigMeta" hx-swap-oob="true">
     <span class="config-label">Loaded config file:</span>
     <code>{{ beets_config.path }}</code>
-    <span class="badge badge-admin" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
+    <span class="badge badge-red" {% if not beets_config.read_only %}hidden{% endif %}>Read-only</span>
 </p>
 
 {% if beets_config.edit_disabled %}

@@ -11,14 +11,15 @@
 {% macro render_setting_pill(key, setting_pills) -%}
     {%- set pill = (setting_pills or {}).get(key) -%}
     {%- if pill -%}
-        <span class="setting-meta-badge{{ ' setting-meta-badge-danger' if pill[1] == 'danger' else '' }}">{{ pill[0] }}</span>
+        {%- set colour = {'danger': 'red', 'success': 'green'}.get(pill[1]) -%}
+        <span class="badge{{ ' badge-' ~ colour if colour else '' }}">{{ pill[0] }}</span>
     {%- endif -%}
 {%- endmacro %}
 
 {% macro render_setting_field(key, info, category, users=None, host_suggestions=None, setting_pills=None) -%}
     {%- set dis = 'disabled' if info.locked else '' -%}
     {%- if key == 'ratings_writeback_user' -%}
-        <label class="setting-row-label" for="set-{{ key }}">
+        <label class="setting-row-label setting-row-label-inline" for="set-{{ key }}">
             {{ key }}
             {{ render_setting_pill(key, setting_pills) }}
         </label>
@@ -95,7 +96,7 @@
     {%- elif info.type == 'str' and info.sensitive -%}
         <label class="setting-row-label setting-row-label-inline" for="set-{{ key }}">
             {{ key }}
-            {% if info.is_set %}<span class="setting-meta-badge">currently set</span>{% endif %}
+            {% if info.is_set %}<span class="badge badge-green">currently set</span>{% endif %}
         </label>
         <div class="setting-input-row">
             <input id="set-{{ key }}" type="password" name="{{ key }}" autocomplete="new-password"

@@ -10,18 +10,19 @@
             'album': s.album or '—',
             'album_id': s.album_id,
             'issue': s.label,
+            'issue_cls': s.badge,
             'checked': (s.checked_at * 1000) | int,
             'detail': s.detail or 'No further detail available.',
         }) %}
     {% endfor %}
     {% set table = {
         'columns': [
-            {'title': 'Title', 'field': 'title', 'width': 240, 'type': 'track', 'formatterParams': {'art': url_for(bp_name ~ '.route_art', album_id=0)}},
-            {'title': 'Artist', 'field': 'artist', 'width': 160},
-            {'title': 'Album', 'field': 'album', 'width': 220},
-            {'title': 'Issue', 'field': 'issue', 'width': 140, 'type': 'badge', 'filter': 'select'},
-            {'title': 'Checked', 'field': 'checked', 'width': 170, 'type': 'time'},
-            {'title': 'Detail', 'field': 'detail', 'width': 500},
+            {'title': 'Title', 'field': 'title', 'width': 340, 'type': 'track', 'formatterParams': {'art': url_for(bp_name ~ '.route_art', album_id=0)}},
+            {'title': 'Artist', 'field': 'artist', 'width': 220},
+            {'title': 'Album', 'field': 'album', 'width': 300},
+            {'title': 'Issue', 'field': 'issue', 'width': 170, 'type': 'badge', 'formatterParams': {'clsField': 'issue_cls'}, 'filter': 'select'},
+            {'title': 'Checked', 'field': 'checked', 'width': 220, 'type': 'time'},
+            {'title': 'Detail', 'field': 'detail', 'width': 620},
         ],
         'rows': rows,
         'layout': 'fitDataFill',

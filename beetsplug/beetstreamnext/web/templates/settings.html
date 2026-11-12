@@ -580,7 +580,7 @@
                     <dt>Beets</dt>
                     <dd>
                         v{{ server_info.beets_version }}
-                        {% if beets_schema_drift %}<span class="badge badge-admin">schema drift</span>{% endif %}
+                        {% if beets_schema_drift %}<span class="badge badge-red">schema drift</span>{% endif %}
                     </dd>
                     <dt>Python</dt>
                     <dd>{{ server_info.python_version }}</dd>

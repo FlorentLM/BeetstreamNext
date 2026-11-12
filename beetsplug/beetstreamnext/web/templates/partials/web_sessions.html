@@ -22,7 +22,7 @@
             {% set agent_html %}<code>{{ s.user_agent or 'Unknown' }}</code>{% endset %}
             {% set actions_html %}
                 {% if s.id == current_id %}
-                    <span class="badge badge-you">Current</span>
+                    <span class="badge badge-blue">Current</span>
                 {% else %}
                     <button class="icon-btn icon-btn-delete" title="Sign out" aria-label="Sign out this session"
                             hx-post="{{ url_for(bp_name ~ '.route_revoke_session', session_id=s.id) }}"

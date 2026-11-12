@@ -24,7 +24,7 @@
                     <div>
                         <div class="username-name">
                             {{ u.username }}
-                            {% if u.username == current_username %}<span class="badge badge-you">You</span>{% endif %}
+                            {% if u.username == current_username %}<span class="badge badge-blue">You</span>{% endif %}
                         </div>
                         {% if u.email %}<div class="email-cell">{{ u.email }}</div>{% endif %}
                     </div>
@@ -32,7 +32,7 @@
             {% endset %}
             {% set roles_html %}
                 <div class="roles-cell">
-                    {% if u.adminRole %}<span class="badge badge-admin">Admin</span>{% endif %}
+                    {% if u.adminRole %}<span class="badge badge-red">Admin</span>{% endif %}
                     {% if role_labels %}
                         <span class="badge" title="{{ role_labels|join(', ') }}">{{ role_labels|length }} role{{ '' if role_labels|length == 1 else 's' }}</span>{% endif %}
                     {% if u.maxBitRate %}

@@ -4,6 +4,11 @@
     line-height: 1.6rem
 }
 
+.lib .tabulator-cell .badge {
+    line-height: 1.2;
+    vertical-align: middle
+}
+
 .lib .tabulator-footer select {
     width: auto
 }

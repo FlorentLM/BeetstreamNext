@@ -15,7 +15,7 @@
             <summary class="connection-head">
                 <h3>{{ svc.label }}</h3>
                 {% if conn and conn.last_error %}
-                    <span class="badge badge-warning" title="{{ conn.last_error }}">needs attention</span>
+                    <span class="badge badge-amber" title="{{ conn.last_error }}">needs attention</span>
                 {% elif conn %}
                     <span class="connection-kind">{{ conn.display_name or 'Connected' }}</span>
                 {% else %}

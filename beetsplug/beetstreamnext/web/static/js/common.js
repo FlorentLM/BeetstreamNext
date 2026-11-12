@@ -143,7 +143,8 @@
         badge: {
             formatter: (cell, params) => {
                 const pill = document.createElement('span');
-                pill.className = ('badge ' + (params?.cls ?? 'badge-admin')).trim();
+                const cls = params?.clsField ? cell.getRow().getData()[params.clsField] : params?.cls;
+                pill.className = ('badge ' + (cls ?? 'badge-red')).trim();
                 pill.textContent = cell.getValue();
                 return pill;
             }

@@ -478,6 +478,11 @@ def scan_quality(db: sqlite3.Connection, song_ids: dict[int, str]) -> int:
     return len(findings)
 
 
+def _failing_checks(db: sqlite3.Connection) -> set[tuple[str, str]]:
+    """(track_id, kind) of every failing check"""
+    return {(r['song_id'], r['kind']) for r in db.execute("SELECT song_id, kind FROM song_checks WHERE ok = 0")}
+
+
 @with_app_context
 def scan_library(full: bool = False) -> dict[str, int]:
     """
@@ -505,8 +510,14 @@ def scan_library(full: bool = False) -> dict[str, int]:
                 item['id']: IDs.encode_song({**item, 'path': os.fsdecode(item['path'] or b'')}) for item in items
             }
 
+            failing_before = _failing_checks(db)
+
             counts.update(scan_errors(db, items, song_ids, full))
             counts['quality'] = scan_quality(db, song_ids)
+
+            failing_after = _failing_checks(db)
+
+            new_issues = len(failing_after - failing_before)
 
     except Exception as e:
         notify('health_scan_failed', details=str(e))
@@ -520,10 +531,14 @@ def scan_library(full: bool = False) -> dict[str, int]:
     if missing:
         notify('storage_problem', music_root=music_root, songs_sampled=checked, songs_missing=missing)
 
+    stats = health_stats()
+
     notify('health_scan_completed',
            songs_checked=counts['checked'],
-           songs_flagged=health_stats()['flagged'],
-           songs_unchanged=counts['skipped'])
+           songs_flagged=stats['flagged'],
+           songs_unchanged=counts['skipped'],
+           quality_issues=stats['quality'],
+           new_issues=new_issues)
 
     return counts
 

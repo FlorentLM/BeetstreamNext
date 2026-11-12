@@ -57,7 +57,7 @@ These are shown in the admin panel as _read-only_.
 | **Import needs input**                      | An interactive import is waiting for an answer (once each time it starts waiting)                                      |
 | **Pinned scan aborted**                     | A queued [pinned folder](./beets-import.md) scan couldn't be started, and the rest of the queue was dropped            |
 | **Login blocked**                           | Too many failed logins locked out a user / IP                                                                          |
-| **Health scan completed**                   | A library health scan finishes (can be limited to scans where songs are flagged)                                       |
+| **Health scan completed**                   | A library health scan finishes                                                                                         |
 | **Health scan failed**                      | A library health scan couldn't run, or crashed                                                                         |
 | **Maintenance task completed**              | A maintenance action from the admin panel (clear caches, database cleanup, offline files cleanup) succeeded            |
 | **Maintenance task failed**                 | A maintenance action from the admin panel failed                                                                       |
@@ -73,23 +73,25 @@ These are shown in the admin panel as _read-only_.
 
 Notification titles and bodies can contain `{variables}`, replaced when the notification is sent:
 
-| Variable            | Value                                                                              |
-|---------------------|------------------------------------------------------------------------------------|
-| `{path}`            | The folder being imported                                                          |
-| `{status}`          | `started`, `completed`, `failed`, `needs input`, `aborted`, `blocked` or `running` |
-| `{exit_code}`       | The exit code of the import (empty until it has finished)                          |
-| `{duration}`        | How long the import ran for, e.g. `1m 23s` (empty until it has finished)           |
-| `{albums_imported}` | How many albums were added to the library (`Import completed` / `Import failed`)   |
-| `{albums_skipped}`  | How many albums were skipped: no match, duplicates, or skipped by you              |
-| `{imported_list}`   | Names of the imported albums (`Artist - Album`), one per line (first 5 only)       |
-| `{skipped_list}`    | Names of the skipped albums, one per line (first 5 only)                           |
-| `{ip}`              | The IP the failed logins came from (`Login blocked`)                               |
-| `{username}`        | The username that was tried, empty when the whole IP was blocked (`Login blocked`) |
-| `{failures}`        | The number of failed attempts that triggered the block (`Login blocked`)           |
-| `{songs_checked}`   | Songs checked by the scan (`Health scan completed`)                                |
-| `{songs_flagged}`   | Songs currently flagged in the whole library (`Health scan completed`)             |
-| `{songs_unchanged}` | Songs skipped because they hadn't changed since the last scan                      |
-| `{time}`            | When the notification was sent                                                     |
+| Variable            | Value                                                                                     |
+|---------------------|-------------------------------------------------------------------------------------------|
+| `{path}`            | The folder being imported                                                                 |
+| `{status}`          | `started`, `completed`, `failed`, `needs input`, `aborted`, `blocked` or `running`        |
+| `{exit_code}`       | The exit code of the import (empty until it has finished)                                 |
+| `{duration}`        | How long the import ran for, e.g. `1m 23s` (empty until it has finished)                  |
+| `{albums_imported}` | How many albums were added to the library (`Import completed` / `Import failed`)          |
+| `{albums_skipped}`  | How many albums were skipped: no match, duplicates, or skipped by you                     |
+| `{imported_list}`   | Names of the imported albums (`Artist - Album`), one per line (first 5 only)              |
+| `{skipped_list}`    | Names of the skipped albums, one per line (first 5 only)                                  |
+| `{ip}`              | The IP the failed logins came from (`Login blocked`)                                      |
+| `{username}`        | The username that was tried, empty when the whole IP was blocked (`Login blocked`)        |
+| `{failures}`        | The number of failed attempts that triggered the block (`Login blocked`)                  |
+| `{songs_checked}`   | Songs checked by the scan (`Health scan completed`)                                       |
+| `{songs_flagged}`   | Songs currently flagged in the whole library (`Health scan completed`)                    |
+| `{songs_unchanged}` | Songs skipped because they hadn't changed since the last scan                             |
+| `{quality_issues}`  | Library quality issues currently found in the library (`Health scan completed`)           |
+| `{new_issues}`      | Flagged songs and quality issues the previous scan hadn't found (`Health scan completed`) |
+| `{time}`            | When the notification was sent                                                            |
 
 ### Album results
 

@@ -374,10 +374,10 @@
 
 .tabulator-menu .lib-detail {
     display: grid;
-    grid-template-columns: 13rem minmax(0, 1fr) 2.5rem;
+    grid-template-columns: 9rem minmax(0, 1fr) 2.5rem;
     align-items: baseline;
-    gap: 1rem;
-    width: 40rem;
+    gap: .8rem;
+    width: 28rem;
     max-width: 100%;
     text-align: left
 }

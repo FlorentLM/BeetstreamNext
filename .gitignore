@@ -48,6 +48,7 @@ htmlcov/
 # Dev todos and any dotfiles
 TODOs.md
 .*
+!.github/
 
 # temporarily ignoring tests
 tests/integrated/

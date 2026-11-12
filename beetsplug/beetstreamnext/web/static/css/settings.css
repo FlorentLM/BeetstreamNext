@@ -409,6 +409,12 @@ td > .roles-cell {
     border-color: rgba(232, 121, 249, 0.6);
 }
 
+.badge-indigo {
+    background: rgba(129, 140, 248, 0.1);
+    color: #818cf8;
+    border-color: rgba(129, 140, 248, 0.6);
+}
+
 .shares-table th,
 .shares-table td {
     padding: 1rem 0.75rem;

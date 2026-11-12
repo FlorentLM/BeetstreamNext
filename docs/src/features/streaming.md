@@ -46,6 +46,7 @@ A song flagged with decode errors is automatically routed through a transcode pa
 | Issue                 | Flagged when                                                                                                                  |
 |-----------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | **Duplicate**         | Songs share a recording ID, or the same artist, title and length                                                              |
+| **Same recording**    | Songs with different recording IDs share an AcoustID or identical fingerprint (lists each copy's codec and bitrate)           |
 | **Lossy copy**        | An album is entirely lossy, and an album with the same artist and title is entirely lossless                                  |
 | **Inconsistent tags** | Tracks of one album disagree on the year, album title, album artist, etc                                                      |
 | **Missing tracks**    | A disc has non contiguous track numbers                                                                                       |
@@ -53,9 +54,12 @@ A song flagged with decode errors is automatically routed through a transcode pa
 | **Artist mismatch**   | None of an album's track artist IDs is its album artist ID (except for compilations)                                          |
 | **Missing tags**      | A track has no title, artist, album, album artist or track number                                                             |
 | **No ID**             | A track has neither a `mb_trackid` nor a `mb_releasetrackid`                                                                  |
+| **No fingerprint**    | A track has no AcoustID data, so it couldn't be checked for same recordings (only listed once some tracks have it)            |
 
 > [!NOTE]
 > Findings about a whole album are listed on its first track.
+> 
+> **Same recording** and **No fingerprint** checks read fields written by the Beets [`chroma`](https://beets.readthedocs.io/en/stable/plugins/chroma.html) plugin.
 
 ## Reverse-proxy file offloading
 

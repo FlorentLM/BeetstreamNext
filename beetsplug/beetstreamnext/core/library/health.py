@@ -54,6 +54,25 @@ CHECKS = {
         FROM g WHERE copies > 1
     """),
 
+    'quality_same_recording': Check('Same recording', 'badge-indigo', """
+        WITH fp AS (
+            SELECT id, mb_trackid, bitrate,
+                   COALESCE(NULLIF(TRIM(acoustid_id), ''), 'fp:' || TRIM(acoustid_fingerprint)) AS key,
+                   COALESCE(NULLIF(format, ''), '?')
+                   || CASE WHEN COALESCE(bitrate, 0) > 0 THEN ' ' || (bitrate / 1000) || ' kbps' ELSE '' END AS quality
+            FROM beets.items
+            WHERE TRIM(COALESCE(acoustid_id, '')) != '' OR TRIM(COALESCE(acoustid_fingerprint, '')) != ''
+        ), g AS (
+            SELECT key, COUNT(*) AS copies, GROUP_CONCAT(quality, ', ') AS qualities
+            FROM (SELECT * FROM fp ORDER BY bitrate DESC)
+            GROUP BY key
+            HAVING COUNT(*) > 1 AND COUNT(DISTINCT COALESCE(NULLIF(TRIM(mb_trackid), ''), id)) > 1
+        )
+        SELECT fp.id, g.copies || ' copies of this recording by fingerprint (' || g.qualities || '), this one is '
+                      || fp.quality
+        FROM fp JOIN g ON g.key = fp.key
+    """),
+
     'quality_lossy_copy': Check('Lossy copy', 'badge-amber', """
         WITH a AS (
             SELECT al.id AS album_id, MIN(i.id) AS rep, COUNT(*) AS n,
@@ -152,6 +171,16 @@ CHECKS = {
         SELECT id, 'No MusicBrainz recording ID'
         FROM beets.items
         WHERE TRIM(COALESCE(mb_trackid, '')) = '' AND TRIM(COALESCE(mb_releasetrackid, '')) = ''
+    """),
+
+    'quality_no_fingerprint': Check('No fingerprint', '', """
+        SELECT id, 'Not checked for same-recording copies: no AcoustID or fingerprint'
+        FROM beets.items
+        WHERE TRIM(COALESCE(acoustid_id, '')) = '' AND TRIM(COALESCE(acoustid_fingerprint, '')) = ''
+          AND EXISTS (
+              SELECT 1 FROM beets.items
+              WHERE TRIM(COALESCE(acoustid_id, '')) != '' OR TRIM(COALESCE(acoustid_fingerprint, '')) != ''
+          )
     """),
 
 }

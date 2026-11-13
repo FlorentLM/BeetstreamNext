@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Sequence, Callable
 import flask
+from beets.dbcore.query import InQuery
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
@@ -116,17 +117,17 @@ class Resolve:
         Batched song resolving. Returns {id: song_object},
         """
 
-        items: dict[int, Item | None] = {}
-        result: dict[str, Item] = {}
+        beets_ids = cls.song_ids(subsonic_ids)
+        wanted = list(set(beets_ids.values()))
+        items: dict[int, Item] = {}
 
-        for sid, beets_id in cls.song_ids(subsonic_ids).items():
-            if beets_id not in items:
-                items[beets_id] = flask.g.lib.get_item(beets_id)
+        sqlite_lim = 500   # SQLite limit of bound parameters
 
-            if items[beets_id] is not None:
-                result[sid] = items[beets_id]
+        for start in range(0, len(wanted), sqlite_lim):
+            for item in flask.g.lib.items(InQuery('id', wanted[start:start + sqlite_lim])):
+                items[item.id] = item
 
-        return result
+        return {sid: items[beets_id] for sid, beets_id in beets_ids.items() if beets_id in items}
 
     @classmethod
     def playlist(cls, subsonic_id: str) -> dict | None:

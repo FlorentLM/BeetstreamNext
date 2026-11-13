@@ -219,6 +219,33 @@ class IDs:
         return len(split_beets_multi(multi_value or single_name)) > 1
 
     @classmethod
+    def credit_pairs(cls,
+            name: str,
+            mbid: Any,
+            names_raw: str | None,
+            mbids_raw: str | None,
+            *, joint: bool | None = None
+        ) -> list[tuple[str, str]]:
+        """
+        (name, MBID or '') of every artist of a credit.
+        Solo: use single-value fields, or a 1-entry multi-value MBID
+        Joint: members paired by position in the multi-value fields
+        """
+        if joint is None:
+            joint = cls.is_joint_credit(names_raw, name)
+
+        mbids = split_beets_multi(mbids_raw or '')
+
+        if not joint:
+            if not name:
+                return []
+            return [(name, validate_mbid(mbid) or (validate_mbid(mbids[0]) if len(mbids) == 1 else ''))]
+
+        names = split_beets_multi(names_raw or '')
+        aligned = len(mbids) == len(names)
+        return [(n, validate_mbid(mbids[i]) if aligned else '') for i, n in enumerate(names) if n]
+
+    @classmethod
     def joint_credit_keys(cls, name: str, names_raw: str | None, mbids_raw: str | None) -> list[str]:
         """
         Keys of a joint credit (set of all members' mbids then the credit text).

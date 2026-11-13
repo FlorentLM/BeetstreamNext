@@ -162,26 +162,14 @@ class ArtistIndex(Index):
         self._lyricists = {name for value in lyricists for name in split_beets_multi(value)}
 
         self._mbids: dict[str, dict[str, None]] = {}   # name -> MBIDs
-        self._names: dict[str, dict[str, None]] = {}   # MBID -> names
         untagged: set[str] = set()                     # Names with no MBID
 
-        def pair(name: str, mbid: str | None) -> None:
-            mbid = validate_mbid(mbid)
-            if not name:
-                return
-            if mbid:
-                self._mbids.setdefault(name, {})[mbid] = None
-                self._names.setdefault(mbid, {})[name] = None
-            else:
-                untagged.add(name)
-
-        def pair_members(names_raw: str | None, mbids_raw: str | None) -> tuple[str, ...]:
-            names = split_beets_multi(names_raw or '')
-            mbids = split_beets_multi(mbids_raw or '')
-            aligned = len(mbids) == len(names)
-            for i, name in enumerate(names):
-                pair(name, mbids[i] if aligned else None)
-            return tuple(names)
+        def record(pairs: list[tuple[str, str]]) -> None:
+            for name, mbid in pairs:
+                if mbid:
+                    self._mbids.setdefault(name, {})[mbid] = None
+                else:
+                    untagged.add(name)
 
         # Album artists: rows by name + the first sort name
         album_groups: dict[str, list] = {}
@@ -191,11 +179,10 @@ class ArtistIndex(Index):
             _id, name, mbid, sort_name, names_raw, mbids_raw = row
             album_groups.setdefault(name, []).append(row)
 
-            if IDs.is_joint_credit(names_raw, name):
+            joint = IDs.is_joint_credit(names_raw, name)
+            if joint:
                 joint_albums.setdefault(name, row)
-                pair_members(names_raw, mbids_raw)
-            else:
-                pair(name, mbid)
+            record(IDs.credit_pairs(name, mbid, names_raw, mbids_raw, joint=joint))
 
         # Track artists
         self._song_sort: dict[str, str] = {}
@@ -207,11 +194,12 @@ class ArtistIndex(Index):
                 continue
             self._song_sort.setdefault(name, sort_name or '')
 
-            if IDs.is_joint_credit(names_raw, name):
+            joint = IDs.is_joint_credit(names_raw, name)
+            pairs = IDs.credit_pairs(name, mbid, names_raw, mbids_raw, joint=joint)
+            record(pairs)
+            if joint:
                 joint_songs.setdefault(name, (names_raw, mbids_raw))
-                member_names.update(dict.fromkeys(pair_members(names_raw, mbids_raw)))
-            else:
-                pair(name, mbid)
+                member_names.update(dict.fromkeys(n for n, _ in pairs))
 
         for row in joint_albums.values():
             member_names.update(dict.fromkeys(split_beets_multi(row[4] or '')))
@@ -323,10 +311,6 @@ class ArtistIndex(Index):
         if len(artists) == 1:
             return artists[0]
         return next((a for a in artists if not a.mbid and not a.joint), None)
-
-    def names_of(self, mbid: str) -> tuple[str, ...]:
-        """Every spelling for a MBID (>1 = tagging problem)."""
-        return tuple(self._names.get(mbid, ()))
 
     def lookup(self, id_or_name: str) -> Artist | None:
 

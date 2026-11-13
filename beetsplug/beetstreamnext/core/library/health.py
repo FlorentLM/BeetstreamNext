@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from collections.abc import Callable
 from typing import NamedTuple
 
 import beets
@@ -19,6 +20,7 @@ from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.constants import FFMPEG_INPUT_ARGS, START_TIME, SERVER_VERSION
 from beetsplug.beetstreamnext.core.library.beets.interaction import config_path
 from beetsplug.beetstreamnext.utils.system import find_binary, binary_version, resolve_path
@@ -32,6 +34,42 @@ class Check(NamedTuple):
     label: str
     badge: str
     sql: str = ''
+    func: Callable[[sqlite3.Connection], list[tuple[int, str]]] | None = None
+
+
+def _artist_spellings(db: sqlite3.Connection) -> list[tuple[int, str]]:
+
+    cols = {row[1] for row in db.execute("PRAGMA beets.table_info(items)")}
+    credit_cols = ['albumartist', 'mb_albumartistid', 'albumartists', 'mb_albumartistids',
+                   'artist', 'mb_artistid', 'artists', 'mb_artistids']
+
+    select = ', '.join(c if c in cols else 'NULL' for c in credit_cols)
+    group = ', '.join(c for c in credit_cols if c in cols)
+
+    first = {}      # mbid -> spelling -> 1st track credited
+    rows = db.execute(
+        f"""
+        SELECT MIN(id), {select} 
+        FROM beets.items 
+        GROUP BY {group} 
+        ORDER BY MIN(id)
+        """     # nosec B608  # noqa: S608 vars are constants
+    )
+
+    for item_id, aa, aa_mbid, aa_names, aa_mbids, a, a_mbid, a_names, a_mbids in rows:
+        for name, mbid in (*IDs.credit_pairs(aa, aa_mbid, aa_names, aa_mbids), *IDs.credit_pairs(a, a_mbid, a_names, a_mbids)):
+            if mbid:
+                first.setdefault(mbid, {}).setdefault(name, item_id)
+
+    findings = []
+    for mbid, spellings in first.items():
+        if len(spellings) > 1:
+            listed = ', '.join(f'"{n}"' for n in sorted(spellings))
+            findings += [
+                (item_id, f'Artist ID {mbid} is credited under {len(spellings)} spellings ({listed}), this one is "{name}"')
+                for name, item_id in spellings.items()
+            ]
+    return findings
 
 
 CHECKS = {
@@ -152,6 +190,8 @@ CHECKS = {
            AND SUM(mb_artistid = mb_albumartistid OR INSTR(COALESCE(mb_artistids, ''), mb_albumartistid) > 0) = 0
     """),
 
+    'quality_artist_spellings': Check('Artist spellings', 'badge-violet', func=_artist_spellings),
+
     'quality_missing_tags': Check('Missing tags', 'badge-fuchsia', """
         SELECT id, 'No ' || RTRIM(missing, ', ')
         FROM (
@@ -185,7 +225,7 @@ CHECKS = {
 
 }
 
-INTEGRITY_CATEGORIES = tuple(cat for cat, check in CHECKS.items() if not check.sql)
+INTEGRITY_CATEGORIES = tuple(cat for cat, check in CHECKS.items() if not check.sql and not check.func)
 
 MAX_QUAL_REPORTS = 500   # max flagged items per quality type
 MAX_ERRORS = 10   # max error timestamps shown per track (in details column)
@@ -452,10 +492,10 @@ def scan_quality(db: sqlite3.Connection, song_ids: dict[int, str]) -> int:
 
     findings = []
     for kind, check in CHECKS.items():
-        if not check.sql:
+        if not check.sql and not check.func:
             continue
 
-        rows = db.execute(check.sql).fetchall()
+        rows = check.func(db) if check.func else db.execute(check.sql).fetchall()
         if len(rows) > MAX_QUAL_REPORTS:
             bsn_logger.warning(f"Quality check '{kind}': {len(rows)} findings, only the first "
                                f"{MAX_QUAL_REPORTS} are listed.")
@@ -526,6 +566,7 @@ def scan_library(full: bool = False) -> dict[str, int]:
     finally:
         health_scan.release()
         admin_events.publish('health-scan', '')
+        admin_events.publish('health-scan-done', '')
 
     checked, missing = startup_path_check(music_root)
     if missing:
@@ -650,11 +691,11 @@ def start_health_scan(full: bool = False) -> tuple[bool, str]:
     return True, 'Health scan started.'
 
 
+@with_app_context
 def get_server_info(extended: bool = False) -> dict[str, str]:
     lib = app.config['lib']
-    stats = {}
+    stats = {'artists': len(ArtistIndex.get().album_artists)}
     with lib.transaction() as tx:
-        stats['artists'] = tx.query("SELECT COUNT(DISTINCT albumartist) FROM albums")[0][0]
         stats['albums'] = tx.query("SELECT COUNT(*) FROM albums")[0][0]
         stats['songs'] = tx.query("SELECT COUNT(*) FROM items")[0][0]
 

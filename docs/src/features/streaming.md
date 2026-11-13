@@ -52,6 +52,7 @@ A song flagged with decode errors is automatically routed through a transcode pa
 | **Missing tracks**    | A disc has non contiguous track numbers                                                                                       |
 | **Mixed releases**    | Tracks of one album carry different release IDs (typically a multi-disc album where discs were matched to different releases) |
 | **Artist mismatch**   | None of an album's track artist IDs is its album artist ID (except for compilations)                                          |
+| **Artist spellings**  | One artist ID is credited under several names (e.g. "Beatles" and "The Beatles")                                              |
 | **Missing tags**      | A track has no title, artist, album, album artist or track number                                                             |
 | **No ID**             | A track has neither a `mb_trackid` nor a `mb_releasetrackid`                                                                  |
 | **No fingerprint**    | A track has no AcoustID data, so it couldn't be checked for same recordings (only listed once some tracks have it)            |

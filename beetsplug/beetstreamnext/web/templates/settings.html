@@ -538,7 +538,7 @@
 
                 <div class="table-container lib" id="flagged-songs"
                      hx-get="{{ url_for('admin.route_flagged_songs') }}"
-                     hx-trigger="load, health-scan from:#adminDashboard throttle:1s"
+                     hx-trigger="load, health-scan-done from:#adminDashboard"
                      hx-swap="innerHTML"></div>
                 <div class="button-row">
                     <form hx-post="{{ url_for('admin.route_health_scan') }}"

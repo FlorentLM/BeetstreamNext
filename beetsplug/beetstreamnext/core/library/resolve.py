@@ -8,8 +8,7 @@ import flask
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import SOURCE_TRACK_ID_FIELDS, SOURCE_ALBUM_ID_FIELDS
-from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex, SongIndex, AlbumHashIndex
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex, SongIndex, AlbumIndex
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
@@ -102,76 +101,20 @@ class Resolve:
         """
         value, kind = IDs.decode_album(subsonic_id)
 
-        if kind == 'mbid':
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    """
-                    SELECT id
-                    FROM albums
-                    WHERE mb_albumid = ?
-                    LIMIT 1
-                    """, (value,)
-                )
-                if not rows:    # Fallback: Spotify/Deezer plugin ID
-                    rows = tx.query(
-                        f"""
-                        SELECT DISTINCT i.album_id
-                        FROM item_attributes a JOIN items i ON i.id = a.entity_id
-                        WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))})
-                          AND a.value = ? AND i.album_id IS NOT NULL
-                        ORDER BY i.album_id
-                        LIMIT 1
-                        """, (*SOURCE_ALBUM_ID_FIELDS, value)  # nosec B608  # noqa: S608 vars are constants
-                    )
-            return flask.g.lib.get_album(rows[0][0]) if rows else None
-
-        if kind == 'hash':
-            album_id = AlbumHashIndex.get().by_hash.get(value)
-            return flask.g.lib.get_album(album_id) if album_id is not None else None
-
         if kind == 'legacy_int':
             return flask.g.lib.get_album(value)
 
-        return None
+        index = AlbumIndex.get()
+        album_id = {'mbid': index.by_mbid, 'hash': index.by_hash}.get(kind, {}).get(value)
+        return flask.g.lib.get_album(album_id) if album_id is not None else None
 
     @classmethod
     def song(cls, subsonic_id: str) -> Item | None:
         """
         Decode a Subsonic song ID (mbid, hash, or legacy row id) and fetch the beets song data.
         """
-        value, kind = IDs.decode_song(subsonic_id)
-
-        if kind == 'mbid':
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    """
-                    SELECT id
-                    FROM items
-                    WHERE mb_releasetrackid = ?
-                       OR mb_trackid = ?
-                    LIMIT 1
-                    """, (value, value)
-                )
-                if not rows:    # Fallback: Spotify/Deezer plugin ID
-                    rows = tx.query(
-                        f"""
-                        SELECT entity_id
-                        FROM item_attributes
-                        WHERE key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))}) AND value = ?
-                        ORDER BY entity_id
-                        LIMIT 1
-                        """, (*SOURCE_TRACK_ID_FIELDS, value)  # nosec B608  # noqa: S608 vars are constants
-                    )
-            return flask.g.lib.get_item(rows[0][0]) if rows else None
-
-        if kind == 'hash':
-            item_id = SongIndex.get().by_hash.get(value)
-            return flask.g.lib.get_item(item_id) if item_id is not None else None
-
-        if kind == 'legacy_int':
-            return flask.g.lib.get_item(value)
-
-        return None
+        beets_id = cls.song_ids([subsonic_id]).get(str(subsonic_id))
+        return flask.g.lib.get_item(beets_id) if beets_id is not None else None
 
     @classmethod
     def songs(cls, subsonic_ids: Sequence[str]) -> dict[str, Item]:
@@ -232,7 +175,7 @@ class Resolve:
             elif kind == 'hash':
                 beets_id = index.by_hash.get(value)
             elif kind == 'legacy_int':
-                beets_id = value if value in index.ids else None
+                beets_id = value if value in index.subsonic_ids else None
             else:
                 beets_id = None
 

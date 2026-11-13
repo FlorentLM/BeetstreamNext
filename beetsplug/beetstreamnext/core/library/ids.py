@@ -298,15 +298,19 @@ class IDs:
             before app.config['music_root'] is set
         """
         mbid = str(song.get('mb_releasetrackid') or song.get('mb_trackid') or '').strip()
+        digest = '' if mbid else path_hash(song.get('path'), _music_root or app.config['music_root'])
+        return cls.song_id(mbid, digest, song.get('id', 0))
+
+    @classmethod
+    def song_id(cls, mbid: str, digest: str, beets_id: Any) -> str:
+
+        mbid = str(mbid or '').strip()
         if mbid:
             encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
             return f"{cls._SNG_MBID_PREF}{encoded}"
-
-        hash = path_hash(song.get('path'), _music_root or app.config['music_root'])
-        if hash:
-            return f"{cls._SNG_HASH_PREF}{hash}"
-
-        return f"{cls._SNG_ID_PREF}{song.get('id', 0)}"
+        if digest:
+            return f"{cls._SNG_HASH_PREF}{digest}"
+        return f"{cls._SNG_ID_PREF}{beets_id}"
 
     @classmethod
     def encode_playlist(cls, db_id: int) -> str:

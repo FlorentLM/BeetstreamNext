@@ -6,7 +6,7 @@ from typing import NamedTuple
 import flask
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.constants import SOURCE_TRACK_ID_FIELDS
+from beetsplug.beetstreamnext.constants import SOURCE_TRACK_ID_FIELDS, SOURCE_ALBUM_ID_FIELDS
 from beetsplug.beetstreamnext.utils.concurrency import BuildOnce
 from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.core.library.ids import IDs
@@ -70,30 +70,32 @@ class Index(ABC):
 
 class SongIndex(Index):
     """
-    Index of song MBIDs and path hashes mapped to beets IDs.
+    Beets IDs of songs by MBID (or Spotify/Deezer ID) and path hash, and Subsonic ID and album.
     """
 
     def __init__(self, lib, music_root):
         # Lowest beets ID wins when songs have the same MBID
         self.by_mbid: dict[str, int] = {}
         self.by_hash: dict[str, int] = {}
-
-        self.ids: set = set()
+        self.subsonic_ids: dict[int, str] = {}
+        self.album_of: dict[int, int] = {}      # beets song ID -> beets album ID
 
         with lib.transaction() as tx:
             rows = tx.query(
                 """
-                SELECT id, path, mb_releasetrackid, mb_trackid
+                SELECT id, path, mb_releasetrackid, mb_trackid, album_id
                 FROM items
                 ORDER BY id DESC
                 """)
 
-        for beets_id, path, release_track_id, track_id in rows:
-            self.ids.add(beets_id)
+        for beets_id, path, release_track_id, track_id, album_id in rows:
+            digest = path_hash(path, music_root)
+            self.by_hash[digest] = beets_id
+            self.subsonic_ids[beets_id] = IDs.song_id(release_track_id or track_id, digest, beets_id)
+            if album_id is not None:
+                self.album_of[beets_id] = album_id
 
-            self.by_hash[path_hash(path, music_root)] = beets_id
-
-            for mbid in filter(None, (release_track_id, track_id)):
+            for mbid in filter(None, (str(release_track_id or '').strip(), str(track_id or '').strip())):
                 self.by_mbid[mbid] = beets_id
 
         # Fallback: IDs recorded by non-MB source plugin (Spotify, Deezer...)
@@ -208,6 +210,7 @@ class ArtistIndex(Index):
         self.by_id: dict[str, Artist] = {}
         self._by_name: dict[str, list[Artist]] = {}
         self.source_ids: dict[str, Artist] = {}       # non-MusicBrainz value found in mb_albumartistid -> artist
+        self.by_album: dict[int, Artist] = {}         # Beets album ID -> Artist
 
         def add(name: str, mbid: str, rows: list, *, joint: tuple[str | None, str | None] | None = None) -> Artist:
             if joint:
@@ -231,6 +234,7 @@ class ArtistIndex(Index):
             self._by_name.setdefault(name, []).append(artist)
 
             for r in rows:
+                self.by_album[r[0]] = artist
                 raw = str(r[2] or '').strip()
                 if raw and not validate_mbid(raw):
                     self.source_ids.setdefault(raw, artist)
@@ -349,28 +353,46 @@ class ArtistIndex(Index):
         return cls(flask.g.lib)
 
 
-class AlbumHashIndex(Index):
+class AlbumIndex(Index):
     """
-    Beets IDs of the albums without an MBID.
+    Beets IDs of albums by MBID (or Spotify/Deezer ID) and hash, and Subsonic ID.
     """
 
     def __init__(self, lib):
 
+        self.by_mbid: dict[str, int] = {}
+        self.by_hash: dict[str, int] = {}
+        self.subsonic_ids: dict[int, str] = {}
+
         with lib.transaction() as tx:
             rows = tx.query(
                 """
-                SELECT id, albumartist, album
+                SELECT id, mb_albumid, albumartist, album
                 FROM albums
-                WHERE mb_albumid IS NULL OR mb_albumid = ''
                 ORDER BY id DESC
                 """)
 
-        # Descending so lowest ID wins
-        self.by_hash: dict[str, int] = {
-            sha1_hex(f"{r[1] or ''}\x1f{r[2] or ''}")[:16]: r[0]
-            for r in rows
-        }
+            source_rows = tx.query(
+                f"""
+                SELECT DISTINCT i.album_id, a.value
+                FROM item_attributes a JOIN items i ON i.id = a.entity_id
+                WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))}) AND i.album_id IS NOT NULL
+                ORDER BY i.album_id DESC
+                """, SOURCE_ALBUM_ID_FIELDS)  # nosec B608  # noqa: S608 vars are constants
+
+        by_kind = {'mbid': self.by_mbid, 'hash': self.by_hash}
+        for beets_id, mbid, albumartist, album in rows:
+            album_id = IDs.encode_album(beets_id, mbid, albumartist, album)
+            self.subsonic_ids[beets_id] = album_id
+            value, kind = IDs.decode_album(album_id)
+            if kind in by_kind:
+                by_kind[kind][value] = beets_id
+
+        primary = set(self.by_mbid)
+        for beets_id, value in source_rows:
+            if str(value) not in primary:
+                self.by_mbid[str(value)] = beets_id
 
     @classmethod
-    def _build(cls) -> AlbumHashIndex:
+    def _build(cls) -> AlbumIndex:
         return cls(flask.g.lib)

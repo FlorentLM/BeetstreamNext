@@ -6,6 +6,7 @@ import flask
 
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -75,15 +76,17 @@ class Exclusions:
                     )
                     self._exempt |= {row[0] for row in rows}
 
+                index = ArtistIndex.get()
+
                 for song in Resolve.songs(list(self._exempt)).values():
                     data = standardise_datadict(song)
 
                     self._rescued.add(IDs.encode_album(data.get('album_id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album')))
-                    self._rescued.add(IDs.encode_artist_of(data))
+                    self._rescued.add(index.id_of(data))
 
                 for exempt_id in self._exempt:
                     if IDs.decode_type(exempt_id) == 'album' and (album := Resolve.album(exempt_id)) is not None:
-                        self._rescued.add(IDs.encode_artist_of(standardise_datadict(album)))
+                        self._rescued.add(index.id_of(standardise_datadict(album)))
 
     @staticmethod
     def _applies(mode: str, scope: str) -> bool:
@@ -136,12 +139,13 @@ class Exclusions:
             return items
 
         kept = []
+        index = ArtistIndex.get()
 
         for item in items:
             data = standardise_datadict(item)
             album_id = IDs.encode_album(data.get('album_id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
 
-            if not self.song_hidden(IDs.encode_song(data), album_id, IDs.encode_artist_of(data), scope):
+            if not self.song_hidden(IDs.encode_song(data), album_id, index.id_of(data), scope):
                 kept.append(item)
 
         return kept
@@ -153,10 +157,12 @@ class Exclusions:
             return rows
 
         kept = []
+        index = ArtistIndex.get()
+
         for row in rows:
             data = standardise_datadict(row)
             album_id = IDs.encode_album(data.get('id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
-            if not self.album_hidden(album_id, IDs.encode_artist_of(data), scope):
+            if not self.album_hidden(album_id, index.id_of(data), scope):
                 kept.append(row)
 
         return kept

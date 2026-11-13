@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.albums import album_payload
 from beetsplug.beetstreamnext.blueprints.subsonic.routes.artists import artist_payload
@@ -211,34 +212,19 @@ def endpoint_get_music_directory() -> flask.Response:
         payload['directory'] = payload.pop('song')
 
     else:
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                """
-                SELECT albumartist, mb_albumartistid, albumartists
-                FROM albums
-                WHERE albumartist IS NOT NULL
-                GROUP BY albumartist
-                """
-            )
-
         payload = musicdirectory_payload('m-0')
         payload['directory'] = payload.pop('musicFolders')['musicFolder'][0]
 
-        children = []
-        for row in rows:
-            artist_name, artist_mbid, albumartists_raw = row
-            if IDs.is_joint_credit(albumartists_raw, artist_name):
-                artist_id = IDs.encode_artist(artist_name, joint_credit=True)
-            else:
-                artist_id = IDs.encode_artist(artist_mbid or artist_name, is_mbid=bool(artist_mbid))
-
-            children.append({
-                'id': artist_id,
-                'title': artist_name,
+        children = [
+            {
+                'id': artist.id,
+                'title': artist.name,
                 'isDir': True,
-                'artist': artist_name,
-                'coverArt': artist_id,
-            })
+                'artist': artist.name,
+                'coverArt': artist.id,
+            }
+            for artist in ArtistIndex.get().album_artists
+        ]
         payload['directory']['child'] = children
 
     return subsonic_response(payload, resp_fmt=resp_fmt)

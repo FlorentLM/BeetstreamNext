@@ -176,22 +176,74 @@ class IDs:
         return f"{prefix}{encoded}"
 
     @classmethod
-    def encode_artist_of(cls, data: dict) -> str:
-        """Main artist ID of a song or album."""
+    def artist_id(cls, name: str, mbid: Any = None, multi: str | None = None, *, joint: bool | None = None) -> str:
+        """
+        ID of an artist credit: hash of the credit text for joint credits, otherwise the MBID, or the name.
+            mbid: the MBID (Spotify/Deezer values ignored)
+            multi: the multi-value field (albumartists / artists)
+            joint: if the caller already knows (skips detection here)
+        """
+        if joint is None:
+            joint = cls.is_joint_credit(multi, name)
 
-        name = data.get('albumartist') or data.get('artist') or ''
-        mbid = validate_mbid(data.get('mb_albumartistid')) or validate_mbid(data.get('mb_artistid'))
-        multi = data.get('albumartists') or data.get('artists') or ''
-
-        if cls.is_joint_credit(multi, name):
+        if joint:
             return cls.encode_artist(name, joint_credit=True)
 
+        mbid = validate_mbid(mbid)
         return cls.encode_artist(mbid or name, is_mbid=bool(mbid))
+
+    @staticmethod
+    def main_artist_of(data: dict) -> tuple[str, str, str]:
+        """
+        (name, mbid, multi-value names) of the main artist for a song or album
+        (the album artist, or fallback to the track artist)
+        """
+        albumartist = data.get('albumartist') or ''
+        artist = data.get('artist') or ''
+
+        if not albumartist:
+            return artist, validate_mbid(data.get('mb_artistid')), data.get('artists') or ''
+
+        mbid = validate_mbid(data.get('mb_albumartistid'))
+        multi = data.get('albumartists') or ''
+
+        if artist == albumartist:
+            mbid = mbid or validate_mbid(data.get('mb_artistid'))
+            multi = multi or data.get('artists') or ''
+
+        return albumartist, mbid, multi
 
     @staticmethod
     def is_joint_credit(multi_value: str | None, single_name: str = '') -> bool:
         """Whether a beets *artists (multi-value) field represents more than one credited artist."""
         return len(split_beets_multi(multi_value or single_name)) > 1
+
+    @classmethod
+    def credit_pairs(cls,
+            name: str,
+            mbid: Any,
+            names_raw: str | None,
+            mbids_raw: str | None,
+            *, joint: bool | None = None
+        ) -> list[tuple[str, str]]:
+        """
+        (name, MBID or '') of every artist of a credit.
+        Solo: use single-value fields, or a 1-entry multi-value MBID
+        Joint: members paired by position in the multi-value fields
+        """
+        if joint is None:
+            joint = cls.is_joint_credit(names_raw, name)
+
+        mbids = split_beets_multi(mbids_raw or '')
+
+        if not joint:
+            if not name:
+                return []
+            return [(name, validate_mbid(mbid) or (validate_mbid(mbids[0]) if len(mbids) == 1 else ''))]
+
+        names = split_beets_multi(names_raw or '')
+        aligned = len(mbids) == len(names)
+        return [(n, validate_mbid(mbids[i]) if aligned else '') for i, n in enumerate(names) if n]
 
     @classmethod
     def joint_credit_keys(cls, name: str, names_raw: str | None, mbids_raw: str | None) -> list[str]:
@@ -246,15 +298,19 @@ class IDs:
             before app.config['music_root'] is set
         """
         mbid = str(song.get('mb_releasetrackid') or song.get('mb_trackid') or '').strip()
+        digest = '' if mbid else path_hash(song.get('path'), _music_root or app.config['music_root'])
+        return cls.song_id(mbid, digest, song.get('id', 0))
+
+    @classmethod
+    def song_id(cls, mbid: str, digest: str, beets_id: Any) -> str:
+
+        mbid = str(mbid or '').strip()
         if mbid:
             encoded = base64.urlsafe_b64encode(mbid.encode('utf-8')).rstrip(b'=').decode('utf-8')
             return f"{cls._SNG_MBID_PREF}{encoded}"
-
-        hash = path_hash(song.get('path'), _music_root or app.config['music_root'])
-        if hash:
-            return f"{cls._SNG_HASH_PREF}{hash}"
-
-        return f"{cls._SNG_ID_PREF}{song.get('id', 0)}"
+        if digest:
+            return f"{cls._SNG_HASH_PREF}{digest}"
+        return f"{cls._SNG_ID_PREF}{beets_id}"
 
     @classmethod
     def encode_playlist(cls, db_id: int) -> str:

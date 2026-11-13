@@ -8,9 +8,11 @@ from .. import admin_bp, admin_required
 
 from beetsplug.beetstreamnext.blueprints.forms import ArtistImageForm, form_error_messages
 from beetsplug.beetstreamnext.blueprints.views import modal_error
+from beetsplug.beetstreamnext.application import with_app_context
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.media.artist_images import (
-    list_images, list_artists, set_image, delete_image, get_image,
-    find_artist, suggest_artists, credit_keys, fetched_image_path, image_version
+    list_artists, load_stored, set_image, delete_image, get_image,
+    suggest_artists, fetched_image_path, image_version
 )
 from beetsplug.beetstreamnext.core.services.external.artist_image_fetch import artist_image_fetcher
 from beetsplug.beetstreamnext.core.media.images import read_uploaded_image, sniff_image
@@ -45,18 +47,22 @@ def route_artist_images() -> str:
 
 @admin_bp.route('/artists/form', methods=['GET'])
 @admin_required
+@with_app_context      # Admin routes don't get flask.g.lib from the middleware
 def route_artist_image_form() -> str:
-    key = flask.request.args.get('key')
-    entry = next((a for a in list_images() if a['artist_key'] == key), None) if key else None
 
-    name = entry['name'] if entry else strip_text(flask.request.args.get('name', ''))
-    form = ArtistImageForm(formdata=None, data={'name': name})
+    args = flask.request.args
+    key = args.get('key', '')
+    stored = load_stored().get(key) if key else None
+
+    artist = ArtistIndex.get().lookup(args.get('artist_id') or strip_text(args.get('name', '')))
+    name = artist.name if artist else (stored['name'] if stored else strip_text(args.get('name', '')))
+
+    form = ArtistImageForm(formdata=None, data={'name': name, 'artist_id': artist.id if artist else ''})
 
     return flask.render_template('partials/edit_artist_form.html',
-                                 preview_url=_image_url(name, key if entry else '', entry['uploaded_at'] if entry else None),
-                                 artist=entry,
-                                 name_locked=bool(entry or name),   # Opened from a row so artist is already known
-                                 is_joint=bool(name and credit_keys(name)),
+                                 preview_url=_image_url(name, key if stored else '', stored['uploaded_at'] if stored else None),
+                                 name_locked=bool(stored or name),   # Opened from a row so artist is already known
+                                 is_joint=bool(artist and artist.joint),
                                  deezer_enabled=artist_image_fetcher.enabled,
                                  artist_form=form)
 
@@ -70,17 +76,20 @@ def route_artist_suggest() -> str:
 
 @admin_bp.route('/artists/save', methods=['POST'])
 @admin_required
+@with_app_context      # Admin routes don't get flask.g.lib from the middleware
 def route_save_artist_image() -> str | flask.Response:
 
     form = ArtistImageForm()
     if not form.validate_on_submit():
         return modal_error(' '.join(form_error_messages(form)), 'artistImageResult')
 
-    found = find_artist(strip_text(form.name.data))   # Must match the library's exact spelling
-    if not found:
-        return modal_error(f"Artist '{form.name.data}' was not found in the library.", 'artistImageResult')
+    name = strip_text(form.name.data)
+    artist = ArtistIndex.get().lookup(form.artist_id.data or name)
 
-    name, mbid = found
+    if not artist:
+        if ArtistIndex.get().named(name):
+            return modal_error(f"Several artists are called '{name}': add the image from the list.", 'artistImageResult')
+        return modal_error(f"Artist '{name}' was not found in the library.", 'artistImageResult')
 
     try:
         image = read_uploaded_image('image')
@@ -90,8 +99,8 @@ def route_save_artist_image() -> str | flask.Response:
     if image is None:
         return modal_error('Choose an image to upload.', 'artistImageResult')
 
-    set_image(name, mbid, image)
-    return _render_list(f"Image saved for '{name}'.")
+    set_image(artist.keys[0], artist.name, image)
+    return _render_list(f"Image saved for '{artist.name}'.")
 
 
 @admin_bp.route('/artists/delete', methods=['POST'])
@@ -144,7 +153,8 @@ def route_fetch_all_status() -> str:
 @admin_required
 def route_fetch_one() -> str:
 
-    result = artist_image_fetcher.fetch_one(strip_text(flask.request.form.get('name', '')))
+    form = flask.request.form
+    result = artist_image_fetcher.fetch_one(strip_text(form.get('name', '')), form.get('artist_id', ''))
 
     fetch_messages = {
         'fallback': 'No match: using the image of {matched_name}.',

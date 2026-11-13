@@ -24,9 +24,8 @@ from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, COVER_EX
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_coverartarchive
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
-from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
-from beetsplug.beetstreamnext.core.media.artist_images import (
-    artist_keys, fetched_image_path, find_artist, find_uploaded_image)
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
+from beetsplug.beetstreamnext.core.media.artist_images import fetched_image_path, uploaded_image
 from beetsplug.beetstreamnext.core.storage.connection import database
 
 
@@ -475,33 +474,26 @@ def send_artist_image(artist, size=None) -> flask.Response | None:
     artist = strip_text(artist)
 
     if IDs.decode_type(artist) == 'artist':
-        resolved = Resolve.artist(artist)
-        artist_name, artist_mbid = resolved if resolved else ('', '')
+        entry = Resolve.artist(artist)
     else:
-        found = find_artist(artist)
-        artist_name, artist_mbid = found if found else ('', '')
 
-    if not artist_name:
+        # Just a name: images are fetched per name, any match with that name will do
+        index = ArtistIndex.get()
+        entry = index.find(artist) or next(iter(index.named(artist)), None)
+
+    if entry is None:
         return None
 
     # Manual uploads take priority
-    if not artist_mbid:
-        from beetsplug.beetstreamnext.core.library.resolve import get_artist_metadata
-        artist_mbid = get_artist_metadata(artist_name)['mbid']
-
-    manual = find_uploaded_image(artist_name, artist_mbid)
+    manual = uploaded_image(entry.keys)
     if manual:
         return _send_blob(manual, size)
 
-    local_image_path = fetched_image_path(artist_name)
+    local_image_path = fetched_image_path(entry.name)
 
-    # Credit first, then each member of a joint credit
-    entry = AlbumArtistIndex.get().resolve(artist_name)
-    candidates = entry.candidates if entry else (artist_name,)
-
-    # Fetch from Deezer if enabled
+    # Fetch from Deezer if enabled (credit first, then each member of a joint credit)
     if artist_image_fetcher.enabled and not local_image_path.is_file():
-        artist_image_fetcher.lookup(artist_keys(artist_name, artist_mbid)[0], artist_name, candidates)
+        artist_image_fetcher.lookup(entry.keys[0], entry.name, entry.candidates)
 
     # Serve local if it exists now
     if os.path.isfile(local_image_path):

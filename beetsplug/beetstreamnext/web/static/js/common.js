@@ -218,20 +218,26 @@
     }
 
 
-    function selectPopup(values) {
+    function choicesPopup(values) {
         return (e, column, onRendered) => {
             const wrap = document.createElement('div');
-            wrap.className = 'table-filter-popup';
-            const select = document.createElement('select');
-            select.append(new Option('All', ''));
-            values.forEach(value => select.append(new Option(value, value)));
-            select.value = column.getHeaderFilterValue() || '';
-            select.addEventListener('change', () => {
-                column.setHeaderFilterValue(select.value);
-                column.getElement().querySelector('.table-filter-icon')?.classList.toggle('active', select.value !== '');
+            wrap.className = 'table-filter-popup table-filter-choices';
+            const current = column.getHeaderFilterValue();
+            const chosen = new Set((Array.isArray(current) ? current : current ? [current] : []).map(String));
+            values.forEach(value => {
+                const label = document.createElement('label');
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = chosen.has(String(value));
+                box.addEventListener('change', () => {
+                    box.checked ? chosen.add(String(value)) : chosen.delete(String(value));
+                    column.setHeaderFilterValue(chosen.size ? [...chosen] : '');
+                    column.getElement().querySelector('.table-filter-icon')?.classList.toggle('active', chosen.size > 0);
+                });
+                label.append(box, document.createTextNode(String(value)));
+                wrap.append(label);
             });
-            wrap.append(select);
-            onRendered(() => select.focus());
+            onRendered(() => wrap.querySelector('input')?.focus());
             return wrap;
         };
     }
@@ -241,10 +247,10 @@
             const values = [...new Set(rows.map(row => row[col.field]).filter(v => v !== '' && v != null))].sort();
             return {
                 ...col,
-                headerPopup: selectPopup(values),
+                headerPopup: choicesPopup(values),
                 headerPopupIcon: filterIcon,
                 headerFilter: () => document.createElement('div'),
-                headerFilterFunc: '='
+                headerFilterFunc: (chosen, value) => [].concat(chosen).includes(String(value))
             };
         }
         if (col.filter === false || (col.filter !== true && ['time', 'actions', 'number', 'length', 'badge'].includes(col.type))) return col;
@@ -425,6 +431,8 @@
                                 const links = idLinks(column.link, value);
                                 if (links) {
                                     links.forEach((link, i) => text.append(...(i ? [document.createElement('br')] : []), link));
+                                } else if (column.type === 'time' && !empty) {
+                                    text.textContent = new Date(value).toLocaleString();
                                 } else {
                                     text.textContent = empty ? '-' : String(value);
                                 }
@@ -448,7 +456,7 @@
                                         if (!event.target.closest('.lib-detail-icon')) return event.stopPropagation();    // Keep menu open
                                         if (event.target.closest('.lib-detail-icon').textContent === 'frame_inspect') {
                                             // Closes the menu so the filtered table is visible
-                                            tableColumn.setHeaderFilterValue(String(value));
+                                            tableColumn.setHeaderFilterValue(tableColumn.getDefinition().filter === 'select' ? [String(value)] : String(value));
                                             tableColumn.getElement().querySelector('.table-filter-icon')?.classList.add('active');
                                             return;
                                         }

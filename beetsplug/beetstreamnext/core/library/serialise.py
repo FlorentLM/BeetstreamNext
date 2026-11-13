@@ -17,7 +17,8 @@ from beetsplug.beetstreamnext.core.storage.userprefs_cache import (
 )
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
-from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict, get_artist_metadata
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex
+from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, split_list, validate_mbid
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
 from beetsplug.beetstreamnext.core.runtime.web import external_url
@@ -47,6 +48,8 @@ def _get_artists(data: dict) -> tuple[list[dict], list[dict], list[dict], str]:
     seen_album_artists = set()
     seen_contributors = set()
 
+    index = ArtistIndex.get()
+
     def _process(raw_names: str, raw_mbids: str, target_list: list, seen_set: set, is_contributor: bool = False,
                  role: str = ''):
         if not raw_names:
@@ -59,12 +62,7 @@ def _get_artists(data: dict) -> tuple[list[dict], list[dict], list[dict], str]:
             if not name:
                 continue
 
-            mbid = ''
-            if i < len(mbids) and mbids[i]:
-                mbid = validate_mbid(mbids[i])
-            elif is_contributor:
-                meta = get_artist_metadata(name)
-                mbid = meta['mbid']
+            mbid = (validate_mbid(mbids[i]) if i < len(mbids) else '') or index.mbid_of(name)
 
             contributor_id = IDs.encode_artist(mbid or name, is_mbid=bool(mbid))
             if is_contributor:
@@ -107,24 +105,6 @@ def _get_artists(data: dict) -> tuple[list[dict], list[dict], list[dict], str]:
     return artists_array, album_artists_array, contributors_array, display_composer
 
 
-def _exact_albums_by(artist_name: str) -> list[LibModel]:
-    """
-    Albums whose albumartist exactly matches
-    (beets' field:value query is a substring match)
-    """
-
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(
-            """
-            SELECT id 
-            FROM albums 
-            WHERE albumartist = ?
-            """, (artist_name,)
-        )
-
-    return [a for a in (flask.g.lib.get_album(row[0]) for row in rows) if a]
-
-
 ##
 # Serialise: turn a resolved Beets/db object into its serialised Subsonic response dict.
 
@@ -148,7 +128,7 @@ class Serialise:
         track_artist_name = data.get('artist') or data.get('albumartist') or ''
 
         main_ar_name = data.get('albumartist') or data.get('artist') or ''
-        artist_id = IDs.encode_artist_of(data)
+        artist_id = ArtistIndex.get().id_of(data)
 
         artists, album_artists, contributors, display_composer = _get_artists(data)
 
@@ -196,78 +176,29 @@ class Serialise:
         return ''
 
     @classmethod
-    def artist(cls, artist_name: str, with_albums: bool = True, prefetched: dict | None = None) -> dict:
+    def artist(cls, artist: Artist, with_albums: bool = True) -> dict:
         """
-        Map a beets artist name to its serialised Subsonic ArtistID3 response dict.
+        Map an artist to its serialised Subsonic ArtistID3 response dict.
         """
-
-        # Priority: prefetched -> album query (when with_albums) -> standalone db query
-        mbid = ''
-        sort_name = artist_name
-        album_count = 0
-        albums = None
-        is_joint = False
-
-        if prefetched and artist_name in prefetched:
-            pf = prefetched[artist_name]
-            mbid = pf.get('mbid') or ''
-            sort_name = pf.get('sort_name') or artist_name
-            album_count = pf.get('album_count', 0)
-            is_joint = pf.get('is_joint', False)
-
-        elif with_albums:
-            albums = _exact_albums_by(artist_name)
-            if albums:
-                mbid = albums[0].get('mb_albumartistid', '') or ''
-                sort_name = albums[0].get('albumartist_sort', '') or artist_name
-                is_joint = IDs.is_joint_credit(albums[0].get('albumartists'), artist_name)
-            album_count = len(albums) if albums else 0
-
-        else:
-            with flask.g.lib.transaction() as tx:
-                rows = tx.query(
-                    """
-                    SELECT COUNT(*), mb_albumartistid, albumartist_sort, albumartists
-                    FROM albums
-                    WHERE albumartist = ?
-                    GROUP BY albumartist
-                    """, (artist_name,)
-                )
-
-            if rows:
-                row = rows[0]
-                album_count, mbid, sort_name = row[0], row[1] or '', row[2] or artist_name
-                is_joint = IDs.is_joint_credit(row[3], artist_name)
-
-        meta = get_artist_metadata(artist_name)
-        mbid = validate_mbid(mbid) or meta['mbid']  # meta['mbid'] is already validated by _artist_metadata()
-        sort_name = sort_name if sort_name != artist_name else meta['sort_name']
-        roles = meta['roles']
-
-        if is_joint:
-            subsonic_artist_id = IDs.encode_artist(artist_name, joint_credit=True)
-        else:
-            subsonic_artist_id = IDs.encode_artist(mbid or artist_name, is_mbid=bool(mbid))
 
         subsonic_artist = {
-            'id': subsonic_artist_id,
-            'name': artist_name,
-            'sortName': sort_name,
+            'id': artist.id,
+            'name': artist.name,
+            'sortName': artist.sort_name,
             # 'disambiguation': "French electronic duo",    # TODO, but beets does not store this :(
-            'roles': roles,
-            'musicBrainzId': mbid,
-            'title': artist_name,
-            'albumCount': album_count,
-            'coverArt': subsonic_artist_id,
-            'userRating': one_rating(subsonic_artist_id),
-            'artistImageUrl': tokenised_image_url(subsonic_artist_id),
+            'roles': ArtistIndex.get().roles(artist.name),
+            'musicBrainzId': artist.mbid,
+            'title': artist.name,
+            'albumCount': len(artist.album_ids),
+            'coverArt': artist.id,
+            'userRating': one_rating(artist.id),
+            'artistImageUrl': tokenised_image_url(artist.id),
             'mediaType': 'artist'
         }
 
         if with_albums:
 
-            if albums is None:  # already fetched above if not prefetched
-                albums = _exact_albums_by(artist_name)
+            albums = [a for a in (flask.g.lib.get_album(album_id) for album_id in artist.album_ids) if a]
 
             preload_albums(albums)
             song_counts = get_song_counts(albums)
@@ -277,11 +208,11 @@ class Serialise:
                 for alb in albums
             ]
 
-        liked_at = one_like(subsonic_artist_id)
+        liked_at = one_like(artist.id)
         if liked_at:
             subsonic_artist['starred'] = timestamp_to_iso(liked_at)
 
-        disliked_at = one_dislike(subsonic_artist_id)
+        disliked_at = one_dislike(artist.id)
         if disliked_at:
             subsonic_artist['disliked'] = timestamp_to_iso(disliked_at)
 

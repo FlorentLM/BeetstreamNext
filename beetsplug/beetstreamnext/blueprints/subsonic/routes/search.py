@@ -5,11 +5,13 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
-from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, split_beets_multi, validate_mbid
+from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, validate_mbid
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
+from beetsplug.beetstreamnext.core.library.resolve import standardise_datadict
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
 @subsonic_bp.route('/search', methods=['GET', 'POST'])
@@ -63,8 +65,6 @@ def endpoint_search() -> flask.Response:
     if tag == 'searchResult2' and not any([main_query, depr_artist, depr_album, depr_song]):
         return subsonic_response({tag: {}}, resp_fmt=resp_fmt)
 
-    artist_prefetch = {}
-
     exc = exclusions()
     hiding = exc.active(scope='browse')    # remove hidden entries before pages are cut
 
@@ -77,11 +77,21 @@ def endpoint_search() -> flask.Response:
             beets_songs = exc.songs(list(flask.g.lib.items(clean_query)), scope='browse')
 
             # Dedup artists (from albums and songs)
-            a_artists = {a.albumartist for a in beets_albums if a.albumartist}
-            s_artists = {s.artist for s in beets_songs if s.artist}
-            artist_names = a_artists.union(s_artists)
+            index = ArtistIndex.get()
+            found = {}
 
-            sorted_artists = sorted(list(artist_names), key=lambda x: remove_accents(x).lower())
+            for album in beets_albums:
+                artist = index.lookup(index.id_of(standardise_datadict(album)))
+                if artist:
+                    found[artist.id] = artist
+
+            for song in beets_songs:
+                mbid = validate_mbid(song.get('mb_artistid'))
+                artist = (index.by_id.get(IDs.encode_artist(mbid, is_mbid=True)) if mbid else None) or index.find(song.get('artist') or '')
+                if artist:
+                    found[artist.id] = artist
+
+            sorted_artists = sorted(found.values(), key=lambda a: remove_accents(a.name).lower())
 
             songs = beets_songs[song_offset: song_offset + song_count]
             albums = beets_albums[album_offset: album_offset + album_count]
@@ -155,65 +165,25 @@ def endpoint_search() -> flask.Response:
         albums = exc.page(fetch_albums, keep=exc.albums, scope='browse', offset=album_offset, count=album_count)
 
         # Search artists
-        conds, params = [], []
-        if main_query or depr_artist:
-            q = main_query or depr_artist
-            conds.append("lower(albumartist) LIKE ?")
-            params.append(f"%{q.lower()}%")
+        needle = (main_query or depr_artist or '').lower()
+        matching = sorted(
+            (a for a in ArtistIndex.get().album_artists if needle in a.name.lower()),
+            key=lambda a: a.name.lower()
+        )
+        if hiding:
+            matching = [a for a in matching if not exc.artist_hidden(a.id, scope='browse')]
 
-        where = " WHERE " + " AND ".join(conds) if conds else " WHERE albumartist IS NOT NULL"
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                f"""
-                SELECT albumartist, COUNT(*), mb_albumartistid, albumartist_sort, MAX(albumartists)
-                FROM albums {where}
-                GROUP BY albumartist
-                ORDER BY albumartist COLLATE NOCASE
-                LIMIT ? OFFSET ?
-                """, params + ([-1, 0] if hiding else [artist_count, artist_offset])  # nosec B608  # noqa: S608 vars are constants
-            )
-        # TODO: LIMIT -1 is probably fine for artists but maybe to revise later
-        artist_rows = list(rows)
-
-        artists = []
-        skipped = 0
-        for row in artist_rows:
-            name, count, mbid, sort_name, albumartists_raw = row
-            is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
-
-            if hiding:
-
-                if is_joint:
-                    artist_id = IDs.encode_artist(name, joint_credit=True)
-                else:
-                    maybe_mbid = validate_mbid(mbid)
-                    artist_id = IDs.encode_artist(maybe_mbid or name, is_mbid=bool(maybe_mbid))
-
-                if exc.artist_hidden(artist_id, scope='browse'):
-                    continue
-
-                if skipped < artist_offset:
-                    skipped += 1
-                    continue
-
-                if len(artists) >= artist_count:
-                    break
-
-            artists.append(name)
-
-            artist_prefetch[name] = {
-                'album_count': count, 'mbid': mbid, 'sort_name': sort_name, 'is_joint': is_joint
-            }
+        artists = matching[artist_offset:artist_offset + artist_count]
 
     song_counts = get_song_counts(albums)
 
     preload_songs(songs)
     preload_albums(albums)
-    preload_artists(artist_prefetch)
+    preload_artists(artists)
 
     payload = {
         tag: {
-            'artist': [Serialise.artist(name, with_albums=False, prefetched=artist_prefetch) for name in artists],
+            'artist': [Serialise.artist(artist, with_albums=False) for artist in artists],
             'album': [Serialise.album(alb, include_songs=False, song_counts=song_counts) for alb in albums],
             'song': [Serialise.song(s) for s in songs]
         }

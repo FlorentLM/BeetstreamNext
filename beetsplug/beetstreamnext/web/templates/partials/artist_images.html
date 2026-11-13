@@ -32,12 +32,12 @@
                 <span class="cover-thumb cover-thumb-placeholder">{{ a.name[0]|upper }}</span>
             {% endif %}
             <div class="channel-row-info">
-                <div class="username-name">{{ a.name }} {% set colour = {'custom': 'blue', 'fallback': 'amber', 'orphan': 'amber', 'missing': 'red'}.get(a.status) %}<span class="badge{{ ' badge-' ~ colour if colour else '' }}">{{ labels[a.status] }}</span></div>
+                <div class="username-name">{{ a.name }}{% if a.shared %} <span class="label-hint" title="Several artists have this name">{{ a.mbid or 'no MusicBrainz ID' }}</span>{% endif %} {% set colour = {'custom': 'blue', 'fallback': 'amber', 'orphan': 'amber', 'missing': 'red'}.get(a.status) %}<span class="badge{{ ' badge-' ~ colour if colour else '' }}">{{ labels[a.status] }}</span></div>
                 <div class="email-cell">
                     {%- if a.status == 'custom' -%}
                         {% if a.link == 'mbid' %}Linked to MusicBrainz ID{% elif a.link == 'mbids' %}Linked to the MusicBrainz IDs of all members{% else %}No MusicBrainz ID: lost if renamed{% endif %}
                     {%- elif a.status == 'deezer' -%}
-                        From Deezer
+                        From Deezer{% if a.shared %} (by name: same picture for every artist called {{ a.name }}){% endif %}
                     {%- elif a.status == 'fallback' -%}
                         Using the image of {{ a.matched_name }}
                     {%- elif a.status == 'missing' -%}
@@ -52,7 +52,7 @@
             <div class="actions-cell">
                 {% if a.status in ('custom', 'orphan') %}
                     <button class="icon-btn"
-                            hx-get="{{ url_for('admin.route_artist_image_form', key=a.artist_key) }}"
+                            hx-get="{{ url_for('admin.route_artist_image_form', key=a.artist_key, artist_id=a.id or '') }}"
                             hx-target="#artistImageModalBody"
                             hx-swap="innerHTML"
                             title="Replace image" aria-label="Replace image of {{ a.name }}">{{ icon('edit') }}</button>
@@ -66,7 +66,7 @@
                 {% else %}
                     <button class="icon-btn"
                             hx-get="{{ url_for('admin.route_artist_image_form') }}"
-                            hx-vals='{"name": {{ a.name|tojson|forceescape }}}'
+                            hx-vals='{"name": {{ a.name|tojson|forceescape }}, "artist_id": {{ a.id|tojson|forceescape }}}'
                             hx-target="#artistImageModalBody"
                             hx-swap="innerHTML"
                             title="Add image" aria-label="Add image for {{ a.name }}">{{ icon('add-image') }}</button>

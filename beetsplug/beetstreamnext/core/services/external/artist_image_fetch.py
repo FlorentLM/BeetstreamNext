@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.media.artist_images import (
-    artist_keys, fetched_image_path, find_artist, load_stored, record_status
+    fetched_image_path, load_stored, record_status
 )
 from beetsplug.beetstreamnext.core.media.images import safe_open_image
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
@@ -128,23 +128,20 @@ class ArtistImageFetcher:
             bsn_logger.warning(f"Failed to fetch/save artist image for '{name}' from Deezer: {e}")
 
     @with_app_context
-    def fetch_one(self, name: str) -> LookupResult:
+    def fetch_one(self, name: str, artist_id: str = '') -> LookupResult:
         """
         Fetches (or refreshes) the image of one library artist.
         """
         if not self.enabled:
             return LookupResult('disabled')
 
-        found = find_artist(name)
-        if not found:
+        index = ArtistIndex.get()
+        # Deezer lookups are by name
+        artist = index.lookup(artist_id or name) or next(iter(index.named(name)), None)
+        if not artist:
             return LookupResult('unknown')
 
-        name, mbid = found
-        entry = ArtistIndex.get().find(name)
-        key = entry.keys[0] if entry else artist_keys(name, mbid)[0]
-        candidates = entry.candidates if entry else (name,)
-
-        result = self.lookup(key, name, candidates, overwrite=True)
+        result = self.lookup(artist.keys[0], artist.name, artist.candidates, overwrite=True)
         admin_events.publish('artist-fetch-done', '')
         return result
 

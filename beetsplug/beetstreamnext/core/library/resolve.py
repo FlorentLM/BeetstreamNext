@@ -84,14 +84,11 @@ class Resolve:
             data = standardise_datadict(obj)
             return index.lookup(index.id_of(data)) or Artist.bare(IDs.main_artist_of(data)[0])
 
-        if entry_type == 'artist':
-            artist = index.lookup(req_id)
-            name, kind = IDs.decode_artist(req_id)
-        elif entry_type is None:
-            artist = index.find(req_id)         # artist name (not ID)
-            name, kind = req_id, 'name'
-        else:
+        if entry_type not in ('artist', None):
             return None                         # ID of something else (radio, playlist, podcast etc)
+
+        artist = index.lookup(req_id)
+        name, kind = IDs.decode_artist(req_id) if entry_type == 'artist' else (req_id, 'name')   # None: artist name (not ID)
 
         if artist is None and kind == 'name' and name and not index.named(name):
             return Artist.bare(name)        # e.g. a remixer: only known as a credit on tracks

@@ -14,12 +14,13 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.storage.connection import database, dual_database
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.library.health import scan_library
 from beetsplug.beetstreamnext.core.accounts.security import rate_limiter
 from beetsplug.beetstreamnext.core.accounts.sessions import purge_expired_sessions
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.utils.system import purge, dir_size
-from beetsplug.beetstreamnext.utils.db import chunked_execute, library_cache
+from beetsplug.beetstreamnext.utils.db import chunked_execute
 from beetsplug.beetstreamnext.utils.text import validate_mbid
 from beetsplug.beetstreamnext.utils.concurrency import Throttle
 
@@ -135,13 +136,14 @@ _SWEEP_MAX_STALE_RATIO = 0.5
 def remap_source_ids() -> int:
     """
     Rewrites all references (from IDs minted when mb_* fields were Spotify/Deezer IDs) to the current IDs.
-    Artists also move from name-based IDs to MusicBrainz IDs.
+    Artist references (and uploaded artist images) also follow.
 
     Returns rewritten or dropped count.
     """
 
     id_map: dict[str, str] = {}
     changed = 0
+    index = ArtistIndex.get()
 
     with dual_database() as db:
 
@@ -179,33 +181,42 @@ def remap_source_ids() -> int:
                 id_map[old] = new
 
         # Artists
-        item_cols, album_cols = library_cache.schema('items'), library_cache.schema('albums')
-        artist_queries = (
-            (
+        artist_refs: set[str] = set()
+        for table, column in (*_SONG_REF_TABLES, ('artist_images', 'artist_key')):
+            artist_refs.update(row[0] for row in db.execute(
                 f"""
-                SELECT DISTINCT al.albumartist, al.mb_albumartistid, {'al.albumartists' if 'albumartists' in album_cols else 'NULL'}
-                FROM beets.item_attributes a
-                JOIN beets.items i ON i.id = a.entity_id
-                JOIN beets.albums al ON al.id = i.album_id
-                WHERE a.key IN ({','.join('?' * len(SOURCE_ALBUM_ID_FIELDS))})
-                """, SOURCE_ALBUM_ID_FIELDS  # nosec B608  # noqa: S608 vars are constants
-            ), (
-                f"""
-                SELECT DISTINCT i.artist, i.mb_artistid, {'i.artists' if 'artists' in item_cols else 'NULL'}
-                FROM beets.item_attributes a
-                JOIN beets.items i ON i.id = a.entity_id
-                WHERE a.key IN ({','.join('?' * len(SOURCE_TRACK_ID_FIELDS))})
-                """, SOURCE_TRACK_ID_FIELDS  # nosec B608  # noqa: S608 vars are constants
+                SELECT DISTINCT {column}
+                FROM {table}
+                WHERE {column} LIKE 'ar-%'
+                """  # nosec B608  # noqa: S608 vars are constants
+            ))
+
+        artist_map: dict[str, str] = {}
+        for ref in artist_refs:
+            value, kind = IDs.decode_artist(ref)
+
+            if kind == 'name':
+                artist = index.find(value)
+            elif kind == 'mbid' and not validate_mbid(value):
+                artist = index.source_ids.get(value)
+            else:
+                artist = None
+
+            if artist is not None and artist.id != ref:
+                artist_map[ref] = artist.id
+
+        id_map.update(artist_map)
+
+        for old, new in artist_map.items():
+            db.execute(
+                """
+                DELETE FROM artist_images
+                WHERE artist_key = ? AND image IS NULL
+                  AND EXISTS (SELECT 1 FROM artist_images WHERE artist_key = ? AND image IS NOT NULL)
+                """, (new, old)
             )
-        )
-
-        for query, params in artist_queries:
-
-            for name, mbid, multi in db.execute(query, params).fetchall():
-                mbid = validate_mbid(mbid)
-
-                if name and mbid and not IDs.is_joint_credit(multi, name):
-                    id_map[IDs.encode_artist(name, is_mbid=False)] = IDs.encode_artist(mbid, is_mbid=True)
+            changed += db.execute("UPDATE OR IGNORE artist_images SET artist_key = ? WHERE artist_key = ?", (new, old)).rowcount
+            changed += db.execute("DELETE FROM artist_images WHERE artist_key = ?", (old,)).rowcount
 
         for old, new in id_map.items():
 

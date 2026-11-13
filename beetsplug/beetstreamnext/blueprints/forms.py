@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import flask
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, BooleanField, DateField, IntegerField, SelectField, StringField
+from wtforms import PasswordField, BooleanField, DateField, HiddenField, IntegerField, SelectField, StringField
 from wtforms.validators import DataRequired, EqualTo, Length, NumberRange, Optional, Email, ValidationError
 
 from beetsplug.beetstreamnext.core.accounts.app_passwords import AppPasswordRole
@@ -133,6 +133,7 @@ class ArtistImageForm(FlaskForm):
     Form for uploading a manual artist image.
     """
     name = StringField('Artist', validators=[DataRequired(), Length(max=256)])
+    artist_id = HiddenField(validators=[Length(max=256)]) # If opened from a row (to tell apart artists with same name)
 
 
 # Attach the role checkboxes from the registry

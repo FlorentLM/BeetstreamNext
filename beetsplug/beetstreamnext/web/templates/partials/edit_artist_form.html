@@ -8,6 +8,7 @@
       hx-target="#artistImageList"
       hx-swap="innerHTML">
     {{ artist_form.csrf_token }}
+    {{ artist_form.artist_id() }}
     <div class="modal-result" id="artistImageResult"></div>
 
     <div class="form-group">
@@ -32,7 +33,7 @@
             <span class="artist-deezer-title">From Deezer</span>
             <button type="button" class="btn btn-outline btn-small"
                     hx-post="{{ url_for('admin.route_fetch_one') }}"
-                    hx-params="name"
+                    hx-params="name,artist_id"
                     hx-target="#artistDeezerResult"
                     hx-swap="innerHTML"
                     {% if not deezer_enabled %}disabled{% endif %}>Fetch</button>

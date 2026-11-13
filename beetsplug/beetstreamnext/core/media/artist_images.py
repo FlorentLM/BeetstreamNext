@@ -5,53 +5,13 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
-import flask
 
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.utils.db import library_cache
-from beetsplug.beetstreamnext.utils.text import md5_hex, split_beets_multi, validate_mbid
+from beetsplug.beetstreamnext.utils.text import md5_hex
 
-
-
-@with_app_context
-def credit_keys(name: str) -> list[str]:
-    """Keys of a joint credit, or [] if name isn't a multi-artist credit."""
-
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(
-            """
-            SELECT albumartists, mb_albumartistids FROM albums
-            WHERE albumartist = ? COLLATE NOCASE LIMIT 1
-            """, (name,)
-        )
-        if not rows:
-            rows = tx.query(
-                """
-                SELECT artists, mb_artistids FROM items
-                WHERE artist = ? COLLATE NOCASE LIMIT 1
-                """, (name,)
-            )
-
-    if not rows or not IDs.is_joint_credit(rows[0][0], name):
-        return []
-
-    return IDs.joint_credit_keys(name, rows[0][0], rows[0][1])
-
-
-def artist_keys(name: str, mbid: str | None = None) -> list[str]:
-    """Keys an image can be stored under for this artist, best first."""
-
-    joint = credit_keys(name)
-    if joint:       # Never fall back to the first member's solo mbid
-        return joint
-
-    keys = [IDs.encode_artist(name, is_mbid=False)]     # image uploaded before the artist had an mbid
-    if mbid:
-        keys.insert(0, IDs.encode_artist(mbid, is_mbid=True))
-    return keys
 
 
 def uploaded_image(keys: Sequence[str]) -> bytes | None:
@@ -89,7 +49,7 @@ def get_image(key: str) -> bytes | None:
     return row['image'] if row else None
 
 
-def set_image(name: str, mbid: str | None, image: bytes) -> None:
+def set_image(key: str, name: str, image: bytes) -> None:
     with database() as db:
         db.execute(
             """
@@ -99,7 +59,7 @@ def set_image(name: str, mbid: str | None, image: bytes) -> None:
                 name = excluded.name, image = excluded.image,
                 source = excluded.source, uploaded_at = excluded.uploaded_at,
                 matched_name = NULL, checked_at = NULL
-            """, (artist_keys(name, mbid)[0], name, image, 'manual', time.time())
+            """, (key, name, image, 'manual', time.time())
         )
 
 
@@ -135,7 +95,9 @@ def delete_image(key: str) -> bool:
     return cur.rowcount > 0
 
 
+@with_app_context
 def list_images() -> list[dict]:
+    """Every uploaded image and how it is linked to its artist."""
 
     with database() as db:
         rows = db.execute(
@@ -147,12 +109,14 @@ def list_images() -> list[dict]:
             """
         ).fetchall()
 
+    index = ArtistIndex.get()
+
     result = []
     for r in rows:
         kind = IDs.decode_artist(r['artist_key'])[1]
         if kind == 'hash':
-            keys = credit_keys(r['name'])
-            kind = 'mbids' if len(keys) > 1 and keys[0] == r['artist_key'] else 'name'
+            artist = index.find(r['name'])
+            kind = artist.link_kind(r['artist_key']) if artist else 'name'
         result.append(dict(r) | {'link': kind})
     return result
 
@@ -191,7 +155,9 @@ def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int
     entries = []
     claimed: set[str] = set()
 
-    for artist in ArtistIndex.get().album_artists:
+    index = ArtistIndex.get()
+
+    for artist in index.album_artists:
         key = next((k for k in artist.keys if k in stored), artist.keys[0])
         row = stored.get(key)
         if row is not None:
@@ -208,7 +174,10 @@ def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int
                 status = 'fallback' if row['matched_name'] else 'deezer'
 
         entries.append({
+            'id': artist.id,
             'name': artist.name,
+            'shared': index.shared(artist.name),
+            'mbid': artist.mbid,
             'joint': artist.joint,
             'artist_key': key,
             'status': status,
@@ -220,7 +189,8 @@ def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int
     for key, row in stored.items():
         if row['has_image'] and key not in claimed:
             entries.append({
-                'name': row['name'], 'joint': False, 'artist_key': key, 'status': 'orphan',
+                'id': None, 'name': row['name'], 'shared': False, 'mbid': '',
+                'joint': False, 'artist_key': key, 'status': 'orphan',
                 'matched_name': None, 'uploaded_at': row['uploaded_at'],
                 'link': None,
             })
@@ -271,105 +241,15 @@ def image_version(uploaded_at: int | None, name: str) -> int:
 
 
 @with_app_context
-def find_artist(name: str) -> tuple[str, str] | None:
-    """(canonical name, mbid) of an artist from the beets library, or None."""
-
-    name = (name or '').strip()
-    if not name:
-        return None
-
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(
-            """
-            SELECT albumartist, mb_albumartistid FROM albums
-            WHERE albumartist = ? COLLATE NOCASE LIMIT 1
-            """, (name,)
-        )
-        if not rows:
-            rows = tx.query(
-                """
-                SELECT artist, mb_artistid FROM items
-                WHERE artist = ? COLLATE NOCASE LIMIT 1
-                """, (name,)
-            )
-
-    if not rows:
-        return None
-
-    return rows[0][0], validate_mbid(rows[0][1]) or ''
-
-
-@with_app_context
 def suggest_artists(query: str, limit: int = 15) -> list[tuple[str, bool]]:
     """(name, is_joint_credit) pairs of library album artists matching the query."""
 
-    query = (query or '').strip()
+    query = (query or '').strip().lower()
     if len(query) < 2:
         return []
 
-    escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
-
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(
-            """
-            SELECT albumartist, MAX(albumartists) FROM albums
-            WHERE albumartist LIKE ? ESCAPE '\\'
-            GROUP BY albumartist
-            ORDER BY albumartist COLLATE NOCASE LIMIT ?
-            """, (f'%{escaped}%', limit)
-        )
-    return [(r[0], IDs.is_joint_credit(r[1], r[0])) for r in rows if r[0]]
-
-
-@with_app_context
-def library_keys() -> set[str]:
-    """
-    Every artist key (mbid and name) currently in the beets library.
-    """
-
-    keys: set[str] = set()
-
-    def add(names: str | None, mbids: str | None) -> None:
-        for n in [names or '', *split_beets_multi(names or '')]:     # Joint credit, then each member
-            if n:
-                keys.add(IDs.encode_artist(n, is_mbid=False))
-        for m in split_beets_multi(mbids or ''):
-            if validate_mbid(m):
-                keys.add(IDs.encode_artist(m, is_mbid=True))
-
-    sources = (
-        ('albums', (('albumartist', 'mb_albumartistid'), ('albumartists', 'mb_albumartistids'))),
-        ('items', (('artist', 'mb_artistid'), ('artists', 'mb_artistids'))),
-    )
-
-    joint_cols = {
-        'albums': ('albumartist', 'albumartists', 'mb_albumartistids'),
-        'items': ('artist', 'artists', 'mb_artistids'),
-    }
-
-    with flask.g.lib.transaction() as tx:
-
-        for table, column_pairs in sources:
-            cols = set(library_cache.schema(table))
-
-            for name_col, mbid_col in column_pairs:
-
-                if name_col in cols and mbid_col in cols:
-                    rows = tx.query(
-                        f"""
-                        SELECT {name_col}, {mbid_col} 
-                        FROM {table}
-                        """  # nosec B608  # noqa: S608 vars are constants
-                    )
-                    for row in rows:
-                        add(row[0], row[1])
-
-            name_col, names_col, mbids_col = joint_cols[table]
-            if {name_col, names_col, mbids_col} <= cols:
-                for name, names, mbids in tx.query(f"SELECT {name_col}, {names_col}, {mbids_col} FROM {table}"):  # nosec B608  # noqa: S608 vars are constants
-                    if name and IDs.is_joint_credit(names, name):
-                        keys.update(IDs.joint_credit_keys(name, names, mbids))
-    return keys
+    names = {a.name: a.joint for a in ArtistIndex.get().album_artists if query in a.name.lower()}
+    return sorted(names.items(), key=lambda pair: pair[0].lower())[:limit]
 
 
 @with_app_context
@@ -391,11 +271,24 @@ def cleanup_artist_records() -> int:
         if not stored:
             return 0
 
-        present = library_keys()
-        if not present:     # Library can't be read: don't wipe everything
+        index = ArtistIndex.get()
+        if not index.by_id:    # Library can't be read: don't wipe everything
             return 0
 
-        orphans = [k for k in stored if k not in present]
+        present = {key for artist in index.by_id.values() for key in (artist.id, *artist.keys)}
+
+        def orphaned(key: str) -> bool:
+            if key in present:
+                return False
+
+            name, kind = IDs.decode_artist(key)
+
+            # Image for a name that is now shared: keep it
+            to_keep = (kind == 'name' and index.named(name))
+
+            return not to_keep
+
+        orphans = [k for k in stored if orphaned(k)]
         for key in orphans:
             db.execute(
                 """

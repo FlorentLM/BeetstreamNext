@@ -139,9 +139,12 @@ class ArtistIndex(Index):
                 """)  # nosec B608  # noqa: S608 vars are constants
 
             # SELECT DISTINCT -> few rows to go through in Python
+            # Ttrack artist with the same name as the album artist: MBID counts
             item_rows = tx.query(
                 f"""
-                SELECT DISTINCT artist, mb_artistid, artist_sort,
+                SELECT DISTINCT artist,
+                       COALESCE(NULLIF(mb_artistid, ''), CASE WHEN artist = albumartist THEN mb_albumartistid END),
+                       artist_sort,
                        {column(item_cols, 'artists')}, {column(item_cols, 'mb_artistids')},
                        {column(item_cols, 'composers', 'composer')}, {column(item_cols, 'lyricists', 'lyricist')}
                 FROM items
@@ -325,18 +328,20 @@ class ArtistIndex(Index):
         """Every spelling for a MBID (>1 = tagging problem)."""
         return tuple(self._names.get(mbid, ()))
 
-    def lookup(self, artist_id: str) -> Artist | None:
-        """Artist for an ID."""
-        artist = self.by_id.get(artist_id)
+    def lookup(self, id_or_name: str) -> Artist | None:
+
+        artist = self.by_id.get(id_or_name)
         if artist is not None:
             return artist
 
-        value, kind = IDs.decode_artist(artist_id)
+        value, kind = IDs.decode_artist(id_or_name)
         if kind == 'hash':
             return self.find(self._by_name_hash.get(value, ''))
         if kind == 'name':
             return self.find(value)
-        return None
+        if kind == 'mbid':
+            return None
+        return self.find(id_or_name)
 
     def roles(self, name: str) -> list[str]:
         """What a name is credited as in the library."""

@@ -113,6 +113,11 @@ class SongIndex(Index):
             if str(value) not in primary:
                 self.by_mbid[str(value)] = beets_id
 
+    def id_of(self, item) -> str:
+        """Subsonic ID of a beets item (Item, row or dict)."""
+        return self.subsonic_ids.get(item['id']) or IDs.encode_song(
+            {key: item[key] for key in ('id', 'path', 'mb_releasetrackid', 'mb_trackid')})
+
     @classmethod
     def _build(cls) -> SongIndex:
         return cls(flask.g.lib, app.config['music_root'])
@@ -392,6 +397,12 @@ class AlbumIndex(Index):
         for beets_id, value in source_rows:
             if str(value) not in primary:
                 self.by_mbid[str(value)] = beets_id
+
+    def beets_id(self, subsonic_id: str) -> int | None:
+        value, kind = IDs.decode_album(subsonic_id)
+        if kind == 'legacy_int':
+            return value if value in self.subsonic_ids else None
+        return {'mbid': self.by_mbid, 'hash': self.by_hash}.get(kind, {}).get(value)
 
     @classmethod
     def _build(cls) -> AlbumIndex:

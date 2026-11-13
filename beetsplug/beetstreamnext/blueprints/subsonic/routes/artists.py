@@ -9,7 +9,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
-from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, split_beets_multi
+from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, validate_mbid
 from beetsplug.beetstreamnext.utils.general import api_bool, page_size
 from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
 from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
@@ -20,6 +20,7 @@ from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
@@ -31,13 +32,11 @@ def artist_payload(subsonic_artist_id: str, with_albums: bool = True) -> dict:
     if not value:
         return {}
 
-    resolved = Resolve.artist(subsonic_artist_id)
-    if not resolved:
+    artist = Resolve.artist(subsonic_artist_id)
+    if not artist:
         return {}
 
-    artist_name, _ = resolved
-
-    return {'artist': Serialise.artist(artist_name, with_albums=with_albums)}
+    return {'artist': Serialise.artist(artist, with_albums=with_albums)}
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getArtists/
@@ -89,49 +88,28 @@ def endpoint_get_artists_or_indexes() -> flask.Response:
         except ValueError:
             pass  # Client sent malformed timestamp, ignore and continue to full sync
 
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(
-            """
-            SELECT albumartist, COUNT(*) as album_count, mb_albumartistid, albumartist_sort, MAX(albumartists)
-            FROM albums
-            WHERE albumartist IS NOT NULL
-            GROUP BY albumartist
-            """
-        )
-
-    artist_prefetch = {}
-    artists = []
-    for row in rows:
-        name, count, mbid, sort_name, albumartists_raw = row
-
-        is_joint = len(split_beets_multi(albumartists_raw or name)) > 1
-        if hiding and exc.artist_hidden(IDs.artist_id(name, mbid, joint=is_joint), scope='browse'):
-            continue
-
-        artists.append(name)
-        artist_prefetch[name] = {
-            'album_count': count, 'mbid': mbid, 'sort_name': sort_name, 'is_joint': is_joint
-        }
+    artists = [
+        artist for artist in ArtistIndex.get().album_artists
+        if not (hiding and exc.artist_hidden(artist.id, scope='browse'))
+    ]
 
     ignored_articles = app.config.get('ignored_articles', SETTINGS_SCHEMA['ignored_articles']['default'])
     articles = ignored_articles.split()
 
     alphanum_dict = defaultdict(list)
     for artist in artists:
-        if artist:
-            sort_basis = artist_prefetch.get(artist, {}).get('sort_name') or artist
-            char = remove_accents(strip_article(sort_basis, articles)[0]).upper()
-            group_key = char if char.isalpha() else '#'
-            alphanum_dict[group_key].append(artist)
+        char = remove_accents(strip_article(artist.sort_name, articles)[0]).upper()
+        group_key = char if char.isalpha() else '#'
+        alphanum_dict[group_key].append(artist)
 
-    preload_artists(artist_prefetch)
+    preload_artists(artists)
 
     payload = {
         tag: {
             'index': [
                 {
                     'name': char,
-                    'artist': [Serialise.artist(a, with_albums=False, prefetched=artist_prefetch) for a in artists]
+                    'artist': [Serialise.artist(a, with_albums=False) for a in artists]
                 }
                 for char, artists in sorted(alphanum_dict.items())
             ]
@@ -182,19 +160,17 @@ def endpoint_artist_info() -> flask.Response:
     if not artist_id:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    resolved = Resolve.artist(artist_id)
-    if not resolved:
+    artist = Resolve.artist(artist_id)
+    if not artist:
         return subsonic_error(70, resp_fmt=resp_fmt)
-
-    artist_name, artist_mbid = resolved
 
     short_bio = ''
 
     if app.config['lastfm_api_key']:
-        if artist_mbid:
-            data_lastfm = query_lastfm(q=artist_mbid, data_type='artist', method='info', is_mbid=True)
+        if artist.mbid:
+            data_lastfm = query_lastfm(q=artist.mbid, data_type='artist', method='info', is_mbid=True)
         else:
-            data_lastfm = query_lastfm(q=artist_name, data_type='artist', method='info', is_mbid=False)
+            data_lastfm = query_lastfm(q=artist.name, data_type='artist', method='info', is_mbid=False)
 
         lastfm_bio = strip_html(data_lastfm.get('artist', {}).get('bio', {}).get('content', ''))     # lastfm community-edited has HTML
 
@@ -209,39 +185,23 @@ def endpoint_artist_info() -> flask.Response:
             short_bio = trim_text(lastfm_bio, char_limit=300)
 
     if not short_bio and app.config.get('fetch_artists_biographies'):
-        wiki_title = (query_wikidata_title(artist_mbid) if artist_mbid else None) or artist_name
+        wiki_title = (query_wikidata_title(artist.mbid) if artist.mbid else None) or artist.name
         wiki_bio = query_wikipedia(wiki_title, _cache_ttl_hash=round(time.time() / 3600))
         if wiki_bio:
             short_bio = trim_text(wiki_bio, char_limit=300)
 
     if not short_bio:
-        short_bio = f'wow. much artist. very {artist_name}'
+        short_bio = f'wow. much artist. very {artist.name}'
 
     tag = 'artistInfo2' if 'getArtistInfo2' in flask.request.path else 'artistInfo'
 
-    # Image id is the artist id (but input may have been song or album)
-    if IDs.decode_type(artist_id) == 'artist':
-        image_id = artist_id
-
-    else:
-        with flask.g.lib.transaction() as tx:
-            rows = tx.query(
-                """
-                SELECT albumartists 
-                FROM albums 
-                WHERE albumartist = ? 
-                LIMIT 1
-                """, (artist_name,)
-            )
-
-        is_joint = bool(rows and IDs.is_joint_credit(rows[0][0], artist_name))
-        image_id = IDs.artist_id(artist_name, artist_mbid, joint=is_joint)
+    image_id = artist.id      # Input may have been a song or an album
 
     payload = {
         tag: {
             'biography': short_bio,
-            'musicBrainzId': artist_mbid,
-            'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist_name.replace(' ', '+'))}",
+            'musicBrainzId': artist.mbid,
+            'lastFmUrl': f"https://www.last.fm/music/{urllib.parse.quote_plus(artist.name.replace(' ', '+'))}",
             'largeImageUrl': tokenised_image_url(image_id, size=1200),
             'mediumImageUrl': tokenised_image_url(image_id, size=500),
             'smallImageUrl': tokenised_image_url(image_id, size=250)
@@ -249,20 +209,28 @@ def endpoint_artist_info() -> flask.Response:
     }
 
     if app.config['lastfm_api_key'] and count > 0:
-        if artist_mbid:
-            data_similar = query_lastfm(q=artist_mbid, data_type='artist', method='similar', is_mbid=True)
+        if artist.mbid:
+            data_similar = query_lastfm(q=artist.mbid, data_type='artist', method='similar', is_mbid=True)
         else:
-            data_similar = query_lastfm(q=artist_name, data_type='artist', method='similar', is_mbid=False)
+            data_similar = query_lastfm(q=artist.name, data_type='artist', method='similar', is_mbid=False)
 
+        index = ArtistIndex.get()
         similar_artists = []
         for entry in data_similar.get('similarartists', {}).get('artist', []):
             name = entry.get('name')
             if not name:
                 continue
-            mapped = Serialise.artist(name, with_albums=False)
-            if not include_not_present and not mapped['albumCount']:
-                continue
-            similar_artists.append(mapped)
+
+            # Last.fm's MBID when library has it, otherwise the name
+            similar_mbid = validate_mbid(entry.get('mbid'))
+            similar = (index.by_id.get(IDs.encode_artist(similar_mbid, is_mbid=True)) if similar_mbid else None) or index.find(name)
+
+            if similar is None or not similar.album_ids:
+                if not include_not_present or index.named(name):
+                    continue
+                similar = Artist.bare(name)
+
+            similar_artists.append(Serialise.artist(similar, with_albums=False))
             if len(similar_artists) >= count:
                 break
 

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import flask
 
 from .. import subsonic_bp
@@ -14,6 +17,7 @@ from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, val
 from beetsplug.beetstreamnext.utils.db import library_cache, sql_conditions_for
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -171,6 +175,31 @@ def endpoint_get_random_songs() -> flask.Response:
     return subsonic_response(payload, resp_fmt=resp_fmt)
 
 
+def _credited_to(artist: Artist) -> Callable[[Any], bool]:
+    """Whether a song is credited to this artist (by name, and by MBID if the name is shared)."""
+
+    shared = ArtistIndex.get().shared(artist.name)
+
+    def field(item, key: str) -> str:
+        try:
+            return item[key] or ''
+        except (KeyError, IndexError):    # older beets schema?
+            return ''
+
+    def credited(item) -> bool:
+        names = (field(item, 'albumartist'), field(item, 'artist'), *split_beets_multi(field(item, 'artists')))
+        if artist.name not in names:
+            return False
+        if not shared:
+            return True
+
+        mbids = {validate_mbid(field(item, 'mb_albumartistid')), validate_mbid(field(item, 'mb_artistid')),
+                 *(validate_mbid(m) for m in split_beets_multi(field(item, 'mb_artistids')))} - {''}
+        return artist.mbid in mbids if artist.mbid else not mbids
+
+    return credited
+
+
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getTopSongs/
 @subsonic_bp.route('/getTopSongs', methods=['GET', 'POST'])
 @subsonic_bp.route('/getTopSongs.view', methods=['GET', 'POST'])
@@ -182,18 +211,18 @@ def endpoint_get_top_songs() -> flask.Response:
     count = r.get('count', default=50, type=page_size)
 
     lookup = req_artist_id if IDs.decode_type(req_artist_id) == 'artist' else req_artist_name
-    resolved = Resolve.artist(lookup)
-    if not resolved:
+    artist = Resolve.artist(lookup)
+    if not artist:
         empty_payload = { 'topSongs': { 'song': [] } }
         return subsonic_response(empty_payload, resp_fmt=resp_fmt)
 
-    artist_name, artist_mbid = resolved
+    credited = _credited_to(artist)
 
     if app.config['lastfm_api_key']:
-        if artist_mbid:
-            lastfm_resp = query_lastfm(q=artist_mbid, data_type='artist', method='TopTracks', is_mbid=True)
+        if artist.mbid:
+            lastfm_resp = query_lastfm(q=artist.mbid, data_type='artist', method='TopTracks', is_mbid=True)
         else:
-            lastfm_resp = query_lastfm(q=artist_name, data_type='artist', method='TopTracks', is_mbid=False)
+            lastfm_resp = query_lastfm(q=artist.name, data_type='artist', method='TopTracks', is_mbid=False)
 
         lastfm_tracks = lastfm_resp.get('toptracks', {}).get('track', [])
         lastfm_track_names = [t.get('name', '') for t in lastfm_tracks if t.get('name')]
@@ -201,14 +230,14 @@ def endpoint_get_top_songs() -> flask.Response:
         if lastfm_track_names:
             placeholders = ','.join(['?'] * len(lastfm_track_names))
             columns = library_cache.schema('items')
-            name_conditions, name_params = sql_conditions_for(artist_name, [f for f in ('artist', 'artists') if f in columns])
+            name_conditions, name_params = sql_conditions_for(artist.name, [f for f in ('artist', 'artists') if f in columns])
             sql = f"""
                    SELECT * FROM items 
                    WHERE (albumartist = ? OR {' OR '.join(name_conditions)})
                      AND title IN ({placeholders})
                    """  # nosec B608  # noqa: S608 vars are constants
             with flask.g.lib.transaction() as tx:
-                top_tracks_available = list(tx.query(sql, [artist_name, *name_params, *lastfm_track_names]))
+                top_tracks_available = [s for s in tx.query(sql, [artist.name, *name_params, *lastfm_track_names]) if credited(s)]
 
             top_tracks_available = exclusions().songs(top_tracks_available, scope='lists')
             if top_tracks_available:
@@ -239,8 +268,7 @@ def endpoint_get_top_songs() -> flask.Response:
         item = resolved.get(r['song_id'])
         if not item:
             continue
-        if artist_name in (item.get('albumartist') or '', item.get('artist') or '') \
-                or artist_name in split_beets_multi(item.get('artists') or ''):
+        if credited(item):
             matches.append(item)
             if len(matches) >= count:
                 break
@@ -320,35 +348,33 @@ def endpoint_get_similar_songs() -> flask.Response:
     if not req_id:
         return subsonic_error(70, resp_fmt=resp_fmt)
 
-    resolved = Resolve.artist(req_id)
-    if resolved is None:
+    artist = Resolve.artist(req_id)
+    if artist is None:
         return subsonic_error(70, resp_fmt=resp_fmt)
-
-    req_artist_name, req_artist_mbid = resolved
 
     matched_songs: dict[int, dict] = {}
     if app.config['lastfm_api_key']:
-        matched_songs = _similar_by_track(req_id, req_artist_name, limit)
+        matched_songs = _similar_by_track(req_id, artist.name, limit)
 
     if len(matched_songs) < limit:
         similar_artists = {}
 
         if app.config['lastfm_api_key']:
-            if req_artist_mbid:
-                lastfm_resp = query_lastfm(q=req_artist_mbid, data_type='artist', method='similar', is_mbid=True)
+            if artist.mbid:
+                lastfm_resp = query_lastfm(q=artist.mbid, data_type='artist', method='similar', is_mbid=True)
             else:
-                lastfm_resp = query_lastfm(q=req_artist_name, data_type='artist', method='similar', is_mbid=False)
+                lastfm_resp = query_lastfm(q=artist.name, data_type='artist', method='similar', is_mbid=False)
 
-            for artist in lastfm_resp.get('similarartists', {}).get('artist', []):
-                name = artist.get('name')
-                mbid = artist.get('mbid')
+            for similar in lastfm_resp.get('similarartists', {}).get('artist', []):
+                name = similar.get('name')
+                mbid = similar.get('mbid')
 
                 if name and mbid:
                     similar_artists[name] = mbid
 
         # Always include requested artist
-        if req_artist_name and req_artist_mbid:
-            similar_artists[req_artist_name] = req_artist_mbid
+        if artist.name and artist.mbid:
+            similar_artists[artist.name] = artist.mbid
 
         # Filter to columns that actually exist in current beets library
         available_cols = set(library_cache.schema('items'))

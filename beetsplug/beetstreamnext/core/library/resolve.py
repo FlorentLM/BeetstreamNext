@@ -9,11 +9,10 @@ from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.constants import SOURCE_TRACK_ID_FIELDS, SOURCE_ALBUM_ID_FIELDS
-from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex, SongIndex, ArtistHashIndex, AlbumHashIndex
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex, SongIndex, AlbumHashIndex
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
-from beetsplug.beetstreamnext.utils.text import split_beets_multi, validate_mbid
 from beetsplug.beetstreamnext.utils.system import resolve_path
 
 
@@ -56,18 +55,6 @@ def standardise_datadict(obj: dict | LibModel | Item | Any) -> dict:
         return {}
 
 
-def get_artist_metadata(name: str) -> dict:
-    """
-    Lookup MBID, sort name and roles for a given artist name.
-    The returned dict is shared: don't mutate it.
-    """
-
-    if not name:
-        return {'mbid': '', 'sort_name': '', 'roles': []}
-
-    return ArtistIndex.get().metadata(name)
-
-
 ##
 # Resolver: Decodes a Subsonic ID and fetches the Beets/db object it refers to
 
@@ -80,86 +67,36 @@ class Resolve:
     _method_map: dict[str, Callable] = {}
 
     @classmethod
-    def artist(cls, req_id: str) -> tuple[str, str] | None:
+    def artist(cls, req_id: str) -> Artist | None:
         """
-        Decode any music Subsonic ID (artist, album, or song) and fetch the beets artist data.
+        Artist corresponding to any music Subsonic ID (artist, album, or song) / name.
+        None if can't be resolved.
 
         Note: Unlike the other Resolve methods, this doesn't return a db object because beets has no
         Artist row.
-
-        Returns (name, mbid), or None if ID can't be resolved.
         """
         entry_type, obj = cls.any(req_id)
+        index = ArtistIndex.get()
 
-        if entry_type == 'song':
+        if entry_type in ('song', 'album'):
             if not obj:
                 return None
-
-            name, mbid, _ = IDs.main_artist_of(obj)
-            if not mbid:
-                own_mbids = 'mb_albumartistids' if obj.get('albumartist') else 'mb_artistids'
-                mbids = split_beets_multi(obj.get(own_mbids) or '')
-                mbid = next(filter(None, (validate_mbid(m) for m in mbids)), '')
-
-            return name, mbid
-
-        if entry_type == 'album':
-            if not obj:
-                return None
-
-            name = obj.get('albumartist') or ''
-            mbid = validate_mbid(obj.get('mb_albumartistid'))
-            if not mbid:
-                mbids = split_beets_multi(obj.get('mb_albumartistids') or '')
-                mbid = next(filter(None, (validate_mbid(m) for m in mbids)), '')
-
-            return name, mbid
+            data = standardise_datadict(obj)
+            return index.lookup(index.id_of(data)) or Artist.bare(IDs.main_artist_of(data)[0])
 
         if entry_type == 'artist':
-            value, kind = IDs.decode_artist(req_id)
+            artist = index.lookup(req_id)
+            name, kind = IDs.decode_artist(req_id)
         elif entry_type is None:
-            value, kind = req_id, 'name'        # artist name (not ID)
+            artist = index.find(req_id)         # artist name (not ID)
+            name, kind = req_id, 'name'
         else:
             return None                         # ID of something else (radio, playlist, podcast etc)
 
-        if kind == 'mbid':
-            with flask.g.lib.transaction() as tx:
-                # Prefer solo credit row for this MBID over a joint one
-                rows = tx.query(
-                    """
-                    SELECT albumartist, albumartists
-                    FROM albums
-                    WHERE mb_albumartistid = ?
-                    """, (value,)
-                )
-                solo_rows = [r for r in rows if not IDs.is_joint_credit(r[1], r[0])]
-                pick = solo_rows[0] if solo_rows else (rows[0] if rows else None)
+        if artist is None and kind == 'name' and name and not index.named(name):
+            return Artist.bare(name)        # e.g. a remixer: only known as a credit on tracks
 
-                if not pick:  # fallback to items table
-                    rows = tx.query(
-                        """
-                        SELECT artist
-                        FROM items
-                        WHERE mb_artistid = ?
-                        LIMIT 1
-                        """, (value,)
-                    )
-                    pick = rows[0] if rows else None
-
-            artist_name = pick[0] if pick else ''
-            if not artist_name:
-                return None
-
-            return artist_name, value  # value is the mbid
-
-        elif kind == 'hash':
-            name = ArtistHashIndex.get().by_hash.get(value)
-            return (name, '') if name else None
-
-        else:
-            artist_name = value
-            meta = get_artist_metadata(artist_name)
-            return artist_name, meta['mbid']
+        return artist
 
     @classmethod
     def album(cls, subsonic_id: str) -> LibModel | None:

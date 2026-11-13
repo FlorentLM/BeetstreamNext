@@ -8,7 +8,6 @@ from beetsplug.beetstreamnext.core.storage.connection import database, dual_data
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts, touch_change
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.utils.text import safe_str
-from beetsplug.beetstreamnext.utils.db import chunked_query
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -209,56 +208,13 @@ def endpoint_get_starred() -> flask.Response:
     song_counts = get_song_counts(album_dicts)
     albums = [Serialise.album(row, include_songs=False, song_counts=song_counts) for row in album_dicts]
 
-    mbids_to_resolve = []
-    beets_artist_names = []
-    for row in artist_rows:
-        value, kind = IDs.decode_artist(row[0])
-        if not value:
-            continue
-        if kind == 'mbid':
-            mbids_to_resolve.append(value)
-        elif kind == 'hash':
-            resolved = Resolve.artist(row[0])
-            if resolved:
-                beets_artist_names.append(resolved[0])
-        else:
-            beets_artist_names.append(value)
 
-    if mbids_to_resolve:
-        with flask.g.lib.transaction() as tx:
-            rows = chunked_query(
-                db_obj=tx,
-                query_template="""
-                SELECT albumartist, albumartists
-                FROM albums
-                WHERE mb_albumartistid IN ({q})
-                GROUP BY albumartist
-                """,
-                chunked_values=mbids_to_resolve
-            )
-        # Prefer solo credit for each MBID (an artist can come back from more than one chunk)
-        solo_names = [r[0] for r in rows if r[0] and not IDs.is_joint_credit(r[1], r[0])]
-        beets_artist_names.extend(dict.fromkeys(solo_names or (r[0] for r in rows if r[0])))
+    starred_artists = [artist for artist in (Resolve.artist(row[0]) for row in artist_rows) if artist is not None]
+    starred_artists = list({artist.id: artist for artist in starred_artists}.values())
 
-    prefetched = {}
-    if beets_artist_names:
-        with flask.g.lib.transaction() as tx:
-            sql = """
-                  SELECT albumartist, COUNT(*), mb_albumartistid, albumartist_sort, albumartists
-                  FROM albums
-                  WHERE albumartist IN ({q})
-                  GROUP BY albumartist
-                  """
-            rows = chunked_query(db_obj=tx, query_template=sql, chunked_values=beets_artist_names)
-            for r in rows:
-                prefetched[r[0]] = {
-                    'album_count': r[1], 'mbid': r[2], 'sort_name': r[3],
-                    'is_joint': IDs.is_joint_credit(r[4], r[0])
-                }
+    preload_artists(starred_artists)
 
-    preload_artists(prefetched)
-
-    artists = [Serialise.artist(name, with_albums=False, prefetched=prefetched) for name in beets_artist_names]
+    artists = [Serialise.artist(artist, with_albums=False) for artist in starred_artists]
 
     tag = 'starred2' if 'getStarred2' in flask.request.path else 'starred'
     payload = {

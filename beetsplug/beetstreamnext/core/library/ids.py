@@ -213,12 +213,6 @@ class IDs:
 
         return albumartist, mbid, multi
 
-    @classmethod
-    def encode_artist_of(cls, data: dict) -> str:
-        """Main artist ID of a song or album."""
-        name, mbid, multi = cls.main_artist_of(data)
-        return cls.artist_id(name, mbid, multi)
-
     @staticmethod
     def is_joint_credit(multi_value: str | None, single_name: str = '') -> bool:
         """Whether a beets *artists (multi-value) field represents more than one credited artist."""

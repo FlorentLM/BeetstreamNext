@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 
 from beetsplug.beetstreamnext.application import app, with_app_context
-from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.media.artist_images import (
     artist_keys, fetched_image_path, find_artist, load_stored, record_status
 )
@@ -140,7 +140,7 @@ class ArtistImageFetcher:
             return LookupResult('unknown')
 
         name, mbid = found
-        entry = AlbumArtistIndex.get().resolve(name)
+        entry = ArtistIndex.get().find(name)
         key = entry.keys[0] if entry else artist_keys(name, mbid)[0]
         candidates = entry.candidates if entry else (name,)
 
@@ -157,7 +157,7 @@ class ArtistImageFetcher:
             cutoff = time.time() - self.RETRY_AFTER
             todo = []
 
-            for artist in AlbumArtistIndex.get().artists:
+            for artist in ArtistIndex.get().album_artists:
 
                 row = next((stored[k] for k in artist.keys if k in stored), None)
                 if row and (row['has_image'] or (row['checked_at'] or 0) > cutoff):

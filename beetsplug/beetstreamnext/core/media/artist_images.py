@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 import flask
 
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.indexes import AlbumArtistIndex
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.utils.text import md5_hex, split_beets_multi, validate_mbid
@@ -53,21 +54,20 @@ def artist_keys(name: str, mbid: str | None = None) -> list[str]:
     return keys
 
 
-def find_uploaded_image(name: str, mbid: str | None = None) -> bytes | None:
-    """
-    Manually uploaded image for this artist.
-    """
+def uploaded_image(keys: Sequence[str]) -> bytes | None:
+    """Manually uploaded image stored under the first of these keys that has one."""
 
-    keys = artist_keys(name, mbid)
+    if not keys:
+        return None
 
     with database() as db:
         rows = db.execute(
             f"""
-            SELECT artist_key, image 
+            SELECT artist_key, image
             FROM artist_images
-            WHERE artist_key IN ({','.join('?' * len(keys))}) 
+            WHERE artist_key IN ({','.join('?' * len(keys))})
             AND image IS NOT NULL
-            """, keys  # nosec B608  # noqa: S608 vars are constants
+            """, list(keys)  # nosec B608  # noqa: S608 vars are constants
         ).fetchall()
 
     by_key = {r['artist_key']: r['image'] for r in rows}
@@ -191,7 +191,7 @@ def list_artists(filter_: str = 'all', q: str = '', page: int = 1, per_page: int
     entries = []
     claimed: set[str] = set()
 
-    for artist in AlbumArtistIndex.get().artists:
+    for artist in ArtistIndex.get().album_artists:
         key = next((k for k in artist.keys if k in stored), artist.keys[0])
         row = stored.get(key)
         if row is not None:

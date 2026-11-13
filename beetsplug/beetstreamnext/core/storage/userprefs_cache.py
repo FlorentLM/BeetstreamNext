@@ -262,25 +262,10 @@ def preload_albums(beets_albums: list):
     batch_ratings(sub_ids)
 
 
-def preload_artists(artists_data):
+def preload_artists(artists) -> None:
+    """Likes, dislikes and ratings of these artists in one query each."""
 
-    if not artists_data:
-        return
-
-    from beetsplug.beetstreamnext.core.library.ids import IDs
-
-    sub_ids = []
-    if isinstance(artists_data, dict):
-        for name, data in artists_data.items():
-            sub_ids.append(IDs.artist_id(name, data.get('mbid'), joint=bool(data.get('is_joint'))))
-
-    elif isinstance(artists_data, list):
-        for item in artists_data:
-            if isinstance(item, str):
-                sub_ids.append(IDs.encode_artist(item, is_mbid=False))
-
-            elif isinstance(item, dict) or hasattr(item, 'keys'):
-                sub_ids.append(IDs.encode_artist_of(item))
+    sub_ids = [artist.id for artist in artists]
 
     if sub_ids:
         batch_likes(sub_ids)

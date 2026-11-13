@@ -11,8 +11,8 @@ from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
-from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.services.scrobbling import service as scrobbling
 
@@ -91,7 +91,7 @@ def endpoint_scrobble() -> flask.Response:
                     already_counted = None
                     continue
 
-                canonical_id = IDs.encode_song(standardise_datadict(item))
+                canonical_id = SongIndex.get().id_of(item)
 
                 try:
                     played_at = times_ms[i] / 1000.0
@@ -225,7 +225,7 @@ def endpoint_report_playback() -> flask.Response:
 
     # Check for scrobble threshold: played for 3 minutes or 50% of total length
     if not ignore_scrobble and state == 'playing' and entry_type == 'song' and item:
-        canonical_id = IDs.encode_song(standardise_datadict(item))
+        canonical_id = SongIndex.get().id_of(item)
         duration_ms = (item.get('length') or 0) * 1000
         threshold = min(3 * 60 * 1000, duration_ms * 0.5)
 

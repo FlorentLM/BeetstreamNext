@@ -236,9 +236,9 @@ def one_play_stats(song_id: str) -> dict | None:
 def preload_songs(beets_items: list):
     if not beets_items:
         return
-    from beetsplug.beetstreamnext.core.library.ids import IDs
-    from beetsplug.beetstreamnext.core.library.resolve import standardise_datadict
-    sub_ids = [IDs.encode_song(standardise_datadict(s)) for s in beets_items]
+    from beetsplug.beetstreamnext.core.library.indexes import SongIndex
+    index = SongIndex.get()
+    sub_ids = [index.id_of(s) for s in beets_items]
 
     batch_likes(sub_ids)
     batch_dislikes(sub_ids)

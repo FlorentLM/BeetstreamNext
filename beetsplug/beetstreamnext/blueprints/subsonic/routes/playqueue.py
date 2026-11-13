@@ -9,8 +9,8 @@ from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error, cap_ids
-from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getPlayQueue/
@@ -82,12 +82,12 @@ def endpoint_save_play_queue() -> flask.Response:
     username = flask.g.username
 
     resolved = Resolve.songs(song_ids)
-    canonical_ids = [IDs.encode_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
+    canonical_ids = [SongIndex.get().id_of(resolved[sid]) for sid in song_ids if sid in resolved]
 
     current_item = resolved.get(current_sid) if current_sid else None
     if current_sid and current_item is None:
         current_item = Resolve.song(current_sid)
-    current_canonical = IDs.encode_song(standardise_datadict(current_item)) if current_item else None
+    current_canonical = SongIndex.get().id_of(current_item) if current_item else None
 
     now = time.time()
 
@@ -220,7 +220,7 @@ def endpoint_save_play_queue_by_index() -> flask.Response:
         return subsonic_error(10, message='currentIndex out of bounds.', resp_fmt=resp_fmt)
 
     resolved = Resolve.songs(song_ids)
-    canonical_ids = [IDs.encode_song(standardise_datadict(resolved[sid])) for sid in song_ids if sid in resolved]
+    canonical_ids = [SongIndex.get().id_of(resolved[sid]) for sid in song_ids if sid in resolved]
 
     # And revalidate against parsed list
     if current_index >= len(canonical_ids):

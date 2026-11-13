@@ -10,7 +10,8 @@ from beetsplug.beetstreamnext.utils.general import timestamp_to_iso
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getBookmarks/
@@ -83,7 +84,7 @@ def endpoint_create_bookmark() -> flask.Response:
         if not item:
             return subsonic_error(70, resp_fmt=resp_fmt)
 
-        canonical_id = IDs.encode_song(standardise_datadict(item))
+        canonical_id = SongIndex.get().id_of(item)
 
     username = flask.g.username
     now = time.time()
@@ -118,7 +119,7 @@ def endpoint_delete_bookmark() -> flask.Response:
         canonical_id = IDs.encode_podcast_episode(episode['id']) if episode else None
     else:
         item = Resolve.song(req_id)
-        canonical_id = IDs.encode_song(standardise_datadict(item)) if item else None
+        canonical_id = SongIndex.get().id_of(item) if item else None
 
     username = flask.g.username
 

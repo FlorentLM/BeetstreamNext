@@ -17,7 +17,7 @@ from beetsplug.beetstreamnext.core.storage.userprefs_cache import (
 )
 from beetsplug.beetstreamnext.core.media.images import tokenised_image_url
 from beetsplug.beetstreamnext.core.library.ids import IDs, TYPES_PLAYABLE
-from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex, SongIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.utils.text import split_beets_multi, split_list, validate_mbid
 from beetsplug.beetstreamnext.utils.general import timestamp_to_iso, genres_formatter
@@ -389,7 +389,7 @@ class Serialise:
 
         data = standardise_datadict(song_object)
 
-        song_id = IDs.encode_song(data)
+        song_id = SongIndex.get().id_of(data)
         song_title = data.get('title') or ''
 
         subsonic_song = cls._common(data)

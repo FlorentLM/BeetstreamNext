@@ -28,7 +28,8 @@ from beetsplug.beetstreamnext.core.library.health import needs_healing
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.media.hls import hls_sessions
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, is_lossless, evaluate_limitation, get_normalization_filter, try_transcode
-from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 
 
 def _snap_bitrate(kbps: int) -> int:
@@ -199,7 +200,7 @@ def endpoint_stream_song() -> flask.Response | None:
     song_ext = song_path.rsplit('.', 1)[-1].lower() if '.' in song_path else ''
     norm_filter = get_normalization_filter(song)
 
-    healing = not isinstance(song, dict) and needs_healing(IDs.encode_song(standardise_datadict(song)))
+    healing = not isinstance(song, dict) and needs_healing(SongIndex.get().id_of(song))
 
     # Transcode if bitrate too high
     bitrate_too_high = max_bitrate > 0 and song.get('bitrate', 0) > (max_bitrate * 1000)
@@ -317,7 +318,7 @@ def endpoint_get_transcode_decision() -> flask.Response:
         can_direct_play = False
         reasons.append('ServerSideProcessingRequired')
 
-    healing = not isinstance(item, dict) and needs_healing(IDs.encode_song(standardise_datadict(item)))
+    healing = not isinstance(item, dict) and needs_healing(SongIndex.get().id_of(item))
     if healing:
         can_direct_play = False
         reasons.append('ServerSideProcessingRequired')

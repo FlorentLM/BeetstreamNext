@@ -99,13 +99,7 @@ class Resolve:
         """
         Decode a Subsonic album ID (mbid, hash, or legacy row id) and fetch the beets album data.
         """
-        value, kind = IDs.decode_album(subsonic_id)
-
-        if kind == 'legacy_int':
-            return flask.g.lib.get_album(value)
-
-        index = AlbumIndex.get()
-        album_id = {'mbid': index.by_mbid, 'hash': index.by_hash}.get(kind, {}).get(value)
+        album_id = AlbumIndex.get().beets_id(subsonic_id)
         return flask.g.lib.get_album(album_id) if album_id is not None else None
 
     @classmethod
@@ -306,7 +300,7 @@ class Resolve:
             if not os.path.isfile(path):
                 bsn_logger.warning(f'Path does not exist on disk, sending it anyway: {path!r}')
 
-            return IDs.encode_song(standardise_datadict(obj)), path
+            return SongIndex.get().id_of(obj), path
 
         if entry_type == 'radio':
 

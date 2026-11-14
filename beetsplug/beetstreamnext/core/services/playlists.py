@@ -13,7 +13,6 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-import flask
 
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.constants import PLAYLIST_EXPORT_DELAY_SEC, PLAYLIST_SYNC_INTERVAL_SEC
@@ -557,6 +556,7 @@ class PlaylistManager:
     def _resolve_tracks(entries: list[dict], playlist_path: Path) -> list[PlaylistTrack]:
 
         music_root = Path(os.fsdecode(app.config['music_root']))
+        index = SongIndex.get()
 
         song_ids: dict[int, str] = {}
         candidates: dict[int, list[Path]] = {}
@@ -568,12 +568,9 @@ class PlaylistManager:
                 song_ids[idx] = embedded
                 continue
 
-            if embedded:    # Legacy (beets row id)
-                item = flask.g.lib.get_item(int(embedded))
-
-                if item is not None:
-                    song_ids[idx] = IDs.encode_song(item)
-                    continue
+            if embedded and (song_id := index.subsonic_ids.get(int(embedded))):    # Legacy (beets row id)
+                song_ids[idx] = song_id
+                continue
 
             # Old files have paths relative to music root
             candidates[idx] = [
@@ -582,16 +579,13 @@ class PlaylistManager:
                 for base in (playlist_path.parent, music_root)
             ]
 
-        if candidates:
-            by_hash = SongIndex.get().by_hash
+        for idx, paths in candidates.items():
+            for p in paths:
+                beets_id = index.by_hash.get(path_hash(os.path.normpath(p), music_root))
 
-            for idx, paths in candidates.items():
-                for p in paths:
-                    beets_id = by_hash.get(path_hash(os.path.normpath(p), music_root))
-
-                    if beets_id is not None and (item := flask.g.lib.get_item(beets_id)):
-                        song_ids[idx] = IDs.encode_song(item)
-                        break
+                if beets_id is not None:
+                    song_ids[idx] = index.subsonic_ids[beets_id]
+                    break
 
         return [
             PlaylistTrack(

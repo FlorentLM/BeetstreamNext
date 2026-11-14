@@ -6,7 +6,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
-from beetsplug.beetstreamnext.utils.db import library_cache, chunked_query
+from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.indexes import SongIndex, AlbumIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
@@ -173,16 +173,13 @@ def endpoint_get_album_list() -> flask.Response:
             ).fetchall()
 
         beets_ids = Resolve.song_ids([row['song_id'] for row in rows])
-        with flask.g.lib.transaction() as tx:
-            album_of = dict(chunked_query(
-                tx, 'SELECT id, album_id FROM items WHERE id IN ({q})', list(set(beets_ids.values()))
-            ))
+        album_of = SongIndex.get().album_of
 
         # Play stats per song added per album
         per_album: dict = {}
         for row in rows:
             album_id = album_of.get(beets_ids.get(row['song_id']))
-            if not album_id:
+            if album_id is None:
                 continue
             plays, latest = per_album.get(album_id, (0, 0.0))
             per_album[album_id] = (plays + row['play_count'], max(latest, row['last_played'] or 0.0))

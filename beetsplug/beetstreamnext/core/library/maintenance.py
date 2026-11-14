@@ -291,7 +291,7 @@ def sweep_stale_references() -> dict[str, int]:
             all_refs.update(ids)
 
         if all_refs:
-            resolved = Resolve.songs(list(all_refs))
+            resolved = Resolve.song_ids(list(all_refs))
             stale_songs = all_refs - resolved.keys()
 
             # A library that was swapped, emptied or failed to load would otherwise wipe everyone's data

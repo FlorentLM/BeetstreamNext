@@ -5,13 +5,12 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs, preload_albums, preload_artists, get_song_counts
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
-from beetsplug.beetstreamnext.utils.text import remove_accents, safe_str, validate_mbid
+from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.library.exclusions import exclusions
-from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
-from beetsplug.beetstreamnext.core.library.resolve import standardise_datadict
+from beetsplug.beetstreamnext.core.library.query import BeetsQuery
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/search/
 @subsonic_bp.route('/search', methods=['GET', 'POST'])
@@ -68,34 +67,13 @@ def endpoint_search() -> flask.Response:
     exc = exclusions()
     hiding = exc.active(scope='browse')    # remove hidden entries before pages are cut
 
-    # Beets query
-    if main_query.startswith(('b:', 'beets:')):
-        clean_query = main_query.split(':', 1)[1].strip()
-
+    if main_query.startswith(BeetsQuery.prefixes):
         try:
-            beets_albums = exc.albums(list(flask.g.lib.albums(clean_query)), scope='browse')
-            beets_songs = exc.songs(list(flask.g.lib.items(clean_query)), scope='browse')
+            beets_query = BeetsQuery(main_query, exc)
 
-            # Dedup artists (from albums and songs)
-            index = ArtistIndex.get()
-            found = {}
-
-            for album in beets_albums:
-                artist = index.lookup(index.id_of(standardise_datadict(album)))
-                if artist:
-                    found[artist.id] = artist
-
-            for song in beets_songs:
-                mbid = validate_mbid(song.get('mb_artistid'))
-                artist = (index.by_id.get(IDs.encode_artist(mbid, is_mbid=True)) if mbid else None) or index.find(song.get('artist') or '')
-                if artist:
-                    found[artist.id] = artist
-
-            sorted_artists = sorted(found.values(), key=lambda a: remove_accents(a.name).lower())
-
-            songs = beets_songs[song_offset: song_offset + song_count]
-            albums = beets_albums[album_offset: album_offset + album_count]
-            artists = sorted_artists[artist_offset: artist_offset + artist_count]
+            songs = beets_query.songs[song_offset: song_offset + song_count]
+            albums = beets_query.albums[album_offset: album_offset + album_count]
+            artists = beets_query.artists[artist_offset: artist_offset + artist_count]
 
         except Exception:
             return subsonic_error(70, resp_fmt=resp_fmt)

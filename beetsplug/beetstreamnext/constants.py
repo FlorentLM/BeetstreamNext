@@ -204,6 +204,8 @@ DEFAULT_DB_TIMEOUT: float = DB_BUSY_TIMEOUT_MS / 1000   # beets' 'timeout' kept 
 
 EVENT_BUS_INTERVAL: int = 15     # seconds (also how long a dead connection can hang around before cleanup)
 IMPORTWATCH_POLL_TIME: int = 30  # seconds
+INDEXWATCH_POLL_TIME: int = 5    # seconds
+INDEXWATCH_SETTLE: int = 10      # seconds with no library writes before rebuilding the indexes
 
 
 ## Blueprints and scopes

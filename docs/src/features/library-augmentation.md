@@ -58,6 +58,23 @@ Starred or high rated items are still shown, even if the parent album/artist is 
 
 Any search request can be turned into a raw Beets query by prefixing it with  `beets:` or `b:`, for example `b:length:..3:30` to find tracks under 3:30. This runs Beets' own complex query DSL (regex, field-specific, fuzzy matching) straight from your client's search bar, instead of a normal search.
 
+### Stars, ratings and plays
+
+**BeetstreamNext** adds a few tokens that work inside `b:` queries and return _per-user_ data:
+
+| Token         | Values                                           | Example                                     |
+|---------------|--------------------------------------------------|---------------------------------------------|
+| `starred:`    | `1`/`0`, `true`/`false`, `yes`/`no`              | `b:starred:1 genre:jazz`                    |
+| `rating:`     | a number or a range (`4`, `4..`, `..2`, `2..4`)] | `b:rating:4..`                              |
+| `plays:`      | a number or a range                              | `b:plays:0 added:-1m..`                     |
+| `lastplayed:` | a date or a range (using Beets' date syntax)     | `b:lastplayed:..2024`, `b:lastplayed:-1w..` |
+
+- Tokens mix freely with other Beets fields and sorting: `b:artist:Beatles rating:..2 year+`.
+
+- Prefix a token with `^` or `-` to negate it (for instance `b:^starred:1` means everything you haven't starred).
+
+- These tokens _take precedence_ over Beets fields of the same name. That means every user gets their own results even if [`ratings_writeback_user`](../configuration.md#ratings_writeback_user) mirrors one user's stars and ratings into Beets.
+
 ---
 
 See the [configuration reference](../configuration.md) for any of the settings mentioned here.

@@ -181,22 +181,21 @@ class Exclusions:
         if not self.active(scope):
             return rows
 
+        visible = set(self.album_ids([row['id'] for row in rows], scope))
+        return [row for row in rows if row['id'] in visible]
+
+    def album_ids(self, beets_ids: list[int], scope: str) -> list[int]:
+        """Beets album IDs that are not hidden."""
+
+        if not self.active(scope):
+            return beets_ids
+
         kept = []
 
-        for row in rows:
-            album_id = self._albums.subsonic_ids.get(row['id'])
-            artist = self._artists.by_album.get(row['id'])
-
-            if album_id and artist:
-                artist_id = artist.id
-
-            else:   # No album artist
-                data = standardise_datadict(row)
-                album_id = IDs.encode_album(data.get('id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
-                artist_id = self._artists.id_of(data)
-
-            if not self.album_hidden(album_id, artist_id, scope):
-                kept.append(row)
+        for beets_id in beets_ids:
+            artist = self._artists.by_album.get(beets_id)   # None: no album artist
+            if not self.album_hidden(self._albums.subsonic_ids.get(beets_id, ''), artist.id if artist else '', scope):
+                kept.append(beets_id)
 
         return kept
 

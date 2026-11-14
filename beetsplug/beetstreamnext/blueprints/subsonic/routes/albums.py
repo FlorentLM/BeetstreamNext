@@ -152,19 +152,15 @@ def endpoint_get_album_list() -> flask.Response:
                     """, (flask.g.username,)
                 ).fetchall()
 
+        album_index = AlbumIndex.get()
+        beets_ids = [i for row in rows if (i := album_index.beets_id(row['item_id'])) is not None]
 
-        albums_list = []
-        skipped = 0
-        for row in rows:
-            album = Resolve.album(row['item_id'])
-            if album is None or not exc.albums([album], scope='browse'):
-                continue
-            if skipped < offset:
-                skipped += 1
-                continue
-            albums_list.append(dict(album))
-            if len(albums_list) >= size:
-                break
+        if sort_by == 'highest':    # only for highest (starred albums are never hidden)
+            beets_ids = exc.album_ids(beets_ids, scope='browse')
+
+        visible = beets_ids[offset:offset + size]
+
+        albums_list = [dict(album) for i in visible if (album := flask.g.lib.get_album(i)) is not None]
 
     elif sort_by in ('frequent', 'recent'):
         with database() as db:
@@ -194,25 +190,8 @@ def endpoint_get_album_list() -> flask.Response:
         ranking = 0 if sort_by == 'frequent' else 1
         ranked = sorted(per_album, key=lambda album_id: per_album[album_id][ranking], reverse=True)
 
-        albums_list = []
-        skipped = 0
-        for album_id in ranked:
-
-            if skipped < offset and not hiding:
-                skipped += 1
-                continue
-
-            album = flask.g.lib.get_album(album_id)
-            if album is None or not exc.albums([album], scope='browse'):
-                continue
-
-            if skipped < offset:
-                skipped += 1
-                continue
-
-            albums_list.append(dict(album))
-            if len(albums_list) >= size:
-                break
+        visible = exc.album_ids(ranked, scope='browse')[offset:offset + size]
+        albums_list = [dict(album) for i in visible if (album := flask.g.lib.get_album(i)) is not None]
 
     else:
         # All other sort types we can do in SQL directly

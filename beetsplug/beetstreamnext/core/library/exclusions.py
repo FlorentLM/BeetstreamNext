@@ -6,7 +6,7 @@ import flask
 
 from beetsplug.beetstreamnext.core.config.store import settings_store
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
+from beetsplug.beetstreamnext.core.library.indexes import AlbumIndex, ArtistIndex, SongIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, standardise_datadict
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.utils.general import api_bool
@@ -56,37 +56,54 @@ class Exclusions:
                 )
                 self._low_rated = {row[0] for row in rows}
 
-            if self._dislikes or self._low_rated:
+            if not (self._dislikes or self._low_rated):
+                return
+
+            rows = db.execute(
+                """
+                SELECT item_id 
+                FROM likes 
+                WHERE username = ?
+                """, (username,)
+            )
+            self._exempt = {row[0] for row in rows}
+
+            if cutoff := settings_store.get('high_rating_cutoff'):
                 rows = db.execute(
                     """
                     SELECT item_id 
-                    FROM likes 
-                    WHERE username = ?
-                    """, (username,)
+                    FROM ratings 
+                    WHERE username = ? AND rating >= ?
+                    """, (username, cutoff)
                 )
-                self._exempt = {row[0] for row in rows}
+                self._exempt |= {row[0] for row in rows}
 
-                if cutoff := settings_store.get('high_rating_cutoff'):
-                    rows = db.execute(
-                        """
-                        SELECT item_id 
-                        FROM ratings 
-                        WHERE username = ? AND rating >= ?
-                        """, (username, cutoff)
-                    )
-                    self._exempt |= {row[0] for row in rows}
+        self._songs, self._albums, self._artists = SongIndex.get(), AlbumIndex.get(), ArtistIndex.get()
 
-                index = ArtistIndex.get()
+        # Albums and artists of exempt songs, artists of exempt albums
+        for beets_id in Resolve.song_ids(list(self._exempt)).values():
+            self._rescue_album(self._songs.album_of.get(beets_id))
 
-                for song in Resolve.songs(list(self._exempt)).values():
-                    data = standardise_datadict(song)
+        for exempt_id in self._exempt:
+            if IDs.decode_type(exempt_id) == 'album':
+                self._rescue_album(self._albums.beets_id(exempt_id), album_too=False)
 
-                    self._rescued.add(IDs.encode_album(data.get('album_id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album')))
-                    self._rescued.add(index.id_of(data))
+        # Reference stored with an older artist ID? still counts
+        for ids in (self._dislikes, self._low_rated, self._exempt):
+            for old_id in [i for i in ids if IDs.decode_type(i) == 'artist' and i not in self._artists.by_id]:
+                if artist := self._artists.lookup(old_id):
+                    ids.add(artist.id)
 
-                for exempt_id in self._exempt:
-                    if IDs.decode_type(exempt_id) == 'album' and (album := Resolve.album(exempt_id)) is not None:
-                        self._rescued.add(index.id_of(standardise_datadict(album)))
+    def _rescue_album(self, beets_id: int | None, album_too: bool = True) -> None:
+
+        if beets_id is None:
+            return
+
+        if album_too and (album_id := self._albums.subsonic_ids.get(beets_id)):
+            self._rescued.add(album_id)
+
+        if artist := self._artists.by_album.get(beets_id):
+            self._rescued.add(artist.id)
 
     @staticmethod
     def _applies(mode: str, scope: str) -> bool:
@@ -139,13 +156,21 @@ class Exclusions:
             return items
 
         kept = []
-        index = ArtistIndex.get()
 
         for item in items:
-            data = standardise_datadict(item)
-            album_id = IDs.encode_album(data.get('album_id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
+            album = self._songs.album_of.get(item['id'])
+            album_id = self._albums.subsonic_ids.get(album)
+            artist = self._artists.by_album.get(album)
 
-            if not self.song_hidden(IDs.encode_song(data), album_id, index.id_of(data), scope):
+            if album_id and artist:
+                artist_id = artist.id
+
+            else:   # No album (or one without an album artist)
+                data = standardise_datadict(item)
+                album_id = IDs.encode_album(data.get('album_id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
+                artist_id = self._artists.id_of(data)
+
+            if not self.song_hidden(self._songs.id_of(item), album_id, artist_id, scope):
                 kept.append(item)
 
         return kept
@@ -157,12 +182,20 @@ class Exclusions:
             return rows
 
         kept = []
-        index = ArtistIndex.get()
 
         for row in rows:
-            data = standardise_datadict(row)
-            album_id = IDs.encode_album(data.get('id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
-            if not self.album_hidden(album_id, index.id_of(data), scope):
+            album_id = self._albums.subsonic_ids.get(row['id'])
+            artist = self._artists.by_album.get(row['id'])
+
+            if album_id and artist:
+                artist_id = artist.id
+
+            else:   # No album artist
+                data = standardise_datadict(row)
+                album_id = IDs.encode_album(data.get('id', 0), data.get('mb_albumid'), data.get('albumartist'), data.get('album'))
+                artist_id = self._artists.id_of(data)
+
+            if not self.album_hidden(album_id, artist_id, scope):
                 kept.append(row)
 
         return kept

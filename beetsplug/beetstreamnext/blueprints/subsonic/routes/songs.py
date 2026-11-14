@@ -14,10 +14,10 @@ from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
 from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, split_beets_multi, validate_mbid
-from beetsplug.beetstreamnext.utils.db import library_cache, sql_conditions_for
+from beetsplug.beetstreamnext.utils.db import chunked_query, library_cache, sql_conditions_for
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex
+from beetsplug.beetstreamnext.core.library.indexes import Artist, ArtistIndex, SongIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -289,11 +289,9 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> dict[int
     Track-level similarity via Last.fm's track.getSimilar, matched against the local library by (artist, title).
     (only possible when the request is for a song (not an album/artist) obviously).
     """
-    matches: dict[int, dict] = {}
-
     entry_type, song_item = Resolve.any(req_id)
     if entry_type != 'song' or not song_item or not song_item.get('title'):
-        return matches
+        return {}
 
     song_beets_id = song_item.id
 
@@ -307,29 +305,20 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> dict[int
 
     lastfm_tracks = lastfm_resp.get('similartracks', {}).get('track', [])
 
-    # Safety cap to stay well under SQLite's 999-param limit (2 params per track)
-    conditions = []
-    params = []
-    for t in lastfm_tracks[:min(limit, 400)]:
-        t_name = t.get('name')
-        t_artist = (t.get('artist') or {}).get('name')
-        if not t_name or not t_artist:
-            continue
-        conditions.append("(lower(artist) = lower(?) AND lower(title) = lower(?))")
-        params.extend([t_artist, t_name])
+    index = SongIndex.get()
+    wanted: dict[int, None] = {}    # Last.fm order (most similar first)
 
-    if not conditions:
-        return matches
+    for t in lastfm_tracks:
+        for beets_id in index.named((t.get('artist') or {}).get('name'), t.get('name')):
+            if beets_id != song_beets_id:
+                wanted[beets_id] = None
+        if len(wanted) >= limit:
+            break
 
-    query = "SELECT DISTINCT * FROM items WHERE " + " OR ".join(conditions)  # nosec B608  # noqa: S608 vars are constants
     with flask.g.lib.transaction() as tx:
-        rows = list(tx.query(query, params))
+        rows = {row['id']: row for row in chunked_query(tx, 'SELECT * FROM items WHERE id IN ({q})', list(wanted))}
 
-    for row in rows:
-        if row['id'] != song_beets_id:
-            matches[row['id']] = row
-
-    return matches
+    return {beets_id: rows[beets_id] for beets_id in wanted if beets_id in rows}
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/getSimilarSongs/

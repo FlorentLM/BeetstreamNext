@@ -11,6 +11,7 @@ from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.beets.interaction import write_beets_field
+from beetsplug.beetstreamnext.utils.db import library_cache
 from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_musicbrainz
 from beetsplug.beetstreamnext.core.services.external.discogs import query_discogs
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import (
@@ -277,7 +278,8 @@ class Serialise:
             version = mb_data.get('disambiguation')
 
             if version and app.config.get('save_album_version'):
-                write_beets_field('album', beets_album_id, 'version', version.title(), allow_flex=True)
+                with library_cache.silent_write('library_view'):
+                    write_beets_field('album', beets_album_id, 'version', version.title(), allow_flex=True)
 
         if version:
             subsonic_album['version'] = version.title()

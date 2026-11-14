@@ -471,7 +471,9 @@ def commit_likes(subsonic_id: str, key: str, value: Any) -> None:
         return
 
     try:
-        write_beets_field(entity_type, beets_id, key, value, allow_flex=True)
+        # No index reads starred/rating, but the library view lists the flex keys
+        with library_cache.silent_write('library_view'):
+            write_beets_field(entity_type, beets_id, key, value, allow_flex=True)
     except Exception as e:
         bsn_logger.warning(f"Failed to mirror '{key}' to beets {entity_type} {beets_id}: {e}")
 

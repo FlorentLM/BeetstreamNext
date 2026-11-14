@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from sqlite3 import Connection
 from typing import Any, Literal, overload
 
@@ -42,6 +44,19 @@ class LibraryCache:
                 self._stamp = stamp
 
             return self._buckets.setdefault(name, {})
+
+    @contextmanager
+    def silent_write(self, *stale: str) -> Iterator[None]:
+        """
+        For BSN's writes that no cache depends on, to avoid invalidating indexes.
+        """
+        before = self.stamp()
+        yield
+        with self._lock:
+            if before == self._stamp:
+                self._stamp = self.stamp()
+                for name in stale:
+                    self._buckets.pop(name, None)
 
     def tables(self) -> list[str]:
         """Names of all the tables in the beets db."""

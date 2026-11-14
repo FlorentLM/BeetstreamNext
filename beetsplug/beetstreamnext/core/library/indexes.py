@@ -70,7 +70,7 @@ class Index(ABC):
 
 class SongIndex(Index):
     """
-    Beets IDs of songs by MBID (or Spotify/Deezer ID) and path hash, and Subsonic ID and album.
+    Beets IDs of songs by MBID (or Spotify/Deezer ID), path hash and (artist, title), and Subsonic ID and album.
     """
 
     def __init__(self, lib, music_root):
@@ -79,16 +79,19 @@ class SongIndex(Index):
         self.by_hash: dict[str, int] = {}
         self.subsonic_ids: dict[int, str] = {}
         self.album_of: dict[int, int] = {}      # beets song ID -> beets album ID
+        self._by_name: dict[tuple[str, str], list[int]] = {}   # (artist, title) casefolded -> beets song IDs
+
+        artists_col = 'artists' if 'artists' in library_cache.schema('items') else 'NULL'
 
         with lib.transaction() as tx:
             rows = tx.query(
-                """
-                SELECT id, path, mb_releasetrackid, mb_trackid, album_id
+                f"""
+                SELECT id, path, mb_releasetrackid, mb_trackid, album_id, title, artist, albumartist, {artists_col}
                 FROM items
                 ORDER BY id DESC
-                """)
+                """)  # nosec B608  # noqa: S608 vars are constants
 
-        for beets_id, path, release_track_id, track_id, album_id in rows:
+        for beets_id, path, release_track_id, track_id, album_id, title, artist, albumartist, artists in rows:
             digest = path_hash(path, music_root)
             self.by_hash[digest] = beets_id
             self.subsonic_ids[beets_id] = IDs.song_id(release_track_id or track_id, digest, beets_id)
@@ -97,6 +100,10 @@ class SongIndex(Index):
 
             for mbid in filter(None, (str(release_track_id or '').strip(), str(track_id or '').strip())):
                 self.by_mbid[mbid] = beets_id
+
+            if title:
+                for name in {artist, albumartist, *split_beets_multi(artists or '')} - {None, ''}:
+                    self._by_name.setdefault((name.casefold(), title.casefold()), []).append(beets_id)
 
         # Fallback: IDs recorded by non-MB source plugin (Spotify, Deezer...)
         with lib.transaction() as tx:
@@ -112,6 +119,10 @@ class SongIndex(Index):
         for beets_id, value in source_rows:
             if str(value) not in primary:
                 self.by_mbid[str(value)] = beets_id
+
+    def named(self, artist: str, title: str) -> list[int]:
+        """Beets IDs of songs with this title and this artist (case ignored)."""
+        return self._by_name.get(((artist or '').casefold(), (title or '').casefold()), [])[::-1]
 
     def id_of(self, item) -> str:
         """Subsonic ID of a beets item (Item, row or dict)."""

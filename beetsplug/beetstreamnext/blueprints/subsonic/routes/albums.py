@@ -8,6 +8,7 @@ from beetsplug.beetstreamnext.utils.general import page_offset, page_size
 from beetsplug.beetstreamnext.utils.text import safe_str, validate_mbid
 from beetsplug.beetstreamnext.utils.db import library_cache, chunked_query
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex, AlbumIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -67,18 +68,11 @@ def endpoint_get_album_info() -> flask.Response:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
     if IDs.decode_type(req_id) == 'song':
-        item = Resolve.song(req_id)
-        beets_album_id = item.get('album_id') if item else None
+        beets_song_id = Resolve.song_ids([req_id]).get(req_id)
+        beets_album_id = SongIndex.get().album_of.get(beets_song_id)
 
-        album = flask.g.lib.get_album(beets_album_id) if beets_album_id else None
-        image_id = (
-            IDs.encode_album(
-                beets_album_id,
-                album.get('mb_albumid'),
-                album.get('albumartist'),
-                album.get('album')
-            ) if album else req_id
-        )
+        album = flask.g.lib.get_album(beets_album_id) if beets_album_id is not None else None
+        image_id = AlbumIndex.get().subsonic_ids.get(beets_album_id, req_id)
 
     else:
         album = Resolve.album(req_id)

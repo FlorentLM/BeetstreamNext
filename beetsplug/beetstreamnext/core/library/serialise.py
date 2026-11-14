@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Sequence, Callable
 import flask
+from beets.dbcore.query import InQuery
 from beets.library import LibModel, Item
 
 from beetsplug.beetstreamnext.application import app
@@ -198,7 +199,15 @@ class Serialise:
 
         if with_albums:
 
-            albums = [a for a in (flask.g.lib.get_album(album_id) for album_id in artist.album_ids) if a]
+            wanted = list(artist.album_ids)
+            by_id = {}
+
+            sqlite_lim = 500    # SQLite limit of bound parameters
+
+            for start in range(0, len(wanted), sqlite_lim):
+                for album in flask.g.lib.albums(InQuery('id', wanted[start:start + sqlite_lim])):
+                    by_id[album.id] = album
+            albums = [by_id[album_id] for album_id in wanted if album_id in by_id]
 
             preload_albums(albums)
             song_counts = get_song_counts(albums)

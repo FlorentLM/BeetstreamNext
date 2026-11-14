@@ -49,6 +49,7 @@ htmlcov/
 TODOs.md
 .*
 !.github/
+releasenotes.md
 
 # temporarily ignoring tests
 tests/integrated/

@@ -225,30 +225,25 @@ def endpoint_get_top_songs() -> flask.Response:
             lastfm_resp = query_lastfm(q=artist.name, data_type='artist', method='TopTracks', is_mbid=False)
 
         lastfm_tracks = lastfm_resp.get('toptracks', {}).get('track', [])
-        lastfm_track_names = [t.get('name', '') for t in lastfm_tracks if t.get('name')]
 
-        if lastfm_track_names:
-            placeholders = ','.join(['?'] * len(lastfm_track_names))
-            columns = library_cache.schema('items')
-            name_conditions, name_params = sql_conditions_for(artist.name, [f for f in ('artist', 'artists') if f in columns])
-            sql = f"""
-                   SELECT * FROM items 
-                   WHERE (albumartist = ? OR {' OR '.join(name_conditions)})
-                     AND title IN ({placeholders})
-                   """  # nosec B608  # noqa: S608 vars are constants
-            with flask.g.lib.transaction() as tx:
-                top_tracks_available = [s for s in tx.query(sql, [artist.name, *name_params, *lastfm_track_names]) if credited(s)]
+        index = SongIndex.get()
+        wanted = dict.fromkeys(i for t in lastfm_tracks for i in index.named(artist.name, t.get('name')))     # Last.fm order
 
-            top_tracks_available = exclusions().songs(top_tracks_available, scope='lists')
-            if top_tracks_available:
-                preload_songs(top_tracks_available)
+        with flask.g.lib.transaction() as tx:
+            rows = {row['id']: row for row in chunked_query(tx, 'SELECT * FROM items WHERE id IN ({q})', list(wanted))}
 
-                payload = {
-                    'topSongs': {
-                        'song': [Serialise.song(s) for s in top_tracks_available]
-                    }
+        top_tracks_available = [rows[i] for i in wanted if i in rows and credited(rows[i])]
+        top_tracks_available = exclusions().songs(top_tracks_available, scope='lists')[:count]
+
+        if top_tracks_available:
+            preload_songs(top_tracks_available)
+
+            payload = {
+                'topSongs': {
+                    'song': [Serialise.song(s) for s in top_tracks_available]
                 }
-                return subsonic_response(payload, resp_fmt=resp_fmt)
+            }
+            return subsonic_response(payload, resp_fmt=resp_fmt)
 
     # Fallback to local play stats
     with database() as db:

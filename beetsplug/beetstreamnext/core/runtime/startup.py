@@ -23,7 +23,7 @@ from beetsplug.beetstreamnext.constants import (
 )
 from beetsplug.beetstreamnext.core.accounts.commands import check_onboarding
 from beetsplug.beetstreamnext.core.storage.encryption import ensure_secret, rotate_session_key
-from beetsplug.beetstreamnext.core.library.import_watcher import ImportWatcher
+from beetsplug.beetstreamnext.core.library.watchers import ImportWatcher
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.health import startup_path_check
 from beetsplug.beetstreamnext.core.runtime.logging import LOG_LEVEL, RedactingTransLogger, apply_logs_redaction, bsn_logger

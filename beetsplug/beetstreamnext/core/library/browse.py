@@ -4,7 +4,7 @@ from typing import Any
 import flask
 
 from beetsplug.beetstreamnext.constants import BEETS_MULTI_DELIM
-from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 from beetsplug.beetstreamnext.utils.db import escape_like, library_cache, quote_identifier
 from beetsplug.beetstreamnext.utils.text import split_beets_multi
 
@@ -120,6 +120,7 @@ class LibraryView:
                 [*source_params, *params, size, (max(1, page) - 1) * size]
             )
 
+        index = SongIndex.get()
         data = []
         for row in rows:
             record = {}
@@ -134,6 +135,6 @@ class LibraryView:
 
                 record[name] = value
 
-            data.append({'id': IDs.encode_song({**record, 'id': record['item_id']}), **record})
+            data.append({'id': index.id_of({**record, 'id': record['item_id']}), **record})
 
         return data, total

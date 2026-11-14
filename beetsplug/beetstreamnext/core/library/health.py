@@ -20,7 +20,7 @@ from beetsplug.beetstreamnext.core.services.events import admin_events
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.ids import IDs
-from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
+from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex, SongIndex
 from beetsplug.beetstreamnext.constants import FFMPEG_INPUT_ARGS, START_TIME, SERVER_VERSION
 from beetsplug.beetstreamnext.core.library.beets.interaction import config_path
 from beetsplug.beetstreamnext.utils.system import find_binary, binary_version, resolve_path
@@ -546,9 +546,8 @@ def scan_library(full: bool = False) -> dict[str, int]:
                 """
             ).fetchall()
 
-            song_ids = {
-                item['id']: IDs.encode_song({**item, 'path': os.fsdecode(item['path'] or b'')}) for item in items
-            }
+            index = SongIndex.get()
+            song_ids = {item['id']: index.id_of(item) for item in items}
 
             failing_before = _failing_checks(db)
 

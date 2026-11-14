@@ -26,10 +26,15 @@ class LibraryCache:
         self._stamp: tuple = ()
         self._buckets: dict[str, dict[Any, Any]] = {}
 
+    @staticmethod
+    def stamp() -> tuple:
+        """Path and mtimes of the beets db and its WAL."""
+        path = os.fsdecode(flask.g.lib.path)
+        return path, *(os.stat(p).st_mtime if os.path.exists(p) else None for p in (path, path + '-wal'))
+
     def __call__(self, name: str) -> dict[Any, Any]:
 
-        path = os.fsdecode(flask.g.lib.path)
-        stamp = (path, *(os.stat(p).st_mtime if os.path.exists(p) else None for p in (path, path + '-wal')))
+        stamp = self.stamp()
 
         with self._lock:
             if stamp != self._stamp:

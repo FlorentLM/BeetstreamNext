@@ -24,6 +24,7 @@ from beetsplug.beetstreamnext.core.runtime.web import external_url, send_file
 from beetsplug.beetstreamnext.utils.system import safe_filename
 from beetsplug.beetstreamnext.utils.text import format_duration
 from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex, AlbumIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 
@@ -74,19 +75,21 @@ def _is_shared(share_id: str, entry_id: str) -> bool:
             """, (share_id,)
         ).fetchall()]
 
-    entry_type, item = Resolve.any(entry_id)
-    if entry_type != 'song':
+    if IDs.decode_type(entry_id) != 'song':
+        return False
+
+    beets_id = Resolve.song_ids([entry_id]).get(entry_id)
+    if beets_id is None:
         return False
 
     playlists = [e for e in entries if IDs.decode_type(e) == 'playlist']
-    if item and playlists and any(song.id == item.id for song in Resolve.shared_items(playlists)[0]):
+    if playlists and any(song.id == beets_id for song in Resolve.shared_items(playlists)[0]):
         return True
 
-    album_id = item.get('album_id') if item else None
-    if not album_id:
+    sub_album_id = AlbumIndex.get().subsonic_ids.get(SongIndex.get().album_of.get(beets_id))
+    if not sub_album_id:
         return False
 
-    sub_album_id = IDs.encode_album(album_id, item.get('mb_albumid'), item.get('albumartist'), item.get('album'))
     with database() as db:
         album_match = db.execute(
             """

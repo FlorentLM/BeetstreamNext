@@ -12,6 +12,7 @@ from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.lrc import Lrc
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 from beetsplug.beetstreamnext.core.library.resolve import Resolve, beets_abspath
 
 from beetsplug.beetstreamnext.application import app
@@ -134,19 +135,12 @@ def endpoint_get_lyrics() -> flask.Response:
     if not artist or not title:
         return subsonic_error(10, resp_fmt=resp_fmt)
 
-    with flask.g.lib.transaction() as tx:
-        rows = tx.query(
-            """
-            SELECT id FROM items 
-            WHERE lower(artist) = lower(?) AND lower(title) = lower(?) 
-            LIMIT 1
-            """, (artist, title)
-        )
+    beets_ids = SongIndex.get().named(artist, title)
+    item = flask.g.lib.get_item(beets_ids[0]) if beets_ids else None
 
-    if not rows:
+    if item is None:
         return subsonic_error(70, message='Song not found.', resp_fmt=resp_fmt)
 
-    item = flask.g.lib.get_item(rows[0][0])
     data = _fetch_lyrics_data(item)
 
     if not data:

@@ -208,16 +208,55 @@ def safe_join(base_dir: Path, *parts: str, error: str = 'Path escapes base direc
     return target
 
 
-def path_hash(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
-    """Short hash of a file's path relative to music_root."""
-    if not path:
-        return ''
+def _posix_norm(p: str) -> str:
+    """same as PurePosixPath(p).as_posix()"""
+    lead = '//' if p.startswith('//') and not p.startswith('///') else '/' if p.startswith('/') else ''
+    return (lead + '/'.join(x for x in p.split('/') if x and x != '.')) or '.'
+
+
+@lru_cache(maxsize=8)
+def _root_prefix(music_root: bytes | str | Path) -> str:
+    """Normalised root with trailing slash"""
+    root = _posix_norm(os.fsdecode(music_root))
+    return root if root.endswith('/') else root + '/'
+
+
+def _path_hash_pathlib(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
+    """pathlib version for cases path_hash doesnt reimplement."""
     path = Path(os.fsdecode(path))
     try:
         rel = path.relative_to(os.fsdecode(music_root)).as_posix()
     except ValueError:
         rel = path.as_posix()
-    return hashlib.sha1(rel.encode('utf-8'), usedforsecurity=False).hexdigest()[:16]
+    return hashlib.sha1(rel.encode('utf-8', 'surrogateescape'), usedforsecurity=False).hexdigest()[:16]
+
+
+def path_hash(path: bytes | str | Path, music_root: bytes | str | Path) -> str:
+    """
+    Short hash of a file's path relative to music_root.
+    """
+    if not path:
+        return ''
+    if os.name == 'nt':
+        return _path_hash_pathlib(path, music_root)
+
+    p = os.fsdecode(path)
+    if '//' in p or '/.' in p or p.endswith('/') or p.startswith('./') or p == '.':
+        p = _posix_norm(p)
+
+    prefix = _root_prefix(music_root)
+    if p.startswith('//') or prefix.startswith('//'):   # POSIX keeps a leading '//' as its own root
+        return _path_hash_pathlib(path, music_root)
+
+    if prefix == './':          # Empty or '.' root: pathlib only strips it from relative paths
+        rel = p
+    elif p.startswith(prefix):
+        rel = p[len(prefix):] or '.'    # '/' is both the path and the root
+    elif p + '/' == prefix:     # The root itself
+        rel = '.'
+    else:
+        rel = p
+    return hashlib.sha1(rel.encode('utf-8', 'surrogateescape'), usedforsecurity=False).hexdigest()[:16]
 
 
 def make_hidden(filepath: bytes | str | Path) -> None:

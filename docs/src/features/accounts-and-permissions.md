@@ -43,7 +43,7 @@ A new user account starts with the defaults above unless overridden at creation.
 
 ## User account page
 
-Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, [app passwords](./app-passwords.md), and internet radio stations, and (if they are allowed) their public shares and podcast subscriptions.
+Users with the **Settings** role can sign in at `/login`, and can manage their avatar, email, password, [streaming bitrate limit](./streaming.md#per-user-bitrate-limit), [app passwords](./app-passwords.md), and internet radio stations, and (if they are allowed) their public shares and podcast subscriptions.
 
 > [!IMPORTANT]
 > Admins who sign in on a listener without the `admin` scope (see [`admin_hosts`](../configuration.md#admin_hosts) and [`admin_port`](../configuration.md#admin_port)) see the non-admin view of their account.

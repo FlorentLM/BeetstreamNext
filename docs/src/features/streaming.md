@@ -8,6 +8,16 @@ You can set `never_transcode` to always stream the original file regardless of w
 
 Direct play means fully lossless, bit-perfect streaming: FLAC, ALAC, and other lossless formats are sent to the client exactly as they sit in your library.
 
+## Per-user bitrate limit
+
+Each user can have a maximum streaming bitrate (from 32 to 320 kbps, or _No limit_ by default). Songs above the limit are transcoded to it:
+
+- If the client requests a lower bitrate, the lower one is used. If it requests a higher one (or none), the user's limit applies.
+
+- It also caps the adaptive HLS variants, and playback in the Web UI.
+
+- It applies even when `never_transcode` is on (that setting only stops transcoding to a different _format_).
+
 ## Adaptive-bitrate HLS
 
 For clients that request it, BeetstreamNext supports OpenSubsonic's [HLS](https://opensubsonic.netlify.app/docs/endpoints/hls/) spec and can serve AAC HLS with adaptive bitrate, allowing the client's player switch quality on the fly as network conditions change.

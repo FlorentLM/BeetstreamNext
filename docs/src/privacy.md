@@ -10,7 +10,7 @@ Everything stays in your Beets library and BeetstreamNext's own database, on you
 
 - User accounts (usernames, password hashes, and app passwords),
 
-- Ratings, likes, playlists, bookmarks, play queues, play counts and chat messages
+- Ratings, likes, playlists, bookmarks, play queues, play counts, a timestamped history of every play (this can be turned off per-user), and chat messages
 
 - Web UI sessions, including the IP address and user agent they were opened from
 

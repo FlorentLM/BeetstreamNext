@@ -236,6 +236,21 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_11_VER
 
+    ## _________ Migration 12: Version 11 -> 12 (play history opt out), 18/11/2026
+    MIGRATION_12_VER = 12
+
+    if curr_version < MIGRATION_12_VER:
+        have_users = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"""
+        ).fetchone()
+
+        if have_users:
+            columns = [row[1] for row in cursor.execute("""PRAGMA table_info(users)""")]
+            if 'playHistoryEnabled' not in columns:
+                cursor.execute("""ALTER TABLE users ADD COLUMN playHistoryEnabled INTEGER DEFAULT 1""")
+
+        curr_version = MIGRATION_12_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

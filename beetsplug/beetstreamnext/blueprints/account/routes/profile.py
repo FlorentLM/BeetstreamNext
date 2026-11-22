@@ -28,7 +28,7 @@ def route_account() -> str:
     username = flask.g.account_user
 
     user = get_userdata(username, fields=[
-        'username', 'email', 'maxBitRate', 'avatarLastChanged', *[r[0] for r in USER_ROLES_SCHEMA]
+        'username', 'email', 'maxBitRate', 'playHistoryEnabled', 'avatarLastChanged', *[r[0] for r in USER_ROLES_SCHEMA]
     ])
 
     form = AccountProfileForm(formdata=None, data=user)
@@ -68,6 +68,7 @@ def route_update_profile() -> str:
             username,
             email=safe_str(form.email.data) if form.email.data else '',
             maxBitRate=form.maxBitRate.data,
+            playHistoryEnabled=int(form.playHistoryEnabled.data),
         )
     except ValueError as e:
         return flask.render_template('partials/action_result.html', message=str(e), ok=False)

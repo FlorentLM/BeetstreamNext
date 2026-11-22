@@ -52,6 +52,7 @@ def export_user_data(username: str) -> dict[str, Any]:
             'ratings': _get_rows(db, "SELECT item_id, rating, rated_at FROM ratings WHERE username = ?", (username,)),
             'bookmarks': _get_rows(db, "SELECT song_id, position, comment, created, changed FROM bookmarks WHERE username = ?", (username,)),
             'play_stats': _get_rows(db, "SELECT song_id, play_count, last_played FROM play_stats WHERE username = ?", (username,)),
+            'play_history': _get_rows(db, "SELECT song_id, played_at, source FROM play_history WHERE username = ? ORDER BY played_at", (username,)),
             'play_queue': play_queue[0] if play_queue else None,
             'shares': shares,
             'podcast_subscriptions': _get_rows(db, """

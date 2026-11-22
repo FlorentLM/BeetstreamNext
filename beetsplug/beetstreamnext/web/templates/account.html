@@ -64,6 +64,12 @@
                         <span class="label-hint">An administrator limited your streaming to {{ user.maxBitRate }} kbps.</span>
                     {% endif %}
                 </div>
+                <div class="form-group">
+                    <label class="role-item">
+                        {{ profile_form.playHistoryEnabled() }} {{ profile_form.playHistoryEnabled.label.text }}
+                        <span class="role-item-hint">&middot; Records what you play and when, in addition to play counts</span>
+                    </label>
+                </div>
                 <button type="submit" class="btn btn-primary">Save</button>
             </form>
 

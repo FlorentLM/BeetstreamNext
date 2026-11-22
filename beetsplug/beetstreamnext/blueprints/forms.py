@@ -65,6 +65,7 @@ class EditUserForm(FlaskForm):
     password = new_password_field('New password (leave blank to keep current)', required=False)
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
+    playHistoryEnabled = BooleanField('Keep play history')
 
 
 class AccountProfileForm(FlaskForm):
@@ -73,6 +74,7 @@ class AccountProfileForm(FlaskForm):
     """
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
     maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
+    playHistoryEnabled = BooleanField('Keep play history')
 
 
 class ChangePasswordForm(PasswordConfirmMixin, FlaskForm):

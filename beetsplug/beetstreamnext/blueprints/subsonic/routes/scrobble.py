@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import time
 import flask
 
@@ -15,6 +16,34 @@ from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.indexes import SongIndex
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.services.scrobbling import service as scrobbling
+
+
+def _record_play(db, username: str, song_id: str, played_at: float) -> bool:
+    """
+    Count and record a play in the history (unless user opted out).
+    Returns False if play is already in history.
+    """
+    if flask.g.user_data.get('playHistoryEnabled', 1) != 0:
+        inserted = db.execute(
+            """
+            INSERT OR IGNORE INTO play_history (username, song_id, played_at)
+            VALUES (?, ?, ?)
+            """, (username, song_id, played_at)
+        ).rowcount
+        if not inserted:
+            return False
+
+    db.execute(
+        """
+        INSERT INTO play_stats (username, song_id, play_count, last_played)
+        VALUES (?, ?, 1, ?)
+        ON CONFLICT (username, song_id)
+            DO UPDATE SET play_count  = play_count + 1,
+                          last_played = MAX(COALESCE(last_played, 0), excluded.last_played)
+        """, (username, song_id, played_at)
+    )
+    return True
+
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/scrobble/
 @subsonic_bp.route('/scrobble', methods=['GET', 'POST'])
@@ -98,17 +127,8 @@ def endpoint_scrobble() -> flask.Response:
                 except (IndexError, ValueError):
                     played_at = now
 
-                db.execute(
-                    """
-                    INSERT INTO play_stats (username, song_id, play_count, last_played)
-                    VALUES (?, ?, 1, ?)
-                    ON CONFLICT (username, song_id)
-                    DO UPDATE SET
-                        play_count  = play_count + 1,
-                        last_played = excluded.last_played
-                    """, (username, canonical_id, played_at)
-                )
-                to_scrobble.append((item, played_at))
+                if _record_play(db, username, canonical_id, played_at):
+                    to_scrobble.append((item, played_at))
 
     for item, played_at in to_scrobble:
         scrobbling.scrobble(username, item, played_at)
@@ -243,16 +263,7 @@ def endpoint_report_playback() -> flask.Response:
                 ).fetchone()
 
                 if session and not session['scrobbled']:
-                    # Update play stats
-                    db.execute(
-                        """
-                        INSERT INTO play_stats (username, song_id, play_count, last_played)
-                        VALUES (?, ?, 1, ?)
-                        ON CONFLICT (username, song_id)
-                            DO UPDATE SET play_count  = play_count + 1,
-                                          last_played = excluded.last_played
-                        """, (username, canonical_id, now)
-                    )
+                    counted = _record_play(db, username, canonical_id, now)
                     # Mark as scrobbled to not count again until the next 'starting' state
                     db.execute(
                         """
@@ -261,7 +272,6 @@ def endpoint_report_playback() -> flask.Response:
                         WHERE username = ?
                         """, (username,)
                     )
-                    counted = True
 
             if counted:
                 scrobbling.scrobble(username, item, now)

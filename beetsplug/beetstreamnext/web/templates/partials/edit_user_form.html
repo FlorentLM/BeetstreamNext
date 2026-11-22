@@ -52,6 +52,15 @@
         <label class="role-item role-item-standalone">{{ edit_form.scrobblingEnabled() }} Scrobbling</label>
     </div>
 
+    {% if user.username == current_username %}
+    <div class="form-group">
+        <label class="role-item">
+            {{ edit_form.playHistoryEnabled() }} {{ edit_form.playHistoryEnabled.label.text }}
+            <span class="role-item-hint">&middot; Records what you play and when, in addition to play counts</span>
+        </label>
+    </div>
+    {% endif %}
+
     <button type="submit" class="btn btn-primary btn-full">Save changes</button>
 </form>
 

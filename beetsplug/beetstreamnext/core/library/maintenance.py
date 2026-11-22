@@ -121,6 +121,7 @@ _SONG_REF_TABLES = (
     ('dislikes', 'item_id'),
     ('ratings', 'item_id'),
     ('play_stats', 'song_id'),
+    ('play_history', 'song_id'),
     ('play_queue', 'current'),
     ('play_queue_entries', 'song_id'),
     ('share_entries', 'item_id'),

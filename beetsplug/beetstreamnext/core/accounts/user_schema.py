@@ -31,7 +31,7 @@ _ROLE_NAMES = {role[0] for role in USER_ROLES_SCHEMA}
 
 ALL_USER_FIELDS = frozenset({
     'username', 'password', 'email', 'avatar', 'avatarLastChanged',
-    'folder', 'maxBitRate'
+    'folder', 'maxBitRate', 'playHistoryEnabled'
 } | _ROLE_NAMES)
 
 PRIVATE_USER_FIELDS = frozenset({'password', 'avatar'})
@@ -55,6 +55,7 @@ def users_table_sql(table: str = 'users') -> str:
             avatarLastChanged   REAL,
             folder              INTEGER DEFAULT 0,
             maxBitRate          INTEGER DEFAULT 0,  -- 0 = no limit, otherwise kbps: 32/40/48/56/64/80/96/112/128/160/192/224/256/320
+            playHistoryEnabled  INTEGER DEFAULT 1,  -- 0 = user opted out of history
             {role_columns_sql}
         )
         """

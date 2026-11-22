@@ -460,6 +460,20 @@ def initialise_db() -> None:
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS play_history
+        (
+            username  TEXT NOT NULL,
+            song_id   TEXT NOT NULL,                 -- Subsonic song ID
+            played_at REAL NOT NULL,
+            source    TEXT NOT NULL DEFAULT 'local', -- 'local', or service it was imported from
+            PRIMARY KEY (username, song_id, played_at),
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+        )
+        """
+    )
+
+    cur.execute(
+        """
         -- one row per (song, check kind): a background health scan's findings for a song.
         CREATE TABLE IF NOT EXISTS song_checks
         (
@@ -548,6 +562,7 @@ def initialise_db() -> None:
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_username        ON likes(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_dislikes_username     ON dislikes(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_username   ON play_stats(username);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_history_user_time ON play_history(username, played_at);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_bookmarks_username    ON bookmarks(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_username      ON ratings(username);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_queue_username   ON play_queue_entries(username);""")
@@ -557,6 +572,7 @@ def initialise_db() -> None:
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_likes_item_id         ON likes(item_id);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_ratings_item_id       ON ratings(item_id);""")
     cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_stats_song_id    ON play_stats(song_id);""")
+    cur.execute("""CREATE INDEX IF NOT EXISTS idx_play_history_song_id  ON play_history(song_id);""")
 
     conn.commit()
     conn.close()

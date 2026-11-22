@@ -109,6 +109,11 @@ def route_update_user(username) -> str | flask.Response:
         if form.password.data:
             updates['password'] = form.password.data
 
+        if username == flask.session.get('username'):
+            updates['playHistoryEnabled'] = int(updates['playHistoryEnabled'])
+        else:
+            updates.pop('playHistoryEnabled', None)
+
         avatar = read_uploaded_image()
 
         update_user(username, **updates)

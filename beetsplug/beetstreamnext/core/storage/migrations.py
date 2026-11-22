@@ -251,6 +251,21 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_12_VER
 
+    ## _________ Migration 13: Version 12 -> 13 (user bitrate preference separate from admin cap), 22/11/2026
+    MIGRATION_13_VER = 13
+
+    if curr_version < MIGRATION_13_VER:
+        have_users = cursor.execute(
+            """SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"""
+        ).fetchone()
+
+        if have_users:
+            columns = [row[1] for row in cursor.execute("""PRAGMA table_info(users)""")]
+            if 'bitRatePreference' not in columns:
+                cursor.execute("""ALTER TABLE users ADD COLUMN bitRatePreference INTEGER DEFAULT 0""")
+
+        curr_version = MIGRATION_13_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

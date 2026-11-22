@@ -59,7 +59,7 @@
                 </div>
                 <div class="form-group">
                     <label>Max bitrate</label>
-                    {{ profile_form.maxBitRate() }}
+                    {{ profile_form.bitRatePreference() }}
                     {% if user.maxBitRate %}
                         <span class="label-hint">An administrator limited your streaming to {{ user.maxBitRate }} kbps.</span>
                     {% endif %}

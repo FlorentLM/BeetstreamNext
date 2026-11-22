@@ -8,6 +8,7 @@ import flask
 from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.blueprints.shared import route_registrar
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_user_roles
+from beetsplug.beetstreamnext.core.accounts.user_schema import effective_bitrate
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.media.images import round_image_size, send_album_art
 from beetsplug.beetstreamnext.core.media.transcode import FORMAT_MAP, get_normalization_filter, try_transcode
@@ -77,7 +78,7 @@ def register_playback_routes(bp: flask.Blueprint, login_required: Callable) -> N
     @with_app_context
     def stream(track_id: str) -> flask.Response:
         """Stream a track in the browser."""
-        return browser_play(track_id, streamer_roles().get('maxBitRate') or 0)
+        return browser_play(track_id, effective_bitrate(streamer_roles()))
 
     @route('/art/<int:album_id>', ['GET'])
     @with_app_context

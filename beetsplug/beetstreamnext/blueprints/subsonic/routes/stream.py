@@ -21,6 +21,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.general import api_bool, subprocess_env
 from beetsplug.beetstreamnext.core.runtime.web import send_file
+from beetsplug.beetstreamnext.core.accounts.user_schema import effective_bitrate
 from beetsplug.beetstreamnext.utils.system import get_mimetype, find_binary, resolve_path
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
@@ -193,7 +194,7 @@ def endpoint_stream_song() -> flask.Response | None:
     time_offset = r.get('timeOffset', default=0.0, type=float)
     estimate_length = r.get('estimateContentLength', default=False, type=api_bool)
 
-    user_max_bitrate = flask.g.user_data.get('maxBitRate', 0)
+    user_max_bitrate = effective_bitrate(flask.g.user_data)
     if user_max_bitrate > 0:
         max_bitrate = min(user_max_bitrate, max_bitrate) if max_bitrate > 0 else user_max_bitrate
 
@@ -297,7 +298,7 @@ def endpoint_get_transcode_decision() -> flask.Response:
     source_is_lossless = is_lossless(source_format)
 
     # User profile limit (in bps)
-    user_max_br = flask.g.user_data.get('maxBitRate', 0) * 1000
+    user_max_br = effective_bitrate(flask.g.user_data) * 1000
 
     source_stream = {
         'protocol': 'http',
@@ -507,7 +508,7 @@ def endpoint_hls() -> flask.Response | None:
         bitrates = [_snap_bitrate(max_br if max_br > 0 else 160)]
 
     # Cap at user max bitrate
-    user_max_bitrate = flask.g.user_data.get('maxBitRate', 0)
+    user_max_bitrate = effective_bitrate(flask.g.user_data)
     if user_max_bitrate > 0:
         bitrates = [min(br, user_max_bitrate) for br in bitrates]
 

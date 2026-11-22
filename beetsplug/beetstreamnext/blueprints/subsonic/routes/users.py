@@ -5,7 +5,7 @@ import flask
 from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.constants import ALLOWED_BITRATES
-from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA
+from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, effective_bitrate
 from beetsplug.beetstreamnext.utils.general import api_bool
 from beetsplug.beetstreamnext.utils.text import safe_str
 from beetsplug.beetstreamnext.blueprints.subsonic.responses import subsonic_response, subsonic_error
@@ -35,7 +35,7 @@ def user_payload(user_data: dict) -> dict:
     payload = {
         'username': user_data.get('username', ''),
         'email': user_data.get('email') or '',
-        'maxBitRate': int(user_data.get('maxBitRate', 0)),
+        'maxBitRate': effective_bitrate(user_data),
         'folder': [0],  # Beets has only one 'folder'
     }
 

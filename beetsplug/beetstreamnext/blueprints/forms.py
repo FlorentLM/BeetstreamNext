@@ -70,10 +70,10 @@ class EditUserForm(FlaskForm):
 
 class AccountProfileForm(FlaskForm):
     """
-    Form for a user editing their own settings. Choices for maxBitRate are set per request.
+    Form for a user editing their own settings. Choices for bitRatePreference are set per request.
     """
     email = StringField('Email', validators=[Optional(), Length(max=254), Email(message='Invalid email address.')])
-    maxBitRate = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
+    bitRatePreference = SelectField('Max bitrate', choices=BITRATE_CHOICES_STR, coerce=int)
     playHistoryEnabled = BooleanField('Keep play history')
 
 

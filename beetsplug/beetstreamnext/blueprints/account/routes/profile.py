@@ -18,7 +18,7 @@ from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
 from beetsplug.beetstreamnext.blueprints.forms import RadioStationForm, AppPasswordForm, AccountProfileForm, ChangePasswordForm, DeleteAccountForm, form_error_messages
 from beetsplug.beetstreamnext.core.media.avatars import save_uploaded_avatar, avatar_response
-from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, allowed_bitrates
+from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, allowed_bitrates, effective_bitrate
 
 
 @account_bp.route('/', methods=['GET'])
@@ -28,11 +28,12 @@ def route_account() -> str:
     username = flask.g.account_user
 
     user = get_userdata(username, fields=[
-        'username', 'email', 'maxBitRate', 'playHistoryEnabled', 'avatarLastChanged', *[r[0] for r in USER_ROLES_SCHEMA]
+        'username', 'email', 'maxBitRate', 'bitRatePreference', 'playHistoryEnabled', 'avatarLastChanged',
+        *[r[0] for r in USER_ROLES_SCHEMA]
     ])
 
-    form = AccountProfileForm(formdata=None, data=user)
-    form.maxBitRate.choices = allowed_bitrates(int(user.get('maxBitRate') or 0))
+    form = AccountProfileForm(formdata=None, data={**user, 'bitRatePreference': effective_bitrate(user)})
+    form.bitRatePreference.choices = allowed_bitrates(int(user.get('maxBitRate') or 0))
 
     return flask.render_template(
         'account.html',
@@ -54,10 +55,10 @@ def route_account() -> str:
 def route_update_profile() -> str:
 
     username = flask.g.account_user
-    current_limit = int(get_userdata(username, fields=['maxBitRate']).get('maxBitRate') or 0)
+    cap = int(get_userdata(username, fields=['maxBitRate']).get('maxBitRate') or 0)
 
     form = AccountProfileForm()
-    form.maxBitRate.choices = allowed_bitrates(current_limit)
+    form.bitRatePreference.choices = allowed_bitrates(cap)
 
     if not form.validate_on_submit():
         return flask.render_template('partials/action_result.html', message=' '.join(form_error_messages(form)), ok=False)
@@ -67,7 +68,7 @@ def route_update_profile() -> str:
         update_user(
             username,
             email=safe_str(form.email.data) if form.email.data else '',
-            maxBitRate=form.maxBitRate.data,
+            bitRatePreference=form.bitRatePreference.data,
             playHistoryEnabled=int(form.playHistoryEnabled.data),
         )
     except ValueError as e:

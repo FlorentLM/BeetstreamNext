@@ -12,7 +12,7 @@ from beetsplug.beetstreamnext.core.media.artist_images import (
 from beetsplug.beetstreamnext.core.media.images import safe_open_image
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.events import admin_events
-from beetsplug.beetstreamnext.core.services.external.deezer import query_deezer, DeezerUnavailable
+from beetsplug.beetstreamnext.core.services.external.deezer import deezer_service, DeezerUnavailable
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
 from beetsplug.beetstreamnext.utils.concurrency import SingleAccess
 
@@ -82,7 +82,7 @@ class ArtistImageFetcher:
 
         for candidate in candidates:
             try:
-                data = query_deezer(artist=candidate)
+                data = deezer_service.search(artist=candidate)
             except DeezerUnavailable:
                 failed = True
                 continue

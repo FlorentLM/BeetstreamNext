@@ -18,7 +18,7 @@ def sign(params: dict[str, Any], secret: str) -> str:
     return md5_hex(raw + secret)
 
 
-class LastFmScrobbler(ScrobblerBase):
+class LastFMScrobbler(ScrobblerBase):
 
     auth_kind = 'webauth'
     batch_size = 50

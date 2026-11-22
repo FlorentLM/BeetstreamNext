@@ -61,6 +61,7 @@ class ScrobblerBase(ExternalService, ABC):
 
     service: str = ''
     timeout: int = SCROBBLE_HTTP_TIMEOUT_SEC
+    self_hosted = True
     credentials_url: str = ''
     default_url: str = ''
     batch_size: int = SCROBBLE_BATCH_SIZE   # Max listens per request

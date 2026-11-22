@@ -12,8 +12,8 @@ from beets.library import LibModel, Item
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.library.beets.interaction import write_beets_field
 from beetsplug.beetstreamnext.utils.db import library_cache
-from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_musicbrainz
-from beetsplug.beetstreamnext.core.services.external.discogs import query_discogs
+from beetsplug.beetstreamnext.core.services.external.musicbrainz import musicbrainz_service
+from beetsplug.beetstreamnext.core.services.external.discogs import discogs_service
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import (
     preload_songs, preload_albums, one_rating, one_like, one_dislike, one_play_stats, avg_rating, get_song_counts
 )
@@ -274,7 +274,7 @@ class Serialise:
 
         version = data.get('version')  # 'Deluxe Edition', 'Japanese Expanded Edition', etc.
         if not version and subsonic_album['musicBrainzId'] and app.config.get('fetch_album_version'):
-            mb_data = query_musicbrainz(subsonic_album['musicBrainzId'], data_type='album', cached_only=cached_only)
+            mb_data = musicbrainz_service.query(subsonic_album['musicBrainzId'], data_type='album', cached_only=cached_only)
             version = mb_data.get('disambiguation')
 
             if version and app.config.get('save_album_version'):
@@ -364,7 +364,7 @@ class Serialise:
 
         discogs_avg = None
         if discogs_mode != 'off' and data.get('discogs_albumid') and (discogs_mode == 'prefer' or not local_count):
-            rating = query_discogs(data['discogs_albumid'], cached_only=cached_only).get('community', {}).get('rating', {})
+            rating = discogs_service.release(data['discogs_albumid'], cached_only=cached_only).get('community', {}).get('rating', {})
             if rating.get('average'):
                 discogs_avg = round(rating['average'], 2)
 

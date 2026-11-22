@@ -2,45 +2,44 @@ from __future__ import annotations
 
 from functools import lru_cache
 import asyncio
+import time
 
 from beetsplug.beetstreamnext.constants import WIKI_API, USER_AGENT
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
+from beetsplug.beetstreamnext.core.services.external import ExternalService
 
 
-async def _async_wiki_search(q: str) -> str | None:
+class Wikipedia(ExternalService):
+    """English Wikipedia summaries."""
 
-    if WIKI_API:
+    label = 'Wikipedia'
+
+    @staticmethod
+    @lru_cache(maxsize=512)
+    def _summary(title: str, _cache_ttl_hash: int) -> str | None:
+        """`_cache_ttl_hash` is just to change the cache every hour."""
+
+        if not WIKI_API:
+            return None
+
         import wikipediaapi
-    else:
-        return None
+        from beetsplug.beetstreamnext.utils.text import remove_accents, standard_ascii
 
-    wiki = wikipediaapi.AsyncWikipedia(user_agent=USER_AGENT, language='en', timeout=8)
-    page = wiki.page(q)
+        title = remove_accents(standard_ascii(title))
+        if not title:
+            return None
 
-    if await page.exists():
-        summary = await page.summary
-        return summary
+        async def fetch() -> str | None:
+            page = wikipediaapi.AsyncWikipedia(user_agent=USER_AGENT, language='en', timeout=8).page(title)
+            return await page.summary if await page.exists() else None
 
-    return None
+        try:
+            return asyncio.run(fetch())
+        except Exception as e:
+            bsn_logger.error(f'Wikipedia query failed: {e}')
+            return None
 
+    def summary(self, title: str) -> str | None:
+        return self._summary(title, round(time.time() / 3600))
 
-@lru_cache(maxsize=512)
-def query_wikipedia(q: str, _cache_ttl_hash=None) -> str | None:
-    """`_cache_ttl_hash` is just to change the function signature every x seconds to inactivate the lru."""
-
-    if not WIKI_API:
-        return None
-
-    from beetsplug.beetstreamnext.utils.text import standard_ascii
-    from beetsplug.beetstreamnext.utils.text import remove_accents
-
-    q = standard_ascii(q)
-    q = remove_accents(q)
-    if not q:
-        return None
-
-    try:
-        return asyncio.run(_async_wiki_search(q))
-    except Exception as e:
-        bsn_logger.error(f'Wikipedia query failed: {e}')
-        return None
+wikipedia_service = Wikipedia()

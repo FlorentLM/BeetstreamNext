@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import time
 import urllib.parse
 from collections import defaultdict
 import flask
@@ -11,9 +10,9 @@ from .. import subsonic_bp
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.utils.text import remove_accents, trim_text, safe_str, strip_article, strip_html, validate_mbid
 from beetsplug.beetstreamnext.utils.general import api_bool, page_size
-from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
-from beetsplug.beetstreamnext.core.services.external.wikipedia import query_wikipedia
-from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_wikidata_title
+from beetsplug.beetstreamnext.core.services.external.lastfm import lastfm_service
+from beetsplug.beetstreamnext.core.services.external.musicbrainz import musicbrainz_service
+from beetsplug.beetstreamnext.core.services.external.wikipedia import wikipedia_service
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_artists
 from beetsplug.beetstreamnext.core.storage.connection import database
 from beetsplug.beetstreamnext.core.library.exclusions import exclusions
@@ -168,9 +167,9 @@ def endpoint_artist_info() -> flask.Response:
 
     if app.config['lastfm_api_key']:
         if artist.mbid:
-            data_lastfm = query_lastfm(q=artist.mbid, data_type='artist', method='info', is_mbid=True)
+            data_lastfm = lastfm_service.query(q=artist.mbid, data_type='artist', method='info', is_mbid=True)
         else:
-            data_lastfm = query_lastfm(q=artist.name, data_type='artist', method='info', is_mbid=False)
+            data_lastfm = lastfm_service.query(q=artist.name, data_type='artist', method='info', is_mbid=False)
 
         lastfm_bio = strip_html(data_lastfm.get('artist', {}).get('bio', {}).get('content', ''))     # lastfm community-edited has HTML
 
@@ -185,8 +184,8 @@ def endpoint_artist_info() -> flask.Response:
             short_bio = trim_text(lastfm_bio, char_limit=300)
 
     if not short_bio and app.config.get('fetch_artists_biographies'):
-        wiki_title = (query_wikidata_title(artist.mbid) if artist.mbid else None) or artist.name
-        wiki_bio = query_wikipedia(wiki_title, _cache_ttl_hash=round(time.time() / 3600))
+        wiki_page_name = musicbrainz_service.get_wiki_name(artist.mbid) or artist.name
+        wiki_bio = wikipedia_service.summary(wiki_page_name)
         if wiki_bio:
             short_bio = trim_text(wiki_bio, char_limit=300)
 
@@ -210,9 +209,9 @@ def endpoint_artist_info() -> flask.Response:
 
     if app.config['lastfm_api_key'] and count > 0:
         if artist.mbid:
-            data_similar = query_lastfm(q=artist.mbid, data_type='artist', method='similar', is_mbid=True)
+            data_similar = lastfm_service.query(q=artist.mbid, data_type='artist', method='similar', is_mbid=True)
         else:
-            data_similar = query_lastfm(q=artist.name, data_type='artist', method='similar', is_mbid=False)
+            data_similar = lastfm_service.query(q=artist.name, data_type='artist', method='similar', is_mbid=False)
 
         index = ArtistIndex.get()
         similar_artists = []

@@ -15,8 +15,8 @@ from beetsplug.beetstreamnext.core.library.maintenance import cache_breakdown
 from beetsplug.beetstreamnext.core.library.beets.interaction import read_config, is_import_safe
 from beetsplug.beetstreamnext.core.accounts.users_crud import list_users
 from beetsplug.beetstreamnext.core.services.radio import list_radios
-from beetsplug.beetstreamnext.core.services.external.lastfm import test_lastfm_connection
-from beetsplug.beetstreamnext.core.services.external.audiomuse import test_audiomuse_connection
+from beetsplug.beetstreamnext.core.services.external.lastfm import lastfm_service
+from beetsplug.beetstreamnext.core.services.external import audiomuse
 from beetsplug.beetstreamnext.core.services.external.podcastindex import test_podcastindex_connection
 from beetsplug.beetstreamnext.utils.system import is_writable
 from beetsplug.beetstreamnext.constants import APPRISE, RADIO_BROWSER
@@ -188,14 +188,14 @@ def test_result(result_id: str, ok: bool, message: str) -> str:
 @admin_bp.route('/settings/test/lastfm', methods=['GET'])
 @admin_required
 def route_test_lastfm() -> flask.Response:
-    ok, message = test_lastfm_connection()
+    ok, message = lastfm_service.test_connection()
     return test_result('test-result-lastfm', ok, message)
 
 
 @admin_bp.route('/settings/test/audiomuse', methods=['GET'])
 @admin_required
 def route_test_audiomuse() -> flask.Response:
-    ok, message = test_audiomuse_connection()
+    ok, message = audiomuse.test_connection()
     return test_result('test-result-audiomuse', ok, message)
 
 

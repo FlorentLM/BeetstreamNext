@@ -22,7 +22,7 @@ from beetsplug.beetstreamnext.constants import (
 )
 from beetsplug.beetstreamnext.constants import ALLOWED_THUMBNAIL_SIZES, COVER_EXTRACT_MAX_CONCURRENT, IMAGE_EXTENSIONS
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.services.external.musicbrainz import query_coverartarchive
+from beetsplug.beetstreamnext.core.services.external.musicbrainz import musicbrainz_service
 from beetsplug.beetstreamnext.core.services.external.session import capped_image_fetch
 from beetsplug.beetstreamnext.core.library.indexes import ArtistIndex
 from beetsplug.beetstreamnext.core.media.artist_images import fetched_image_path, uploaded_image
@@ -306,7 +306,7 @@ def _album_art_candidates(album) -> Iterator[Path]:
     mbid = validate_mbid(album.get('mb_albumid'))
 
     image_bytes = (
-        (query_coverartarchive(mbid) if mbid else b'')
+        musicbrainz_service.cover_art(mbid)
         or (image_from_song(album_dir) if album_dir else b'')
         or (playlist_cover.read_bytes() if playlist_cover.is_file() else b'')
     )

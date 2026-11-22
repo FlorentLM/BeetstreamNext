@@ -8,7 +8,7 @@ from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger, mem_log
 from beetsplug.beetstreamnext.core.notifications import notify
 from beetsplug.beetstreamnext.core.library.maintenance import clear_requests_caches, sweep_stale_references, clear_offline_files
 from beetsplug.beetstreamnext.core.library.health import start_health_scan, health_scan, health_stats, flagged_songs
-from beetsplug.beetstreamnext.core.services.external.audiomuse import start_audiomuse_analysis
+from beetsplug.beetstreamnext.core.services.external import audiomuse
 from beetsplug.beetstreamnext.core.library.beets.interaction import read_config, write_config, validate_config, locked_lines
 from beetsplug.beetstreamnext.core.runtime.startup import restart_server
 from beetsplug.beetstreamnext.utils.text import safe_str
@@ -109,7 +109,7 @@ def route_cleanup_offlines() -> str:
 @admin_bp.route('/maintenance/audiomuse-fingerprint', methods=['POST'])
 @admin_required
 def route_audiomuse_fingerprint() -> str:
-    ok, message = start_audiomuse_analysis()
+    ok, message = audiomuse.start_analysis()
     return flask.render_template('partials/action_result.html', message=message, ok=ok)
 
 

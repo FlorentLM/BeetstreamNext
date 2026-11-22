@@ -1,31 +1,19 @@
 from __future__ import annotations
 
 from typing import Any
-import requests
 
-from beetsplug.beetstreamnext.constants import USER_AGENT
-from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
-from beetsplug.beetstreamnext.core.services.external.session import http_session
-
-# TODO: migrate to ExternalService
+from beetsplug.beetstreamnext.core.services.external import ExternalService
 
 
-def query_discogs(release_id: Any, cached_only: bool = False) -> dict:
-    """
-    Fetch a Discogs release.
-    Unauthenticated version so 25 req/min, maximum.
-    """
-    if not release_id:
-        return {}
+class Discogs(ExternalService):
+    """Unauthenticated, so 25 req/min maximum."""
 
-    endpoint = f'https://api.discogs.com/releases/{release_id}'
-    headers = {'User-Agent': USER_AGENT}
+    label = 'Discogs'
 
-    try:
-        response = http_session().get(endpoint, headers=headers, timeout=8, only_if_cached=cached_only)
-        if response.from_cache:
-            bsn_logger.debug(f"Cache hit for Discogs: {release_id}")
-        return response.json() if response.ok else {}
+    def release(self, release_id: Any, cached_only: bool = False) -> dict:
+        if not release_id:
+            return {}
+        return self.get_json(f'https://api.discogs.com/releases/{release_id}', only_if_cached=cached_only)
 
-    except requests.exceptions.RequestException:
-        return {}
+
+discogs_service = Discogs()

@@ -9,7 +9,7 @@ from .. import subsonic_bp
 
 from beetsplug.beetstreamnext.application import app
 from beetsplug.beetstreamnext.core.storage.connection import database
-from beetsplug.beetstreamnext.core.services.external.lastfm import query_lastfm
+from beetsplug.beetstreamnext.core.services.external.lastfm import lastfm_service
 from beetsplug.beetstreamnext.core.storage.userprefs_cache import preload_songs
 from beetsplug.beetstreamnext.core.library.exclusions import exclusions
 from beetsplug.beetstreamnext.utils.general import page_offset, page_size
@@ -220,9 +220,9 @@ def endpoint_get_top_songs() -> flask.Response:
 
     if app.config['lastfm_api_key']:
         if artist.mbid:
-            lastfm_resp = query_lastfm(q=artist.mbid, data_type='artist', method='TopTracks', is_mbid=True)
+            lastfm_resp = lastfm_service.query(q=artist.mbid, data_type='artist', method='TopTracks', is_mbid=True)
         else:
-            lastfm_resp = query_lastfm(q=artist.name, data_type='artist', method='TopTracks', is_mbid=False)
+            lastfm_resp = lastfm_service.query(q=artist.name, data_type='artist', method='TopTracks', is_mbid=False)
 
         lastfm_tracks = lastfm_resp.get('toptracks', {}).get('track', [])
 
@@ -294,9 +294,9 @@ def _similar_by_track(req_id: str, req_artist_name: str, limit: int) -> dict[int
     song_mbid = validate_mbid(song_item.get('mb_releasetrackid')) or validate_mbid(song_item.get('mb_trackid'))
 
     if song_mbid:
-        lastfm_resp = query_lastfm(q=song_mbid, data_type='track', method='similar', is_mbid=True)
+        lastfm_resp = lastfm_service.query(q=song_mbid, data_type='track', method='similar', is_mbid=True)
     else:
-        lastfm_resp = query_lastfm(q=song_title, data_type='track', method='similar', is_mbid=False, artist=req_artist_name)
+        lastfm_resp = lastfm_service.query(q=song_title, data_type='track', method='similar', is_mbid=False, artist=req_artist_name)
 
     lastfm_tracks = lastfm_resp.get('similartracks', {}).get('track', [])
 
@@ -345,9 +345,9 @@ def endpoint_get_similar_songs() -> flask.Response:
 
         if app.config['lastfm_api_key']:
             if artist.mbid:
-                lastfm_resp = query_lastfm(q=artist.mbid, data_type='artist', method='similar', is_mbid=True)
+                lastfm_resp = lastfm_service.query(q=artist.mbid, data_type='artist', method='similar', is_mbid=True)
             else:
-                lastfm_resp = query_lastfm(q=artist.name, data_type='artist', method='similar', is_mbid=False)
+                lastfm_resp = lastfm_service.query(q=artist.name, data_type='artist', method='similar', is_mbid=False)
 
             for similar in lastfm_resp.get('similarartists', {}).get('artist', []):
                 name = similar.get('name')

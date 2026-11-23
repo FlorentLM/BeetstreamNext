@@ -24,27 +24,6 @@ from beetsplug.beetstreamnext.utils.net import (
 )
 
 
-class RequestThrottle(HTTPAdapter):
-    """
-    HTTPAdapter enforcing a minimum interval between requests.
-    Cache hits are unaffected, this paces only real network calls.
-    """
-
-    def __init__(self, min_interval: float, *args, **kwargs):
-        self._min_interval = min_interval
-        self._lock = threading.Lock()
-        self._next_ok = 0.0
-        super().__init__(*args, **kwargs)
-
-    def send(self, request, **kwargs):
-        with self._lock:
-            wait = self._next_ok - time.monotonic()
-            if wait > 0:
-                time.sleep(wait)
-            self._next_ok = time.monotonic() + self._min_interval
-        return super().send(request, **kwargs)
-
-
 ##
 # Public-only connections
 
@@ -151,6 +130,27 @@ class PublicOnlyAdapter(HTTPAdapter):
             self.poolmanager.pool_classes_by_scheme = {'http': _PublicOnlyHTTPPool, 'https': _PublicOnlyHTTPSPool}
 
 
+class RequestThrottle(PublicOnlyAdapter):
+    """
+    Public-only adapter enforcing a minimum interval between requests.
+    Cache hits are unaffected, this paces only real network calls.
+    """
+
+    def __init__(self, min_interval: float, *args, **kwargs):
+        self._min_interval = min_interval
+        self._lock = threading.Lock()
+        self._next_ok = 0.0
+        super().__init__(*args, **kwargs)
+
+    def send(self, request, **kwargs):
+        with self._lock:
+            wait = self._next_ok - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            self._next_ok = time.monotonic() + self._min_interval
+        return super().send(request, **kwargs)
+
+
 def _build_session(allow_local_services: bool) -> CachedSession:
     session = CachedSession(
         str(app.config['HTTP_CACHE_PATH']),
@@ -168,9 +168,13 @@ def _build_session(allow_local_services: bool) -> CachedSession:
 
     # MusicBrainz's courtesy limit is ~50 req/s, we throttle at 25 req/s
     # https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
-    musicbrainz_adapter = RequestThrottle(min_interval=0.04)
-    session.mount('https://musicbrainz.org', musicbrainz_adapter)
-    session.mount('http://musicbrainz.org', musicbrainz_adapter)
+    # Mounted with '/' so a lookalike host (musicbrainz.org.malicious.example) doesn't work
+    musicbrainz_adapter = RequestThrottle(min_interval=0.04, allow_local_services=allow_local_services)
+    session.mount('https://musicbrainz.org/', musicbrainz_adapter)
+    session.mount('http://musicbrainz.org/', musicbrainz_adapter)
+
+    # Pace history imports (ListenBrainz answers 429 when a token or IP goes too fast)
+    session.mount('https://api.listenbrainz.org/', RequestThrottle(min_interval=0.5, allow_local_services=allow_local_services))
     return session
 
 

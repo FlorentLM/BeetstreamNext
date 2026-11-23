@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from beetsplug.beetstreamnext.constants import SCROBBLE_BATCH_SIZE, SCROBBLE_HTTP_TIMEOUT_SEC
 from beetsplug.beetstreamnext.core.library.resolve import standardise_datadict
@@ -17,6 +17,7 @@ class ScrobbleStatus(StrEnum):
     RETRY = 'retry'
     INVALID_AUTH = 'invalid_auth'   # User must reconnect
     DROP = 'drop'                   # Rejected
+    SKIP = 'skip'                   # Service cant accept anything for this track
 
 
 class ScrobbleError(Exception):
@@ -53,6 +54,17 @@ class ScrobbleTrack:
         )
 
 
+@dataclass
+class RemoteListen:
+    """A listen or a like/dislike pulled from a service."""
+    artist: str
+    title: str
+    album: str = ''
+    recording_mbid: str = ''
+    at: int = 0     # Unix seconds
+    score: int = 0  # 1 (like), -1 (dislike), 0 (neither)
+
+
 class ScrobblerBase(ExternalService, ABC):
     """
     An external listening history service.
@@ -66,6 +78,12 @@ class ScrobblerBase(ExternalService, ABC):
     default_url: str = ''
     batch_size: int = SCROBBLE_BATCH_SIZE   # Max listens per request
     auth_kind: str = 'token'                # 'token' or 'webauth'
+
+    @property
+    def capabilities(self) -> frozenset[str]:
+        """The optional methods this service implements."""
+        return frozenset(name for name in ('pull_listens', 'pull_feedback', 'push_feedback')
+                         if getattr(type(self), name) is not getattr(ScrobblerBase, name))
 
     def available(self) -> bool:
         """Server has everything the service needs (API keys...)?"""
@@ -94,3 +112,14 @@ class ScrobblerBase(ExternalService, ABC):
     @abstractmethod
     def submit(self, credentials: dict[str, Any], tracks: Sequence[ScrobbleTrack]) -> ScrobbleStatus:
         ...
+
+    def pull_listens(self, credentials: dict[str, Any], account: str, before: int) -> list[RemoteListen]:
+        raise NotImplementedError
+
+    def pull_feedback(self, credentials: dict[str, Any], account: str) -> Iterator[RemoteListen]:
+        """Fetch likes and dislikes (score 1 or -1)."""
+        raise NotImplementedError
+
+    def push_feedback(self, credentials: dict[str, Any], track: ScrobbleTrack, score: int) -> ScrobbleStatus:
+        """Send a like, dislike or neither (score 1, -1 or 0)."""
+        raise NotImplementedError

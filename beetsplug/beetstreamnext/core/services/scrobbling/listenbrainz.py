@@ -70,11 +70,10 @@ class ListenBrainzScrobbler(ScrobblerBase):
 
         return listen
 
-    def _post(self, credentials: dict[str, Any], listen_type: str, listens: list) -> ScrobbleStatus:
+    def _post(self, credentials: dict[str, Any], path: str, body: dict[str, Any]) -> ScrobbleStatus:
 
         response = self.request(
-            'POST', f'{self.base_url(credentials)}/1/submit-listens',
-            json={'listen_type': listen_type, 'payload': listens},
+            'POST', f'{self.base_url(credentials)}{path}', json=body,
             headers={'Authorization': f"Token {credentials['token']}"}
         )
 
@@ -89,11 +88,21 @@ class ListenBrainzScrobbler(ScrobblerBase):
         return ScrobbleStatus.DROP
 
     def now_playing(self, credentials: dict[str, Any], track: ScrobbleTrack) -> ScrobbleStatus:
-        listens = [self._listen(track, with_time=False)]
-        listen_type = 'playing_now'
-        return self._post(credentials, listen_type, listens)
+
+        body = {
+            'listen_type': 'playing_now',
+            'payload': [self._listen(track, with_time=False)]
+        }
+
+        return self._post(credentials, '/1/submit-listens', body)
 
     def submit(self, credentials: dict[str, Any], tracks: Sequence[ScrobbleTrack]) -> ScrobbleStatus:
 
         listens = [self._listen(t, with_time=True) for t in tracks]
-        return self._post(credentials, 'single' if len(listens) == 1 else 'import', listens)
+
+        body = {
+            'listen_type': 'single' if len(listens) == 1 else 'import',
+            'payload': listens
+        }
+
+        return self._post(credentials, '/1/submit-listens', body)

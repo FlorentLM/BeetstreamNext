@@ -27,6 +27,7 @@ class ListenBrainzScrobbler(ScrobblerBase):
             'GET', f'{self.base_url(credentials)}/1/validate-token',
             headers={'Authorization': f"Token {credentials['token']}"}
         )
+
         if response is None:
             raise ScrobbleError(
                 'Could not reach ListenBrainz. Check the URL (a server on a private network '
@@ -93,5 +94,6 @@ class ListenBrainzScrobbler(ScrobblerBase):
         return self._post(credentials, listen_type, listens)
 
     def submit(self, credentials: dict[str, Any], tracks: Sequence[ScrobbleTrack]) -> ScrobbleStatus:
+
         listens = [self._listen(t, with_time=True) for t in tracks]
         return self._post(credentials, 'single' if len(listens) == 1 else 'import', listens)

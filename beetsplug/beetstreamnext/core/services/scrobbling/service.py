@@ -60,7 +60,7 @@ def delete_connection(username: str, service: str) -> bool:
 
 
 def set_enabled(username: str, service: str, enabled: bool) -> None:
-    """Turning a service back on sends the listens that were waiting."""
+    """Turning a service back on sends what was waiting."""
 
     with database() as db:
         db.execute(

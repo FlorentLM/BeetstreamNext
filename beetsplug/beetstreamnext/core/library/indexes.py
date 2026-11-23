@@ -124,6 +124,29 @@ class SongIndex(Index):
         """Beets IDs of songs with this title and this artist (case ignored)."""
         return self._by_name.get(((artist or '').casefold(), (title or '').casefold()), [])[::-1]
 
+    def find(self, mbid: str, artist: str, title: str, album: str = '') -> str | None:
+        """Subsonic ID of a song: by MBID, or by artist and title."""
+
+        beets_id = self.by_mbid.get(mbid) if mbid else None
+
+        if beets_id is None:
+            candidates = self.named(artist, title)
+            if not candidates:
+                return None
+
+            beets_id = candidates[0]
+
+            if album and len(candidates) > 1:
+
+                for candidate in candidates:
+                    item = flask.g.lib.get_item(candidate)
+
+                    if item and str(item.get('album') or '').casefold() == album.casefold():
+                        beets_id = candidate
+                        break
+
+        return self.subsonic_ids.get(beets_id)
+
     def id_of(self, item) -> str:
         """Subsonic ID of a beets item (Item, row or dict)."""
         return self.subsonic_ids.get(item['id']) or IDs.encode_song(

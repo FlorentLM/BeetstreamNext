@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 def authenticate_subsonic(flask_req_values: CombinedMultiDict):
     """
     Returns (ok, error_code, username, app_password_role).
-    Role is None for the main (non-app_ password.
     """
     r = flask_req_values
     api_key = r.get('apiKey', default='', type=str)

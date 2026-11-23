@@ -52,12 +52,7 @@ class LastFMScrobbler(ScrobblerBase):
         if response is None:
             return ScrobbleStatus.RETRY, {}
 
-        try:
-            body = response.json()
-        except ValueError:
-            body = {}
-        if not isinstance(body, dict):
-            body = {}
+        body = self.json_body(response)
 
         if 'error' in body:
             try:

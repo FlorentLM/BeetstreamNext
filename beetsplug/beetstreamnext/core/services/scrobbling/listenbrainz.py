@@ -33,12 +33,8 @@ class ListenBrainzScrobbler(ScrobblerBase):
                 'has to be allowed by an admin first).'
             )
 
-        try:
-            body = response.json()
-        except ValueError:
-            body = {}
-
-        if not response.ok or not isinstance(body, dict) or not body.get('valid'):
+        body = self.json_body(response)
+        if not response.ok or not body.get('valid'):
             raise ScrobbleError('ListenBrainz did not accept this token.')
 
         return str(body.get('user_name') or '')

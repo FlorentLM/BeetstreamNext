@@ -42,14 +42,18 @@ class ExternalService:
 
         return response
 
+    @staticmethod
+    def json_body(response: requests.Response) -> dict[str, Any]:
+        try:
+            data = response.json()
+        except ValueError:
+            return {}
+        return data if isinstance(data, dict) else {}
+
     def get_json(self, url: str, *, cached: bool = True, **kwargs) -> dict[str, Any]:
         """GET a JSON object (cached by default)."""
 
         response = self.request('GET', url, cached=cached, **kwargs)
         if response is None or not response.ok:
             return {}
-        try:
-            data = response.json()
-        except ValueError:
-            return {}
-        return data if isinstance(data, dict) else {}
+        return self.json_body(response)

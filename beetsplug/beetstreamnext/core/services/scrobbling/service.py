@@ -94,8 +94,9 @@ def set_push_feedback(username: str, service: str, push: bool) -> None:
         if changed and push:
             for row in db.execute("""SELECT item_id FROM likes WHERE username = ?""", (username,)):
                 scores[row['item_id']] = 1
-            for row in db.execute("""SELECT item_id FROM dislikes WHERE username = ?""", (username,)):
-                scores[row['item_id']] = -1
+            if SCROBBLERS[service].has_dislikes:
+                for row in db.execute("""SELECT item_id FROM dislikes WHERE username = ?""", (username,)):
+                    scores[row['item_id']] = -1
 
     if not scores or 'push_feedback' not in SCROBBLERS[service].capabilities or not is_allowed(username):
         return

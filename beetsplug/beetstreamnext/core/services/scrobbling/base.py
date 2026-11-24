@@ -78,6 +78,7 @@ class ScrobblerBase(ExternalService, ABC):
     default_url: str = ''
     batch_size: int = SCROBBLE_BATCH_SIZE   # Max listens per request
     auth_kind: str = 'token'                # 'token' or 'webauth'
+    has_dislikes: bool = True
 
     @property
     def capabilities(self) -> frozenset[str]:

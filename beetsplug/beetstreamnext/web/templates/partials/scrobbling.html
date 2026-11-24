@@ -130,7 +130,7 @@
                            hx-include="closest .role-item"
                            hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
                            hx-swap="none">
-                    Also send likes and dislikes
+                    {{ 'Also send likes and dislikes' if svc.has_dislikes else 'Also send likes' }}
                 </label>
             {% endif %}
 

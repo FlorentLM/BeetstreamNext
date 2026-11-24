@@ -10,6 +10,24 @@ To scrobble, a user needs the _Scrobbling_ [role](./accounts-and-permissions.md#
 
 2. In **BeetstreamNext**, open your account page (or the admin panel's **Connections** tab) and paste the token in the **Scrobble** card.
 
+### Importing your ListenBrainz history
+
+Once ListenBrainz is connected, click **Import from ListenBrainz**. The import then runs in the background (you can leave the page).
+
+Listens are added to your play history and to your play counts. Likes and dislikes are also imported.
+
+> [!NOTE]
+>
+> Listens are only imported if your play history is on. Likes and dislikes are imported in both cases.
+
+### Sending likes and dislikes
+
+You can also send your song likes/dislikes to ListenBrainz.
+
+> [!NOTE]
+>
+> Only songs with a MusicBrainz recording ID in your Beets library are sent. Albums and artists likes/dislikes have no equivalent on ListenBrainz.
+
 ## Connecting Last.fm or Libre.fm
 
 These need the [`lastfm_api_key`](../configuration.md#lastfm_api_key) and the [`lastfm_shared_secret`](../configuration.md#lastfm_shared_secret) settings, set by an admin. Libre.fm uses the same ones.
@@ -58,10 +76,11 @@ Your password is never seen by **BeetstreamNext**, only the session key returned
 
 ## What is sent
 
-| When                                                 | What                                                             |
-|------------------------------------------------------|------------------------------------------------------------------|
-| A track starts (client sends a "now playing")        | Artist, title, album                                             |
-| A track is finished (client sends a scrobble)        | Same as above, plus the time you played it, and the track length |
+| When                                          | What                                                                |
+|-----------------------------------------------|---------------------------------------------------------------------|
+| A track starts (client sends a "now playing") | Artist, title, album                                                |
+| A track is finished (client sends a scrobble) | Same as above, plus the time you played it, and the track length    |
+| You like/dislike a song                       | The song's MusicBrainz recording ID and whether you like/dislike it |
 
 If the track has MusicBrainz IDs in your Beets library (recording, release, artist), they are sent too, so ListenBrainz can match the track exactly. **BeetstreamNext** also identifies itself as the submitting client.
 

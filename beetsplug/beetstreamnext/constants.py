@@ -298,6 +298,7 @@ SCROBBLE_MAX_AGE_SEC: int = 14 * 86400           # Last.fm refuses listens older
 SCROBBLE_BATCH_SIZE: int = 100                   # Max listens sent to a service in one request
 SCROBBLE_HTTP_TIMEOUT_SEC: int = 15
 SCROBBLE_RETRY_INTERVAL_SEC: int = 60            # How often queued listens that failed are retried
+HISTORY_DUPLICATE_WINDOW_SEC: int = 30           # Imported listens whithin this of a known play are duplicates
 
 PLAYLIST_SYNC_INTERVAL_SEC: int = 5              # Time between 2 scans of beets playlist dirs
 PLAYLIST_EXPORT_DELAY_SEC: int = 1               # Debounce time for auto m3u export

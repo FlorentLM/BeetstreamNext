@@ -3021,6 +3021,27 @@ input:focus, select:focus {
     margin: 0.6rem 0 0;
 }
 
+.connection-feedback {
+    margin-top: 0.6rem;
+}
+
+.connection-pull {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+}
+
+.connection-import {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.8rem;
+}
+
+.connection-import .card-hint {
+    margin: 0;
+}
+
 @media (max-width: 640px) {
     .connection-fields {
         grid-template-columns: 1fr;

@@ -3,13 +3,16 @@ from __future__ import annotations
 import json
 import time
 from collections import defaultdict
+from itertools import groupby
 from dataclasses import asdict
 from typing import Any
 
-from beetsplug.beetstreamnext.application import app
+from beetsplug.beetstreamnext.application import app, with_app_context
 from beetsplug.beetstreamnext.constants import SCROBBLE_MAX_AGE_SEC, SCROBBLE_MIN_TRACK_SEC
 from beetsplug.beetstreamnext.core.accounts.users_crud import get_userdata
 from beetsplug.beetstreamnext.core.config.store import settings_store
+from beetsplug.beetstreamnext.core.library.ids import IDs
+from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.scrobbling import SCROBBLERS
 from beetsplug.beetstreamnext.core.services.scrobbling.base import ScrobbleTrack, ScrobbleStatus
@@ -74,6 +77,51 @@ def set_enabled(username: str, service: str, enabled: bool) -> None:
         workers.submit(deliver_queued)
 
 
+@with_app_context
+def set_push_feedback(username: str, service: str, push: bool) -> None:
+    """Whether song likes and dislikes are also sent to the service."""
+
+    with database() as db:
+        changed = db.execute(
+            """
+            UPDATE user_connections
+            SET push_feedback = ?
+            WHERE username = ? AND service = ? AND push_feedback != ?
+            """, (int(push), username, service, int(push))
+        ).rowcount
+
+        scores = {}
+        if changed and push:
+            for row in db.execute("""SELECT item_id FROM likes WHERE username = ?""", (username,)):
+                scores[row['item_id']] = 1
+            for row in db.execute("""SELECT item_id FROM dislikes WHERE username = ?""", (username,)):
+                scores[row['item_id']] = -1
+
+    if not scores or 'push_feedback' not in SCROBBLERS[service].capabilities or not is_allowed(username):
+        return
+
+    song_ids = [item_id for item_id in scores if IDs.decode_type(item_id) == 'song']
+    now = time.time()
+
+    queued = []
+    for song_id, item in Resolve.songs(song_ids).items():
+        track = ScrobbleTrack.from_item(item, now)
+        queued.append((json.dumps({**asdict(track), 'score': scores[song_id]}), track.played_at, username, service))
+
+    with database() as db:
+        db.executemany(
+            """
+            INSERT INTO scrobble_queue (username, service, kind, payload_json, played_at)
+            SELECT username, service, 'feedback', ?, ?
+            FROM user_connections
+            WHERE username = ? AND service = ? AND last_error IS NULL AND enabled = 1
+            """, queued
+        )
+
+    if queued:
+        workers.submit(deliver_queued)
+
+
 def get_credentials(username: str, service: str) -> dict[str, Any]:
 
     with database() as db:
@@ -93,7 +141,8 @@ def list_connections(username: str) -> list[dict[str, Any]]:
     with database() as db:
         rows = db.execute(
             """
-            SELECT c.service, c.display_name, c.created, c.last_ok, c.last_error, c.enabled, c.credentials_encrypted,
+            SELECT c.service, c.display_name, c.created, c.last_ok, c.last_error, c.enabled, c.push_feedback,
+                   c.credentials_encrypted,
                    (SELECT COUNT(*) FROM scrobble_queue q WHERE q.username = c.username AND q.service = c.service) AS queued
             FROM user_connections c
             WHERE c.username = ?
@@ -166,6 +215,34 @@ def scrobble(username: str, item: Any, played_at: float) -> None:
         workers.submit(deliver_queued)
 
 
+def send_feedback(username: str, item_id: str, score: int) -> None:
+    """Queues a song's like or dislike."""
+
+    services = [name for name, s in SCROBBLERS.items() if 'push_feedback' in s.capabilities]
+    if not services or IDs.decode_type(item_id) != 'song' or not is_allowed(username):
+        return
+
+    item = Resolve.song(item_id)
+    if item is None:
+        return
+
+    track = ScrobbleTrack.from_item(item, time.time())
+
+    with database() as db:
+        queued = db.execute(
+            f"""
+            INSERT INTO scrobble_queue (username, service, kind, payload_json, played_at)
+            SELECT username, service, 'feedback', ?, ?
+            FROM user_connections
+            WHERE username = ? AND last_error IS NULL AND enabled = 1 AND push_feedback = 1
+              AND service IN ({','.join('?' * len(services))})
+            """, (json.dumps({**asdict(track), 'score': score}), track.played_at, username, *services)  # nosec B608  # noqa: S608 placeholders only
+        ).rowcount
+
+    if queued:
+        workers.submit(deliver_queued)
+
+
 def deliver_queued() -> None:
     """Sends every queued listen of the working connections (on the calling thread)."""
 
@@ -181,11 +258,11 @@ def deliver_queued() -> None:
             # Broken connections keep the listens until user reconnects
             due = db.execute(
                 """
-                SELECT q.id, q.username, q.service, q.payload_json, c.credentials_encrypted
+                SELECT q.id, q.username, q.service, q.kind, q.payload_json, c.credentials_encrypted
                 FROM scrobble_queue q
                 JOIN user_connections c ON c.username = q.username AND c.service = q.service
                 WHERE c.last_error IS NULL AND c.enabled = 1
-                ORDER BY q.played_at
+                ORDER BY q.played_at, q.id
                 LIMIT 1000
                 """
             ).fetchall()
@@ -194,25 +271,34 @@ def deliver_queued() -> None:
         for row in due:
             per_connection[(row['username'], row['service'])].append(row)
 
-        for (username, service), listens in per_connection.items():
+        for (username, service), rows in per_connection.items():
             scrobbler = SCROBBLERS.get(service)
             if scrobbler is None:
                 continue
 
-            credentials = decrypt_json(listens[0]['credentials_encrypted'])
+            credentials = decrypt_json(rows[0]['credentials_encrypted'])
 
-            for start in range(0, len(listens), scrobbler.batch_size):
-                batch = listens[start:start + scrobbler.batch_size]
-                tracks = [ScrobbleTrack(**json.loads(row['payload_json'])) for row in batch]
+            batches = []
+            for kind, run in groupby(rows, key=lambda row: row['kind']):
+                run = list(run)
+                size = scrobbler.batch_size if kind == 'listen' else 1
+                batches += [run[i:i + size] for i in range(0, len(run), size)]
+
+            for batch in batches:
+                payloads = [json.loads(row['payload_json']) for row in batch]
 
                 try:
-                    status = scrobbler.submit(credentials, tracks)
+                    if batch[0]['kind'] == 'feedback':
+                        score = payloads[0].pop('score')
+                        status = scrobbler.push_feedback(credentials, ScrobbleTrack(**payloads[0]), score)
+                    else:
+                        status = scrobbler.submit(credentials, [ScrobbleTrack(**payload) for payload in payloads])
                 except Exception as e:
-                    bsn_logger.warning(f"Sending listens of '{username}' to {service} failed: {type(e).__name__}")
+                    bsn_logger.warning(f"Sending to {service} for '{username}' failed: {type(e).__name__}")
                     status = ScrobbleStatus.RETRY
 
                 with database() as db:
-                    if status in (ScrobbleStatus.OK, ScrobbleStatus.DROP):
+                    if status in (ScrobbleStatus.OK, ScrobbleStatus.DROP, ScrobbleStatus.SKIP):
                         ids = [row['id'] for row in batch]
                         placeholders = ','.join('?' * len(ids))
 
@@ -241,10 +327,10 @@ def deliver_queued() -> None:
                         )
 
                 if status is ScrobbleStatus.DROP:
-                    bsn_logger.warning(f"{service} refused {len(batch)} listen(s) of '{username}': dropped.")
+                    bsn_logger.warning(f"{service} refused {len(batch)} item(s) of '{username}': dropped.")
 
                 elif status is ScrobbleStatus.INVALID_AUTH:
                     bsn_logger.warning(f"{service} connection of '{username}' marked broken.")
 
-                if status not in (ScrobbleStatus.OK, ScrobbleStatus.DROP):
+                if status not in (ScrobbleStatus.OK, ScrobbleStatus.DROP, ScrobbleStatus.SKIP):
                     break       # Service is failing for this user. Next periodic run will retry

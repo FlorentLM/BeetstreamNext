@@ -266,6 +266,20 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_13_VER
 
+    ## _________ Migration 14: Version 13 -> 14 (likes and dislikes sent to scrobbling services), 23/11/2026
+    MIGRATION_14_VER = 14
+
+    if curr_version < MIGRATION_14_VER:
+        for table, name, definition in (
+            ('user_connections', 'push_feedback', 'INTEGER NOT NULL DEFAULT 0'),
+            ('scrobble_queue', 'kind', "TEXT NOT NULL DEFAULT 'listen'"),
+        ):
+            columns = [row[1] for row in cursor.execute(f"""PRAGMA table_info({table})""")]  # nosec B608
+            if columns and name not in columns:
+                cursor.execute(f"""ALTER TABLE {table} ADD COLUMN {name} {definition}""")  # nosec B608
+
+        curr_version = MIGRATION_14_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

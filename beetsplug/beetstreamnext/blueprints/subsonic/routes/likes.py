@@ -14,6 +14,7 @@ from beetsplug.beetstreamnext.core.library.ids import IDs
 from beetsplug.beetstreamnext.core.library.resolve import Resolve
 from beetsplug.beetstreamnext.core.library.serialise import Serialise
 from beetsplug.beetstreamnext.core.library.beets.interaction import commit_likes
+from beetsplug.beetstreamnext.core.services.scrobbling import service as scrobbling
 
 
 def item_exists(item_id: str) -> bool:
@@ -36,8 +37,15 @@ def set_liked(username: str, item_id: str, liked: bool) -> None:
 
         touch_change(db, username, 'exclusions')
 
+        changed = True
         if liked:
-            db.execute("""DELETE FROM dislikes WHERE username = ? AND item_id = ?""", (username, item_id))
+            db.execute(
+                """
+                DELETE 
+                FROM dislikes 
+                WHERE username = ? AND item_id = ?
+                """, (username, item_id)
+            )
             db.execute(
                 """
                 INSERT INTO likes (username, item_id)
@@ -47,17 +55,20 @@ def set_liked(username: str, item_id: str, liked: bool) -> None:
                 """, (username, item_id)
             )
         else:
-            db.execute(
+            changed = db.execute(
                 """
                 DELETE
                 FROM likes
                 WHERE username = ?
                   AND item_id = ?
                 """, (username, item_id)
-            )
+            ).rowcount > 0
 
     if username and username == settings_store.get('ratings_writeback_user'):
         commit_likes(item_id, 'starred', int(liked))
+
+    if changed:
+        scrobbling.send_feedback(username, item_id, int(liked))
 
 
 # Spec: https://opensubsonic.netlify.app/docs/endpoints/star/
@@ -92,35 +103,44 @@ def endpoint_star_or_unstar() -> flask.Response:
 
 
 def set_disliked(username: str, item_id: str, disliked: bool) -> None:
-    unstarred = _write_disliked(username, item_id, disliked)
-    if unstarred and username == settings_store.get('ratings_writeback_user'):
-        commit_likes(item_id, 'starred', 0)
 
-
-def _write_disliked(username: str, item_id: str, disliked: bool) -> bool:
-    """
-    Returns whether a star was removed.
-    """
+    unstarred = False
     with database() as db:
 
         touch_change(db, username, 'exclusions')
 
         if disliked:
             unstarred = db.execute(
-                """DELETE FROM likes WHERE username = ? AND item_id = ?""", (username, item_id)
+                """
+                DELETE 
+                FROM likes 
+                WHERE username = ? AND item_id = ?
+                """, (username, item_id)
             ).rowcount > 0
-            db.execute(
+
+            changed = db.execute(
                 """
                 INSERT INTO dislikes (username, item_id)
                 VALUES (?, ?)
                 ON CONFLICT (username, item_id)
                     DO UPDATE SET disliked_at = unixepoch()
                 """, (username, item_id)
-            )
-            return unstarred
+            ).rowcount > 0
 
-        db.execute("""DELETE FROM dislikes WHERE username = ? AND item_id = ?""", (username, item_id))
-        return False
+        else:
+            changed = db.execute(
+                """
+                DELETE 
+                FROM dislikes 
+                WHERE username = ? AND item_id = ?
+                """, (username, item_id)
+            ).rowcount > 0
+
+    if unstarred and username == settings_store.get('ratings_writeback_user'):
+        commit_likes(item_id, 'starred', 0)
+
+    if changed:
+        scrobbling.send_feedback(username, item_id, -1 if disliked else 0)
 
 
 # BSN extension ('bsnDislike'), mirrors star/unstar

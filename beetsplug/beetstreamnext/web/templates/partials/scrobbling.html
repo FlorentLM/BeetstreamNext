@@ -28,6 +28,9 @@
                 {% endif %}
             </summary>
 
+            {% set working = conn and not conn.last_error %}
+            {% set can_pull = working and ('pull_feedback' in svc.capabilities or 'pull_listens' in svc.capabilities) %}
+
             {% if svc.auth_kind == 'webauth' %}
                 <div class="connection-webauth">
                     {% if not svc.available() %}
@@ -119,6 +122,18 @@
 
             {% endif %}
 
+            {% if working and 'push_feedback' in svc.capabilities %}
+                <label class="role-item connection-feedback">
+                    <input type="hidden" name="push_feedback" value="0">
+                    <input type="checkbox" name="push_feedback" value="1" {{ 'checked' if conn.push_feedback }}
+                           hx-post="{{ url_for(bp_name ~ '.route_toggle_push_feedback', service=svc.service) }}"
+                           hx-include="closest .role-item"
+                           hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+                           hx-swap="none">
+                    Also send likes and dislikes
+                </label>
+            {% endif %}
+
             <p class="card-hint connection-hint">
                 {% if conn and conn.last_error %}{{ conn.last_error }}
                     {{ 'Reconnect to fix it.' if svc.auth_kind == 'webauth' else 'Paste a new token to reconnect.' }}
@@ -126,6 +141,14 @@
                     <span class="chat-time" data-timestamp="{{ (conn.last_ok * 1000) | int }}">Loading...</span>.
                 {% endif %}
             </p>
+
+            {% if can_pull %}
+                <div class="connection-pull">
+                    {% with progress=imports.get(svc.service), message='' %}
+                        {% include 'partials/scrobbling_import.html' %}
+                    {% endwith %}
+                </div>
+            {% endif %}
         </details>
 
         <label class="switch connection-switch"

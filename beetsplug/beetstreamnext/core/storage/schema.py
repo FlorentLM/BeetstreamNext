@@ -520,6 +520,7 @@ def initialise_db() -> None:
             last_ok               REAL,            -- last successful call
             last_error            TEXT,            -- NULL = healthy, otherwise says why the connection is broken
             enabled               INTEGER NOT NULL DEFAULT 1,   -- user switch: 0 = keep connection but send nothing
+            push_feedback         INTEGER NOT NULL DEFAULT 0,   -- whether to send song likes and dislikes
             PRIMARY KEY (username, service),
             FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
         )
@@ -534,7 +535,8 @@ def initialise_db() -> None:
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             username     TEXT NOT NULL,
             service      TEXT NOT NULL,
-            payload_json TEXT NOT NULL,            -- service-agnostic track dict
+            kind         TEXT NOT NULL DEFAULT 'listen',    -- 'listen' or 'feedback' (a like or dislike)
+            payload_json TEXT NOT NULL,                     -- service-agnostic track dict
             played_at    REAL NOT NULL,
             FOREIGN KEY (username, service) REFERENCES user_connections (username, service) ON DELETE CASCADE
         )

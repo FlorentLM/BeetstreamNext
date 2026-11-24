@@ -9,6 +9,7 @@ from beetsplug.beetstreamnext.blueprints.shared import route_registrar
 from beetsplug.beetstreamnext.core.config.validators import validate_http_url
 from beetsplug.beetstreamnext.core.runtime.logging import bsn_logger
 from beetsplug.beetstreamnext.core.services.scrobbling import SCROBBLERS, service as scrobbling
+from beetsplug.beetstreamnext.core.services.scrobbling.history_importer import PlayHistoryImporter
 from beetsplug.beetstreamnext.core.services.scrobbling.base import ScrobbleError
 from beetsplug.beetstreamnext.utils.concurrency import RollingLimiter
 
@@ -46,6 +47,7 @@ def register_scrobbling_routes(bp: flask.Blueprint, login_required: Callable) ->
             token_form=ConnectionURLTokenForm(formdata=None),
             token_mask=TOKEN_MASK,
             pending=pending_auths(),
+            imports={s: PlayHistoryImporter.latest.get((username, s)) for s in SCROBBLERS},
             message=message,
             ok=ok,
             opened=opened,
@@ -173,6 +175,48 @@ def register_scrobbling_routes(bp: flask.Blueprint, login_required: Callable) ->
         enabled = flask.request.form.get('enabled') == '1'
         scrobbling.set_enabled(flask.session['username'], service, enabled)
         return ''
+
+    @route('/scrobbling/<service>/push_feedback', ['POST'])
+    def toggle_push_feedback(service: str) -> str:
+
+        if service not in SCROBBLERS:
+            flask.abort(404)
+
+        push = flask.request.form.get('push_feedback') == '1'
+        scrobbling.set_push_feedback(flask.session['username'], service, push)
+        return ''
+
+    def import_status(service: str, message: str = '') -> str:
+        return flask.render_template(
+            'partials/scrobbling_import.html',
+            bp_name=bp.name,
+            svc=SCROBBLERS[service],
+            progress=PlayHistoryImporter.latest.get((flask.session['username'], service)),
+            message=message,
+        )
+
+    @route('/scrobbling/<service>/import', ['GET'])
+    def show_import(service: str) -> str:
+        if service not in SCROBBLERS:
+            flask.abort(404)
+        return import_status(service)
+
+    @route('/scrobbling/<service>/import', ['POST'])
+    def start_import(service: str) -> str:
+
+        username = flask.session['username']
+
+        if service not in SCROBBLERS:
+            flask.abort(404)
+
+        if not connect_limiter.allow(username):
+            return import_status(service, 'Too many attempts, try again in a minute.')
+
+        error = PlayHistoryImporter.start(username, service)
+        if not error:
+            bsn_logger.info(f"'{username}' started importing from {SCROBBLERS[service].label}")
+
+        return import_status(service, error)
 
     @route('/scrobbling/<service>/disconnect', ['POST'])
     def disconnect_service(service: str) -> str:

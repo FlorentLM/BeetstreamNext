@@ -5,7 +5,7 @@
         <button type="button" class="suggestion-item" data-action="use-radio-result"
                 data-name="{{ s.name }}" data-stream-url="{{ s.stream_url }}"
                 data-homepage-url="{{ s.homepage_url }}" data-favicon="{{ s.favicon }}">
-            <span class="suggestion-name">{{ s.name or '(unnamed)' }}</span>
+            <span class="suggestion-name">{{ s.name or '(unnamed)' }}{% if s.format %} <span class="suggestion-format">{{ s.format }}</span>{% endif %}</span>
             <span class="suggestion-url">{{ s.stream_url }}</span>
         </button>
     {% endfor %}

@@ -889,6 +889,12 @@ input:focus, select:focus {
     font-weight: 600;
 }
 
+.suggestion-format {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
 .suggestion-url {
     font-size: 0.75rem;
     color: var(--text-muted);

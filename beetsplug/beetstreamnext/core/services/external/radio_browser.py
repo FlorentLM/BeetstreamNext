@@ -36,6 +36,8 @@ async def _async_radio_search(query: str, limit: int) -> list[dict]:
             'stream_url': s.url,
             'homepage_url': s.homepage,
             'favicon': s.favicon,
+            'codec': s.codec,
+            'bitrate': s.bitrate,
         } for s in stations]
 
 

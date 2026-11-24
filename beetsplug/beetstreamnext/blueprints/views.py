@@ -102,15 +102,23 @@ def render_radio_discovery(query: str | None) -> str:
     if not stations:
         return result([], 'No stations found.')
 
-    return result([
-        {
+    results = []
+    for s in stations:
+        stream_format = []
+        if s['codec'] and s['codec'].upper() != 'UNKNOWN':
+            stream_format.append(s['codec'])
+        if s['bitrate']:
+            stream_format.append(f"{s['bitrate']}k")
+
+        results.append({
             'name': s['name'],
             'stream_url': s['stream_url'],
             'homepage_url': s['homepage_url'],
             'favicon': s.get('favicon') or '',
-        }
-        for s in stations
-    ], None)
+            'format': ' · '.join(stream_format),
+        })
+
+    return result(results, None)
 
 
 ##

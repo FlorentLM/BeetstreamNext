@@ -1,0 +1,38 @@
+<div class="connection-import"
+        {% if progress and progress.running %}
+     hx-get="{{ url_for(bp_name ~ '.route_show_import', service=svc.service) }}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"
+        {% endif %}>
+    <button type="button" class="btn btn-outline"
+            hx-post="{{ url_for(bp_name ~ '.route_start_import', service=svc.service) }}"
+            hx-vals='{"csrf_token": "{{ csrf_token() }}"}'
+            hx-target="closest .connection-import"
+            hx-swap="outerHTML"
+            hx-disable="this"
+            {{ 'disabled' if progress and progress.running }}>Import from {{ svc.label }}</button>
+    {% if progress and progress.running %}
+        <p class="card-hint" role="status">
+            Importing:
+            {%- if progress.feedback %} {{ "{:,}".format(progress.feedback_read) }} like(s) and dislike(s){% endif %}
+            {%- if progress.feedback and progress.listens %},{% endif %}
+            {%- if progress.listens %} {{ "{:,}".format(progress.listens_read) }} listen(s){% endif %}
+        </p>
+    {% elif message %}
+        <p class="card-hint" role="alert">{{ message }}</p>
+    {% elif progress %}
+        {% set added = [] %}
+        {% if progress.likes_added %}{% set added = added + ["{:,} like(s)".format(progress.likes_added)] %}{% endif %}
+        {% if progress.dislikes_added %}{% set added = added + ["{:,} dislike(s)".format(progress.dislikes_added)] %}{% endif %}
+        {% if progress.plays_added %}{% set added = added + ["{:,} listen(s)".format(progress.plays_added)] %}{% endif %}
+        {% set skipped = progress.feedback_read + progress.listens_read - progress.likes_added
+                         - progress.dislikes_added - progress.plays_added - progress.unmatched %}
+        <p class="card-hint" role="status">
+            {% if progress.error %}Stopped: {{ progress.error }}{% else %}Done.{% endif %}
+            {% if added %}Added {{ added | join(', ') }}.{% endif %}
+            {% if skipped %}Skipped {{ "{:,}".format(skipped) }} existing.{% endif %}
+            {% if progress.unmatched %}{{ "{:,}".format(progress.unmatched) }} not found in the library.{% endif %}
+            {{ progress.note }}
+        </p>
+    {% endif %}
+</div>

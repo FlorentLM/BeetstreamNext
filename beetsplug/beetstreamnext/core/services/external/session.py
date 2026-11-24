@@ -175,6 +175,10 @@ def _build_session(allow_local_services: bool) -> CachedSession:
 
     # Pace history imports (ListenBrainz answers 429 when a token or IP goes too fast)
     session.mount('https://api.listenbrainz.org/', RequestThrottle(min_interval=0.5, allow_local_services=allow_local_services))
+
+    # Last.fm is at most 5 req/s averaged over 5 minutes (I think?)
+    session.mount('https://ws.audioscrobbler.com/', RequestThrottle(min_interval=0.25, allow_local_services=allow_local_services))
+    session.mount('https://libre.fm/', RequestThrottle(min_interval=0.5, allow_local_services=allow_local_services))
     return session
 
 

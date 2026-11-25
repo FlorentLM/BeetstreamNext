@@ -11,6 +11,8 @@ Each user has their own radio station list from their [account page](./accounts-
 > [!NOTE]
 > When upgrading _from_ **BeetstreamNext** v2.0.7 (where stations were shared server-wide), existing stations are automatically copied to every existing user.
 
+- **Radio Paradise**: The add-station dialog lists the **[Radio Paradise](https://radioparadise.com/)** channels, with a choice of stream quality. The FLAC streams are Ogg FLAC, which some clients (e.g. iOS players) cannot play.
+
 - **Station discovery**: Set `enable_radio_discovery` to search **[Radio Browser](https://www.radio-browser.info/)**, a community-maintained directory of internet radio streams.
 
 - **Icons**: BeetstreamNext tries to scrape icons from the station homepage's `<link rel="icon">`/`apple-touch-icon` tags, or falls back to [**DuckDuckGo**'s icon proxy](https://duckduckgo.com/duckduckgo-help-pages/privacy/favicons).

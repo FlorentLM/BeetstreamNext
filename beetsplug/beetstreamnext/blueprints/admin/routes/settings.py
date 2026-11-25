@@ -24,6 +24,7 @@ from beetsplug.beetstreamnext.core.config.settings_schema import SETTINGS_SCHEMA
 from beetsplug.beetstreamnext.core.accounts.user_schema import PUBLIC_USER_FIELDS
 from beetsplug.beetstreamnext.blueprints.forms import UserForm, RadioStationForm, AppPasswordForm
 from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
+from beetsplug.beetstreamnext.core.services.external import radio_paradise
 from beetsplug.beetstreamnext.core.config.store import settings_store
 
 
@@ -294,6 +295,8 @@ def route_settings() -> flask.Response:
             cache_sizes=cache_sizes,
             radios=list_radios(flask.session['username']),
             radio_ep=radio_endpoints('admin'),
+            radio_paradise_qualities=radio_paradise.get_qualities(),
+            radio_paradise_channels=radio_paradise.get_channels(),
             IP_LIST_META=IP_LIST_META,
             radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
             podcast_discovery_enabled=flask.current_app.config['podcast_manager'].discovery_enabled,

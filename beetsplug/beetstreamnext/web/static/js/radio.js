@@ -34,8 +34,8 @@
         iconController = new AbortController();
         const {signal} = iconController;
 
-        const searchButton = document.querySelector('[data-action="discover-radios"]');
-        const proxyBase = searchButton ? searchButton.dataset.faviconProxy : '';
+        const proxyHolder = target.closest('[data-favicon-proxy]');
+        const proxyBase = proxyHolder ? proxyHolder.dataset.faviconProxy : '';
         const name = target.dataset.name || '';
         const homepage = target.dataset.homepageUrl || '';
         if (!proxyBase || !name) return;
@@ -54,6 +54,16 @@
             // empty, favicon_url passed to create_station() to try server-side
         }
     }
+
+    // Radio Paradise
+    document.addEventListener('change', event => {
+        if (!event.target.closest('[data-radio-paradise]')) return;
+        const option = document.getElementById('radioParadiseChannel').selectedOptions[0];
+        if (!option || !option.value) return;
+        const quality = document.getElementById('radioParadiseQuality').value;
+        option.dataset.streamUrl = JSON.parse(option.dataset.streams)[quality];
+        useRadioResult(option);
+    });
 
     document.addEventListener('click', event => {
         const target = event.target.closest('[data-action="use-radio-result"]');

@@ -7,13 +7,32 @@
         <div class="modal-content">
             <button class="close-modal" @click="close()" aria-label="Close">&times;</button>
             <h2>Add Radio Station</h2>
+            <div class="radio-discovery form-group" data-radio-paradise x-data="{ quality: '320' }"
+                 {% if config.fetch_radio_images %}data-favicon-proxy="{{ url_for(radio_ep.favicon_proxy) }}"{% endif %}>
+                <label for="radioParadiseChannel"><a href="https://radioparadise.com/home" target="_blank" rel="noopener noreferrer">Radio Paradise</a></label>
+                <div class="setting-input-row">
+                    <select id="radioParadiseChannel">
+                        <option value="">Channel</option>
+                        {% for c in radio_paradise_channels %}
+                            <option value="{{ loop.index }}" data-name="{{ c.name }}" data-homepage-url="{{ c.homepage_url }}"
+                                    data-favicon="{{ c.favicon }}" data-streams="{{ c.streams | tojson | forceescape }}">{{ c.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="radioParadiseQuality" class="select-auto" x-model="quality">
+                        {% for value, label in radio_paradise_qualities.items() %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="label-hint" x-show="quality === 'flac'" x-cloak>Ogg FLAC: not supported by all clients.</p>
+            </div>
+            <div class="modal-or">or</div>
             {% if radio_discovery_enabled %}
-                <div class="radio-discovery form-group">
-                    <label>Search Radio Browser <span class="label-hint">(optional)</span></label>
+                <div class="radio-discovery form-group" data-favicon-proxy="{{ url_for(radio_ep.favicon_proxy) }}">
+                    <label for="radioDiscoveryQuery"><a href="https://www.radio-browser.info/" target="_blank" rel="noopener noreferrer">Radio Browser</a></label>
                     <div class="setting-input-row">
                         <input type="text" id="radioDiscoveryQuery" name="q" placeholder="Station name">
                         <button type="button" class="btn btn-outline" data-action="discover-radios"
-                                data-favicon-proxy="{{ url_for(radio_ep.favicon_proxy) }}"
                                 hx-get="{{ url_for(radio_ep.discover) }}"
                                 hx-include="#radioDiscoveryQuery"
                                 hx-target="#radioDiscoveryResults"
@@ -26,6 +45,7 @@
                     <p id="radioDiscoverySpinner" class="htmx-indicator test-result radio-search-status">Searching&hellip;</p>
                     <div class="suggestion-list" id="radioDiscoveryResults"></div>
                 </div>
+                <div class="modal-or">or</div>
             {% endif %}
             <form id="createRadioForm" x-data="iconPicker" @radio-icon.window="applyRemote($event)" @reset="clear()"
                   hx-post="{{ url_for(radio_ep.create) }}"

@@ -16,6 +16,7 @@ from beetsplug.beetstreamnext.core.accounts.credentials import webui_login
 from beetsplug.beetstreamnext.core.accounts.export import export_user_data
 from beetsplug.beetstreamnext.constants import RADIO_BROWSER
 from beetsplug.beetstreamnext.blueprints.views import radio_endpoints
+from beetsplug.beetstreamnext.core.services.external import radio_paradise
 from beetsplug.beetstreamnext.blueprints.forms import RadioStationForm, AppPasswordForm, AccountProfileForm, ChangePasswordForm, DeleteAccountForm, form_error_messages
 from beetsplug.beetstreamnext.core.media.avatars import save_uploaded_avatar, avatar_response
 from beetsplug.beetstreamnext.core.accounts.user_schema import USER_ROLES_SCHEMA, allowed_bitrates, effective_bitrate
@@ -46,6 +47,8 @@ def route_account() -> str:
         radio_discovery_enabled=flask.current_app.config.get('enable_radio_discovery', False) and RADIO_BROWSER,
         radio_form=RadioStationForm(formdata=None),
         radio_ep=radio_endpoints('account'),
+        radio_paradise_qualities=radio_paradise.get_qualities(),
+        radio_paradise_channels=radio_paradise.get_channels(),
         current_username=username,
     )
 

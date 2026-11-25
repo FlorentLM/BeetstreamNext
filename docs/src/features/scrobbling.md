@@ -46,6 +46,18 @@ These need the [`lastfm_api_key`](../configuration.md#lastfm_api_key) and the [`
 
 Your password is never seen by **BeetstreamNext**, only the session key returned by Last.fm is stored (encrypted).
 
+### Importing your Last.fm history
+
+Once Last.fm (or Libre.fm) is connected, click **Import from Last.fm** (or Libre.fm). The import then runs in the background (you can leave the page).
+
+> [!NOTE]
+>
+> Last.fm rarely knows the MusicBrainz recording ID of a track, so most listens are matched by artist and title.
+
+### Sending likes
+
+You can also send your song likes to Last.fm (or Libre.fm).
+
 ## Using multi-scrobbler
 
 [Multi-Scrobbler](https://github.com/FoxxMD/multi-scrobbler) can collect your listens and forward them to many services at once (Last.fm, Maloja, Koito, etc.). There are two ways to use it with **BeetstreamNext**:
@@ -80,7 +92,8 @@ Your password is never seen by **BeetstreamNext**, only the session key returned
 |-----------------------------------------------|---------------------------------------------------------------------|
 | A track starts (client sends a "now playing") | Artist, title, album                                                |
 | A track is finished (client sends a scrobble) | Same as above, plus the time you played it, and the track length    |
-| You like/dislike a song                       | The song's MusicBrainz recording ID and whether you like/dislike it |
+| You like/dislike a song (ListenBrainz)        | The song's MusicBrainz recording ID and whether you like/dislike it |
+| You like/dislike a song (Last.fm)             | Artist and title, and whether you love the song                     |
 
 If the track has MusicBrainz IDs in your Beets library (recording, release, artist), they are sent too, so ListenBrainz can match the track exactly. **BeetstreamNext** also identifies itself as the submitting client.
 

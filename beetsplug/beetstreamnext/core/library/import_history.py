@@ -59,6 +59,7 @@ def _row(run_path: str, outcome: str, record: dict[str, Any], ts: float) -> dict
         'album': record.get('album') or '',
         'path': record.get('path') or run_path,
         'tracks': record.get('tracks'),
+        'mb_albumid': record.get('mb_albumid'),
     }
 
 
@@ -115,8 +116,8 @@ def record_run(run_path: str, results: dict[str, list[dict[str, Any]]]) -> int:
 
             db.executemany(
                 """
-                INSERT INTO import_history (ts, run_path, outcome, cause, reason, artist, album, path, tracks)
-                VALUES (:ts, :run_path, :outcome, :cause, :reason, :artist, :album, :path, :tracks)
+                INSERT INTO import_history (ts, run_path, outcome, cause, reason, artist, album, path, tracks, mb_albumid)
+                VALUES (:ts, :run_path, :outcome, :cause, :reason, :artist, :album, :path, :tracks, :mb_albumid)
                 """, rows
             )
 

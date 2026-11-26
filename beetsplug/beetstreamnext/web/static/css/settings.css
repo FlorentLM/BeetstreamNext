@@ -1327,6 +1327,10 @@ input:focus, select:focus {
     cursor: pointer;
 }
 
+.setting-input-row + .log-toolbar-item {
+    margin-top: 0.6rem;
+}
+
 .log-toolbar-item select {
     width: auto;
 }

@@ -211,7 +211,8 @@ def initialise_db() -> None:
             artist TEXT NOT NULL DEFAULT '',
             album TEXT NOT NULL DEFAULT '',
             path TEXT NOT NULL,            -- album subfolder
-            tracks INTEGER
+            tracks INTEGER,
+            mb_albumid TEXT                -- matched MusicBrainz release
         )
         """
     )

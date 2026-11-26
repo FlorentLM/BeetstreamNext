@@ -411,6 +411,9 @@
                             import
                         </button>
                     </div>
+                    <label class="log-toolbar-item" title="Always ask before applying (even strong matches)">
+                        <input type="checkbox" x-ref="timid"> Confirm every match
+                    </label>
                     <p class="test-result" :class="startResultClass" x-text="startMessage"></p>
                 </form>
                 <div id="pinnedPaths"
@@ -429,9 +432,9 @@
                 <form class="card-body-form">
                     <div class="setting-input-row">
                         <input type="text" id="beetsImportStdin" aria-label="Send input to beets" placeholder="beets is idle" autocomplete="off"
-                               x-ref="stdin" :placeholder="stdinPlaceholder" :disabled="!live"
+                               x-ref="stdin" :placeholder="stdinPlaceholder" :disabled="state !== 'needs_input'"
                                @keydown.enter.prevent="sendInput()">
-                        <button type="button" class="btn btn-outline" @click="sendInput()" :disabled="!live">Send
+                        <button type="button" class="btn btn-outline" @click="sendInput()" :disabled="state !== 'needs_input'">Send
                         </button>
                     </div>
                     <p class="test-result" :class="inputResultClass" x-text="inputMessage"></p>

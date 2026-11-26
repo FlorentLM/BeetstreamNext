@@ -347,7 +347,8 @@
                     return LABELS[this.state] || this.state;
                 },
                 get stdinPlaceholder() {
-                    return this.live ? 'reply to beets…' : 'beets is idle';
+                    if (this.state === 'needs_input') return 'reply to beets…';
+                    return this.live ? 'beets is working…' : 'beets is idle';
                 },
                 get startDisabled() {
                     return this.starting;
@@ -420,7 +421,7 @@
 
                     this.starting = true;
                     try {
-                        const payload = await post(this.startUrl, {path});
+                        const payload = await post(this.startUrl, {path, timid: this.$refs.timid.checked ? '1' : ''});
                         this.startOk = !!payload.ok;
                         this.startMessage = payload.ok ? '' : payload.message;
                         this.applyStatus(payload);
@@ -435,7 +436,7 @@
 
                 async sendInput() {
                     const input = this.$refs.stdin;
-                    if (!this.live) return;
+                    if (this.state !== 'needs_input') return;
                     const text = input.value;
                     input.value = '';
                     try {

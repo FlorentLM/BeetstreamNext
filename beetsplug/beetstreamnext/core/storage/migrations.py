@@ -280,6 +280,16 @@ def apply_db_migrations(cursor: sqlite3.Cursor) -> None:
 
         curr_version = MIGRATION_14_VER
 
+    ## _________ Migration 15: Version 14 -> 15 (matched release in the import history), 25/11/2026
+    MIGRATION_15_VER = 15
+
+    if curr_version < MIGRATION_15_VER:
+        columns = [row[1] for row in cursor.execute("""PRAGMA table_info(import_history)""")]
+        if columns and 'mb_albumid' not in columns:
+            cursor.execute("""ALTER TABLE import_history ADD COLUMN mb_albumid TEXT""")
+
+        curr_version = MIGRATION_15_VER
+
     ## ___________________________________________________________________
 
     # Update version in db

@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from typing import Any
 
+from beets import config
 from beets.importer import Action
 from beets.importer.state import ImportState
 from beets.plugins import BeetsPlugin
@@ -15,6 +17,9 @@ from beets.plugins import BeetsPlugin
 
 EVENTS_ENV_VAR = 'BSN_IMPORT_EVENTS'
 RETRY_ENV_VAR = 'BSN_IMPORT_RETRY'      # when set, folders being imported are retried even if beets recorded them
+INTERACTIVE_ENV_VAR = 'BSN_IMPORT_INTERACTIVE'  # when set, a `quiet: yes` in the beets config is ignored
+
+MBID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
 
 
 class BeetstreamNextEvents(BeetsPlugin):
@@ -25,6 +30,9 @@ class BeetstreamNextEvents(BeetsPlugin):
         self._path: str | None = os.environ.get(EVENTS_ENV_VAR) or None
         self._lock = threading.Lock()
         self._pending: dict[int, dict[str, Any]] = {}
+
+        if os.environ.get(INTERACTIVE_ENV_VAR):
+            config['import']['quiet'].set(False)
 
         if os.environ.get(RETRY_ENV_VAR):
             self.register_listener('import_begin', self._forget_history)
@@ -154,7 +162,13 @@ class BeetstreamNextEvents(BeetsPlugin):
             for folder in done['folders']:
                 state.history_add([os.fsencode(folder)])
 
-        self._write({'event': 'imported', 'tracks': len(getattr(task, 'imported_items', lambda: [])()), **info})
+        items = getattr(task, 'imported_items', lambda: [])()
+
+        mbid = items[0].get('mb_albumid') if items else None
+        if not (mbid and MBID_RE.match(mbid)):
+            mbid = None
+
+        self._write({'event': 'imported', 'tracks': len(items), 'mb_albumid': mbid, **info})
 
     def _on_exit(self, lib) -> None:
         with self._lock:

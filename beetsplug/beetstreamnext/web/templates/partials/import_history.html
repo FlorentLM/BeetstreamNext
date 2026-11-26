@@ -36,6 +36,11 @@
             {% set album_html %}
                 {{ e.label }}
                 <p class="history-sub">{{ e.path }}</p>
+                {% if e.mb_albumid %}
+                    <p class="history-sub"><a href="https://musicbrainz.org/release/{{ e.mb_albumid }}"
+                       target="_blank" rel="noopener noreferrer"
+                       title="Matched MusicBrainz release">{{ e.mb_albumid }}</a></p>
+                {% endif %}
                 {% if e.reason %}<p class="history-sub history-reason">{{ e.reason }}</p>{% endif %}
             {% endset %}
             {% set status_html %}

@@ -36,7 +36,7 @@ from beetsplug.beetstreamnext.utils.ansi import log_line
 from beetsplug.beetstreamnext.utils.general import subprocess_env
 from beetsplug.beetstreamnext.utils.text import format_elapsed
 from beetsplug.beetstreamnext.utils.system import is_writable, read_log
-from beetsplug.beetstreamnext_events import EVENTS_ENV_VAR, RETRY_ENV_VAR
+from beetsplug.beetstreamnext_events import EVENTS_ENV_VAR, INTERACTIVE_ENV_VAR, RETRY_ENV_VAR
 
 IS_WINDOWS = sys.platform == 'win32'
 
@@ -101,6 +101,7 @@ class ImportSession:
 
         self._state: str = 'idle'                # idle, running, needs_input, completed, failed
         self._current_path: str | None = None
+        self._output_tail: str = ''              # recent output since the last prompt?
 
         self._exit_code: int | None = None
         self._started_at: float | None = None
@@ -143,7 +144,8 @@ class ImportSession:
             path: str,
             quiet: bool = False,
             incremental: bool = False,
-            reset_log: bool = True
+            reset_log: bool = True,
+            timid: bool = False
         ) -> tuple[bool, str]:
         """
         Start a `beet import` against `path`.
@@ -190,6 +192,8 @@ class ImportSession:
             command += ['-l', library_path, 'import']
             if quiet:
                 command.append('-q')
+            elif timid:
+                command.append('-t')     # also confirm strong matches
 
             # Always record skipped (or imported) folders no matter what `incremental_skip_later` says
             if quiet and not incremental:
@@ -204,6 +208,8 @@ class ImportSession:
                 env[EVENTS_ENV_VAR] = str(BEETS_IMPORT_RESULTS_PATH)
             if not quiet:     # Manual imports: force no skip (companion plugin makes beets forget it)
                 env[RETRY_ENV_VAR] = '1'
+            if timid and not quiet:
+                env[INTERACTIVE_ENV_VAR] = '1'
 
             if reset_log:
                 try:
@@ -252,6 +258,7 @@ class ImportSession:
 
             self._current_path = str(candidate)
             self._state = 'running'
+            self._output_tail = ''
             self._exit_code = None
             self._started_at = time.monotonic()
 
@@ -330,11 +337,13 @@ class ImportSession:
         log_file.flush()
 
         needs_input_path = None
-        if any(s in text for s in _NEEDS_INPUT_SNIPPETS):
-            with self._lock:
-                if self._state == 'running':
-                    self._state = 'needs_input'
-                    needs_input_path = self._current_path
+        with self._lock:
+            self._output_tail = (self._output_tail + text)[-256:]
+
+            if self._state == 'running' and any(s in self._output_tail for s in _NEEDS_INPUT_SNIPPETS):
+                self._state = 'needs_input'
+                self._output_tail = ''
+                needs_input_path = self._current_path
 
         if needs_input_path is not None:    # Only on the running -> needs_input
             notify('import_needs_input', path=needs_input_path)
@@ -423,9 +432,8 @@ class ImportSession:
     def send_input(self, text: str) -> tuple[bool, str]:
 
         with self._lock:
-            if (self._proc is None or self._state not in ('running', 'needs_input')
-                    or (not IS_WINDOWS and self._master_fd is None)):
-                return False, 'No import is waiting for input.'
+            if self._proc is None or self._state != 'needs_input' or (not IS_WINDOWS and self._master_fd is None):
+                return False, 'Beets is not waiting for input.'
 
             try:
                 if IS_WINDOWS:
@@ -437,8 +445,8 @@ class ImportSession:
                 bsn_logger.warning(f'Failed to write to beets import stdin: {e}')
                 return False, 'Failed to send input.'
 
-            if self._state == 'needs_input':
-                self._state = 'running'   # Assume this answers whatever prompt was up
+            self._state = 'running'   # Assume this answers whatever prompt was up
+            self._output_tail = ''
 
         self._push_status()
         return True, 'Sent.'

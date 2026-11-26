@@ -27,7 +27,7 @@ def route_read_beets_config() -> str:
 @admin_required
 def route_beets_import_start() -> flask.Response:
     path = (flask.request.form.get('path') or '').strip()
-    ok, message = import_session.start(path)
+    ok, message = import_session.start(path, timid=flask.request.form.get('timid') == '1')
     status = import_session.status()
     return flask.jsonify({'ok': ok, 'message': message, **status})
 

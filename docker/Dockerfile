@@ -64,7 +64,9 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     SQLITE_TMPDIR=/cache/tmp \
     BSN_DB_PATH=/config/beetstreamnext.db \
     BEETSDIR=/config/beets \
-    BSN_IN_DOCKER=1
+    BSN_IN_DOCKER=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1
 
 RUN mkdir -p /config /cache && chown -R beetstream:beetstream /config /cache && chmod 1777 /cache
 VOLUME ["/config", "/cache"]

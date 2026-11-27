@@ -206,6 +206,8 @@ class ImportSession:
 
             env = subprocess_env('NO_COLOR')
             env.setdefault('TERM', 'xterm-256color')
+            env.setdefault('OPENBLAS_NUM_THREADS', '1')
+            env.setdefault('OMP_NUM_THREADS', '1')
             if reporting:
                 env[EVENTS_ENV_VAR] = str(BEETS_IMPORT_RESULTS_PATH)
             if not quiet:     # Manual imports: force no skip (companion plugin makes beets forget it)

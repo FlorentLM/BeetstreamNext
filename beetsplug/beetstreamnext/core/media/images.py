@@ -273,21 +273,24 @@ def _cache_album_art(image_bytes: bytes, album, album_dir: Path | None, playlist
             img.save(f, format='JPEG')
         os.replace(tmp_path, path)
 
-        if app.config.get('save_album_art') and not playlist and album_dir and not (album_dir / 'cover.jpg').exists():
-            img.save(album_dir / 'cover.jpg', format='JPEG')
-            bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {album_dir / 'cover.jpg'}")
-
-        return path
-
     except Exception as e:
         bsn_logger.warning(f"Could not store album art for album {album.id}: {e}")
         return None
+
+    if app.config.get('save_album_art') and not playlist and album_dir and not (album_dir / 'cover.jpg').exists():
+        try:
+            img.save(album_dir / 'cover.jpg', format='JPEG')
+            bsn_logger.debug(f"Saved album art for '{album.get('album')}' to {album_dir / 'cover.jpg'}")
+        except OSError as e:
+            bsn_logger.warning(f"Could not save cover.jpg for album {album.id}: {e}")
+
+    return path
 
 
 def _album_art_candidates(album) -> Iterator[Path]:
     """
     Beets' artpath > image in the album folder > cover fetched before > query CoverArtArchive
-    > embedded in track file > from a playlist foreign url
+    > embedded in track file > CoverArtArchive release group > from a playlist foreign url
     """
     # TODO: Reorder this maybe
 
@@ -308,6 +311,7 @@ def _album_art_candidates(album) -> Iterator[Path]:
     image_bytes = (
         musicbrainz_service.cover_art(mbid)
         or (image_from_song(album_dir) if album_dir else b'')
+        or musicbrainz_service.release_group_cover_art(validate_mbid(album.get('mb_releasegroupid')))
         or (playlist_cover.read_bytes() if playlist_cover.is_file() else b'')
     )
 
@@ -385,7 +389,9 @@ def send_album_art(album_id, size=None)  -> flask.Response | None:
         try:
             if art_file.stat().st_size > RAW_ART_MAX_BYTES or art_file.suffix.lower() in ('.tiff', '.tif'):
                 resized = _cached_resize(art_file, size=ALLOWED_THUMBNAIL_SIZES[-1])
-                return flask.send_file(resized, mimetype='image/jpeg') if resized else None
+                if resized:
+                    return flask.send_file(resized, mimetype='image/jpeg')
+                continue
 
             return flask.send_file(art_file, mimetype=get_mimetype(art_file))
         except Exception as e:

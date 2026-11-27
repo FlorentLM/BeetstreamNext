@@ -1,16 +1,19 @@
 from __future__ import annotations
 from typing import Any
 
-from flask import render_template
+import flask
 
 from .. import public_bp
 
 
 @public_bp.app_errorhandler(404)
-def page_not_found(_e: Any) -> tuple[str, str]:
+def page_not_found(_e: Any) -> tuple[str, int]:
+    if flask.request.path.startswith(('/rest', '/tokenised-')):
+        return '', 404
+
     error = {
         'code': 404,
         'title': '*record scratches*',
         'message': "Looks like you're lost.",
     }
-    return render_template('error.html', error=error), str(error['code'])
+    return flask.render_template('error.html', error=error), 404

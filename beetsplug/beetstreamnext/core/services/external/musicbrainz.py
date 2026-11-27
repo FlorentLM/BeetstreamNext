@@ -43,5 +43,11 @@ class MusicBrainz(ExternalService):
             return b''
         return capped_image_fetch(f'https://coverartarchive.org/release/{mbid}/front')
 
+    def release_group_cover_art(self, mbid: str) -> bytes:
+        """Release group's front cover, for releases that don't have one."""
+        if not mbid:
+            return b''
+        return capped_image_fetch(f'https://coverartarchive.org/release-group/{mbid}/front-1200')
+
 
 musicbrainz_service = MusicBrainz()

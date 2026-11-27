@@ -155,12 +155,30 @@ CHECKS = {
     """),
 
     'quality_missing_tracks': Check('Missing tracks', 'badge-cyan', """
-        SELECT MIN(id), 'Disc ' || disc || ' is missing ' || (MAX(track) - MIN(track) + 1 - COUNT(DISTINCT track))
-                        || ' track(s) between ' || MIN(track) || ' and ' || MAX(track)
-        FROM beets.items
-        WHERE album_id IS NOT NULL AND track > 0
-        GROUP BY album_id, disc
-        HAVING MAX(track) - MIN(track) + 1 > COUNT(DISTINCT track)
+        WITH d AS (
+            SELECT album_id, disc, MIN(id) AS rep, MIN(track) AS lo, MAX(track) AS hi,
+                   MAX(track) - MIN(track) + 1 - COUNT(DISTINCT track) AS total
+            FROM beets.items
+            WHERE album_id IS NOT NULL AND track > 0
+            GROUP BY album_id, disc
+            HAVING total > 0
+        ), n(album_id, disc, track, lo, hi) AS (
+            SELECT album_id, disc, lo, lo, hi FROM d
+            UNION ALL
+            SELECT album_id, disc, track + 1, lo, hi FROM n WHERE track < hi AND track < lo + 2000  -- bad tags guard
+        ), m AS (
+            SELECT album_id, disc, track FROM n
+            EXCEPT
+            SELECT i.album_id, i.disc, i.track FROM beets.items i JOIN d ON d.album_id = i.album_id AND d.disc = i.disc
+        ), shown AS (
+            SELECT album_id, disc, track, ROW_NUMBER() OVER (PARTITION BY album_id, disc ORDER BY track) AS k
+            FROM m
+        )
+        SELECT d.rep, 'Disc ' || d.disc || ' is missing track' || CASE WHEN d.total > 1 THEN 's ' ELSE ' ' END
+                      || GROUP_CONCAT(s.track, ', ')
+                      || CASE WHEN d.total > 10 THEN ' (+' || (d.total - 10) || ' more)' ELSE '' END
+        FROM d JOIN (SELECT * FROM shown WHERE k <= 10 ORDER BY track) s ON s.album_id = d.album_id AND s.disc = d.disc
+        GROUP BY d.album_id, d.disc
     """),
 
     'quality_mixed_release': Check('Mixed releases', 'badge-orange', """
@@ -200,9 +218,12 @@ CHECKS = {
                    || CASE WHEN TRIM(COALESCE(artist, '')) = '' THEN 'artist, ' ELSE '' END
                    || CASE WHEN album_id IS NOT NULL AND TRIM(COALESCE(albumartist, '')) = '' THEN 'album artist, ' ELSE '' END
                    || CASE WHEN album_id IS NOT NULL AND TRIM(COALESCE(album, '')) = '' THEN 'album, ' ELSE '' END
-                   || CASE WHEN album_id IS NOT NULL AND COALESCE(track, 0) <= 0 THEN 'track number, ' ELSE '' END
+                   || CASE WHEN album_size > 1 AND COALESCE(track, 0) <= 0 THEN 'track number, ' ELSE '' END
                    AS missing
-            FROM beets.items
+            FROM (
+                SELECT *, CASE WHEN album_id IS NULL THEN 0 ELSE COUNT(*) OVER (PARTITION BY album_id) END AS album_size
+                FROM beets.items
+            )
         )
         WHERE missing != ''
     """),

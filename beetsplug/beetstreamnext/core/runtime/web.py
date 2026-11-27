@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import urllib.parse
 from pathlib import Path
 
@@ -107,7 +108,7 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: str |
         resp.headers['Content-Disposition'] = content_disposition(download_name or file_path.name)
 
     if method == 'x-sendfile':
-        resp.headers['X-Sendfile'] = str(file_path)
+        resp.headers['X-Sendfile'] = urllib.parse.quote(os.fsencode(file_path), safe='/')     # headers must be latin-1
         return resp
 
     if method == 'x-accel-redirect':
@@ -118,7 +119,7 @@ def _sendfile_offload(file_path: Path, as_attachment: bool, download_name: str |
             bsn_logger.warning(f"'{file_path}' is outside music_root, can't use X-Accel-Redirect.")
             return None
         prefix = settings_store.get('sendfile_internal_prefix').rstrip('/')
-        resp.headers['X-Accel-Redirect'] = f'{prefix}/{rel.as_posix()}'
+        resp.headers['X-Accel-Redirect'] = f"{prefix}/{urllib.parse.quote(os.fsencode(rel.as_posix()), safe='/')}"
         return resp
 
     return None

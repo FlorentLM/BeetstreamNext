@@ -46,6 +46,7 @@ else:
     import pty
 
 IMPORT_PUSH_INTERVAL = 0.5     # max seconds between live import log updates
+PROMPT_IDLE_SECONDS = 0.6
 
 _NEEDS_INPUT_SNIPPETS = (
     '[A]pply', 'kip new', 'ter search', 'it, edit ',
@@ -102,6 +103,7 @@ class ImportSession:
         self._state: str = 'idle'                # idle, running, needs_input, completed, failed
         self._current_path: str | None = None
         self._output_tail: str = ''              # recent output since the last prompt?
+        self._output_seq: int = 0
 
         self._exit_code: int | None = None
         self._started_at: float | None = None
@@ -336,19 +338,41 @@ class ImportSession:
         log_file.write(text)
         log_file.flush()
 
-        needs_input_path = None
+        prompted = False
         with self._lock:
+            self._output_seq += 1
             self._output_tail = (self._output_tail + text)[-256:]
 
-            if self._state == 'running' and any(s in self._output_tail for s in _NEEDS_INPUT_SNIPPETS):
-                self._state = 'needs_input'
-                self._output_tail = ''
-                needs_input_path = self._current_path
+            if self._state == 'running':
+                if any(s in self._output_tail for s in _NEEDS_INPUT_SNIPPETS):
+                    prompted = self._enter_needs_input()
 
-        if needs_input_path is not None:    # Only on the running -> needs_input
-            notify('import_needs_input', path=needs_input_path)
+                # Any other prompt (release ID, search, plugins...) ends without a newline and waits
+                elif not self._output_tail.endswith('\n'):
+                    timer = threading.Timer(PROMPT_IDLE_SECONDS, self._prompt_if_idle, args=(self._output_seq,))
+                    timer.daemon = True
+                    timer.start()
 
-        self._push_status(throttle=0.0 if needs_input_path is not None else IMPORT_PUSH_INTERVAL)
+        if prompted:
+            self._announce_prompt()
+        else:
+            self._push_status(throttle=IMPORT_PUSH_INTERVAL)
+
+    def _enter_needs_input(self) -> bool:
+        self._state = 'needs_input'
+        self._output_tail = ''
+        return True
+
+    def _announce_prompt(self) -> None:
+        notify('import_needs_input', path=self._current_path)
+        self._push_status()
+
+    def _prompt_if_idle(self, seq: int) -> None:
+        with self._lock:
+            if seq != self._output_seq or self._state != 'running':
+                return
+            self._enter_needs_input()
+        self._announce_prompt()
 
     def _finish(self, log_file, exit_code: int) -> None:
         with self._lock:
@@ -428,6 +452,19 @@ class ImportSession:
                     bsn_logger.warning('Could not get the beets import exit status.')
                     exit_code = 1
                 self._finish(log_file, exit_code)
+
+    def stop(self) -> tuple[bool, str]:
+        """Terminate the running import and drop queued scans."""
+        with self._lock:
+            self._queue = []
+            if self._proc is None or self._state not in ('running', 'needs_input'):
+                return False, 'No import is running.'
+            try:
+                self._proc.terminate()
+            except Exception as e:  # noqa: BLE001  Popen or winpty both fails their own way
+                bsn_logger.warning(f'Could not stop the beets import: {e}')
+                return False, 'Could not stop the import.'
+        return True, 'Stopping.'
 
     def send_input(self, text: str) -> tuple[bool, str]:
 

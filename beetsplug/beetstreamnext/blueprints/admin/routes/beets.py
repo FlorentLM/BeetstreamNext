@@ -38,6 +38,13 @@ def route_beets_import_status() -> flask.Response:
     return flask.jsonify(import_session.status())
 
 
+@admin_bp.route('/beets/import/stop', methods=['POST'])
+@admin_required
+def route_beets_import_stop() -> flask.Response:
+    ok, message = import_session.stop()
+    return flask.jsonify({'ok': ok, 'message': message, **import_session.status()})
+
+
 @admin_bp.route('/beets/import/input', methods=['POST'])
 @admin_required
 def route_beets_import_input() -> flask.Response:

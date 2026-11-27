@@ -334,6 +334,7 @@
                 inputOk: true,
                 startUrl: '',       // inside a handler, $el is what fired the event
                 inputUrl: '',
+                stopUrl: '',
                 statusUrl: '',
                 logUrl: '',
 
@@ -369,6 +370,7 @@
                     const d = this.$el.dataset;
                     this.startUrl = d.startUrl;
                     this.inputUrl = d.inputUrl;
+                    this.stopUrl = d.stopUrl;
                     this.statusUrl = d.statusUrl;
                     this.logUrl = d.logUrl;
                     this.resync();
@@ -393,8 +395,26 @@
                 },
 
                 applyStatus(status) {
+                    const prompted = status.state === 'needs_input' && this.state !== 'needs_input';
                     this.state = status.state;
                     this.statusPath = status.path || '';
+
+                    const stdin = this.$refs.stdin;
+                    if (prompted && (document.activeElement === document.body || document.activeElement === stdin)) {
+                        this.$nextTick(() => stdin.focus());
+                    }
+                },
+
+                async stop() {
+                    try {
+                        const payload = await post(this.stopUrl, {});
+                        this.applyStatus(payload);
+                        this.inputOk = !!payload.ok;
+                        this.inputMessage = payload.ok ? '' : payload.message;
+                    } catch (err) {
+                        this.inputOk = false;
+                        this.inputMessage = 'Could not stop: ' + err.message;
+                    }
                 },
 
                 applyLines(lines) {

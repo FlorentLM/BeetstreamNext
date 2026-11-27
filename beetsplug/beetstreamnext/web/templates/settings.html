@@ -383,6 +383,7 @@
             <div class="card" x-data="beetsImport"
                  data-start-url="{{ url_for('admin.route_beets_import_start') }}"
                  data-input-url="{{ url_for('admin.route_beets_import_input') }}"
+                 data-stop-url="{{ url_for('admin.route_beets_import_stop') }}"
                  data-status-url="{{ url_for('admin.route_beets_import_status') }}"
                  data-log-url="{{ url_for('admin.route_beets_import_log') }}">
                 <div class="table-header">
@@ -435,6 +436,9 @@
                                x-ref="stdin" :placeholder="stdinPlaceholder" :disabled="state !== 'needs_input'"
                                @keydown.enter.prevent="sendInput()">
                         <button type="button" class="btn btn-outline" @click="sendInput()" :disabled="state !== 'needs_input'">Send
+                        </button>
+                        <button type="button" class="btn btn-outline" x-show="live" @click="stop()"
+                                title="Stop the current import">Stop
                         </button>
                     </div>
                     <p class="test-result" :class="inputResultClass" x-text="inputMessage"></p>

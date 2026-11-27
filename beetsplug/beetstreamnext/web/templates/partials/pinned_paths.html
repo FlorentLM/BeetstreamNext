@@ -44,6 +44,10 @@
                 'actions': actions_html,
             }) %}
         {% endfor %}
+        {% set footer_html %}
+            <span class="label-hint">info: <code>beets <a href="https://beets.readthedocs.io/en/stable/reference/config.html#incremental"
+                                               target="_blank" rel="noopener">incremental</a></code></span>
+        {% endset %}
         {{ data_table({
             'columns': [
                 {'title': 'Path', 'field': 'path', 'minWidth': 200, 'cssClass': 'cell-wrap'},
@@ -54,6 +58,7 @@
             ],
             'rows': rows,
             'pageSize': 10,
+            'footer': footer_html | trim,
         }) }}
     {% else %}
         <p class="pinned-path empty-state">No pinned paths yet.</p>

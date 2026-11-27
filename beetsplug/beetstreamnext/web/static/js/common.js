@@ -525,6 +525,7 @@
                         if (data._class) row.getElement().classList.add(...data._class.split(' '));
                         if (spec.play) row.getElement().classList.toggle('now-playing', Boolean(data.id) && data.id === document.body.dataset.nowPlaying);
                     },
+                    ...(spec.footer ? {footerElement: spec.footer} : {}),
                     pagination: true,
                     paginationSize: spec.pageSize || 25
                 });

@@ -213,16 +213,6 @@ CHECKS = {
         WHERE TRIM(COALESCE(mb_trackid, '')) = '' AND TRIM(COALESCE(mb_releasetrackid, '')) = ''
     """),
 
-    'quality_no_fingerprint': Check('No fingerprint', '', """
-        SELECT id, 'Not checked for same-recording copies: no AcoustID or fingerprint'
-        FROM beets.items
-        WHERE TRIM(COALESCE(acoustid_id, '')) = '' AND TRIM(COALESCE(acoustid_fingerprint, '')) = ''
-          AND EXISTS (
-              SELECT 1 FROM beets.items
-              WHERE TRIM(COALESCE(acoustid_id, '')) != '' OR TRIM(COALESCE(acoustid_fingerprint, '')) != ''
-          )
-    """),
-
 }
 
 INTEGRITY_CATEGORIES = tuple(cat for cat, check in CHECKS.items() if not check.sql and not check.func)

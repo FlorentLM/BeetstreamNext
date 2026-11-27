@@ -122,3 +122,35 @@
         reload();
     });
 })();
+
+// Health scan table: client-side search
+(function () {
+    'use strict';
+
+    const container = document.getElementById('flagged-songs');
+    const search = document.getElementById('flaggedSearch');
+    if (!container || !search) return;
+
+    const FIELDS = ['title', 'artist', 'album', 'issue', 'detail'];
+
+    function apply() {
+        const table = container.querySelector('[data-table]')?.tabulatorTable;
+        if (!table) return;
+        const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (!terms.length) {
+            table.clearFilter();
+            return;
+        }
+        table.setFilter(data => {
+            const text = FIELDS.map(field => data[field] ?? '').join(' ').toLowerCase();
+            return terms.every(term => text.includes(term));
+        });
+    }
+
+    let searchTimer = null;
+    search.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(apply, 150);
+    });
+    container.addEventListener('table:ready', apply);
+})();

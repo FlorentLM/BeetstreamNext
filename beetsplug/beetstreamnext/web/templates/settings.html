@@ -545,6 +545,13 @@
                     <dd>&mdash;</dd>
                 </dl>
 
+                <div class="lib-toolbar">
+                    <div class="lib-search">
+                        <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                        <input type="text" role="searchbox" id="flaggedSearch" aria-label="Search all columns" autocomplete="off">
+                    </div>
+                </div>
+
                 <div class="table-container lib" id="flagged-songs"
                      hx-get="{{ url_for('admin.route_flagged_songs') }}"
                      hx-trigger="load, health-scan-done from:#adminDashboard"

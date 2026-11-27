@@ -307,7 +307,7 @@ class ImportSession:
 
             return self.start(entry['path'], quiet=True, incremental=True)
 
-    def enqueue(self, path: str, quiet: bool = True, incremental: bool = False) -> tuple[bool, str]:
+    def enqueue(self, path: str, quiet: bool = True, incremental: bool = True) -> tuple[bool, str]:
         """
         Queue `path` (or start import immediately if queue empty).
         """
